@@ -40,6 +40,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-block-edit";
 }), "MCP Flow tools/list did not expose block duplicate/edit");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-resource-patch";
+}), "MCP Flow tools/list did not expose resource patching");
 
 var resources = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -144,6 +147,57 @@ assertTrue(set.result.result.structuredContent.ok === true,
 
 var targetFile = new java.io.File(targetDir, "libs/flows/TargetSmoke.flow.yaml");
 assertTrue(targetFile.isFile(), "MCP Flow flow-set did not write to the target projectDir");
+
+var getTarget = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 301,
+			method: "tools/call",
+			params: {
+				name: "flow-get",
+				arguments: {
+					projectDir: targetProjectDir,
+					name: "TargetSmoke"
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(getTarget));
+var targetDefinition = getTarget.result.result.structuredContent.definition;
+assertTrue(targetDefinition.nodes[0].id === "target",
+	"MCP Flow flow-get did not return the parsed definition");
+targetDefinition.nodes.push({
+	id: "modelRoundTrip",
+	block: "set",
+	path: "result.modelRoundTrip",
+	value: "definition"
+});
+var setDefinitionTarget = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 302,
+			method: "tools/call",
+			params: {
+				name: "flow-set",
+				arguments: {
+					projectDir: targetProjectDir,
+					name: "TargetSmoke",
+					definition: targetDefinition
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(setDefinitionTarget));
+assertTrue(setDefinitionTarget.result.result.structuredContent.analysis.writes.indexOf("result.modelRoundTrip") !== -1,
+	"MCP Flow flow-set did not accept flow-get.definition");
 
 var listTarget = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -534,6 +588,112 @@ var blockGet = JSON.parse(engine.run(JSON.stringify({
 print(JSON.stringify(blockGet));
 assertTrue(blockGet.result.result.structuredContent.source.indexOf("Edited project-local smoke block.") !== -1,
 	"MCP Flow flow-block-get did not read the edited project-local block");
+
+var resourceSearch = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1201,
+			method: "tools/call",
+			params: {
+				name: "flow-resource-search",
+				arguments: {
+					projectDir: targetProjectDir,
+					query: "Edited smoke",
+					doc: false,
+					hints: false
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(resourceSearch));
+assertTrue(resourceSearch.result.result.structuredContent.resources.some(function (resource) {
+	return resource.path === "libs/flow/blocks/smoke.echo.js";
+}), "MCP Flow flow-resource-search did not find the custom block source");
+
+var resourceGet = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1202,
+			method: "tools/call",
+			params: {
+				name: "flow-resource-get",
+				arguments: {
+					projectDir: targetProjectDir,
+					path: "libs/flow/blocks/smoke.echo.js"
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(resourceGet));
+var resourceHash = resourceGet.result.result.structuredContent.hash;
+assertTrue(resourceHash && resourceGet.result.result.structuredContent.content.indexOf("Edited project-local smoke block.") !== -1,
+	"MCP Flow flow-resource-get did not return content and hash");
+
+var resourcePatch = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1203,
+			method: "tools/call",
+			params: {
+				name: "flow-resource-patch",
+				arguments: {
+					projectDir: targetProjectDir,
+					path: "libs/flow/blocks/smoke.echo.js",
+					baseHash: resourceHash,
+					patch: [
+						"--- a/libs/flow/blocks/smoke.echo.js",
+						"+++ b/libs/flow/blocks/smoke.echo.js",
+						"@@ -1,8 +1,8 @@",
+						" \t\t\treturn {",
+						" \t\t\t\tname: \"smoke.echo\",",
+						" \t\t\t\tprops: {},",
+						"-\t\t\t\tdescription: \"Edited project-local smoke block.\"",
+						"+\t\t\t\tdescription: \"Patched project-local smoke block.\"",
+						" \t\t\t};",
+						" \t\t},"
+					].join("\n")
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(resourcePatch));
+assertTrue(resourcePatch.result.result.structuredContent.ok === true &&
+	resourcePatch.result.result.structuredContent.validation.ok === true,
+	"MCP Flow flow-resource-patch did not patch and validate the custom block source");
+
+var patchedBlockGet = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1204,
+			method: "tools/call",
+			params: {
+				name: "flow-block-get",
+				arguments: {
+					projectDir: targetProjectDir,
+					name: "smoke.echo"
+				}
+			}
+		})
+	}
+})));
+print(JSON.stringify(patchedBlockGet));
+assertTrue(patchedBlockGet.result.result.structuredContent.source.indexOf("Patched project-local smoke block.") !== -1,
+	"MCP Flow flow-resource-patch did not persist the patched custom block");
 
 var typeList = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,

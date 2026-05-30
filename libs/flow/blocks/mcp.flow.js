@@ -19,10 +19,118 @@
 		};
 	}
 
+	function acceptNotification(ctx) {
+		try {
+			ctx.convertigoContext().setResponseStatus(202, "Accepted");
+		} catch (e) {
+			// Standalone smoke tests have no servlet response to update.
+		}
+		return {};
+	}
+
+	function listNames(items, limit) {
+		items = items || [];
+		limit = limit || 50;
+		return items.slice(0, limit).map(function (item) {
+			return item && (item.name || item.id || item.flow || item.nodeId || item.summary) || String(item);
+		});
+	}
+
+	function summarizeLargeValue(value) {
+		if (!value || typeof value !== "object") {
+			return value;
+		}
+		var out = {
+			summary: "Full response is available in structuredContent."
+		};
+		["ok", "status", "name", "file", "target", "detail", "query", "scope", "project", "count", "total", "nextCursor", "message"].forEach(function (key) {
+			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
+				out[key] = value[key];
+			}
+		});
+		if (value.error) {
+			out.error = value.error;
+		}
+		if (value.result !== undefined && value.result !== null) {
+			out.result = value.result;
+		}
+		if (value.registration) {
+			out.registration = value.registration;
+		}
+		if (value.definition) {
+			out.definition = {
+				version: value.definition.version || 1,
+				nodes: value.definition.nodes ? value.definition.nodes.length : 0
+			};
+		}
+		if (value.analysis) {
+			out.analysis = {
+				reads: value.analysis.reads || [],
+				writes: value.analysis.writes || [],
+				nodes: (value.analysis.nodes || []).map(function (node) {
+					return node.id || node.block || "";
+				})
+			};
+		}
+		if (value.blocks) {
+			out.blocks = listNames(value.blocks, 100);
+			out.blockCount = value.blocks.length;
+		}
+		if (value.types) {
+			out.types = listNames(value.types, 100);
+			out.typeCount = value.types.length;
+		}
+		if (value.flows) {
+			out.flows = listNames(value.flows, 100);
+			out.flowCount = value.flows.length;
+		}
+		if (value.matches) {
+			out.matches = (value.matches || []).slice(0, 25).map(function (match) {
+				return {
+					kind: match.kind,
+					flow: match.flow,
+					nodeId: match.nodeId,
+					name: match.name,
+					path: match.path,
+					summary: match.summary,
+					next: match.next
+				};
+			});
+		}
+		if (value.children) {
+			out.children = (value.children || []).slice(0, 50).map(function (child) {
+				return {
+					name: child.name,
+					kind: child.kind,
+					type: child.type,
+					summary: child.summary
+				};
+			});
+			out.childCount = value.children.length;
+		}
+		if (value.scopes) {
+			out.scopes = {};
+			Object.keys(value.scopes).forEach(function (key) {
+				var scope = value.scopes[key];
+				out.scopes[key] = Object.prototype.toString.call(scope) === "[object Array]"
+					? scope.length
+					: scope && scope.paths ? scope.paths.length : 0;
+			});
+		}
+		if (value.next) {
+			out.next = value.next;
+		}
+		return out;
+	}
+
 	function textContent(value) {
+		var text = JSON.stringify(value);
+		if (text.length > 1500) {
+			text = JSON.stringify(summarizeLargeValue(value));
+		}
 		return [{
 			type: "text",
-			text: JSON.stringify(value)
+			text: text
 		}];
 	}
 
@@ -42,6 +150,23 @@
 		return properties;
 	}
 
+	function boolArg(value, fallback) {
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		if (value === true || value === false) {
+			return value;
+		}
+		var text = String(value).toLowerCase();
+		if (text === "true" || text === "1" || text === "yes") {
+			return true;
+		}
+		if (text === "false" || text === "0" || text === "no") {
+			return false;
+		}
+		return fallback;
+	}
+
 	function resolveProjectDir(args) {
 		args = args || {};
 		if (args.projectDir || !args.project) {
@@ -57,6 +182,170 @@
 		}
 		args.projectDir = String(project.getDirPath());
 		return args;
+	}
+
+	function studioRefreshQName(qname) {
+		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+		var System = java.lang.System;
+		var result = {
+			status: "pending",
+			message: "",
+			qname: String(qname || ""),
+			refreshed: false,
+			refreshedQName: "",
+			studioMode: false,
+			timestamp: Number(System.currentTimeMillis())
+		};
+		try {
+			result.studioMode = Engine.isStudioMode() === true;
+		} catch (_ignoreStudioMode) {
+			result.studioMode = false;
+		}
+		if (!result.studioMode) {
+			result.status = "skipped";
+			result.message = "Refresh skipped: Convertigo Studio required";
+			return result;
+		}
+		if (!result.qname) {
+			result.status = "skipped";
+			result.message = "Refresh skipped: empty QName";
+			return result;
+		}
+		try {
+			var target = Engine.theApp.databaseObjectsManager.getDatabaseObjectByQName(result.qname);
+			if (target == null) {
+				result.status = "skipped";
+				result.message = "Refresh skipped: database object not found";
+				return result;
+			}
+			var ConvertigoPlugin = Packages.com.twinsoft.convertigo.eclipse.ConvertigoPlugin;
+			var Runnable = Packages.java.lang.Runnable;
+			var plugin = ConvertigoPlugin.getDefault();
+			if (plugin == null) {
+				result.status = "skipped";
+				result.message = "Refresh skipped: Project Explorer view not available";
+				return result;
+			}
+			ConvertigoPlugin.syncExec(new Runnable({ run: function () {
+				try {
+					var view = plugin.getProjectExplorerView();
+					if (view == null) {
+						result.status = "skipped";
+						result.message = "Refresh skipped: Project Explorer view not available";
+						return;
+					}
+					view.reloadDatabaseObject(target);
+					result.status = "refreshed";
+					result.message = "Project Explorer refreshed";
+					result.refreshed = true;
+					result.refreshedQName = String(target.getQName());
+				} catch (e) {
+					result.status = "error";
+					result.message = String(e);
+					result.error = String(e);
+				}
+			}}));
+		} catch (e) {
+			result.status = "error";
+			result.message = String(e);
+			result.error = String(e);
+		}
+		return result;
+	}
+
+	function projectSequenceByName(project, name) {
+		try {
+			return project.getSequenceByName(String(name || ""));
+		} catch (_ignoreMissingSequence) {
+			return null;
+		}
+	}
+
+	function isFlowDbo(dbo) {
+		if (dbo == null) {
+			return false;
+		}
+		try {
+			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
+			return Flow.class.isInstance(dbo);
+		} catch (_ignoreFlowClass) {
+		}
+		try {
+			return String(dbo.getClass().getName()) === "com.twinsoft.convertigo.beans.flow.Flow";
+		} catch (_ignoreClassName) {
+			return false;
+		}
+	}
+
+	function registerFlowDbo(args, writeResult) {
+		args = args || {};
+		var result = {
+			requested: false,
+			registered: false,
+			created: false,
+			updated: false,
+			saved: false,
+			refreshed: false,
+			qname: "",
+			message: ""
+		};
+		if (!args.project || boolArg(args.register, true) !== true) {
+			result.message = !args.project ? "Skipped: project is required to register a Flow DBO" : "Skipped: register=false";
+			return result;
+		}
+		result.requested = true;
+		if (typeof Packages === "undefined") {
+			result.message = "Skipped: live Convertigo runtime is unavailable";
+			return result;
+		}
+		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+		var project = Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project), false);
+		if (project == null) {
+			throw new Error("Unable to register Flow DBO: unknown project " + args.project);
+		}
+		var name = String(args.name || "");
+		var sequence = projectSequenceByName(project, name);
+		var flow = null;
+		if (sequence != null) {
+			if (!isFlowDbo(sequence)) {
+				throw new Error("Unable to register Flow DBO: " + args.project + "." + name + " already exists and is not a Flow.");
+			}
+			flow = sequence;
+			result.updated = true;
+		} else {
+			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
+			flow = new Flow();
+			flow.bNew = true;
+			flow.setName(name);
+			flow.setIncludeTrace(boolArg(args.includeTrace, false));
+			project.add(flow);
+			result.created = true;
+		}
+		if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
+			flow.setFlowSource(String(writeResult.source));
+		}
+		result.registered = true;
+		result.qname = String(flow.getQName());
+		try {
+			flow.hasChanged = true;
+			project.hasChanged = true;
+		} catch (_ignoreDirtyFlags) {
+		}
+		if (boolArg(args.autoSave, true) === true) {
+			Engine.theApp.databaseObjectsManager.exportProject(project);
+			result.saved = true;
+			try {
+				Engine.theApp.schemaManager.clearCache(String(project.getName()));
+				result.schemaCacheCleared = true;
+			} catch (_ignoreSchemaCache) {
+			}
+		}
+		if (boolArg(args.refresh, true) === true) {
+			result.studioRefresh = studioRefreshQName(String(project.getName()));
+			result.refreshed = result.studioRefresh && result.studioRefresh.refreshed === true;
+		}
+		result.message = result.created ? "Flow DBO created" : "Flow DBO updated";
+		return result;
 	}
 
 	function loadedProjectTargets() {
@@ -125,10 +414,14 @@
 				"# Flow MCP Start",
 				"",
 				"Default route for an unknown Flow project:",
-				"1. Call `flow-search` first. Prefer `project` scope; use `scope:\"workspace\"` only for discovery across loaded Studio projects.",
-				"2. Inspect only useful matches with `flow-tree` or `flow-get`.",
+				"1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call`. Prefer `project` scope; use `scope:\"workspace\"` only for discovery across loaded Studio projects.",
+				"2. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching Flow exists.",
 				"3. Call `flow-context` before writing expressions or templates.",
 				"4. Edit with `flow-edit`, then validate with `flow-test` or `flow-output-schema`.",
+				"5. For custom block/type/editor source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.",
+				"",
+				"`flow-get` returns both YAML `source` and a JSON `definition`. `flow-set`, `flow-run`, `flow-test`, `flow-tree` and `flow-apply` accept that same `definition` shape, so an agent may get, modify and set without rewriting YAML by hand.",
+				"When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.",
 				"",
 				"Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls."
 			].join("\n");
@@ -138,11 +431,14 @@
 				"",
 				"Create or modify a Flow sidecar with the smallest loop that proves behavior:",
 				"- `flow-list` only to enumerate known Flow names.",
-				"- `flow-search` to locate nodes, schemas, block docs or existing examples.",
-				"- `flow-catalog` or `flow-block-get` only when a block contract is needed.",
+				"- `flow-search` to locate nodes, schemas, block docs or existing examples. Multi-word queries match unordered tokens, like a small `rg`.",
+				"- Avoid `flow-catalog detail:\"compact\"` when an example exists. Use `flow-block-get` for one unknown block, and `flow-catalog` summary only to discover names.",
 				"- `flow-context` at the target node to know `input`, `config`, `flow`, `current` and `result` paths.",
+				"- For broad edits, use `flow-get.definition`, modify that object, then send it back through `flow-set`.",
 				"- Prefer `flow-node-add/edit/move/delete/duplicate` for common node operations.",
+				"- For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.",
 				"- Use `flow-edit` for lower-level mutations; use `dryRun:true` when unsure.",
+				"- With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.",
 				"- `flow-test` with realistic input and `includeTrace:true` only while debugging.",
 				"",
 				"Do not read every Flow sidecar up front. Search first, then open the narrow target."
@@ -151,7 +447,7 @@
 			return [
 				"# Search And Edit",
 				"",
-				"`flow-search` is the Flow equivalent of `rg`.",
+				"`flow-search` is the Flow equivalent of `rg`; multi-word queries match unordered tokens.",
 				"Useful arguments: `query`, `kinds:[\"node\"]`, `context:1`, `limit`, `cursor`.",
 				"Each node match returns `flowQName`, `flow`, `nodeId`, canonical JSON Pointer `path`, `summary` and `snippet`.",
 				"",
@@ -173,9 +469,13 @@
 				"Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.",
 				"",
 				"Blocks live under `libs/flow/blocks/*.js` and expose `catalog`, optional `analyze`, and `run`.",
+				"Block source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.",
+				"Minimal block source shape: `(function(){ return { name:\"demo.block\", catalog:function(){...}, analyze:function(ctx,node){...}, run:function(ctx,node){...} }; }())`.",
+				"Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property.",
 				"Types live under `libs/flow/types/*.js` and may point to HTML editors under `libs/flow/types/editors/*.html`.",
 				"",
 				"Use `flow-block-create` or `flow-type-create` for project-local additions, then validate with `flow-block-test`, `flow-catalog` or `flow-type-get`.",
+				"For maintenance, prefer `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`; it is closer to how coding agents work on files.",
 				"Duplicate a core/shared block with `flow-block-duplicate` before editing it with `flow-block-edit`.",
 				"Keep one-off procedural code exceptional; prefer a small Flow made of existing blocks."
 			].join("\n");
@@ -198,26 +498,32 @@
 		return [
 			{
 				name: "flow-catalog",
-				description: "List Flow blocks exposed by the current Flow engine.",
+				description: "List Flow blocks exposed by the current Flow engine. Summary by default; pass detail='compact' for prop docs, detail='full' only for icons/type usages.",
 				inputSchema: {
 					type: "object",
-					properties: addProjectProperties({})
+					properties: addProjectProperties({
+						detail: {
+							type: "string",
+							enum: ["compact", "summary", "full"],
+							description: "Default summary. compact includes property docs; full includes icon paths and type usages."
+						}
+					})
 				}
 			},
 			{
 				name: "flow-analyze",
-				description: "Analyze a Flow YAML source and return reads, writes and nodes.",
+				description: "Analyze a Flow YAML source or definition object and return reads, writes and nodes.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
-						flowSource: { type: "string" }
-					}),
-					required: ["flowSource"]
+						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." }
+					})
 				}
 			},
 			{
 				name: "flow-search",
-				description: "Search Flow sidecars, nodes, catalog entries and learned schemas. Returns flowQName, nodeId, path and snippets; use context=1 like rg -C 1.",
+				description: "Search Flow sidecars, nodes, catalog entries and learned schemas. Multi-word queries match unordered tokens. Returns flowQName, nodeId, path and snippets; use context=1 like rg -C 1.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -240,6 +546,58 @@
 				}
 			},
 			{
+				name: "flow-resource-search",
+				description: "Search project-local Flow source resources, like rg over whitelisted blocks/types/editors. Use before get/patch when maintaining JS/HTML/CSS.",
+				inputSchema: {
+					type: "object",
+					properties: addProjectProperties({
+						query: { type: "string" },
+						q: { type: "string" },
+						limit: { type: "number" },
+						cursor: { type: "string" },
+						maxFileBytes: { type: "number" },
+						doc: { type: "boolean" },
+						hints: { type: "boolean" }
+					})
+				}
+			},
+			{
+				name: "flow-resource-get",
+				description: "Read one project-local Flow source resource and return content plus hash. Pass hash as baseHash to flow-resource-patch.",
+				inputSchema: {
+					type: "object",
+					properties: addProjectProperties({
+						path: {
+							type: "string",
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.js."
+						},
+						maxBytes: { type: "number" },
+						allowLarge: { type: "boolean" }
+					}),
+					required: ["path"]
+				}
+			},
+			{
+				name: "flow-resource-patch",
+				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/type JS by default; hunk line numbers may be approximate when context is unique.",
+				inputSchema: {
+					type: "object",
+					properties: addProjectProperties({
+						path: {
+							type: "string",
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.js."
+						},
+						baseHash: { type: "string", description: "Hash returned by flow-resource-get." },
+						patch: { type: "string", description: "Unified diff with @@ hunks." },
+						unifiedDiff: { type: "string", description: "Alias for patch." },
+						dryRun: { type: "boolean" },
+						validate: { type: "boolean", description: "Default true." },
+						includeContent: { type: "boolean" }
+					}),
+					required: ["path"]
+				}
+			},
+			{
 				name: "flow-context",
 				description: "Return visible scope paths at a Flow node for Studio pickers or LLM guidance.",
 				inputSchema: {
@@ -256,19 +614,24 @@
 							type: "array",
 							items: { type: "string" }
 						},
-						detail: { type: "string" }
+						detail: {
+							type: "string",
+							enum: ["compact", "summary", "normal"],
+							description: "Default normal. summary is an alias for compact."
+						}
 					}),
 				}
 			},
 			{
 				name: "flow-tree",
-				description: "Describe the virtual Flow or FlowEngine tree an authoring UI or agent should see.",
+				description: "Describe the virtual Flow or FlowEngine tree an authoring UI or agent should see. Accepts flowSource, name, or flow-get.definition.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						target: { type: "string", description: "flow or engine. Defaults to flow." },
 						name: { type: "string" },
 						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
 						engineSource: { type: "string" },
 						engineQName: { type: "string" }
 					})
@@ -276,13 +639,14 @@
 			},
 			{
 				name: "flow-apply",
-				description: "Apply one or more mutations to Flow or FlowEngine YAML and return the updated source without writing it.",
+				description: "Apply one or more mutations to Flow or FlowEngine YAML/definition and return the updated source without writing it.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						target: { type: "string", description: "flow or engine. Defaults to flow." },
 						name: { type: "string" },
 						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
 						engineSource: { type: "string" },
 						mutation: { type: "object" },
 						mutations: { type: "array", items: { type: "object" } }
@@ -291,7 +655,7 @@
 			},
 			{
 				name: "flow-edit",
-				description: "Apply one or more mutations to a named project Flow sidecar and write it back unless dryRun=true.",
+				description: "Apply mutations to a named Flow sidecar. With project, registers/saves the Flow DBO and refreshes Studio unless dryRun=true or register=false.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -299,7 +663,10 @@
 						flowSource: { type: "string" },
 						mutation: { type: "object" },
 						mutations: { type: "array", items: { type: "object" } },
-						dryRun: { type: "boolean" }
+						dryRun: { type: "boolean" },
+						register: { type: "boolean", description: "Default true when project is provided. Create/update the Flow DBO so it is requestable." },
+						autoSave: { type: "boolean", description: "Default true. Export the project after DBO registration." },
+						refresh: { type: "boolean", description: "Default true. Refresh Studio tree when Studio is available." }
 					}),
 					required: ["name"]
 				}
@@ -394,13 +761,14 @@
 			},
 			{
 				name: "flow-output-schema",
-				description: "Return the best known JSON output schema for a Flow source or named Flow sidecar.",
+				description: "Return the best known JSON output schema for a Flow source, definition, or named Flow sidecar.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						name: { type: "string" },
 						flowName: { type: "string" },
-						flowSource: { type: "string" }
+						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." }
 					})
 				}
 			},
@@ -420,17 +788,17 @@
 			},
 			{
 				name: "flow-run",
-				description: "Run a Flow YAML source with optional input and config objects.",
+				description: "Run a Flow YAML source or definition object with optional input and config objects.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
 						input: { type: "object" },
 						config: { type: "object" },
 						includeFlow: { type: "boolean" },
 						includeTrace: { type: "boolean" }
-					}),
-					required: ["flowSource"]
+					})
 				}
 			},
 			{
@@ -443,7 +811,7 @@
 			},
 			{
 				name: "flow-get",
-				description: "Read one project Flow sidecar.",
+				description: "Read one project Flow sidecar. Returns source and definition; the definition can be edited and passed back to flow-set.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -454,24 +822,30 @@
 			},
 			{
 				name: "flow-set",
-				description: "Validate and write one project Flow sidecar.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowSource: { type: "string" }
-					}),
-					required: ["name", "flowSource"]
-				}
-			},
-			{
-				name: "flow-test",
-				description: "Run a named project Flow sidecar or a provided Flow source.",
+				description: "Create or replace one project Flow sidecar from flowSource or flow-get.definition. With project, also registers/saves a Flow DBO unless register=false.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						name: { type: "string" },
 						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
+						register: { type: "boolean", description: "Default true when project is provided. Create/update the Flow DBO so it is requestable." },
+						autoSave: { type: "boolean", description: "Default true. Export the project after DBO registration." },
+						refresh: { type: "boolean", description: "Default true. Refresh Studio tree when Studio is available." },
+						includeTrace: { type: "boolean", description: "Default false for newly registered Flow DBOs." }
+					}),
+					required: ["name"]
+				}
+			},
+			{
+				name: "flow-test",
+				description: "Run a named project Flow sidecar, provided Flow source, or definition object.",
+				inputSchema: {
+					type: "object",
+					properties: addProjectProperties({
+						name: { type: "string" },
+						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
 						input: { type: "object" },
 						config: { type: "object" },
 						includeFlow: { type: "boolean" },
@@ -500,7 +874,7 @@
 			},
 			{
 				name: "flow-block-create",
-				description: "Create or replace a project-local Flow block.",
+				description: "Create or replace a project-local Flow block. Source is Rhino ES6 JavaScript in the JVM; use Packages for Java, not Node require/npm.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -526,7 +900,7 @@
 			},
 			{
 				name: "flow-block-edit",
-				description: "Replace the source of an existing project-local Flow block.",
+				description: "Replace the source of an existing project-local Flow block. Source is Rhino ES6 JavaScript in the JVM; use Packages for Java, not Node require/npm.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -570,17 +944,17 @@
 			},
 			{
 				name: "flow-block-test",
-				description: "Run a Flow YAML source, typically to validate a custom block.",
+				description: "Run a Flow YAML source or definition object, typically to validate a custom block.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						flowSource: { type: "string" },
+						definition: { type: "object", description: "Same model returned by flow-get.definition." },
 						input: { type: "object" },
 						config: { type: "object" },
 						includeFlow: { type: "boolean" },
 						includeTrace: { type: "boolean" }
-					}),
-					required: ["flowSource"]
+					})
 				}
 			}
 		];
@@ -595,7 +969,8 @@
 
 	function withNamedFlowSource(ctx, args) {
 		args = args || {};
-		if ((args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {
+		var hasDefinition = args.definition !== undefined && args.definition !== null;
+		if (!hasDefinition && (args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {
 			var flow = ctx.flowGet(args.name, args);
 			args.flowSource = flow.source;
 			if (!args.flowName) {
@@ -617,6 +992,7 @@
 			file: write.file,
 			analysis: write.analysis
 		};
+		mutationResult.registration = registerFlowDbo(args, write);
 		return mutationResult;
 	}
 
@@ -780,6 +1156,12 @@
 				return toolResult(searchWorkspace(ctx, args));
 			}
 			return toolResult(ctx.searchFlow(args));
+		case "flow-resource-search":
+			return toolResult(ctx.resourceSearch(args));
+		case "flow-resource-get":
+			return toolResult(ctx.resourceGet(args));
+		case "flow-resource-patch":
+			return toolResult(ctx.resourcePatch(args));
 		case "flow-context":
 			args = withNamedFlowSource(ctx, args);
 			return toolResult(ctx.contextFlowSource(args));
@@ -813,6 +1195,7 @@
 			var execution = ctx.runFlowSource(args.flowSource || "", args.config || {}, {
 				input: args.input || {},
 				projectDir: args.projectDir,
+				definition: args.definition,
 				includeTrace: args.includeTrace === true
 			});
 			if (args.includeFlow !== true) {
@@ -827,7 +1210,9 @@
 		case "flow-get":
 			return toolResult(ctx.flowGet(args.name, args));
 		case "flow-set":
-			return toolResult(ctx.flowSet(args.name, args.flowSource || "", args));
+			var flowWrite = ctx.flowSet(args.name, args.flowSource || "", args);
+			flowWrite.registration = registerFlowDbo(args, flowWrite);
+			return toolResult(flowWrite);
 		case "flow-test":
 			var flowTest = ctx.flowTest(args);
 			if (args.includeFlow !== true) {
@@ -857,6 +1242,7 @@
 			var test = ctx.blockTest(args.flowSource || "", args.config || {}, {
 				input: args.input || {},
 				projectDir: args.projectDir,
+				definition: args.definition,
 				includeTrace: args.includeTrace === true
 			});
 			if (args.includeFlow !== true) {
@@ -873,6 +1259,7 @@
 
 	function handle(ctx, request) {
 		var id = request.id;
+		var isNotification = id === undefined && String(request.method || "").indexOf("notifications/") === 0;
 		switch (request.method) {
 		case "initialize":
 			return jsonRpcResult(id, {
@@ -908,7 +1295,12 @@
 					code: "FLOW_MCP_RESOURCE_ERROR"
 				});
 			}
+		case "notifications/initialized":
+			return acceptNotification(ctx);
 		default:
+			if (isNotification) {
+				return acceptNotification(ctx);
+			}
 			return jsonRpcError(id, -32601, "Method not found: " + request.method);
 		}
 	}
