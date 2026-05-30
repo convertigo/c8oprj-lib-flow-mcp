@@ -1,0 +1,9 @@
+version: 1
+nodes:
+  - id: pong
+    block: return
+    value:
+      result:
+        ok: true
+        server: convertigo-flow-mcp
+        endpoint: /flow-mcp

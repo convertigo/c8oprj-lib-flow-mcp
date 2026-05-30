@@ -1,0 +1,9 @@
+version: 1
+nodes:
+  - id: handleRequest
+    block: mcp.flow
+    request: input.request
+    out: flow.response
+  - id: done
+    block: return
+    value: "{{ flow.response }}"

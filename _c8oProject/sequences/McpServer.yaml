@@ -1,0 +1,6 @@
+comment: Handles Flow-native MCP JSON-RPC requests.
+includeTrace: false
+↓request [variables.RequestableVariable-1780096200001]: 
+  comment: JSON-RPC MCP request body.
+  description: JSON-RPC MCP request body.
+  value: "{}"

@@ -1,0 +1,11 @@
+path: /flow-mcp/
+↓Get [rest.GetOperation-1780096200201]: 
+  targetRequestable: lib_flow_mcp.Ping
+↓Post [rest.PostOperation-1780096200202]: 
+  comment: Flow-native MCP HTTP entry point
+  targetRequestable: lib_flow_mcp.McpServer
+  ↓request [rest.BodyParameter-1780096200203]: 
+    comment: JSON-RPC request body
+    inputContent: noConvert
+    mappedVariableName: request
+    required: true
