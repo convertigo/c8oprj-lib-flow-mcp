@@ -454,7 +454,7 @@
 					properties: addProjectProperties({
 						path: {
 							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.js, libs/flow/blocks/demo.block.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.yaml, libs/flow/blocks/demo.flow.yaml, libs/flow/types/demo.type.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
 						},
 						maxBytes: { type: "number" },
 						allowLarge: { type: "boolean" }
@@ -464,13 +464,13 @@
 			},
 			{
 				name: "flow-resource-patch",
-				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/type/library JS and graph block/fragment YAML by default; hunk line numbers may be approximate when context is unique.",
+				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/library JS plus Flow block/type descriptors and Flow/fragment YAML by default; hunk line numbers may be approximate when context is unique.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						path: {
 							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.js, libs/flow/blocks/demo.block.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.yaml, libs/flow/blocks/demo.flow.yaml, libs/flow/types/demo.type.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
 						},
 						baseHash: { type: "string", description: "Hash returned by flow-resource-get." },
 						patch: { type: "string", description: "Unified diff with @@ hunks." },
@@ -813,7 +813,7 @@
 			},
 			{
 				name: "flow-type-get",
-				description: "Read one Flow property type source and descriptor.",
+				description: "Read one Flow property type descriptor source and descriptor.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -824,15 +824,16 @@
 			},
 			{
 				name: "flow-type-create",
-				description: "Create or replace a project-local Flow property type source.",
+				description: "Create or replace a project-local Flow property type descriptor.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						name: { type: "string" },
-						source: { type: "string" },
+						descriptorSource: { type: "string", description: "YAML descriptor source for libs/flow/types/<name>.type.yaml." },
+						descriptor: { type: "object", description: "Descriptor object; converted to YAML by the Flow engine." },
 						overwrite: { type: "boolean" }
 					}),
-					required: ["name", "source"]
+					required: ["name"]
 				}
 			},
 			{

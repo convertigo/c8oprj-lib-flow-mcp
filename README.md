@@ -94,11 +94,11 @@ flow-resource-search / flow-resource-get / flow-resource-patch for maintenance p
 The default path remains catalog-first and sidecar-first. Custom blocks are
 project vocabulary, not automatic core changes.
 
-Project-local block source is Rhino ES6 JavaScript evaluated inside the
-Convertigo JVM. Java classes are available through `Packages`; Node.js APIs
-such as `require`, npm modules and browser globals are not part of the block
-runtime. A block should usually export a small object with `name`, `catalog()`,
-optional `analyze(ctx,node)`, and `run(ctx,node)`.
+Project-local blocks use a `*.block.yaml` descriptor. Their implementation is
+declared by `implementation.runtime`: usually `flow` for a graph made of blocks,
+or `rhino` with a peer `*.js` file for JVM/Java integration code. Rhino code may
+use Java classes through `Packages`, but not Node.js APIs such as `require`, npm
+modules or browser globals.
 
 Most tools accept either:
 
@@ -217,9 +217,9 @@ flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unifi
 
 The patch API is limited to `libs/flow/blocks/**/*.js`,
 `libs/flow/blocks/**/*.block.yaml`, `libs/flow/fragments/**/*.fragment.yaml`,
-`libs/flow/lib/**/*.js`, `libs/flow/types/**/*.js` and
+`libs/flow/lib/**/*.js`, `libs/flow/types/**/*.{type.yaml,js}` and
 `libs/flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
-JavaScript and parses graph block/fragment YAML by default.
+resources and parses Flow/fragment YAML by default.
 Unified diff line numbers may be approximate when the surrounding context is
 unique.
 

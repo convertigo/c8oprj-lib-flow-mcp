@@ -881,14 +881,11 @@ assertTrue(typeList.result.result.structuredContent.types.some(function (type) {
 }), "MCP Flow flow-type-list did not expose core property types");
 
 var customTypeSource = [
-	"(function () {",
-	"\treturn {",
-	"\t\tname: \"custom.note\",",
-	"\t\tlabel: \"Custom note\",",
-	"\t\ttype: \"string\",",
-	"\t\tdescription: \"Project-local smoke test type.\"",
-	"\t};",
-	"}())",
+	"version: 1",
+	"name: custom.note",
+	"label: Custom note",
+	"type: string",
+	"description: Project-local smoke test type.",
 	""
 ].join("\n");
 var typeCreate = JSON.parse(engine.run(JSON.stringify({
@@ -904,7 +901,7 @@ var typeCreate = JSON.parse(engine.run(JSON.stringify({
 				arguments: {
 					projectDir: targetProjectDir,
 					name: "custom.note",
-					source: customTypeSource
+					descriptorSource: customTypeSource
 				}
 			}
 		})
@@ -912,7 +909,7 @@ var typeCreate = JSON.parse(engine.run(JSON.stringify({
 })));
 print(JSON.stringify(typeCreate));
 assertTrue(typeCreate.result.result.structuredContent.name === "custom.note" &&
-	new java.io.File(targetDir, "libs/flow/types/custom.note.js").isFile(),
+	new java.io.File(targetDir, "libs/flow/types/custom.note.type.yaml").isFile(),
 	"MCP Flow flow-type-create did not write a project-local type");
 
 var typeGet = JSON.parse(engine.run(JSON.stringify({

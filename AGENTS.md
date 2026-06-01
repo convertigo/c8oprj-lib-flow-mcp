@@ -57,15 +57,15 @@ source.
 When maintaining an existing custom block/composite block/fragment/type/editor/library,
 prefer a code-like cycle: `flow-resource-search`, `flow-resource-get`, then
 `flow-resource-patch` with the returned `baseHash`. The patch tool accepts
-unified diff hunks and validates block/type/library JavaScript plus graph
-block/fragment YAML by default. Hunk line numbers may be approximate when the
+unified diff hunks and validates block/library JavaScript plus Flow block/type
+descriptors and fragment YAML by default. Hunk line numbers may be approximate when the
 context is unique.
 
-Custom block source is Rhino ES6 JavaScript evaluated inside the Convertigo JVM.
-Java classes are available through `Packages`; Node.js APIs such as `require`,
-npm modules and browser globals are not part of the block runtime. Prefer the
-small shape `name`, `catalog()`, optional `analyze(ctx,node)`, and
-`run(ctx,node)`.
+Custom blocks use a `*.block.yaml` descriptor. Prefer `implementation.runtime:
+flow` when the behavior is naturally expressed as a graph, and `rhino` with a
+peer `*.js` file only for JVM/Java integration or low-level algorithmic code.
+Rhino code may use Java classes through `Packages`, but not Node.js APIs such as
+`require`, npm modules or browser globals.
 
 Most tools accept `project` or `projectDir`. Use `project` for real Convertigo
 workspaces and reserve `projectDir` for standalone tests. Never assume the MCP
