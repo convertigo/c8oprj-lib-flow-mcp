@@ -1,0 +1,17 @@
+version: 1
+nodes:
+  - id: wrapResult
+    block: mcp.response.result
+    request: props.request
+    result:
+      protocolVersion: "2025-06-18"
+      serverInfo:
+        name: convertigo-flow-mcp
+        version: "0.1.0"
+      capabilities:
+        tools: {}
+        resources: {}
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

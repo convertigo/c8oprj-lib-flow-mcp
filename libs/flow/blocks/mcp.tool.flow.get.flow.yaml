@@ -1,0 +1,10 @@
+version: 1
+nodes:
+  - id: runFlowGet
+    block: mcp.tool.run
+    request: props.request
+    target: flow.get
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

@@ -16,12 +16,6 @@ props:
     mode: write
     default: local.response
     description: Scope path receiving the MCP response.
-nodes:
-  - id: runBlockList
-    block: mcp.tool.run
-    request: props.request
-    target: block.list
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"
+implementation:
+  runtime: flow
+  file: mcp.tool.flow.block.list.flow.yaml

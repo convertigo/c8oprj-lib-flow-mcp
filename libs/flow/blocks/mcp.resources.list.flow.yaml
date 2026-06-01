@@ -1,0 +1,27 @@
+version: 1
+nodes:
+  - id: wrapResult
+    block: mcp.response.result
+    request: props.request
+    result:
+      resources:
+        - uri: flow://guide/start
+          name: Flow MCP start guide
+          description: Minimal bootstrap for an agent editing Convertigo Flow projects.
+          mimeType: text/markdown
+        - uri: flow://guide/authoring
+          name: Flow authoring cycle
+          description: Recommended search, edit, test cycle for Flow authoring.
+          mimeType: text/markdown
+        - uri: flow://guide/search-and-edit
+          name: Search and semantic edits
+          description: How to use flow-search results with nodeId/path mutations.
+          mimeType: text/markdown
+        - uri: flow://guide/custom-blocks
+          name: Custom blocks and types
+          description: Rules for project-local blocks and property types.
+          mimeType: text/markdown
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

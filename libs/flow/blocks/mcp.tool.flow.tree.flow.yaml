@@ -1,0 +1,10 @@
+version: 1
+nodes:
+  - id: describeFlowTree
+    block: mcp.tool.run
+    request: props.request
+    target: flow.tree
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

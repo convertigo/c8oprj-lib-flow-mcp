@@ -1,0 +1,13 @@
+version: 1
+nodes:
+  - id: error
+    block: mcp.response.error
+    request: props.request
+    code: -32000
+    message: "\"Unknown Flow MCP tool: \" + ((props.request.params && props.request.params.name) || \"\")"
+    data:
+      code: FLOW_MCP_TOOL_ERROR
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

@@ -1,0 +1,10 @@
+version: 1
+nodes:
+  - id: runTypeCreate
+    block: mcp.tool.run
+    request: props.request
+    target: type.create
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

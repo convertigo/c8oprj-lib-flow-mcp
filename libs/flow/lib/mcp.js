@@ -761,7 +761,7 @@
 			},
 			{
 				name: "flow-block-create",
-				description: "Create or replace a project-local Flow block. Use descriptorSource or descriptor for metadata. Rhino blocks also need implementationSource; use Packages for Java, not Node require/npm.",
+				description: "Create or replace a project-local Flow block. Use descriptorSource or descriptor for metadata, and implementationSource for Flow YAML or Rhino ES6 code.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -790,7 +790,7 @@
 			},
 			{
 				name: "flow-block-edit",
-				description: "Edit a project-local Flow block descriptor and/or Rhino ES6 implementation.",
+				description: "Edit a project-local Flow block descriptor and/or implementation source.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({

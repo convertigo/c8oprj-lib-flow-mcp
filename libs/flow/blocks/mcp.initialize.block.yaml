@@ -16,19 +16,6 @@ props:
     mode: write
     default: local.response
     description: Scope path receiving the MCP response.
-nodes:
-  - id: wrapResult
-    block: mcp.response.result
-    request: props.request
-    result:
-      protocolVersion: "2025-06-18"
-      serverInfo:
-        name: convertigo-flow-mcp
-        version: "0.1.0"
-      capabilities:
-        tools: {}
-        resources: {}
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"
+implementation:
+  runtime: flow
+  file: mcp.initialize.flow.yaml

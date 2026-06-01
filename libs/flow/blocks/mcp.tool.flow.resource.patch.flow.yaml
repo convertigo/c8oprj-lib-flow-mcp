@@ -1,0 +1,10 @@
+version: 1
+nodes:
+  - id: runResourcePatch
+    block: mcp.tool.run
+    request: props.request
+    target: resource.patch
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

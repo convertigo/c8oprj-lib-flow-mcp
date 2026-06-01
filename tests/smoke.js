@@ -16,22 +16,31 @@ var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToSt
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.yaml"), "UTF-8"));
 var batchBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/mcp.batch.block.yaml"), "UTF-8"));
+var batchBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.batch.flow.yaml"), "UTF-8"));
 var handleBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/mcp.handle.block.yaml"), "UTF-8"));
+var handleBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.handle.flow.yaml"), "UTF-8"));
 var toolsCallBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.block.yaml"), "UTF-8"));
+var toolsCallBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.flow.yaml"), "UTF-8"));
 assertTrue(mcpFlowSource.indexOf("block: fragment.use") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.flow") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.batch") !== -1 &&
 	mcpFlowSource.indexOf("block: mcp.handle") !== -1,
 	"McpServer flow should route through graph composite MCP blocks");
-assertTrue(batchBlockSource.indexOf("block: forEach") !== -1 &&
-	handleBlockSource.indexOf("mcp.tools.call") !== -1 &&
-	handleBlockSource.indexOf("mcp.resources.read") !== -1 &&
-	toolsCallBlockSource.indexOf("mcp.tool.identify") !== -1 &&
-	toolsCallBlockSource.indexOf("mcp.tools.call.inspect") !== -1 &&
-	toolsCallBlockSource.indexOf("mcp.tools.call.source") !== -1 &&
-	toolsCallBlockSource.indexOf("mcp.tools.call.any") === -1,
+assertTrue(batchBlockSource.indexOf("file: mcp.batch.flow.yaml") !== -1 &&
+	batchBlockImplementationSource.indexOf("block: forEach") !== -1 &&
+	handleBlockSource.indexOf("file: mcp.handle.flow.yaml") !== -1 &&
+	handleBlockImplementationSource.indexOf("mcp.tools.call") !== -1 &&
+	handleBlockImplementationSource.indexOf("mcp.resources.read") !== -1 &&
+	toolsCallBlockSource.indexOf("file: mcp.tools.call.flow.yaml") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("mcp.tool.identify") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.inspect") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.source") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.any") === -1,
 	"MCP graph blocks should expose their internal implementation nodes");
 
 var list = JSON.parse(engine.run(JSON.stringify({

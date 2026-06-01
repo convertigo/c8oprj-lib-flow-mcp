@@ -16,44 +16,6 @@ props:
     mode: write
     default: flow.response
     description: Scope path receiving the MCP response.
-nodes:
-  - id: run
-    block: if
-    condition: props.request.params && props.request.params.name == "flow-run"
-    then:
-      - id: runFlow
-        block: mcp.tool.flow.run
-        request: props.request
-        out: local.response
-      - id: returnRun
-        block: return
-        value: "{{ local.response }}"
-  - id: test
-    block: if
-    condition: props.request.params && props.request.params.name == "flow-test"
-    then:
-      - id: runFlowTest
-        block: mcp.tool.flow.test
-        request: props.request
-        out: local.response
-      - id: returnTest
-        block: return
-        value: "{{ local.response }}"
-  - id: blockTest
-    block: if
-    condition: props.request.params && props.request.params.name == "flow-block-test"
-    then:
-      - id: runBlockTest
-        block: mcp.tool.flow.block.test
-        request: props.request
-        out: local.response
-      - id: returnBlockTest
-        block: return
-        value: "{{ local.response }}"
-  - id: unknown
-    block: mcp.tool.notFound
-    request: props.request
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"
+implementation:
+  runtime: flow
+  file: mcp.tools.call.runtime.flow.yaml

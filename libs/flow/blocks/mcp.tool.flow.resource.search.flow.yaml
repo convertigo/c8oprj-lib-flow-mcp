@@ -1,0 +1,10 @@
+version: 1
+nodes:
+  - id: runResourceSearch
+    block: mcp.tool.run
+    request: props.request
+    target: resource.search
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

@@ -1,0 +1,17 @@
+version: 1
+nodes:
+  - id: availableTools
+    block: mcp.tools.available
+    out: local.tools
+  - id: payload
+    block: set
+    path: local.payload.tools
+    value: "{{ local.tools }}"
+  - id: response
+    block: mcp.response.result
+    request: props.request
+    result: local.payload
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"
