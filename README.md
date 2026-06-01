@@ -239,6 +239,25 @@ Each node match returns `flowQName`, `nodeId` and a canonical JSON Pointer
 `path`. Use `nodeId` for semantic edits and `path` for low-level mutations.
 Pass `doc:false,hints:false` once the agent has learned the tool contract.
 
+MCP responses are sanitized before they are sent to agents: internal `__flow*`
+fields are removed, empty metadata fields such as `mode:""` are omitted, and
+filesystem paths are shortened to project-relative paths or `engine:...`
+references. Studio-only icon/resource paths may still exist in internal Flow
+tree data, but they should not leak through the MCP JSON-RPC result payload.
+
+Optional JSONL tracing can write one line per MCP request and response. Enable
+it with one of:
+
+```text
+config.mcp.traceJsonl = true | "/path/to/flow-mcp.jsonl"
+-Dc8o.flow.mcp.traceJsonl=true | -Dc8o.flow.mcp.traceJsonl=/path/to/flow-mcp.jsonl
+C8O_FLOW_MCP_TRACE_JSONL=true | C8O_FLOW_MCP_TRACE_JSONL=/path/to/flow-mcp.jsonl
+```
+
+When set to `true`, the default file is
+`<lib_flow_mcp project>/_private/flow-mcp-trace.jsonl`. Tracing is best-effort
+and never fails the MCP request path.
+
 MCP resources provide the same guidance to agents that cannot read this repo:
 
 - `flow://guide/start`

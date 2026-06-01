@@ -1,4 +1,10 @@
 (function () {
+	var rootScope = this;
+	var File = Packages.java.io.File;
+	var FileWriter = Packages.java.io.FileWriter;
+	var BufferedWriter = Packages.java.io.BufferedWriter;
+	var JavaSystem = Packages.java.lang.System;
+
 	function jsonRpcResult(id, result) {
 		return {
 			jsonrpc: "2.0",
@@ -26,6 +32,185 @@
 			// Standalone smoke tests have no servlet response to update.
 		}
 		return {};
+	}
+
+	function canonicalPath(file) {
+		try {
+			return String(file.getCanonicalPath());
+		} catch (e) {
+			return String(file.getAbsolutePath());
+		}
+	}
+
+	function globalPath(name) {
+		try {
+			if (typeof rootScope[name] !== "undefined" && String(rootScope[name]).trim() !== "") {
+				return canonicalPath(new File(String(rootScope[name])));
+			}
+		} catch (e) {
+		}
+		return "";
+	}
+
+	function scopedPath(ctx, scopeName, path) {
+		try {
+			var value = ctx && ctx.scopes && ctx.scopes[scopeName] && ctx.scopes[scopeName][path];
+			return value === undefined || value === null ? "" : String(value);
+		} catch (e) {
+			return "";
+		}
+	}
+
+	function relativeToRoot(path, root) {
+		if (!path || !root) {
+			return "";
+		}
+		if (path === root) {
+			return ".";
+		}
+		var prefix = root + File.separator;
+		return path.indexOf(prefix) === 0 ? path.substring(prefix.length).replace(/\\/g, "/") : "";
+	}
+
+	function knownProjectDir(ctx) {
+		var path = scopedPath(ctx, "request", "projectDir") || globalPath("__flowProjectDir");
+		return path ? canonicalPath(new File(path)) : "";
+	}
+
+	function knownEngineDir() {
+		return globalPath("__flowEngineDir");
+	}
+
+	function shortenKnownSuffix(path) {
+		var markers = ["/libs/flow/", "/libs/flows/", "/_c8oProject/"];
+		for (var i = 0; i < markers.length; i++) {
+			var marker = markers[i];
+			var index = path.indexOf(marker);
+			if (index !== -1) {
+				return path.substring(index + 1).replace(/\\/g, "/");
+			}
+		}
+		return "";
+	}
+
+	function publicFilePath(value, ctx) {
+		var text = String(value || "").trim();
+		if (text === "" || text.indexOf("/") === -1 && text.indexOf("\\") === -1) {
+			return text;
+		}
+		var file = new File(text);
+		if (!file.isAbsolute()) {
+			return text.replace(/\\/g, "/");
+		}
+		var path = canonicalPath(file);
+		var projectRelative = relativeToRoot(path, knownProjectDir(ctx));
+		if (projectRelative) {
+			return projectRelative;
+		}
+		var engineRelative = relativeToRoot(path, knownEngineDir());
+		if (engineRelative) {
+			return "engine:" + engineRelative;
+		}
+		var suffix = shortenKnownSuffix(path);
+		if (suffix) {
+			return suffix;
+		}
+		return "file:" + String(file.getName());
+	}
+
+	var FILE_KEYS = {
+		file: true,
+		descriptorFile: true,
+		implementationFile: true,
+		iconFile: true,
+		iconFile16: true,
+		iconFile32: true,
+		iconSvg: true,
+		sourcePath: true,
+		projectDir: true,
+		__flowFile: true,
+		__flowImplementationFile: true
+	};
+
+	var EMPTY_METADATA_KEYS = {
+		mode: true,
+		type: true,
+		kind: true,
+		description: true,
+		longDescription: true,
+		label: true,
+		icon: true,
+		iconFile: true,
+		iconFile16: true,
+		iconFile32: true,
+		iconSvg: true,
+		iconUrl: true,
+		implementationFile: true,
+		descriptorFile: true,
+		file: true
+	};
+
+	var JSON_STRING_KEYS = {
+		info: true,
+		definition: true
+	};
+
+	function sanitizeJsonString(value, ctx, key) {
+		if (JSON_STRING_KEYS[key] !== true) {
+			return null;
+		}
+		var text = String(value || "").trim();
+		if (text.charAt(0) !== "{" && text.charAt(0) !== "[") {
+			return null;
+		}
+		try {
+			return JSON.stringify(sanitizeForMcp(JSON.parse(text), ctx));
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function sanitizeForMcp(value, ctx, key) {
+		if (value === undefined) {
+			return undefined;
+		}
+		if (value === null) {
+			return null;
+		}
+		if (typeof value === "string") {
+			if (value === "" && EMPTY_METADATA_KEYS[key] === true) {
+				return undefined;
+			}
+			var cleanJson = sanitizeJsonString(value, ctx, key);
+			if (cleanJson !== null) {
+				return cleanJson;
+			}
+			return FILE_KEYS[key] === true ? publicFilePath(value, ctx) : value;
+		}
+		if (typeof value !== "object") {
+			return value;
+		}
+		if (Object.prototype.toString.call(value) === "[object Array]") {
+			var array = [];
+			value.forEach(function (item) {
+				var clean = sanitizeForMcp(item, ctx, key);
+				if (clean !== undefined) {
+					array.push(clean);
+				}
+			});
+			return array;
+		}
+		var out = {};
+		Object.keys(value).forEach(function (childKey) {
+			if (String(childKey).indexOf("__flow") === 0) {
+				return;
+			}
+			var clean = sanitizeForMcp(value[childKey], ctx, childKey);
+			if (clean !== undefined) {
+				out[childKey] = clean;
+			}
+		});
+		return out;
 	}
 
 	function listNames(items, limit) {
@@ -123,7 +308,8 @@
 		return out;
 	}
 
-	function textContent(value) {
+	function textContent(value, ctx) {
+		value = sanitizeForMcp(value, ctx);
 		var text = JSON.stringify(value);
 		if (text.length > 1500) {
 			text = JSON.stringify(summarizeLargeValue(value));
@@ -854,25 +1040,98 @@
 		];
 	}
 
-	function toolResult(value) {
+	function traceSetting(ctx) {
+		var setting = scopedPath(ctx, "config", "mcp") && ctx.scopes.config.mcp.traceJsonl;
+		if (setting === undefined || setting === null || setting === "") {
+			setting = scopedPath(ctx, "input", "traceJsonl");
+		}
+		if (setting === undefined || setting === null || setting === "") {
+			setting = JavaSystem.getProperty("c8o.flow.mcp.traceJsonl", "");
+		}
+		if (setting === undefined || setting === null || setting === "") {
+			setting = JavaSystem.getenv("C8O_FLOW_MCP_TRACE_JSONL");
+		}
+		return setting === undefined || setting === null ? "" : String(setting);
+	}
+
+	function defaultTraceFile(ctx) {
+		var dir = knownProjectDir(ctx);
+		if (!dir) {
+			return "";
+		}
+		return canonicalPath(new File(new File(dir, "_private"), "flow-mcp-trace.jsonl"));
+	}
+
+	function traceFile(ctx) {
+		var setting = traceSetting(ctx).trim();
+		if (!setting || setting === "false" || setting === "0" || setting === "off") {
+			return "";
+		}
+		if (setting === "true" || setting === "1" || setting === "on") {
+			return defaultTraceFile(ctx);
+		}
+		return canonicalPath(new File(setting));
+	}
+
+	function appendJsonl(file, value) {
+		var target = new File(file);
+		target.getParentFile().mkdirs();
+		var writer = new BufferedWriter(new FileWriter(target, true));
+		try {
+			writer.write(JSON.stringify(value));
+			writer.newLine();
+		} finally {
+			writer.close();
+		}
+	}
+
+	function traceJsonl(ctx, direction, request, payload) {
+		var file = traceFile(ctx);
+		if (!file) {
+			return;
+		}
+		try {
+			request = request || {};
+			appendJsonl(file, {
+				time: new Date().toISOString(),
+				direction: direction,
+				id: request.id === undefined ? null : request.id,
+				method: request.method || "",
+				tool: toolName(request),
+				payload: sanitizeForMcp(payload, ctx)
+			});
+		} catch (e) {
+			// Tracing must never break the MCP request path.
+		}
+	}
+
+	function finalizeResponse(ctx, request, response) {
+		response = sanitizeForMcp(response, ctx);
+		traceJsonl(ctx, "response", request || {}, response);
+		return response;
+	}
+
+	function toolResult(value, ctx) {
+		value = sanitizeForMcp(value, ctx);
 		return {
-			content: textContent(value),
+			content: textContent(value, ctx),
 			structuredContent: value
 		};
 	}
 
-	function toolResponse(request, value) {
+	function toolResponse(request, value, ctx) {
 		request = request || {};
-		return jsonRpcResult(request.id, toolResult(value));
+		value = compactToolValue(request, value);
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
 	}
 
-	function toolError(request, error) {
+	function toolError(request, error, ctx) {
 		request = request || {};
 		error = error || {};
-		return jsonRpcError(request.id, -32000, String(error.message || error), {
+		return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, String(error.message || error), {
 			code: String(error.code || "FLOW_MCP_TOOL_ERROR"),
 			hint: error.hint ? String(error.hint) : ""
-		});
+		}));
 	}
 
 	function prepareToolArguments(ctx, request, options) {
@@ -890,9 +1149,9 @@
 
 	function runToolBlock(ctx, request, options, handler) {
 		try {
-			return toolResponse(request, handler(prepareToolArguments(ctx, request, options || {})));
+			return toolResponse(request, handler(prepareToolArguments(ctx, request, options || {})), ctx);
 		} catch (e) {
-			return toolError(request, e);
+			return toolError(request, e, ctx);
 		}
 	}
 
@@ -1131,6 +1390,35 @@
 		return "unknown";
 	}
 
+	function compactTypeForList(type) {
+		type = type || {};
+		var out = {};
+		["name", "label", "type", "origin", "description", "inferred"].forEach(function (key) {
+			if (type[key] !== undefined && type[key] !== null && type[key] !== "") {
+				out[key] = type[key];
+			}
+		});
+		if (type.editor) {
+			out.editor = type.editor.component || type.editor.label || true;
+		}
+		out.useCount = (type.uses || []).length;
+		return out;
+	}
+
+	function compactToolValue(request, value) {
+		if (toolName(request) !== "flow-type-list" || !value || !value.types) {
+			return value;
+		}
+		var out = {};
+		Object.keys(value).forEach(function (key) {
+			if (key !== "types") {
+				out[key] = value[key];
+			}
+		});
+		out.types = (value.types || []).map(compactTypeForList);
+		return out;
+	}
+
 	function toolInfo(request) {
 		var name = toolName(request);
 		return {
@@ -1140,17 +1428,18 @@
 		};
 	}
 
-	function parseRequest(value) {
+	function parseRequest(value, ctx) {
 		value = value || {};
 		if (typeof value === "string") {
-			return JSON.parse(value);
+			value = JSON.parse(value);
 		}
+		traceJsonl(ctx, "request", Object.prototype.toString.call(value) === "[object Array]" ? {} : value, value);
 		return value;
 	}
 
 	function toolsList(ctx, request) {
 		request = request || {};
-		return jsonRpcResult(request.id, { tools: tools() });
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, { tools: tools() }));
 	}
 
 	function notification(ctx, request) {
@@ -1174,8 +1463,11 @@
 		applyNodeMutation: applyNodeMutation,
 		toolResponse: toolResponse,
 		toolError: toolError,
-		runToolBlock: runToolBlock,
 		toolResult: toolResult,
+		finalizeResponse: finalizeResponse,
+		sanitizeForMcp: sanitizeForMcp,
+		traceJsonl: traceJsonl,
+		runToolBlock: runToolBlock,
 		toolsList: toolsList,
 		notification: notification
 	};

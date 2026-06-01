@@ -67,9 +67,9 @@
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
-				response = mcp.toolResponse(request, ctx.callBlock(target, { props: args }, { trace: false }));
+				response = mcp.toolResponse(request, ctx.callBlock(target, { props: args }, { trace: false }), ctx);
 			} catch (e) {
-				response = mcp.toolError(request, e);
+				response = mcp.toolError(request, e, ctx);
 			}
 			ctx.write(props.out || "local.response", response);
 			return response;

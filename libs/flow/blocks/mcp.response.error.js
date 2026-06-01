@@ -22,6 +22,7 @@
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
+			var mcp = ctx.lib("mcp");
 			var request = read(ctx, props.request, {}) || {};
 			var code = read(ctx, props.code, -32000);
 			var message = read(ctx, props.message, "Flow MCP error");
@@ -33,11 +34,11 @@
 			if (data !== undefined && data !== null) {
 				error.data = data;
 			}
-			var response = {
+			var response = mcp.finalizeResponse(ctx, request, {
 				jsonrpc: "2.0",
 				id: request.id === undefined ? null : request.id,
 				error: error
-			};
+			});
 			ctx.write(props.out || "flow.response", response);
 			return response;
 		}

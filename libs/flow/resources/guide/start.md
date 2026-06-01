@@ -13,3 +13,5 @@ Default route for an unknown Flow project:
 When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.
 
 Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls.
+
+For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is available with `config.mcp.traceJsonl`, JVM property `c8o.flow.mcp.traceJsonl`, or environment variable `C8O_FLOW_MCP_TRACE_JSONL`.

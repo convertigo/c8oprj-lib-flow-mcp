@@ -139,6 +139,76 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 assertTrue(privateCatalog.result.result.structuredContent.blocks.some(function (block) {
 	return block.name === "mcp.tools.call" && block.implementation === "flow";
 }), "MCP private graph blocks should be visible when includePrivate=true");
+var traceFile = java.io.File.createTempFile("flow-mcp-trace", ".jsonl");
+traceFile["delete"]();
+var typeGet = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	includeFlow: false,
+	config: {
+		mcp: {
+			traceJsonl: String(traceFile.getAbsolutePath())
+		}
+	},
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1003,
+			method: "tools/call",
+			params: {
+				name: "flow-type-get",
+				arguments: {
+					projectDir: projectDir,
+					name: "expression"
+				}
+			}
+		})
+	}
+})));
+var typeResponsePayload = JSON.stringify(typeGet.result.result);
+assertTrue(typeResponsePayload.indexOf("/Users/") === -1 &&
+	typeResponsePayload.indexOf(String(new java.io.File(engineDir).getAbsolutePath())) === -1,
+	"MCP Flow type response leaked absolute paths");
+assertTrue(typeResponsePayload.indexOf("\"mode\":\"\"") === -1,
+	"MCP Flow type response leaked empty mode metadata");
+assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "engine:types/editors/expression.html",
+	"MCP Flow type response did not shorten type resource paths");
+var traceContent = String(Packages.org.apache.commons.io.FileUtils.readFileToString(traceFile, "UTF-8"));
+assertTrue(traceContent.indexOf("\"direction\":\"request\"") !== -1 &&
+	traceContent.indexOf("\"direction\":\"response\"") !== -1 &&
+	traceContent.indexOf("flow-type-get") !== -1,
+	"MCP Flow trace JSONL was not written");
+assertTrue(traceContent.indexOf("/Users/") === -1,
+	"MCP Flow trace JSONL leaked absolute paths");
+var treeResponse = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	includeFlow: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1004,
+			method: "tools/call",
+			params: {
+				name: "flow-tree",
+				arguments: {
+					projectDir: projectDir,
+					definition: {
+						version: 1,
+						nodes: [{
+							id: "treeSet",
+							block: "set",
+							path: "result.value",
+							value: "ok"
+						}]
+					}
+				}
+			}
+		})
+	}
+})));
+assertTrue(JSON.stringify(treeResponse.result.result).indexOf("/Users/") === -1,
+	"MCP Flow tree response leaked absolute paths through virtual info strings");
 
 var resources = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -879,6 +949,9 @@ print(JSON.stringify(typeList));
 assertTrue(typeList.result.result.structuredContent.types.some(function (type) {
 	return type.name === "path";
 }), "MCP Flow flow-type-list did not expose core property types");
+assertTrue(typeList.result.result.structuredContent.types.every(function (type) {
+	return type.uses === undefined && typeof type.useCount === "number";
+}), "MCP Flow flow-type-list should return compact type usage counts");
 
 var customTypeSource = [
 	"version: 1",

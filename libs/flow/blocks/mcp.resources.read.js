@@ -56,6 +56,7 @@
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
+			var mcp = ctx.lib("mcp");
 			var request = ctx.expr(props.request || "input.request") || {};
 			var uri = String(request.params && request.params.uri || "");
 			try {
@@ -66,19 +67,19 @@
 				var content = ctx.resourceGet({
 					path: resource.path
 				}).content;
-				var response = jsonRpcResult(request.id, {
+				var response = mcp.finalizeResponse(ctx, request, jsonRpcResult(request.id, {
 					contents: [{
 						uri: uri,
 						mimeType: resource.mimeType,
 						text: content
 					}]
-				});
+				}));
 				ctx.write(props.out || "local.response", response);
 				return response;
 			} catch (e) {
-				var error = jsonRpcError(request.id, -32000, String(e.message || e), {
+				var error = mcp.finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, String(e.message || e), {
 					code: "FLOW_MCP_RESOURCE_ERROR"
-				});
+				}));
 				ctx.write(props.out || "local.response", error);
 				return error;
 			}
