@@ -750,7 +750,7 @@
 			},
 			{
 				name: "flow-block-get",
-				description: "Read one Flow block source.",
+				description: "Read one Flow block descriptor and implementation source.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -761,15 +761,18 @@
 			},
 			{
 				name: "flow-block-create",
-				description: "Create or replace a project-local Flow block. Source is Rhino ES6 JavaScript in the JVM; use Packages for Java, not Node require/npm.",
+				description: "Create or replace a project-local Flow block. Use descriptorSource or descriptor for metadata. Rhino blocks also need implementationSource; use Packages for Java, not Node require/npm.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						name: { type: "string" },
-						source: { type: "string" },
+						descriptorSource: { type: "string" },
+						descriptor: { type: "object" },
+						definition: { type: "object" },
+						implementationSource: { type: "string" },
 						overwrite: { type: "boolean" }
 					}),
-					required: ["name", "source"]
+					required: ["name"]
 				}
 			},
 			{
@@ -787,14 +790,17 @@
 			},
 			{
 				name: "flow-block-edit",
-				description: "Replace the source of an existing project-local Flow block. Source is Rhino ES6 JavaScript in the JVM; use Packages for Java, not Node require/npm.",
+				description: "Edit a project-local Flow block descriptor and/or Rhino ES6 implementation.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						name: { type: "string" },
-						source: { type: "string" }
+						descriptorSource: { type: "string" },
+						descriptor: { type: "object" },
+						definition: { type: "object" },
+						implementationSource: { type: "string" }
 					}),
-					required: ["name", "source"]
+					required: ["name"]
 				}
 			},
 			{

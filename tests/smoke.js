@@ -625,17 +625,20 @@ print(JSON.stringify(schemaTarget));
 assertTrue(schemaTarget.result.result.structuredContent.schema.properties.edited.type === "boolean",
 	"MCP Flow flow-output-schema did not expose the edited result schema");
 
-var customBlockSource = [
+var customBlockDescriptorSource = [
+	"version: 1",
+	"name: smoke.echo",
+	"description: Project-local smoke block.",
+	"props: {}",
+	"implementation:",
+	"  runtime: rhino",
+	"  file: smoke.echo.js",
+	""
+].join("\n");
+var customBlockImplementationSource = [
 	"(function () {",
 	"\treturn {",
 	"\t\tname: \"smoke.echo\",",
-	"\t\tcatalog: function () {",
-	"\t\t\treturn {",
-	"\t\t\t\tname: \"smoke.echo\",",
-	"\t\t\t\tprops: {},",
-	"\t\t\t\tdescription: \"Project-local smoke block.\"",
-	"\t\t\t};",
-	"\t\t},",
 	"\t\trun: function () {",
 	"\t\t\treturn \"ok\";",
 	"\t\t}",
@@ -656,7 +659,8 @@ var blockCreate = JSON.parse(engine.run(JSON.stringify({
 				arguments: {
 					projectDir: targetProjectDir,
 					name: "smoke.echo",
-					source: customBlockSource
+					descriptorSource: customBlockDescriptorSource,
+					implementationSource: customBlockImplementationSource
 				}
 			}
 		})
@@ -693,7 +697,7 @@ assertTrue(blockDuplicate.result.result.structuredContent.name === "smoke.set" &
 	new java.io.File(targetDir, "libs/flow/blocks/smoke.set.js").isFile(),
 	"MCP Flow flow-block-duplicate did not copy a visible block");
 
-var editedBlockSource = customBlockSource.replace("Project-local smoke block.", "Edited project-local smoke block.");
+var editedBlockDescriptorSource = customBlockDescriptorSource.replace("Project-local smoke block.", "Edited project-local smoke block.");
 var blockEdit = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -707,7 +711,7 @@ var blockEdit = JSON.parse(engine.run(JSON.stringify({
 				arguments: {
 					projectDir: targetProjectDir,
 					name: "smoke.echo",
-					source: editedBlockSource
+					descriptorSource: editedBlockDescriptorSource
 				}
 			}
 		})
@@ -736,7 +740,7 @@ var blockGet = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 print(JSON.stringify(blockGet));
-assertTrue(blockGet.result.result.structuredContent.source.indexOf("Edited project-local smoke block.") !== -1,
+assertTrue(blockGet.result.result.structuredContent.descriptorSource.indexOf("Edited project-local smoke block.") !== -1,
 	"MCP Flow flow-block-get did not read the edited project-local block");
 
 var resourceSearch = JSON.parse(engine.run(JSON.stringify({
@@ -761,7 +765,7 @@ var resourceSearch = JSON.parse(engine.run(JSON.stringify({
 })));
 print(JSON.stringify(resourceSearch));
 assertTrue(resourceSearch.result.result.structuredContent.resources.some(function (resource) {
-	return resource.path === "libs/flow/blocks/smoke.echo.js";
+	return resource.path === "libs/flow/blocks/smoke.echo.block.yaml";
 }), "MCP Flow flow-resource-search did not find the custom block source");
 
 var resourceGet = JSON.parse(engine.run(JSON.stringify({
@@ -776,7 +780,7 @@ var resourceGet = JSON.parse(engine.run(JSON.stringify({
 				name: "flow-resource-get",
 				arguments: {
 					projectDir: targetProjectDir,
-					path: "libs/flow/blocks/smoke.echo.js"
+					path: "libs/flow/blocks/smoke.echo.block.yaml"
 				}
 			}
 		})
@@ -799,19 +803,19 @@ var resourcePatch = JSON.parse(engine.run(JSON.stringify({
 				name: "flow-resource-patch",
 				arguments: {
 					projectDir: targetProjectDir,
-					path: "libs/flow/blocks/smoke.echo.js",
+					path: "libs/flow/blocks/smoke.echo.block.yaml",
 					baseHash: resourceHash,
 					patch: [
-						"--- a/libs/flow/blocks/smoke.echo.js",
-						"+++ b/libs/flow/blocks/smoke.echo.js",
-						"@@ -1,8 +1,8 @@",
-						" \t\t\treturn {",
-						" \t\t\t\tname: \"smoke.echo\",",
-						" \t\t\t\tprops: {},",
-						"-\t\t\t\tdescription: \"Edited project-local smoke block.\"",
-						"+\t\t\t\tdescription: \"Patched project-local smoke block.\"",
-						" \t\t\t};",
-						" \t\t},"
+						"--- a/libs/flow/blocks/smoke.echo.block.yaml",
+						"+++ b/libs/flow/blocks/smoke.echo.block.yaml",
+						"@@ -1,6 +1,6 @@",
+						" version: 1",
+						" name: \"smoke.echo\"",
+						"-description: \"Edited project-local smoke block.\"",
+						"+description: \"Patched project-local smoke block.\"",
+						" props: {}",
+						" implementation:",
+						"   runtime: \"rhino\""
 					].join("\n")
 				}
 			}
@@ -842,7 +846,7 @@ var patchedBlockGet = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 print(JSON.stringify(patchedBlockGet));
-assertTrue(patchedBlockGet.result.result.structuredContent.source.indexOf("Patched project-local smoke block.") !== -1,
+assertTrue(patchedBlockGet.result.result.structuredContent.descriptorSource.indexOf("Patched project-local smoke block.") !== -1,
 	"MCP Flow flow-resource-patch did not persist the patched custom block");
 
 var typeList = JSON.parse(engine.run(JSON.stringify({
