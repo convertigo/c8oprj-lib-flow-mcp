@@ -1,0 +1,16 @@
+version: 1
+name: mcp.tools.available
+private: true
+icon: mdi:format-list-checks
+kind: mcp
+description: Returns the Flow MCP tool descriptors.
+display: available tools -> {{ props.out }}
+props:
+  out:
+    kind: path
+    mode: write
+    default: local.tools
+    description: Scope path receiving the tool descriptors.
+implementation:
+  runtime: rhino
+  file: mcp.tools.available.js
