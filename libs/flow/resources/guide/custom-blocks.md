@@ -6,7 +6,7 @@ Block contracts live under `libs/flow/blocks/*.block.yaml`. Rhino blocks use a
 separate `*.js` implementation; Flow-backed blocks use a separate
 `*.flow.yaml` implementation.
 
-Block source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.
+Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.
 
 Minimal Rhino block source shape: `(function(){ return { run:function(ctx,node){...} }; }())`.
 
