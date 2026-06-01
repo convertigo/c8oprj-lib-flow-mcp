@@ -1257,29 +1257,9 @@
 		return value;
 	}
 
-	function initialize(ctx, request) {
-		request = request || {};
-		return jsonRpcResult(request.id, {
-			protocolVersion: "2025-06-18",
-			serverInfo: {
-				name: "convertigo-flow-mcp",
-				version: "0.1.0"
-			},
-			capabilities: {
-				tools: {},
-				resources: {}
-			}
-		});
-	}
-
 	function toolsList(ctx, request) {
 		request = request || {};
 		return jsonRpcResult(request.id, { tools: tools() });
-	}
-
-	function resourcesList(ctx, request) {
-		request = request || {};
-		return jsonRpcResult(request.id, { resources: resources() });
 	}
 
 	function resourcesRead(ctx, request) {
@@ -1323,9 +1303,7 @@
 		toolError: toolError,
 		runToolBlock: runToolBlock,
 		toolResult: toolResult,
-		initialize: initialize,
 		toolsList: toolsList,
-		resourcesList: resourcesList,
 		resourcesRead: resourcesRead,
 		notification: notification,
 		methodNotFound: methodNotFound

@@ -1,0 +1,34 @@
+version: 1
+name: mcp.initialize
+private: true
+icon: mdi:hand-wave-outline
+kind: mcp
+description: Builds the MCP initialize response.
+display: initialize
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: wrapResult
+    block: mcp.response.result
+    request: props.request
+    result:
+      protocolVersion: "2025-06-18"
+      serverInfo:
+        name: convertigo-flow-mcp
+        version: "0.1.0"
+      capabilities:
+        tools: {}
+        resources: {}
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"
