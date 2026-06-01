@@ -21,12 +21,50 @@ Runtime shape:
 ```text
 lib_flow_mcp.McpServer
   -> libs/flows/McpServer.flow.yaml
-  -> libs/flow/blocks/mcp.flow.js
+  -> high-level MCP graph blocks (mcp.batch, mcp.handle, mcp.tools.call)
+  -> visible tools/call families (inspect, source, author, runtime)
+  -> private mcp.* blocks
+  -> reusable core/project blocks via ctx.callBlock(...)
+  -> optional low-level helpers in libs/flow/lib/mcp.js
   -> lib_flow_engine.Engine
 ```
 
-Use `mcp.flow` for MCP protocol plumbing only. When adding a new operation, ask
-whether the underlying behavior is:
+The flow graph owns the visible protocol routing. Reusable protocol branches
+that deserve a palette/catalog item are composite graph blocks in
+`libs/flow/blocks/*.block.yaml`; for example `mcp.handle` routes one JSON-RPC
+request, and `mcp.tools.call` is implemented with `mcp.tool.identify` and one
+branch per tool family. Private native `mcp.*` blocks keep the low-level
+JSON-RPC/Convertigo glue small. When reusable behavior has a clear contract,
+expose it as a block and call it with `ctx.callBlock(...)`; keep
+`libs/flow/lib/mcp.js` for local algorithmic helpers that would add noise to the
+Flow catalog.
+
+For simple MCP tools, prefer this graph shape:
+
+```yaml
+nodes:
+  - id: run
+    block: mcp.tool.run
+    request: props.request
+    target: resource.search
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"
+```
+
+`mcp.tool.run` prepares MCP arguments, resolves the target project, calls the
+target block with `ctx.callBlock(...)`, and wraps either the result or the error
+as a JSON-RPC tools/call response.
+
+The simple read/test/introspection tools now use this shape and delegate to
+core capability blocks such as `flow.list`, `flow.get`, `flow.run`,
+`flow.test`, `flow.tree`, `flow.context`, `flow.outputSchema`, `flow.apply`,
+`resource.*`, `block.*` and `type.*`. Keep JavaScript wrappers only when the
+tool still owns MCP-specific behavior such as workspace search or Studio DBO
+registration after writing a Flow.
+
+When adding a new operation, ask whether the underlying behavior is:
 
 - general Flow runtime behavior: add it to `lib_flow_engine`;
 - MCP authoring behavior: keep it here;
@@ -50,7 +88,7 @@ flow-test
 flow-catalog only when search/examples are insufficient; it is summary by default
 flow-block-get / flow-type-get only for source-level authoring
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only when the catalog is insufficient
-flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/HTML/CSS resources
+flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/YAML/HTML/CSS resources and Flow libraries
 ```
 
 The default path remains catalog-first and sidecar-first. Custom blocks are
@@ -178,9 +216,12 @@ flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unifi
 ```
 
 The patch API is limited to `libs/flow/blocks/**/*.js`,
-`libs/flow/types/**/*.js` and `libs/flow/types/editors/**/*.{html,css,js}`.
-It validates block/type JavaScript by default. Unified diff line numbers may be
-approximate when the surrounding context is unique.
+`libs/flow/blocks/**/*.block.yaml`, `libs/flow/fragments/**/*.fragment.yaml`,
+`libs/flow/lib/**/*.js`, `libs/flow/types/**/*.js` and
+`libs/flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
+JavaScript and parses graph block/fragment YAML by default.
+Unified diff line numbers may be approximate when the surrounding context is
+unique.
 
 Search is the MCP equivalent of `rg` for Flow authoring:
 

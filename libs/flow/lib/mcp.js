@@ -418,7 +418,7 @@
 				"2. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching Flow exists.",
 				"3. Call `flow-context` before writing expressions or templates.",
 				"4. Edit with `flow-edit`, then validate with `flow-test` or `flow-output-schema`.",
-				"5. For custom block/type/editor source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.",
+				"5. For custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.",
 				"",
 				"`flow-get` returns both YAML `source` and a JSON `definition`. `flow-set`, `flow-run`, `flow-test`, `flow-tree` and `flow-apply` accept that same `definition` shape, so an agent may get, modify and set without rewriting YAML by hand.",
 				"When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.",
@@ -468,7 +468,7 @@
 				"",
 				"Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.",
 				"",
-				"Blocks live under `libs/flow/blocks/*.js` and expose `catalog`, optional `analyze`, and `run`.",
+				"Native blocks live under `libs/flow/blocks/*.js`; composite graph blocks live under `libs/flow/blocks/*.block.yaml` and expose props plus internal nodes.",
 				"Block source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.",
 				"Minimal block source shape: `(function(){ return { name:\"demo.block\", catalog:function(){...}, analyze:function(ctx,node){...}, run:function(ctx,node){...} }; }())`.",
 				"Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property.",
@@ -506,7 +506,8 @@
 							type: "string",
 							enum: ["compact", "summary", "full"],
 							description: "Default summary. compact includes property docs; full includes icon paths and type usages."
-						}
+						},
+						includePrivate: { type: "boolean", description: "Default false. Show private implementation blocks when inspecting this MCP library." }
 					})
 				}
 			},
@@ -547,7 +548,7 @@
 			},
 			{
 				name: "flow-resource-search",
-				description: "Search project-local Flow source resources, like rg over whitelisted blocks/types/editors. Use before get/patch when maintaining JS/HTML/CSS.",
+				description: "Search project-local Flow source resources, like rg over whitelisted blocks/libs/types/editors. Use before get/patch when maintaining JS/YAML/HTML/CSS.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
@@ -569,7 +570,7 @@
 					properties: addProjectProperties({
 						path: {
 							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.js."
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.js, libs/flow/blocks/demo.block.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
 						},
 						maxBytes: { type: "number" },
 						allowLarge: { type: "boolean" }
@@ -579,13 +580,13 @@
 			},
 			{
 				name: "flow-resource-patch",
-				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/type JS by default; hunk line numbers may be approximate when context is unique.",
+				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/type/library JS and graph block/fragment YAML by default; hunk line numbers may be approximate when context is unique.",
 				inputSchema: {
 					type: "object",
 					properties: addProjectProperties({
 						path: {
 							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.js."
+							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.js, libs/flow/blocks/demo.block.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
 						},
 						baseHash: { type: "string", description: "Hash returned by flow-resource-get." },
 						patch: { type: "string", description: "Unified diff with @@ hunks." },
@@ -858,7 +859,9 @@
 				description: "List Flow blocks with their origin.",
 				inputSchema: {
 					type: "object",
-					properties: addProjectProperties({})
+					properties: addProjectProperties({
+						includePrivate: { type: "boolean", description: "Default false. Show private implementation blocks." }
+					})
 				}
 			},
 			{
@@ -965,6 +968,41 @@
 			content: textContent(value),
 			structuredContent: value
 		};
+	}
+
+	function toolResponse(request, value) {
+		request = request || {};
+		return jsonRpcResult(request.id, toolResult(value));
+	}
+
+	function toolError(request, error) {
+		request = request || {};
+		error = error || {};
+		return jsonRpcError(request.id, -32000, String(error.message || error), {
+			code: String(error.code || "FLOW_MCP_TOOL_ERROR"),
+			hint: error.hint ? String(error.hint) : ""
+		});
+	}
+
+	function prepareToolArguments(ctx, request, options) {
+		options = options || {};
+		var args = copyJson(toolArguments(request || {}));
+		var workspaceSearch = options.workspaceSearch === true
+			&& String(args.scope || "") === "workspace"
+			&& !args.project
+			&& !args.projectDir;
+		if (!workspaceSearch && options.resolveProject !== false) {
+			args = resolveProjectDir(args);
+		}
+		return args;
+	}
+
+	function runToolBlock(ctx, request, options, handler) {
+		try {
+			return toolResponse(request, handler(prepareToolArguments(ctx, request, options || {})));
+		} catch (e) {
+			return toolError(request, e);
+		}
 	}
 
 	function withNamedFlowSource(ctx, args) {
@@ -1141,168 +1179,74 @@
 		return out;
 	}
 
-	function callTool(ctx, name, args) {
-		args = args || {};
-		if (!(name === "flow-search" && String(args.scope || "") === "workspace" && !args.project && !args.projectDir)) {
-			args = resolveProjectDir(args);
-		}
-		switch (name) {
-		case "flow-catalog":
-			return toolResult(ctx.blockList(args));
-		case "flow-analyze":
-			return toolResult(ctx.analyzeFlowSource(args.flowSource || "", args));
-		case "flow-search":
-			if (String(args.scope || "") === "workspace" && !args.project && !args.projectDir) {
-				return toolResult(searchWorkspace(ctx, args));
-			}
-			return toolResult(ctx.searchFlow(args));
-		case "flow-resource-search":
-			return toolResult(ctx.resourceSearch(args));
-		case "flow-resource-get":
-			return toolResult(ctx.resourceGet(args));
-		case "flow-resource-patch":
-			return toolResult(ctx.resourcePatch(args));
-		case "flow-context":
-			args = withNamedFlowSource(ctx, args);
-			return toolResult(ctx.contextFlowSource(args));
-		case "flow-tree":
-			args = withNamedFlowSource(ctx, args);
-			return toolResult(ctx.describeTreeSource(args));
-		case "flow-apply":
-			args = withNamedFlowSource(ctx, args);
-			return toolResult(ctx.applyMutationSource(args));
-		case "flow-edit":
-			return toolResult(applyNamedFlowMutation(ctx, args));
-		case "flow-node-add":
-			return toolResult(applyNodeMutation(ctx, args, nodeAddMutation(args)));
-		case "flow-node-edit":
-			return toolResult(applyNodeMutation(ctx, args, nodeEditMutation(args)));
-		case "flow-node-move":
-			return toolResult(applyNodeMutation(ctx, args, nodeMoveMutation(args)));
-		case "flow-node-delete":
-			return toolResult(applyNodeMutation(ctx, args, {
-				op: "delete",
-				nodeId: args.nodeId
-			}));
-		case "flow-node-duplicate":
-			return toolResult(applyNodeMutation(ctx, args, nodeDuplicateMutation(args)));
-		case "flow-output-schema":
-			args = withNamedFlowSource(ctx, args);
-			return toolResult(ctx.outputSchemaSource(args));
-		case "flow-schema-reset":
-			return toolResult(ctx.schemaReset(args));
-		case "flow-run":
-			var execution = ctx.runFlowSource(args.flowSource || "", args.config || {}, {
-				input: args.input || {},
-				projectDir: args.projectDir,
-				definition: args.definition,
-				includeTrace: args.includeTrace === true
-			});
-			if (args.includeFlow !== true) {
-				delete execution.flow;
-			}
-			if (args.includeTrace !== true) {
-				delete execution.trace;
-			}
-			return toolResult(execution);
-		case "flow-list":
-			return toolResult(ctx.flowList(args));
-		case "flow-get":
-			return toolResult(ctx.flowGet(args.name, args));
-		case "flow-set":
-			var flowWrite = ctx.flowSet(args.name, args.flowSource || "", args);
-			flowWrite.registration = registerFlowDbo(args, flowWrite);
-			return toolResult(flowWrite);
-		case "flow-test":
-			var flowTest = ctx.flowTest(args);
-			if (args.includeFlow !== true) {
-				delete flowTest.flow;
-			}
-			if (args.includeTrace !== true) {
-				delete flowTest.trace;
-			}
-			return toolResult(flowTest);
-		case "flow-block-list":
-			return toolResult(ctx.blockList(args));
-		case "flow-block-get":
-			return toolResult(ctx.blockGet(args.name, args));
-		case "flow-block-create":
-			return toolResult(ctx.blockCreate(args.name, args.source || "", args.overwrite === true, args));
-		case "flow-block-duplicate":
-			return toolResult(ctx.blockDuplicate(args.fromName || args.from, args.toName || args.name, args.overwrite === true, args));
-		case "flow-block-edit":
-			return toolResult(ctx.blockEdit(args.name, args.source || "", args));
-		case "flow-type-list":
-			return toolResult(ctx.typeList(args));
-		case "flow-type-get":
-			return toolResult(ctx.typeGet(args.name, args));
-		case "flow-type-create":
-			return toolResult(ctx.typeCreate(args.name, args.source || "", args.overwrite === true, args));
-		case "flow-block-test":
-			var test = ctx.blockTest(args.flowSource || "", args.config || {}, {
-				input: args.input || {},
-				projectDir: args.projectDir,
-				definition: args.definition,
-				includeTrace: args.includeTrace === true
-			});
-			if (args.includeFlow !== true) {
-				delete test.flow;
-			}
-			if (args.includeTrace !== true) {
-				delete test.trace;
-			}
-			return toolResult(test);
-		default:
-			throw new Error("Unknown Flow MCP tool: " + name);
-		}
+	var TOOL_GROUPS = {
+		inspect: [
+			"flow-catalog",
+			"flow-analyze",
+			"flow-search",
+			"flow-context",
+			"flow-tree",
+			"flow-output-schema"
+		],
+		source: [
+			"flow-resource-search",
+			"flow-resource-get",
+			"flow-resource-patch",
+			"flow-block-list",
+			"flow-block-get",
+			"flow-block-create",
+			"flow-block-duplicate",
+			"flow-block-edit",
+			"flow-type-list",
+			"flow-type-get",
+			"flow-type-create"
+		],
+		author: [
+			"flow-list",
+			"flow-get",
+			"flow-set",
+			"flow-apply",
+			"flow-edit",
+			"flow-node-add",
+			"flow-node-edit",
+			"flow-node-move",
+			"flow-node-delete",
+			"flow-node-duplicate",
+			"flow-schema-reset"
+		],
+		runtime: [
+			"flow-run",
+			"flow-test",
+			"flow-block-test"
+		]
+	};
+
+	function toolName(request) {
+		return String(request && request.params && request.params.name || "");
 	}
 
-	function handle(ctx, request) {
-		var id = request.id;
-		var isNotification = id === undefined && String(request.method || "").indexOf("notifications/") === 0;
-		switch (request.method) {
-		case "initialize":
-			return jsonRpcResult(id, {
-				protocolVersion: "2025-06-18",
-				serverInfo: {
-					name: "convertigo-flow-mcp",
-					version: "0.1.0"
-				},
-				capabilities: {
-					tools: {},
-					resources: {}
-				}
-			});
-		case "tools/list":
-			return jsonRpcResult(id, { tools: tools() });
-		case "tools/call":
-			try {
-				return jsonRpcResult(id, callTool(ctx, request.params && request.params.name,
-					request.params && request.params.arguments));
-			} catch (e) {
-				return jsonRpcError(id, -32000, String(e.message || e), {
-					code: String(e.code || "FLOW_MCP_TOOL_ERROR"),
-					hint: e.hint ? String(e.hint) : ""
-				});
+	function toolArguments(request) {
+		return request && request.params && request.params.arguments || {};
+	}
+
+	function toolGroup(name) {
+		name = String(name || "");
+		var groups = Object.keys(TOOL_GROUPS);
+		for (var i = 0; i < groups.length; i++) {
+			if (TOOL_GROUPS[groups[i]].indexOf(name) !== -1) {
+				return groups[i];
 			}
-		case "resources/list":
-			return jsonRpcResult(id, { resources: resources() });
-		case "resources/read":
-			try {
-				return jsonRpcResult(id, readResource(request.params && request.params.uri));
-			} catch (e) {
-				return jsonRpcError(id, -32000, String(e.message || e), {
-					code: "FLOW_MCP_RESOURCE_ERROR"
-				});
-			}
-		case "notifications/initialized":
-			return acceptNotification(ctx);
-		default:
-			if (isNotification) {
-				return acceptNotification(ctx);
-			}
-			return jsonRpcError(id, -32601, "Method not found: " + request.method);
 		}
+		return "unknown";
+	}
+
+	function toolInfo(request) {
+		var name = toolName(request);
+		return {
+			name: name,
+			group: toolGroup(name),
+			arguments: toolArguments(request)
+		};
 	}
 
 	function parseRequest(value) {
@@ -1313,37 +1257,77 @@
 		return value;
 	}
 
-	return {
-		name: "mcp.flow",
-
-		catalog: function () {
-			return {
-				name: "mcp.flow",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				icon: "mdi:tools",
-				props: {
-					request: { kind: "expression", type: "object" },
-					out: { kind: "path", mode: "write" }
-				},
-				description: "Handles Flow-native MCP JSON-RPC tools and guide resources."
-			};
-		},
-
-		analyze: function (ctx, node) {
-			var props = ctx.props(node);
-			ctx.addPath(props.out);
-		},
-
-		run: function (ctx, node) {
-			var props = ctx.props(node);
-			var request = parseRequest(ctx.expr(props.request || "config.request"));
-			if (Object.prototype.toString.call(request) === "[object Array]") {
-				return request.map(function (item) {
-					return handle(ctx, item);
-				});
+	function initialize(ctx, request) {
+		request = request || {};
+		return jsonRpcResult(request.id, {
+			protocolVersion: "2025-06-18",
+			serverInfo: {
+				name: "convertigo-flow-mcp",
+				version: "0.1.0"
+			},
+			capabilities: {
+				tools: {},
+				resources: {}
 			}
-			return handle(ctx, request);
+		});
+	}
+
+	function toolsList(ctx, request) {
+		request = request || {};
+		return jsonRpcResult(request.id, { tools: tools() });
+	}
+
+	function resourcesList(ctx, request) {
+		request = request || {};
+		return jsonRpcResult(request.id, { resources: resources() });
+	}
+
+	function resourcesRead(ctx, request) {
+		request = request || {};
+		try {
+			return jsonRpcResult(request.id, readResource(request.params && request.params.uri));
+		} catch (e) {
+			return jsonRpcError(request.id, -32000, String(e.message || e), {
+				code: "FLOW_MCP_RESOURCE_ERROR"
+			});
 		}
+	}
+
+	function notification(ctx, request) {
+		return acceptNotification(ctx);
+	}
+
+	function methodNotFound(ctx, request) {
+		request = request || {};
+		return jsonRpcError(request.id, -32601, "Method not found: " + request.method);
+	}
+
+	return {
+		jsonRpcResult: jsonRpcResult,
+		jsonRpcError: jsonRpcError,
+		acceptNotification: acceptNotification,
+		parseRequest: parseRequest,
+		resources: resources,
+		readResource: readResource,
+		tools: tools,
+		toolInfo: toolInfo,
+		toolGroup: toolGroup,
+		toolArguments: toolArguments,
+		prepareToolArguments: prepareToolArguments,
+		withNamedFlowSource: withNamedFlowSource,
+		searchWorkspace: searchWorkspace,
+		registerFlowDbo: registerFlowDbo,
+		applyNamedFlowMutation: applyNamedFlowMutation,
+		applyNodeMutation: applyNodeMutation,
+		toolResponse: toolResponse,
+		toolError: toolError,
+		runToolBlock: runToolBlock,
+		toolResult: toolResult,
+		initialize: initialize,
+		toolsList: toolsList,
+		resourcesList: resourcesList,
+		resourcesRead: resourcesRead,
+		notification: notification,
+		methodNotFound: methodNotFound
 	};
 }())

@@ -1,0 +1,27 @@
+version: 1
+name: mcp.tool.flow.tree
+private: true
+icon: mdi:file-tree-outline
+kind: mcp
+description: Runs the flow-tree MCP tool.
+display: tool flow-tree -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: describeFlowTree
+    block: mcp.tool.run
+    request: props.request
+    target: flow.tree
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

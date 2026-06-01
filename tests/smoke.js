@@ -14,6 +14,25 @@ function assertTrue(condition, message) {
 
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.yaml"), "UTF-8"));
+var batchBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.batch.block.yaml"), "UTF-8"));
+var handleBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.handle.block.yaml"), "UTF-8"));
+var toolsCallBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.block.yaml"), "UTF-8"));
+assertTrue(mcpFlowSource.indexOf("block: fragment.use") === -1 &&
+	mcpFlowSource.indexOf("block: mcp.flow") === -1 &&
+	mcpFlowSource.indexOf("block: mcp.batch") !== -1 &&
+	mcpFlowSource.indexOf("block: mcp.handle") !== -1,
+	"McpServer flow should route through graph composite MCP blocks");
+assertTrue(batchBlockSource.indexOf("block: forEach") !== -1 &&
+	handleBlockSource.indexOf("mcp.tools.call") !== -1 &&
+	handleBlockSource.indexOf("mcp.resources.read") !== -1 &&
+	toolsCallBlockSource.indexOf("mcp.tool.identify") !== -1 &&
+	toolsCallBlockSource.indexOf("mcp.tools.call.inspect") !== -1 &&
+	toolsCallBlockSource.indexOf("mcp.tools.call.source") !== -1 &&
+	toolsCallBlockSource.indexOf("mcp.tools.call.any") === -1,
+	"MCP graph blocks should expose their internal implementation nodes");
 
 var list = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -43,6 +62,74 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-resource-patch";
 }), "MCP Flow tools/list did not expose resource patching");
+var batch = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	config: {},
+	input: {
+		request: JSON.stringify([
+			{
+				jsonrpc: "2.0",
+				id: 2,
+				method: "tools/list"
+			},
+			{
+				jsonrpc: "2.0",
+				id: 3,
+				method: "resources/list"
+			}
+		])
+	}
+})));
+assertTrue(batch.ok === true &&
+	batch.result.length === 2 &&
+	batch.result[0].id === 2 &&
+	batch.result[1].id === 3,
+	"MCP Flow batch graph block did not iterate and collect responses");
+
+var publicCatalog = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1001,
+			method: "tools/call",
+			params: {
+				name: "flow-catalog",
+				arguments: {
+					projectDir: projectDir,
+					detail: "summary"
+				}
+			}
+		})
+	}
+})));
+assertTrue(!publicCatalog.result.result.structuredContent.blocks.some(function (block) {
+	return block.name === "mcp.tools.call";
+}), "MCP private blocks should be hidden from the public Flow catalog");
+var privateCatalog = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1002,
+			method: "tools/call",
+			params: {
+				name: "flow-catalog",
+				arguments: {
+					projectDir: projectDir,
+					detail: "summary",
+					includePrivate: true
+				}
+			}
+		})
+	}
+})));
+assertTrue(privateCatalog.result.result.structuredContent.blocks.some(function (block) {
+	return block.name === "mcp.tools.call" && block.implementation === "flow";
+}), "MCP private graph blocks should be visible when includePrivate=true");
 
 var resources = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,

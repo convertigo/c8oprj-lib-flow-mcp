@@ -1,0 +1,34 @@
+version: 1
+name: mcp.tools.list
+private: true
+icon: mdi:format-list-bulleted-square
+kind: mcp
+description: Builds the MCP tools/list response.
+display: tools.list -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC request object.
+  out:
+    kind: path
+    mode: write
+    default: flow.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: availableTools
+    block: mcp.tools.available
+    out: local.tools
+  - id: payload
+    block: set
+    path: local.payload.tools
+    value: "{{ local.tools }}"
+  - id: response
+    block: mcp.response.result
+    request: props.request
+    result: local.payload
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

@@ -1,0 +1,38 @@
+version: 1
+name: mcp.batch
+private: true
+icon: mdi:call-split
+kind: mcp
+description: Handles a JSON-RPC batch request.
+display: batch -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: array
+    default: input.request
+    description: MCP JSON-RPC request array.
+  out:
+    kind: path
+    mode: write
+    default: flow.response
+    description: Scope path receiving the MCP batch response array.
+nodes:
+  - id: initResponses
+    block: set
+    path: local.responses
+    value: []
+  - id: eachRequest
+    block: forEach
+    items: props.request
+    nodes:
+      - id: handleRequest
+        block: mcp.handle
+        request: current
+        out: local.response
+      - id: collectResponse
+        block: json.push
+        path: local.responses
+        value: "{{ local.response }}"
+  - id: done
+    block: return
+    value: "{{ local.responses }}"

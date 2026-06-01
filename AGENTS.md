@@ -7,8 +7,21 @@ Rules:
 
 - Do not add general runtime blocks here; put them in `lib_flow_engine`.
 - Put MCP protocol routing, Flow authoring tools and agent-only helpers here.
-- Prefer a small MCP tool that calls core engine APIs over a large block that
-  duplicates engine logic.
+- Prefer a small MCP tool that calls reusable blocks with `ctx.callBlock(...)`
+  over a large block that duplicates engine logic. Promote reusable behavior to
+  `lib_flow_engine` when it is not MCP-specific.
+- Keep high-level JSON-RPC routing visible in the public `McpServer` Flow and
+  promote reusable branches to composite graph blocks in
+  `libs/flow/blocks/*.block.yaml`. Keep shared JavaScript helpers in
+  `libs/flow/lib/mcp.js` only for low-level local details that are not useful as
+  Flow blocks.
+- Keep the single-request router in `mcp.handle.block.yaml` so batch and
+  request routing both expose their Flow implementation in the catalog tree.
+- Keep `tools/call` routing visible too: `mcp.tools.call.block.yaml` should
+  group tools by intent before delegating to small private blocks.
+- For tools that only prepare MCP arguments, call one Flow capability and wrap
+  the response, prefer a composite block using `mcp.tool.run` instead of a
+  custom JavaScript wrapper.
 - Use `/convertigo/api/flow-mcp` as the HTTP entry point. Do not use
   `/convertigo/api/mcp`, which belongs to the legacy Convertigo MCP project.
 - Keep generated or one-off helper blocks private when they are not intended for
@@ -32,7 +45,7 @@ flow-test
 flow-catalog only when search/examples are insufficient; it is summary by default
 flow-block-get / flow-type-get only for source-level authoring
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only when the catalog is insufficient
-flow-resource-search / flow-resource-get / flow-resource-patch for project JS/HTML/CSS maintenance patches
+flow-resource-search / flow-resource-get / flow-resource-patch for project JS/YAML/HTML/CSS/library maintenance patches
 ```
 
 Prefer editing Flow sidecars over adding custom blocks. Prefer project-local
@@ -41,10 +54,11 @@ Core and shared blocks are read-only through MCP: use `flow-block-duplicate`
 to create a project-local variant, then `flow-block-edit` to replace its
 source.
 
-When maintaining an existing custom block/type/editor, prefer a code-like cycle:
-`flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with the
-returned `baseHash`. The patch tool accepts unified diff hunks and validates
-block/type JavaScript by default. Hunk line numbers may be approximate when the
+When maintaining an existing custom block/composite block/fragment/type/editor/library,
+prefer a code-like cycle: `flow-resource-search`, `flow-resource-get`, then
+`flow-resource-patch` with the returned `baseHash`. The patch tool accepts
+unified diff hunks and validates block/type/library JavaScript plus graph
+block/fragment YAML by default. Hunk line numbers may be approximate when the
 context is unique.
 
 Custom block source is Rhino ES6 JavaScript evaluated inside the Convertigo JVM.

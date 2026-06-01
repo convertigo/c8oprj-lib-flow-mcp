@@ -1,0 +1,27 @@
+version: 1
+name: mcp.tool.flow.block.get
+private: true
+icon: mdi:puzzle-outline
+kind: mcp
+description: Runs the flow-block-get MCP tool.
+display: tool flow-block-get -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: runBlockGet
+    block: mcp.tool.run
+    request: props.request
+    target: block.get
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

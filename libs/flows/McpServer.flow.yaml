@@ -1,9 +1,24 @@
 version: 1
 nodes:
-  - id: handleRequest
-    block: mcp.flow
+  - id: parseRequest
+    block: mcp.request
     request: input.request
+    out: flow.request
+  - id: batch
+    block: if
+    condition: length(flow.request) > 0
+    then:
+      - id: handleBatch
+        block: mcp.batch
+        request: flow.request
+        out: flow.response
+      - id: returnBatch
+        block: return
+        value: "{{ flow.response }}"
+  - id: handleSingle
+    block: mcp.handle
+    request: flow.request
     out: flow.response
-  - id: done
+  - id: returnSingle
     block: return
     value: "{{ flow.response }}"

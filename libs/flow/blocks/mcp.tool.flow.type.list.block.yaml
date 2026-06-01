@@ -1,0 +1,27 @@
+version: 1
+name: mcp.tool.flow.type.list
+private: true
+icon: mdi:shape-outline
+kind: mcp
+description: Runs the flow-type-list MCP tool.
+display: tool flow-type-list -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: runTypeList
+    block: mcp.tool.run
+    request: props.request
+    target: type.list
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"

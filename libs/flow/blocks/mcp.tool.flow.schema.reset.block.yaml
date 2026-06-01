@@ -1,0 +1,27 @@
+version: 1
+name: mcp.tool.flow.schema.reset
+private: true
+icon: mdi:database-refresh-outline
+kind: mcp
+description: Runs the flow-schema-reset MCP tool.
+display: tool flow-schema-reset -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+nodes:
+  - id: resetFlowSchema
+    block: mcp.tool.run
+    request: props.request
+    target: flow.schema.reset
+    out: local.response
+  - id: done
+    block: return
+    value: "{{ local.response }}"
