@@ -1277,11 +1277,6 @@
 		return acceptNotification(ctx);
 	}
 
-	function methodNotFound(ctx, request) {
-		request = request || {};
-		return jsonRpcError(request.id, -32601, "Method not found: " + request.method);
-	}
-
 	return {
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
@@ -1305,7 +1300,6 @@
 		toolResult: toolResult,
 		toolsList: toolsList,
 		resourcesRead: resourcesRead,
-		notification: notification,
-		methodNotFound: methodNotFound
+		notification: notification
 	};
 }())

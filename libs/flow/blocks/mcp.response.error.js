@@ -1,0 +1,63 @@
+(function () {
+	function read(ctx, value, fallback) {
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		return typeof value === "string" ? ctx.expr(value) : value;
+	}
+
+	return {
+		name: "mcp.response.error",
+		private: true,
+
+		catalog: function () {
+			return {
+				name: "mcp.response.error",
+				"package": "lib_flow_mcp",
+				namespace: "mcp",
+				private: true,
+				icon: "mdi:alert-circle-outline",
+				props: {
+					request: { kind: "expression", type: "object", description: "MCP JSON-RPC request object." },
+					code: { kind: "expression", type: "number", description: "JSON-RPC error code." },
+					message: { kind: "expression", type: "string", description: "JSON-RPC error message." },
+					data: { kind: "expression", type: "object", description: "Optional JSON-RPC error data." },
+					out: { kind: "path", mode: "write", description: "Scope path receiving the JSON-RPC response." }
+				},
+				description: "Wraps an error in a JSON-RPC error response."
+			};
+		},
+
+		displayName: function (node) {
+			var props = node.props || node;
+			return "error " + (props.code || "-32000") + " -> " + (props.out || "flow.response");
+		},
+
+		analyze: function (ctx, node) {
+			var props = ctx.props(node);
+			ctx.addPath(props.out);
+		},
+
+		run: function (ctx, node) {
+			var props = ctx.props(node);
+			var request = read(ctx, props.request, {}) || {};
+			var code = read(ctx, props.code, -32000);
+			var message = read(ctx, props.message, "Flow MCP error");
+			var data = read(ctx, props.data, undefined);
+			var error = {
+				code: code,
+				message: String(message)
+			};
+			if (data !== undefined && data !== null) {
+				error.data = data;
+			}
+			var response = {
+				jsonrpc: "2.0",
+				id: request.id === undefined ? null : request.id,
+				error: error
+			};
+			ctx.write(props.out || "flow.response", response);
+			return response;
+		}
+	};
+}())

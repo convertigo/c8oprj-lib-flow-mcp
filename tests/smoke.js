@@ -148,6 +148,43 @@ assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/start";
 }), "MCP Flow resources/list did not expose the start guide");
 
+var methodNotFound = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	config: {},
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 103,
+			method: "unknown/method"
+		})
+	}
+})));
+assertTrue(methodNotFound.result.error.code === -32601 &&
+	methodNotFound.result.error.message === "Method not found: unknown/method",
+	"MCP Flow method-not-found graph block did not return a JSON-RPC error");
+
+var toolNotFound = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	config: {},
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 104,
+			method: "tools/call",
+			params: {
+				name: "flow-does-not-exist",
+				arguments: {}
+			}
+		})
+	}
+})));
+assertTrue(toolNotFound.result.error.code === -32000 &&
+	toolNotFound.result.error.message === "Unknown Flow MCP tool: flow-does-not-exist" &&
+	toolNotFound.result.error.data.code === "FLOW_MCP_TOOL_ERROR",
+	"MCP Flow tool-not-found graph block did not return a JSON-RPC error");
+
 var startGuide = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
