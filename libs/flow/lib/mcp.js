@@ -378,122 +378,6 @@
 		return targets;
 	}
 
-	function resources() {
-		return [
-			{
-				uri: "flow://guide/start",
-				name: "Flow MCP start guide",
-				description: "Minimal bootstrap for an agent editing Convertigo Flow projects.",
-				mimeType: "text/markdown"
-			},
-			{
-				uri: "flow://guide/authoring",
-				name: "Flow authoring cycle",
-				description: "Recommended search, edit, test cycle for Flow authoring.",
-				mimeType: "text/markdown"
-			},
-			{
-				uri: "flow://guide/search-and-edit",
-				name: "Search and semantic edits",
-				description: "How to use flow-search results with nodeId/path mutations.",
-				mimeType: "text/markdown"
-			},
-			{
-				uri: "flow://guide/custom-blocks",
-				name: "Custom blocks and types",
-				description: "Rules for project-local blocks and property types.",
-				mimeType: "text/markdown"
-			}
-		];
-	}
-
-	function resourceText(uri) {
-		switch (String(uri || "")) {
-		case "flow://guide/start":
-			return [
-				"# Flow MCP Start",
-				"",
-				"Default route for an unknown Flow project:",
-				"1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call`. Prefer `project` scope; use `scope:\"workspace\"` only for discovery across loaded Studio projects.",
-				"2. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching Flow exists.",
-				"3. Call `flow-context` before writing expressions or templates.",
-				"4. Edit with `flow-edit`, then validate with `flow-test` or `flow-output-schema`.",
-				"5. For custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.",
-				"",
-				"`flow-get` returns both YAML `source` and a JSON `definition`. `flow-set`, `flow-run`, `flow-test`, `flow-tree` and `flow-apply` accept that same `definition` shape, so an agent may get, modify and set without rewriting YAML by hand.",
-				"When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.",
-				"",
-				"Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls."
-			].join("\n");
-		case "flow://guide/authoring":
-			return [
-				"# Flow Authoring Cycle",
-				"",
-				"Create or modify a Flow sidecar with the smallest loop that proves behavior:",
-				"- `flow-list` only to enumerate known Flow names.",
-				"- `flow-search` to locate nodes, schemas, block docs or existing examples. Multi-word queries match unordered tokens, like a small `rg`.",
-				"- Avoid `flow-catalog detail:\"compact\"` when an example exists. Use `flow-block-get` for one unknown block, and `flow-catalog` summary only to discover names.",
-				"- `flow-context` at the target node to know `input`, `config`, `flow`, `current` and `result` paths.",
-				"- For broad edits, use `flow-get.definition`, modify that object, then send it back through `flow-set`.",
-				"- Prefer `flow-node-add/edit/move/delete/duplicate` for common node operations.",
-				"- For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.",
-				"- Use `flow-edit` for lower-level mutations; use `dryRun:true` when unsure.",
-				"- With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.",
-				"- `flow-test` with realistic input and `includeTrace:true` only while debugging.",
-				"",
-				"Do not read every Flow sidecar up front. Search first, then open the narrow target."
-			].join("\n");
-		case "flow://guide/search-and-edit":
-			return [
-				"# Search And Edit",
-				"",
-				"`flow-search` is the Flow equivalent of `rg`; multi-word queries match unordered tokens.",
-				"Useful arguments: `query`, `kinds:[\"node\"]`, `context:1`, `limit`, `cursor`.",
-				"Each node match returns `flowQName`, `flow`, `nodeId`, canonical JSON Pointer `path`, `summary` and `snippet`.",
-				"",
-				"Preferred mutations:",
-				"- Change a node property: `{op:\"replace\", nodeId:\"setMessage\", property:\"value\", value:\"Hello\"}`.",
-				"- Merge node properties: `{op:\"merge\", nodeId:\"setMessage\", value:{comment:\"...\"}}`.",
-				"- Insert near a node: `{op:\"insert\", afterNodeId:\"setMessage\", value:{id:\"log\", block:\"log\", message:\"done\"}}`.",
-				"- Insert in a container: `{op:\"append\", parentNodeId:\"loopItems\", slot:\"nodes\", value:{id:\"push\", block:\"json.push\"}}`.",
-				"",
-				"Common MCP tools wrap those mutations: `flow-node-add`, `flow-node-edit`, `flow-node-move`, `flow-node-delete`, `flow-node-duplicate`.",
-				"`flow-node-add` requires a stable id. `flow-node-duplicate` requires `newId` or `properties.id`.",
-				"",
-				"Use `path` only for low-level mutations or when no stable `nodeId` exists."
-			].join("\n");
-		case "flow://guide/custom-blocks":
-			return [
-				"# Custom Blocks And Types",
-				"",
-				"Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.",
-				"",
-				"Native blocks live under `libs/flow/blocks/*.js`; composite graph blocks live under `libs/flow/blocks/*.block.yaml` and expose props plus internal nodes.",
-				"Block source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.",
-				"Minimal block source shape: `(function(){ return { name:\"demo.block\", catalog:function(){...}, analyze:function(ctx,node){...}, run:function(ctx,node){...} }; }())`.",
-				"Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property.",
-				"Types live under `libs/flow/types/*.js` and may point to HTML editors under `libs/flow/types/editors/*.html`.",
-				"",
-				"Use `flow-block-create` or `flow-type-create` for project-local additions, then validate with `flow-block-test`, `flow-catalog` or `flow-type-get`.",
-				"For maintenance, prefer `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`; it is closer to how coding agents work on files.",
-				"Duplicate a core/shared block with `flow-block-duplicate` before editing it with `flow-block-edit`.",
-				"Keep one-off procedural code exceptional; prefer a small Flow made of existing blocks."
-			].join("\n");
-		default:
-			throw new Error("Unknown Flow MCP resource: " + uri);
-		}
-	}
-
-	function readResource(uri) {
-		return {
-			contents: [{
-				uri: String(uri || ""),
-				mimeType: "text/markdown",
-				text: resourceText(uri)
-			}]
-		};
-	}
-
 	function tools() {
 		return [
 			{
@@ -1262,17 +1146,6 @@
 		return jsonRpcResult(request.id, { tools: tools() });
 	}
 
-	function resourcesRead(ctx, request) {
-		request = request || {};
-		try {
-			return jsonRpcResult(request.id, readResource(request.params && request.params.uri));
-		} catch (e) {
-			return jsonRpcError(request.id, -32000, String(e.message || e), {
-				code: "FLOW_MCP_RESOURCE_ERROR"
-			});
-		}
-	}
-
 	function notification(ctx, request) {
 		return acceptNotification(ctx);
 	}
@@ -1282,8 +1155,6 @@
 		jsonRpcError: jsonRpcError,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
-		resources: resources,
-		readResource: readResource,
 		tools: tools,
 		toolInfo: toolInfo,
 		toolGroup: toolGroup,
@@ -1299,7 +1170,6 @@
 		runToolBlock: runToolBlock,
 		toolResult: toolResult,
 		toolsList: toolsList,
-		resourcesRead: resourcesRead,
 		notification: notification
 	};
 }())

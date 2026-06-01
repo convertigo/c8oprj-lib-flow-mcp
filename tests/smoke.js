@@ -205,6 +205,30 @@ assertTrue(startGuide.result.result.contents[0].text.indexOf("flow-search") !== 
 	startGuide.result.result.contents[0].text.indexOf("nodeId") !== -1,
 	"MCP Flow resources/read did not return semantic edit guidance");
 
+var guideResourceSearch = JSON.parse(engine.run(JSON.stringify({
+	flowSource: mcpFlowSource,
+	includeTrace: false,
+	input: {
+		request: JSON.stringify({
+			jsonrpc: "2.0",
+			id: 1021,
+			method: "tools/call",
+			params: {
+				name: "flow-resource-search",
+				arguments: {
+					projectDir: projectDir,
+					query: "Flow Authoring Cycle",
+					doc: false,
+					hints: false
+				}
+			}
+		})
+	}
+})));
+assertTrue(guideResourceSearch.result.result.structuredContent.resources.some(function (resource) {
+	return resource.path === "libs/flow/resources/guide/authoring.md";
+}), "MCP Flow guides should be searchable as project resources");
+
 var run = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
