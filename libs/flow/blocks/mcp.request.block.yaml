@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.request"
+private: true
+icon: "mdi:code-json"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Parses an MCP JSON-RPC request payload."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+implementation:
+  runtime: "rhino"
+  file: "mcp.request.js"

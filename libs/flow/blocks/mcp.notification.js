@@ -3,21 +3,6 @@
 		name: "mcp.notification",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.notification",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:bell-outline",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Accepts MCP notifications without a JSON-RPC response."
-			};
-		},
-
 		displayName: function () {
 			return "notification";
 		},

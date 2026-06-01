@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.tool.identify"
+private: true
+icon: "mdi:tag-search-outline"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Extracts the MCP tool name, group and arguments."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving {name, group, arguments}."
+implementation:
+  runtime: "rhino"
+  file: "mcp.tool.identify.js"

@@ -3,22 +3,6 @@
 		name: "mcp.response.result",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.response.result",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:reply",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC request object." },
-					result: { kind: "expression", type: "object", description: "JSON-RPC result payload expression." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the JSON-RPC response." }
-				},
-				description: "Wraps a payload in a JSON-RPC result response."
-			};
-		},
-
 		displayName: function (node) {
 			var props = node.props || node;
 			return "result -> " + (props.out || "flow.response");

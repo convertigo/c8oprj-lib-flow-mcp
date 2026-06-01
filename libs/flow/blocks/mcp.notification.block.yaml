@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.notification"
+private: true
+icon: "mdi:bell-outline"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Accepts MCP notifications without a JSON-RPC response."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+implementation:
+  runtime: "rhino"
+  file: "mcp.notification.js"

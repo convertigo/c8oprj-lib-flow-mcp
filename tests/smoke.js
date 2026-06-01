@@ -664,6 +664,7 @@ var blockCreate = JSON.parse(engine.run(JSON.stringify({
 })));
 print(JSON.stringify(blockCreate));
 assertTrue(blockCreate.result.result.structuredContent.name === "smoke.echo" &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke.echo.block.yaml").isFile() &&
 	new java.io.File(targetDir, "libs/flow/blocks/smoke.echo.js").isFile(),
 	"MCP Flow flow-block-create did not write a project-local block");
 
@@ -688,6 +689,7 @@ var blockDuplicate = JSON.parse(engine.run(JSON.stringify({
 })));
 print(JSON.stringify(blockDuplicate));
 assertTrue(blockDuplicate.result.result.structuredContent.name === "smoke.set" &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke.set.block.yaml").isFile() &&
 	new java.io.File(targetDir, "libs/flow/blocks/smoke.set.js").isFile(),
 	"MCP Flow flow-block-duplicate did not copy a visible block");
 

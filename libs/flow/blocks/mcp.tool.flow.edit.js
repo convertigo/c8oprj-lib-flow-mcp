@@ -3,21 +3,6 @@
 		name: "mcp.tool.flow.edit",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.edit",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:sitemap-outline",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-edit MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-edit";
 		},

@@ -33,21 +33,6 @@
 		name: "mcp.tool.flow.node.add",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.node.add",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:playlist-plus",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-node-add MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-node-add";
 		},

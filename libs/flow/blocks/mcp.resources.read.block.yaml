@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.resources.read"
+private: true
+icon: "mdi:book-open-variant"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Builds the MCP resources/read response."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+implementation:
+  runtime: "rhino"
+  file: "mcp.resources.read.js"

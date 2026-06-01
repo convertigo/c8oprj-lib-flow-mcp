@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.tool.flow.node.delete"
+private: true
+icon: "mdi:playlist-remove"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Runs the flow-node-delete MCP tool."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+implementation:
+  runtime: "rhino"
+  file: "mcp.tool.flow.node.delete.js"

@@ -3,21 +3,6 @@
 		name: "mcp.tool.flow.set",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.set",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:content-save-outline",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-set MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-set";
 		},

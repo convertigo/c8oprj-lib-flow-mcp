@@ -3,21 +3,6 @@
 		name: "mcp.tool.flow.search",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.search",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:magnify-scan",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-search MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-search";
 		},

@@ -10,24 +10,6 @@
 		name: "mcp.response.error",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.response.error",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:alert-circle-outline",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC request object." },
-					code: { kind: "expression", type: "number", description: "JSON-RPC error code." },
-					message: { kind: "expression", type: "string", description: "JSON-RPC error message." },
-					data: { kind: "expression", type: "object", description: "Optional JSON-RPC error data." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the JSON-RPC response." }
-				},
-				description: "Wraps an error in a JSON-RPC error response."
-			};
-		},
-
 		displayName: function (node) {
 			var props = node.props || node;
 			return "error " + (props.code || "-32000") + " -> " + (props.out || "flow.response");

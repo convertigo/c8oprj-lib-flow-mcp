@@ -1,0 +1,19 @@
+version: 1
+name: "mcp.tool.flow.search"
+private: true
+icon: "mdi:magnify-scan"
+package: "lib_flow_mcp"
+namespace: "mcp"
+description: "Runs the flow-search MCP tool."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+implementation:
+  runtime: "rhino"
+  file: "mcp.tool.flow.search.js"

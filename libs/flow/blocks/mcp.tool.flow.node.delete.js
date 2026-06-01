@@ -3,21 +3,6 @@
 		name: "mcp.tool.flow.node.delete",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.node.delete",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:playlist-remove",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-node-delete MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-node-delete";
 		},

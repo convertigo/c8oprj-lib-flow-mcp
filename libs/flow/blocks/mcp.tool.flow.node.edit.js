@@ -3,21 +3,6 @@
 		name: "mcp.tool.flow.node.edit",
 		private: true,
 
-		catalog: function () {
-			return {
-				name: "mcp.tool.flow.node.edit",
-				"package": "lib_flow_mcp",
-				namespace: "mcp",
-				private: true,
-				icon: "mdi:playlist-edit",
-				props: {
-					request: { kind: "expression", type: "object", description: "MCP JSON-RPC tools/call request object." },
-					out: { kind: "path", mode: "write", description: "Scope path receiving the MCP response." }
-				},
-				description: "Runs the flow-node-edit MCP tool."
-			};
-		},
-
 		displayName: function () {
 			return "tool flow-node-edit";
 		},
