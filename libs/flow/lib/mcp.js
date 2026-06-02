@@ -3,7 +3,6 @@
 	var File = Packages.java.io.File;
 	var FileWriter = Packages.java.io.FileWriter;
 	var BufferedWriter = Packages.java.io.BufferedWriter;
-	var JavaSystem = Packages.java.lang.System;
 
 	function jsonRpcResult(id, result) {
 		return {
@@ -74,7 +73,27 @@
 
 	function knownProjectDir(ctx) {
 		var path = scopedPath(ctx, "request", "projectDir") || globalPath("__flowProjectDir");
-		return path ? canonicalPath(new File(path)) : "";
+		if (path) {
+			return canonicalPath(new File(path));
+		}
+		try {
+			var project = ctx.convertigoContext().project;
+			if (project != null) {
+				return canonicalPath(new File(String(project.getDirPath())));
+			}
+		} catch (e) {
+		}
+		return "";
+	}
+
+	function symbolValue(name) {
+		try {
+			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+			var value = Engine.theApp.databaseObjectsManager.symbolsGetValue(String(name));
+			return value === undefined || value === null ? "" : String(value);
+		} catch (e) {
+			return "";
+		}
 	}
 
 	function knownEngineDir() {
@@ -122,6 +141,7 @@
 		file: true,
 		descriptorFile: true,
 		implementationFile: true,
+		hooksFile: true,
 		iconFile: true,
 		iconFile16: true,
 		iconFile32: true,
@@ -129,7 +149,8 @@
 		sourcePath: true,
 		projectDir: true,
 		__flowFile: true,
-		__flowImplementationFile: true
+		__flowImplementationFile: true,
+		__flowHooksFile: true
 	};
 
 	var EMPTY_METADATA_KEYS = {
@@ -146,6 +167,7 @@
 		iconSvg: true,
 		iconUrl: true,
 		implementationFile: true,
+		hooksFile: true,
 		descriptorFile: true,
 		file: true
 	};
@@ -564,492 +586,10 @@
 		return targets;
 	}
 
-	function tools() {
-		return [
-			{
-				name: "flow-catalog",
-				description: "List Flow blocks exposed by the current Flow engine. Summary by default; pass detail='compact' for prop docs, detail='full' only for icons/type usages.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						detail: {
-							type: "string",
-							enum: ["compact", "summary", "full"],
-							description: "Default summary. compact includes property docs; full includes icon paths and type usages."
-						},
-						includePrivate: { type: "boolean", description: "Default false. Show private implementation blocks when inspecting this MCP library." }
-					})
-				}
-			},
-			{
-				name: "flow-analyze",
-				description: "Analyze a Flow YAML source or definition object and return reads, writes and nodes.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." }
-					})
-				}
-			},
-			{
-				name: "flow-search",
-				description: "Search Flow sidecars, nodes, catalog entries and learned schemas. Multi-word queries match unordered tokens. Returns flowQName, nodeId, path and snippets; use context=1 like rg -C 1.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						scope: { type: "string", description: "project or workspace. Workspace scans loaded Studio projects only." },
-						query: { type: "string" },
-						q: { type: "string" },
-						name: { type: "string", description: "Optional Flow sidecar name to search." },
-						kinds: {
-							type: "array",
-							items: { type: "string" },
-							description: "Optional kinds: flow, node, block, type, schema."
-						},
-						context: { type: "number", description: "Nearby node summaries, like rg -C. Default 0." },
-						includeDefinition: { type: "boolean" },
-						limit: { type: "number" },
-						cursor: { type: "string" },
-						doc: { type: "boolean" },
-						hints: { type: "boolean" }
-					})
-				}
-			},
-			{
-				name: "flow-resource-search",
-				description: "Search project-local Flow source resources, like rg over whitelisted blocks/libs/types/editors. Use before get/patch when maintaining JS/YAML/HTML/CSS.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						query: { type: "string" },
-						q: { type: "string" },
-						limit: { type: "number" },
-						cursor: { type: "string" },
-						maxFileBytes: { type: "number" },
-						doc: { type: "boolean" },
-						hints: { type: "boolean" }
-					})
-				}
-			},
-			{
-				name: "flow-resource-get",
-				description: "Read one project-local Flow source resource and return content plus hash. Pass hash as baseHash to flow-resource-patch.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						path: {
-							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.yaml, libs/flow/blocks/demo.flow.yaml, libs/flow/types/demo.type.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
-						},
-						maxBytes: { type: "number" },
-						allowLarge: { type: "boolean" }
-					}),
-					required: ["path"]
-				}
-			},
-			{
-				name: "flow-resource-patch",
-				description: "Apply a unified diff to one project-local Flow source resource. Requires path; baseHash is strongly recommended; validates block/library JS plus Flow block/type descriptors and Flow/fragment YAML by default; hunk line numbers may be approximate when context is unique.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						path: {
-							type: "string",
-							description: "Project-relative whitelisted path such as libs/flow/blocks/demo.block.yaml, libs/flow/blocks/demo.flow.yaml, libs/flow/types/demo.type.yaml, libs/flow/fragments/Demo.fragment.yaml or libs/flow/lib/helpers.js."
-						},
-						baseHash: { type: "string", description: "Hash returned by flow-resource-get." },
-						patch: { type: "string", description: "Unified diff with @@ hunks." },
-						unifiedDiff: { type: "string", description: "Alias for patch." },
-						dryRun: { type: "boolean" },
-						validate: { type: "boolean", description: "Default true." },
-						includeContent: { type: "boolean" }
-					}),
-					required: ["path"]
-				}
-			},
-			{
-				name: "flow-context",
-				description: "Return visible scope paths at a Flow node for Studio pickers or LLM guidance.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						flowName: { type: "string" },
-						node: { type: "string" },
-						path: { type: "string" },
-						property: { type: "string" },
-						mode: { type: "string" },
-						include: {
-							type: "array",
-							items: { type: "string" }
-						},
-						detail: {
-							type: "string",
-							enum: ["compact", "summary", "normal"],
-							description: "Default normal. summary is an alias for compact."
-						}
-					}),
-				}
-			},
-			{
-				name: "flow-tree",
-				description: "Describe the virtual Flow or FlowEngine tree an authoring UI or agent should see. Accepts flowSource, name, or flow-get.definition.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						target: { type: "string", description: "flow or engine. Defaults to flow." },
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						engineSource: { type: "string" },
-						engineQName: { type: "string" }
-					})
-				}
-			},
-			{
-				name: "flow-apply",
-				description: "Apply one or more mutations to Flow or FlowEngine YAML/definition and return the updated source without writing it.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						target: { type: "string", description: "flow or engine. Defaults to flow." },
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						engineSource: { type: "string" },
-						mutation: { type: "object" },
-						mutations: { type: "array", items: { type: "object" } }
-					})
-				}
-			},
-			{
-				name: "flow-edit",
-				description: "Apply mutations to a named Flow sidecar. With project, registers/saves the Flow DBO and refreshes Studio unless dryRun=true or register=false.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						mutation: { type: "object" },
-						mutations: { type: "array", items: { type: "object" } },
-						dryRun: { type: "boolean" },
-						register: { type: "boolean", description: "Default true when project is provided. Create/update the Flow DBO so it is requestable." },
-						autoSave: { type: "boolean", description: "Default true. Export the project after DBO registration." },
-						refresh: { type: "boolean", description: "Default true. Refresh Studio tree when Studio is available." }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-node-add",
-				description: "Add one Flow node to a named Flow sidecar using beforeNodeId, afterNodeId or parentNodeId+slot.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						id: { type: "string" },
-						block: { type: "string" },
-						node: { type: "object" },
-						properties: { type: "object" },
-						beforeNodeId: { type: "string" },
-						afterNodeId: { type: "string" },
-						parentNodeId: { type: "string" },
-						slot: { type: "string" },
-						index: { type: "string" },
-						dryRun: { type: "boolean" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-node-edit",
-				description: "Edit one Flow node property or merge node properties by nodeId.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						nodeId: { type: "string" },
-						property: { type: "string" },
-						value: {},
-						properties: { type: "object" },
-						dryRun: { type: "boolean" }
-					}),
-					required: ["name", "nodeId"]
-				}
-			},
-			{
-				name: "flow-node-move",
-				description: "Move one Flow node by nodeId near another node or into a parent slot.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						nodeId: { type: "string" },
-						beforeNodeId: { type: "string" },
-						afterNodeId: { type: "string" },
-						parentNodeId: { type: "string" },
-						slot: { type: "string" },
-						index: { type: "string" },
-						dryRun: { type: "boolean" }
-					}),
-					required: ["name", "nodeId"]
-				}
-			},
-			{
-				name: "flow-node-delete",
-				description: "Delete one Flow node by nodeId.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						nodeId: { type: "string" },
-						dryRun: { type: "boolean" }
-					}),
-					required: ["name", "nodeId"]
-				}
-			},
-			{
-				name: "flow-node-duplicate",
-				description: "Duplicate one Flow node by nodeId, optionally patching id/properties while copying.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						nodeId: { type: "string" },
-						newId: { type: "string" },
-						properties: { type: "object" },
-						beforeNodeId: { type: "string" },
-						afterNodeId: { type: "string" },
-						parentNodeId: { type: "string" },
-						slot: { type: "string" },
-						index: { type: "string" },
-						dryRun: { type: "boolean" }
-					}),
-					required: ["name", "nodeId"]
-				}
-			},
-			{
-				name: "flow-output-schema",
-				description: "Return the best known JSON output schema for a Flow source, definition, or named Flow sidecar.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowName: { type: "string" },
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." }
-					})
-				}
-			},
-			{
-				name: "flow-schema-reset",
-				description: "Delete learned schema files for a Flow or one Flow node so the next successful run learns them again.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						flowName: { type: "string" },
-						name: { type: "string" },
-						node: { type: "string" },
-						property: { type: "string" },
-						out: { type: "string" }
-					})
-				}
-			},
-			{
-				name: "flow-run",
-				description: "Run a Flow YAML source or definition object with optional input and config objects.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						input: { type: "object" },
-						config: { type: "object" },
-						includeFlow: { type: "boolean" },
-						includeTrace: { type: "boolean" }
-					})
-				}
-			},
-			{
-				name: "flow-list",
-				description: "List project Flow sidecars.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({})
-				}
-			},
-			{
-				name: "flow-get",
-				description: "Read one project Flow sidecar. Returns source and definition; the definition can be edited and passed back to flow-set.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-set",
-				description: "Create or replace one project Flow sidecar from flowSource or flow-get.definition. With project, also registers/saves a Flow DBO unless register=false.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						register: { type: "boolean", description: "Default true when project is provided. Create/update the Flow DBO so it is requestable." },
-						autoSave: { type: "boolean", description: "Default true. Export the project after DBO registration." },
-						refresh: { type: "boolean", description: "Default true. Refresh Studio tree when Studio is available." },
-						includeTrace: { type: "boolean", description: "Default false for newly registered Flow DBOs." }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-test",
-				description: "Run a named project Flow sidecar, provided Flow source, or definition object.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						input: { type: "object" },
-						config: { type: "object" },
-						includeFlow: { type: "boolean" },
-						includeTrace: { type: "boolean" }
-					})
-				}
-			},
-			{
-				name: "flow-block-list",
-				description: "List Flow blocks with their origin.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						includePrivate: { type: "boolean", description: "Default false. Show private implementation blocks." }
-					})
-				}
-			},
-			{
-				name: "flow-block-get",
-				description: "Read one Flow block descriptor and implementation source.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-block-create",
-				description: "Create or replace a project-local Flow block. Use descriptorSource or descriptor for metadata, and implementationSource for Flow YAML or Rhino ES6 code.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						descriptorSource: { type: "string" },
-						descriptor: { type: "object" },
-						definition: { type: "object" },
-						implementationSource: { type: "string" },
-						overwrite: { type: "boolean" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-block-duplicate",
-				description: "Duplicate an existing Flow block into a project-local block with a new name.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						fromName: { type: "string" },
-						toName: { type: "string" },
-						overwrite: { type: "boolean" }
-					}),
-					required: ["fromName", "toName"]
-				}
-			},
-			{
-				name: "flow-block-edit",
-				description: "Edit a project-local Flow block descriptor and/or implementation source.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						descriptorSource: { type: "string" },
-						descriptor: { type: "object" },
-						definition: { type: "object" },
-						implementationSource: { type: "string" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-type-list",
-				description: "List Flow property types with descriptors and usage counts.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({})
-				}
-			},
-			{
-				name: "flow-type-get",
-				description: "Read one Flow property type descriptor source and descriptor.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-type-create",
-				description: "Create or replace a project-local Flow property type descriptor.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						name: { type: "string" },
-						descriptorSource: { type: "string", description: "YAML descriptor source for libs/flow/types/<name>.type.yaml." },
-						descriptor: { type: "object", description: "Descriptor object; converted to YAML by the Flow engine." },
-						overwrite: { type: "boolean" }
-					}),
-					required: ["name"]
-				}
-			},
-			{
-				name: "flow-block-test",
-				description: "Run a Flow YAML source or definition object, typically to validate a custom block.",
-				inputSchema: {
-					type: "object",
-					properties: addProjectProperties({
-						flowSource: { type: "string" },
-						definition: { type: "object", description: "Same model returned by flow-get.definition." },
-						input: { type: "object" },
-						config: { type: "object" },
-						includeFlow: { type: "boolean" },
-						includeTrace: { type: "boolean" }
-					})
-				}
-			}
-		];
-	}
-
 	function traceSetting(ctx) {
-		var setting = scopedPath(ctx, "config", "mcp") && ctx.scopes.config.mcp.traceJsonl;
+		var setting = symbolValue("flow.mcp.traceJsonl");
 		if (setting === undefined || setting === null || setting === "") {
-			setting = scopedPath(ctx, "input", "traceJsonl");
-		}
-		if (setting === undefined || setting === null || setting === "") {
-			setting = JavaSystem.getProperty("c8o.flow.mcp.traceJsonl", "");
-		}
-		if (setting === undefined || setting === null || setting === "") {
-			setting = JavaSystem.getenv("C8O_FLOW_MCP_TRACE_JSONL");
+			setting = scopedPath(ctx, "config", "mcp") && ctx.scopes.config.mcp.traceJsonl;
 		}
 		return setting === undefined || setting === null ? "" : String(setting);
 	}
@@ -1329,65 +869,12 @@
 		return out;
 	}
 
-	var TOOL_GROUPS = {
-		inspect: [
-			"flow-catalog",
-			"flow-analyze",
-			"flow-search",
-			"flow-context",
-			"flow-tree",
-			"flow-output-schema"
-		],
-		source: [
-			"flow-resource-search",
-			"flow-resource-get",
-			"flow-resource-patch",
-			"flow-block-list",
-			"flow-block-get",
-			"flow-block-create",
-			"flow-block-duplicate",
-			"flow-block-edit",
-			"flow-type-list",
-			"flow-type-get",
-			"flow-type-create"
-		],
-		author: [
-			"flow-list",
-			"flow-get",
-			"flow-set",
-			"flow-apply",
-			"flow-edit",
-			"flow-node-add",
-			"flow-node-edit",
-			"flow-node-move",
-			"flow-node-delete",
-			"flow-node-duplicate",
-			"flow-schema-reset"
-		],
-		runtime: [
-			"flow-run",
-			"flow-test",
-			"flow-block-test"
-		]
-	};
-
 	function toolName(request) {
 		return String(request && request.params && request.params.name || "");
 	}
 
 	function toolArguments(request) {
 		return request && request.params && request.params.arguments || {};
-	}
-
-	function toolGroup(name) {
-		name = String(name || "");
-		var groups = Object.keys(TOOL_GROUPS);
-		for (var i = 0; i < groups.length; i++) {
-			if (TOOL_GROUPS[groups[i]].indexOf(name) !== -1) {
-				return groups[i];
-			}
-		}
-		return "unknown";
 	}
 
 	function compactTypeForList(type) {
@@ -1419,15 +906,6 @@
 		return out;
 	}
 
-	function toolInfo(request) {
-		var name = toolName(request);
-		return {
-			name: name,
-			group: toolGroup(name),
-			arguments: toolArguments(request)
-		};
-	}
-
 	function parseRequest(value, ctx) {
 		value = value || {};
 		if (typeof value === "string") {
@@ -1435,11 +913,6 @@
 		}
 		traceJsonl(ctx, "request", Object.prototype.toString.call(value) === "[object Array]" ? {} : value, value);
 		return value;
-	}
-
-	function toolsList(ctx, request) {
-		request = request || {};
-		return finalizeResponse(ctx, request, jsonRpcResult(request.id, { tools: tools() }));
 	}
 
 	function notification(ctx, request) {
@@ -1451,9 +924,6 @@
 		jsonRpcError: jsonRpcError,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
-		tools: tools,
-		toolInfo: toolInfo,
-		toolGroup: toolGroup,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
 		withNamedFlowSource: withNamedFlowSource,
@@ -1468,7 +938,6 @@
 		sanitizeForMcp: sanitizeForMcp,
 		traceJsonl: traceJsonl,
 		runToolBlock: runToolBlock,
-		toolsList: toolsList,
 		notification: notification
 	};
 }())

@@ -8,10 +8,12 @@ Default route for an unknown Flow project:
 4. Edit with `flow-edit`, then validate with `flow-test` or `flow-output-schema`.
 5. For custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
+Custom Rhino blocks are descriptor-first: static metadata is in `*.block.yaml`, runtime code is limited to `run(ctx,node)` in `*.js`, and dynamic labels/analysis live in `hooks.file`.
+
 `flow-get` returns both YAML `source` and a JSON `definition`. `flow-set`, `flow-run`, `flow-test`, `flow-tree` and `flow-apply` accept that same `definition` shape, so an agent may get, modify and set without rewriting YAML by hand.
 
 When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.
 
 Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls.
 
-For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is available with `config.mcp.traceJsonl`, JVM property `c8o.flow.mcp.traceJsonl`, or environment variable `C8O_FLOW_MCP_TRACE_JSONL`.
+For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is enabled with the Convertigo symbol `flow.mcp.traceJsonl` (`true` for the default project `_private/flow-mcp-trace.jsonl`, or a file path).

@@ -16,6 +16,8 @@ props:
     mode: write
     default: flow.response
     description: Scope path receiving the MCP batch response array.
+hooks:
+  file: mcp.batch.hooks.js
 implementation:
   runtime: flow
   file: mcp.batch.flow.yaml

@@ -1,18 +1,5 @@
 (function () {
 	return {
-		name: "mcp.response.result",
-		private: true,
-
-		displayName: function (node) {
-			var props = node.props || node;
-			return "result -> " + (props.out || "flow.response");
-		},
-
-		analyze: function (ctx, node) {
-			var props = ctx.props(node);
-			ctx.addPath(props.out);
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");

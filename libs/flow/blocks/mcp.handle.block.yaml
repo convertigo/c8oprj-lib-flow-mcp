@@ -16,6 +16,8 @@ props:
     mode: write
     default: flow.response
     description: Scope path receiving one MCP response.
+hooks:
+  file: mcp.handle.hooks.js
 implementation:
   runtime: flow
   file: mcp.handle.flow.yaml

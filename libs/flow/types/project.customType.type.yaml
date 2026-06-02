@@ -1,0 +1,12 @@
+version: 1
+name: "project.customType"
+label: "project.customType"
+icon: "mdi:form-textbox"
+type: "string"
+description: "Project-local Flow property type."
+editor:
+  label: "Text editor"
+  kind: "webcomponent"
+  component: "flow-text-editor"
+  file: "editors/project.customType.html"
+  icon: "mdi:application-brackets-outline"

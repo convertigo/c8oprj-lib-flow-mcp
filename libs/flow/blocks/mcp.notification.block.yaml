@@ -14,6 +14,8 @@ props:
     kind: "path"
     mode: "write"
     description: "Scope path receiving the MCP response."
+hooks:
+  file: "mcp.notification.hooks.js"
 implementation:
   runtime: "rhino"
   file: "mcp.notification.js"

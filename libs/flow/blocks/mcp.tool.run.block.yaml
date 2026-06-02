@@ -30,6 +30,8 @@ props:
     kind: "path"
     mode: "write"
     description: "Scope path receiving the MCP response."
+hooks:
+  file: "mcp.tool.run.hooks.js"
 implementation:
   runtime: "rhino"
   file: "mcp.tool.run.js"

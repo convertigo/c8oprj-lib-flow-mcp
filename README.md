@@ -98,7 +98,9 @@ Project-local blocks use a `*.block.yaml` descriptor. Their implementation is
 declared by `implementation.runtime`: usually `flow` for a graph made of blocks,
 or `rhino` with a peer `*.js` file for JVM/Java integration code. Rhino code may
 use Java classes through `Packages`, but not Node.js APIs such as `require`, npm
-modules or browser globals.
+modules or browser globals. Keep the runtime file to `run(ctx, node)` plus local
+helpers. Put static metadata in `*.block.yaml`, and optional dynamic
+`displayName(node)` / `analyze(ctx, node)` hooks in a separate `hooks.file`.
 
 Most tools accept either:
 
@@ -246,17 +248,17 @@ references. Studio-only icon/resource paths may still exist in internal Flow
 tree data, but they should not leak through the MCP JSON-RPC result payload.
 
 Optional JSONL tracing can write one line per MCP request and response. Enable
-it with one of:
+it with the Convertigo symbol:
 
 ```text
-config.mcp.traceJsonl = true | "/path/to/flow-mcp.jsonl"
--Dc8o.flow.mcp.traceJsonl=true | -Dc8o.flow.mcp.traceJsonl=/path/to/flow-mcp.jsonl
-C8O_FLOW_MCP_TRACE_JSONL=true | C8O_FLOW_MCP_TRACE_JSONL=/path/to/flow-mcp.jsonl
+flow.mcp.traceJsonl=true
+flow.mcp.traceJsonl=/path/to/flow-mcp.jsonl
 ```
 
 When set to `true`, the default file is
 `<lib_flow_mcp project>/_private/flow-mcp-trace.jsonl`. Tracing is best-effort
-and never fails the MCP request path.
+and never fails the MCP request path. Standalone tests may also pass
+`config.mcp.traceJsonl`, but production configuration should use symbols.
 
 MCP resources provide the same guidance to agents that cannot read this repo:
 

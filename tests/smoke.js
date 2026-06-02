@@ -25,23 +25,34 @@ var handleBlockImplementationSource = String(Packages.org.apache.commons.io.File
 var toolsCallBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.block.yaml"), "UTF-8"));
 var toolsCallBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.flow.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.js"), "UTF-8"));
+var toolsAvailableBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.available.block.yaml"), "UTF-8"));
+var toolsAvailableBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.available.js"), "UTF-8"));
+var toolIdentifyBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tool.identify.block.yaml"), "UTF-8"));
+var toolIdentifyBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp.tool.identify.js"), "UTF-8"));
 assertTrue(mcpFlowSource.indexOf("block: fragment.use") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.flow") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.batch") !== -1 &&
 	mcpFlowSource.indexOf("block: mcp.handle") !== -1,
 	"McpServer flow should route through graph composite MCP blocks");
 assertTrue(batchBlockSource.indexOf("file: mcp.batch.flow.yaml") !== -1 &&
-	batchBlockImplementationSource.indexOf("block: forEach") !== -1 &&
+	/\bblock:\s*"?forEach"?/.test(batchBlockImplementationSource) &&
 	handleBlockSource.indexOf("file: mcp.handle.flow.yaml") !== -1 &&
 	handleBlockImplementationSource.indexOf("mcp.tools.call") !== -1 &&
 	handleBlockImplementationSource.indexOf("mcp.resources.read") !== -1 &&
-	toolsCallBlockSource.indexOf("file: mcp.tools.call.flow.yaml") !== -1 &&
-	toolsCallBlockImplementationSource.indexOf("mcp.tool.identify") !== -1 &&
-	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.inspect") !== -1 &&
-	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.source") !== -1 &&
-	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.any") === -1,
-	"MCP graph blocks should expose their internal implementation nodes");
+	toolsCallBlockSource.indexOf("file: mcp.tools.call.js") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("TOOL_PREFIX") !== -1 &&
+	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.inspect") === -1 &&
+	toolsAvailableBlockSource.indexOf("file: mcp.tools.available.js") !== -1 &&
+	toolsAvailableBlockImplementationSource.indexOf("TOOL_PREFIX") !== -1 &&
+	toolsAvailableBlockImplementationSource.indexOf("name: \"flow-catalog\"") === -1 &&
+	toolIdentifyBlockSource.indexOf("file: \"mcp.tool.identify.js\"") !== -1 &&
+	toolIdentifyBlockImplementationSource.indexOf("flow-resource-search") === -1,
+	"MCP graph blocks should use catalog introspection instead of generated hard-coded tool lists");
 
 var list = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -137,8 +148,8 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 assertTrue(privateCatalog.result.result.structuredContent.blocks.some(function (block) {
-	return block.name === "mcp.tools.call" && block.implementation === "flow";
-}), "MCP private graph blocks should be visible when includePrivate=true");
+	return block.name === "mcp.tools.call" && block.implementation === "rhino";
+}), "MCP private dynamic blocks should be visible when includePrivate=true");
 var traceFile = java.io.File.createTempFile("flow-mcp-trace", ".jsonl");
 traceFile["delete"]();
 var typeGet = JSON.parse(engine.run(JSON.stringify({
@@ -717,7 +728,6 @@ var customBlockDescriptorSource = [
 var customBlockImplementationSource = [
 	"(function () {",
 	"\treturn {",
-	"\t\tname: \"smoke.echo\",",
 	"\t\trun: function () {",
 	"\t\t\treturn \"ok\";",
 	"\t\t}",

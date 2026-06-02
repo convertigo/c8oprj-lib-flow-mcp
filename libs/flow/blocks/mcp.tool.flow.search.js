@@ -1,16 +1,5 @@
 (function () {
 	return {
-		name: "mcp.tool.flow.search",
-		private: true,
-
-		displayName: function () {
-			return "tool flow-search";
-		},
-
-		analyze: function (ctx, node) {
-			ctx.addPath(ctx.props(node).out);
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var request = ctx.expr(props.request || "input.request");

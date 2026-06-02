@@ -42,18 +42,6 @@
 	}
 
 	return {
-		name: "mcp.resources.read",
-		private: true,
-
-		displayName: function () {
-			return "resources.read";
-		},
-
-		analyze: function (ctx, node) {
-			var props = ctx.props(node);
-			ctx.addPath(props.out);
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");

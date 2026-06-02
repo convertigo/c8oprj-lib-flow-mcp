@@ -26,6 +26,8 @@ props:
     kind: "path"
     mode: "write"
     description: "Scope path receiving the JSON-RPC response."
+hooks:
+  file: "mcp.response.error.hooks.js"
 implementation:
   runtime: "rhino"
   file: "mcp.response.error.js"

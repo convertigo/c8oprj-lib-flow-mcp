@@ -11,6 +11,8 @@ props:
     mode: write
     default: local.tools
     description: Scope path receiving the tool descriptors.
+hooks:
+  file: "mcp.tools.available.hooks.js"
 implementation:
   runtime: rhino
   file: mcp.tools.available.js

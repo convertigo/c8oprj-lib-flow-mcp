@@ -41,20 +41,6 @@
 	}
 
 	return {
-		name: "mcp.tool.run",
-		private: true,
-
-		displayName: function (node) {
-			return "run " + (prop(node, "target") || "tool");
-		},
-
-		analyze: function (ctx, node) {
-			var out = ctx.props(node).out;
-			if (out) {
-				ctx.addPath(out);
-			}
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");

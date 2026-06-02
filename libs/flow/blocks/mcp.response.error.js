@@ -7,19 +7,6 @@
 	}
 
 	return {
-		name: "mcp.response.error",
-		private: true,
-
-		displayName: function (node) {
-			var props = node.props || node;
-			return "error " + (props.code || "-32000") + " -> " + (props.out || "flow.response");
-		},
-
-		analyze: function (ctx, node) {
-			var props = ctx.props(node);
-			ctx.addPath(props.out);
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");

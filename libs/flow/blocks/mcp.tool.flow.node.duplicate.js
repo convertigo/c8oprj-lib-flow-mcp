@@ -9,17 +9,6 @@
 	}
 
 	return {
-		name: "mcp.tool.flow.node.duplicate",
-		private: true,
-
-		displayName: function () {
-			return "tool flow-node-duplicate";
-		},
-
-		analyze: function (ctx, node) {
-			ctx.addPath(ctx.props(node).out);
-		},
-
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var request = ctx.expr(props.request || "input.request");

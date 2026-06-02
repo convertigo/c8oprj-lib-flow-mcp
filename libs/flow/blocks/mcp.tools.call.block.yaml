@@ -16,6 +16,8 @@ props:
     mode: write
     default: flow.response
     description: Scope path receiving the MCP response.
+hooks:
+  file: "mcp.tools.call.hooks.js"
 implementation:
-  runtime: flow
-  file: mcp.tools.call.flow.yaml
+  runtime: rhino
+  file: mcp.tools.call.js
