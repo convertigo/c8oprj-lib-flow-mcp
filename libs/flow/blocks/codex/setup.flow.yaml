@@ -6,10 +6,10 @@ nodes:
   - id: mcpUrl
     block: set
     path: flow.mcpUrl
-    value: "{{ startsWith(props.mcpUrl, '{{') ? flow.endpoint.flowMcpUrl : default(props.mcpUrl, flow.endpoint.flowMcpUrl) }}"
+    value: "{{ startsWith(input.mcpUrl, '{{') ? flow.endpoint.flowMcpUrl : default(input.mcpUrl, flow.endpoint.flowMcpUrl) }}"
   - id: codexHome
     block: path.resolveHome
-    path: "{{ startsWith(props.codexHome, '{{') ? '~/.codex' : default(props.codexHome, '~/.codex') }}"
+    path: "{{ startsWith(input.codexHome, '{{') ? '~/.codex' : default(input.codexHome, '~/.codex') }}"
     out: flow.codexHome
   - id: skillPath
     block: path.resolveHome
@@ -33,7 +33,7 @@ nodes:
     block: file.writeIfChanged
     path: "{{ flow.skillPath }}"
     content: "{{ flow.skillMarkdown }}"
-    dryRun: props.dryRun == true || props.dryRun == 'true'
+    dryRun: input.dryRun == true || input.dryRun == 'true'
     out: flow.skillWrite
   - id: patchConfig
     block: toml.ensureSection
@@ -43,7 +43,7 @@ nodes:
       url: "{{ flow.mcpUrl }}"
       startup_timeout_sec: 60
       enabled: true
-    dryRun: props.dryRun == true || props.dryRun == 'true'
+    dryRun: input.dryRun == true || input.dryRun == 'true'
     out: flow.configPatch
   - id: summary
     block: json.object
@@ -92,7 +92,7 @@ nodes:
       - id: dryRun
         block: json.field
         key: dryRun
-        value: "{{ props.dryRun == true || props.dryRun == 'true' }}"
+        value: "{{ input.dryRun == true || input.dryRun == 'true' }}"
       - id: warnings
         block: json.field
         key: warnings

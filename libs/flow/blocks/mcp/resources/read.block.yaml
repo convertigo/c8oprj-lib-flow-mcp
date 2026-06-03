@@ -14,5 +14,5 @@ props:
 hooks:
   file: read.hooks.js
 implementation:
-  runtime: "rhino"
-  file: read.js
+  runtime: "flow"
+  file: read.flow.yaml

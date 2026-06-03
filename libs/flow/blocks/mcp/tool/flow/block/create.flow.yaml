@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: runBlockCreate
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: block.create
     out: local.response
   - id: done

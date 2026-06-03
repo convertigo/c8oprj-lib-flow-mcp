@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: runTypeList
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: type.list
     out: local.response
   - id: done

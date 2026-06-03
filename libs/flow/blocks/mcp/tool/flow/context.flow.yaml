@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: describeFlowContext
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: flow.context
     out: local.response
   - id: done

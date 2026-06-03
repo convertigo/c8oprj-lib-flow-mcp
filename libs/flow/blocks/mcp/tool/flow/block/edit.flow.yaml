@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: runBlockEdit
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: block.edit
     out: local.response
   - id: done

@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: resetFlowSchema
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: flow.schema.reset
     out: local.response
   - id: done

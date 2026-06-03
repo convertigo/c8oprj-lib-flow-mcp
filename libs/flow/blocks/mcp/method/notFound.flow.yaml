@@ -2,9 +2,9 @@ version: 1
 nodes:
   - id: error
     block: mcp.response.error
-    request: props.request
+    request: input.request
     code: -32601
-    message: "\"Method not found: \" + (props.request.method || \"\")"
+    message: "\"Method not found: \" + (input.request.method || \"\")"
     out: local.response
   - id: done
     block: return

@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: wrapResult
     block: mcp.response.result
-    request: props.request
+    request: input.request
     result:
       protocolVersion: "2025-06-18"
       serverInfo:

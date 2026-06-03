@@ -1,0 +1,60 @@
+version: 1
+nodes:
+  - id: listResourceFiles
+    block: resource.list
+    rootDir: libs/flow/resources
+    pattern: "**/*.md"
+    out: flow.resourceList
+  - id: filterUri
+    block: list.filter
+    items: flow.resourceList.resources
+    where: current.uri == input.request.params.uri
+    out: flow.matches
+  - id: notFound
+    block: if
+    condition: length(flow.matches) == 0
+    then:
+      - id: error
+        block: mcp.response.error
+        request: input.request
+        code: -32000
+        message: "\"Unknown Flow MCP resource: \" + (input.request.params.uri || \"\")"
+        data:
+          code: FLOW_MCP_RESOURCE_ERROR
+        out: local.response
+      - id: returnError
+        block: return
+        value: "{{ local.response }}"
+  - id: readResource
+    block: resource.get
+    path: "{{ flow.matches.0.path }}"
+    out: flow.resource
+  - id: content
+    block: json.object
+    out: flow.content
+    fields:
+      - id: uri
+        block: json.field
+        key: uri
+        value: "{{ flow.resource.uri }}"
+      - id: mimeType
+        block: json.field
+        key: mimeType
+        value: "{{ flow.resource.mimeType }}"
+      - id: text
+        block: json.field
+        key: text
+        value: "{{ flow.resource.content }}"
+  - id: payload
+    block: json.object
+    out: flow.payload
+    fields:
+      - id: contents
+        block: json.field
+        key: contents
+        value:
+          - "{{ flow.content }}"
+  - id: wrapResult
+    block: mcp.response.result
+    request: input.request
+    result: flow.payload

@@ -2,84 +2,84 @@ version: 1
 nodes:
   - id: initialize
     block: if
-    condition: props.request.method == "initialize"
+    condition: input.request.method == "initialize"
     then:
       - id: handleInitialize
         block: mcp.initialize
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnInitialize
         block: return
         value: "{{ local.response }}"
   - id: toolsList
     block: if
-    condition: props.request.method == "tools/list"
+    condition: input.request.method == "tools/list"
     then:
       - id: handleToolsList
         block: mcp.tools.list
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnToolsList
         block: return
         value: "{{ local.response }}"
   - id: toolsCall
     block: if
-    condition: props.request.method == "tools/call"
+    condition: input.request.method == "tools/call"
     then:
       - id: handleToolsCall
         block: mcp.tools.call
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnToolsCall
         block: return
         value: "{{ local.response }}"
   - id: resourcesList
     block: if
-    condition: props.request.method == "resources/list"
+    condition: input.request.method == "resources/list"
     then:
       - id: handleResourcesList
         block: mcp.resources.list
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnResourcesList
         block: return
         value: "{{ local.response }}"
   - id: resourcesRead
     block: if
-    condition: props.request.method == "resources/read"
+    condition: input.request.method == "resources/read"
     then:
       - id: handleResourcesRead
         block: mcp.resources.read
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnResourcesRead
         block: return
         value: "{{ local.response }}"
   - id: initializedNotification
     block: if
-    condition: props.request.method == "notifications/initialized"
+    condition: input.request.method == "notifications/initialized"
     then:
       - id: handleInitializedNotification
         block: mcp.notification
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnInitializedNotification
         block: return
         value: "{{ local.response }}"
   - id: anyNotification
     block: if
-    condition: startsWith(props.request.method, "notifications/")
+    condition: startsWith(input.request.method, "notifications/")
     then:
       - id: handleNotification
         block: mcp.notification
-        request: props.request
+        request: input.request
         out: local.response
       - id: returnNotification
         block: return
         value: "{{ local.response }}"
   - id: methodNotFound
     block: mcp.method.notFound
-    request: props.request
+    request: input.request
     out: local.response
   - id: done
     block: return

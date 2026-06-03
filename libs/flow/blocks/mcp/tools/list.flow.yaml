@@ -9,7 +9,7 @@ nodes:
     value: "{{ local.tools }}"
   - id: response
     block: mcp.response.result
-    request: props.request
+    request: input.request
     result: local.payload
     out: local.response
   - id: done

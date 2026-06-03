@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: testFlowBlock
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: flow.run
     out: local.response
   - id: done

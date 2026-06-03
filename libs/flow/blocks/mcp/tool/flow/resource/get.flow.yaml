@@ -2,7 +2,7 @@ version: 1
 nodes:
   - id: runResourceGet
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: resource.get
     out: local.response
   - id: done

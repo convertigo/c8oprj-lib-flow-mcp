@@ -6,7 +6,7 @@ nodes:
   value: []
 - id: "eachRequest"
   block: "forEach"
-  items: "props.request"
+  items: "input.request"
   nodes:
   - id: "handleRequest"
     block: "mcp.handle"
