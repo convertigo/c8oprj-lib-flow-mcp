@@ -1,0 +1,109 @@
+version: 1
+nodes:
+  - id: endpoint
+    block: endpoint.current
+    out: flow.endpoint
+  - id: mcpUrl
+    block: set
+    path: flow.mcpUrl
+    value: "{{ startsWith(props.mcpUrl, '{{') ? flow.endpoint.flowMcpUrl : default(props.mcpUrl, flow.endpoint.flowMcpUrl) }}"
+  - id: codexHome
+    block: path.resolveHome
+    path: "{{ startsWith(props.codexHome, '{{') ? '~/.codex' : default(props.codexHome, '~/.codex') }}"
+    out: flow.codexHome
+  - id: skillPath
+    block: path.resolveHome
+    path: "{{ flow.codexHome }}"
+    suffix: skills/convertigo-flow-mcp/SKILL.md
+    out: flow.skillPath
+  - id: configPath
+    block: path.resolveHome
+    path: "{{ flow.codexHome }}"
+    suffix: config.toml
+    out: flow.configPath
+  - id: skillAsset
+    block: asset.read
+    path: libs/flow/resources/skills/convertigo-flow-mcp/SKILL.md
+    out: flow.skillTemplate
+  - id: skillMarkdown
+    block: template.render
+    template: "{{ flow.skillTemplate }}"
+    out: flow.skillMarkdown
+  - id: writeSkill
+    block: file.writeIfChanged
+    path: "{{ flow.skillPath }}"
+    content: "{{ flow.skillMarkdown }}"
+    dryRun: props.dryRun == true || props.dryRun == 'true'
+    out: flow.skillWrite
+  - id: patchConfig
+    block: toml.ensureSection
+    path: "{{ flow.configPath }}"
+    section: mcp_servers.convertigo-flow
+    values:
+      url: "{{ flow.mcpUrl }}"
+      startup_timeout_sec: 60
+      enabled: true
+    dryRun: props.dryRun == true || props.dryRun == 'true'
+    out: flow.configPatch
+  - id: summary
+    block: json.object
+    out: flow.setup
+    fields:
+      - id: ok
+        block: json.field
+        key: ok
+        value: true
+      - id: skillName
+        block: json.field
+        key: skillName
+        value: ConvertigoFlowMCP
+      - id: skillDirectoryName
+        block: json.field
+        key: skillDirectoryName
+        value: convertigo-flow-mcp
+      - id: skillStatus
+        block: json.field
+        key: skillStatus
+        value: "{{ flow.skillWrite.status }}"
+      - id: configStatus
+        block: json.field
+        key: configStatus
+        value: "{{ flow.configPatch.status }}"
+      - id: configServerName
+        block: json.field
+        key: configServerName
+        value: convertigo-flow
+      - id: resolvedCodexHome
+        block: json.field
+        key: resolvedCodexHome
+        value: "{{ flow.codexHome }}"
+      - id: resolvedMcpUrl
+        block: json.field
+        key: resolvedMcpUrl
+        value: "{{ flow.mcpUrl }}"
+      - id: skillPath
+        block: json.field
+        key: skillPath
+        value: "{{ flow.skillPath }}"
+      - id: configPath
+        block: json.field
+        key: configPath
+        value: "{{ flow.configPath }}"
+      - id: dryRun
+        block: json.field
+        key: dryRun
+        value: "{{ props.dryRun == true || props.dryRun == 'true' }}"
+      - id: warnings
+        block: json.field
+        key: warnings
+        value: "{{ flow.endpoint.warnings }}"
+      - id: nextSteps
+        block: json.field
+        key: nextSteps
+        value:
+          - Restart Codex to pick up skill or MCP configuration changes.
+          - Start a fresh Codex session and use the convertigo-flow-mcp skill for Flow work.
+          - Use the convertigo-flow MCP server for Flow-native project authoring.
+  - id: done
+    block: return
+    value: "{{ flow.setup }}"

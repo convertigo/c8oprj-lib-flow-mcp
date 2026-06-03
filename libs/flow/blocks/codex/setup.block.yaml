@@ -31,5 +31,5 @@ props:
 hooks:
   file: setup.hooks.js
 implementation:
-  runtime: rhino
-  file: setup.js
+  runtime: flow
+  file: setup.flow.yaml
