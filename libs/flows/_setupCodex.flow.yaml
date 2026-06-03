@@ -1,0 +1,11 @@
+version: 1
+nodes:
+  - id: setup
+    block: codex.setup
+    codexHome: "{{ input.codexHome }}"
+    mcpUrl: "{{ input.mcpUrl }}"
+    dryRun: input.dryRun
+    out: flow.setup
+  - id: done
+    block: return
+    value: "{{ flow.setup }}"

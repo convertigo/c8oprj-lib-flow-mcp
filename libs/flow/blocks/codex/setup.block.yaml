@@ -1,0 +1,35 @@
+version: 1
+private: true
+icon: mdi:robot-outline
+tags:
+  - codex
+  - setup
+description: Installs or updates local Codex onboarding for Convertigo Flow MCP.
+props:
+  codexHome:
+    label: codexHome
+    kind: template
+    type: string
+    description: Optional Codex home directory. Defaults to ~/.codex.
+  mcpUrl:
+    label: mcpUrl
+    kind: template
+    type: string
+    description: Optional Flow MCP endpoint URL. Defaults to the local /convertigo/api/flow-mcp endpoint.
+  dryRun:
+    label: dryRun
+    kind: expression
+    type: boolean
+    default: false
+    description: Preview the generated skill and config patch without writing files.
+  out:
+    label: out
+    kind: path
+    mode: write
+    default: flow.setup
+    description: Scope path receiving the setup result.
+hooks:
+  file: setup.hooks.js
+implementation:
+  runtime: rhino
+  file: setup.js

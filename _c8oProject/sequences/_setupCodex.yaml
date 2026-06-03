@@ -1,0 +1,16 @@
+accessibility: Private
+comment: |
+  Setup local Codex onboarding for the Flow MCP project.
+  Generates or updates the local convertigo-flow-mcp skill under ~/.codex/skills
+  and minimally patches ~/.codex/config.toml to register the Flow MCP endpoint.
+includeTrace: false
+↓codexHome [variables.RequestableVariable-1780500000001]: 
+  comment: Optional Codex home directory. Defaults to ~/.codex on the local Studio machine.
+  description: Optional Codex home directory. Defaults to ~/.codex on the local Studio machine.
+↓mcpUrl [variables.RequestableVariable-1780500000002]: 
+  comment: Optional Flow MCP URL override. Defaults to the locally resolved /convertigo/api/flow-mcp endpoint.
+  description: Optional Flow MCP URL override. Defaults to the locally resolved /convertigo/api/flow-mcp endpoint.
+↓dryRun [variables.RequestableVariable-1780500000003]: 
+  comment: Set true to preview the generated skill and config patch without writing files.
+  description: Set true to preview the generated skill and config patch without writing files.
+  value: false

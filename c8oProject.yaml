@@ -5,6 +5,7 @@
   version: 0.0.1
   ↓McpServer [flow.Flow]: 🗏 sequences/McpServer.yaml
   ↓Ping [flow.Flow]: 🗏 sequences/Ping.yaml
+  ↓_setupCodex [flow.Flow]: 🗏 sequences/_setupCodex.yaml
   ↓lib_flow_engine_reference [references.ProjectSchemaReference]: 
     projectName: lib_flow_engine
   ↓UrlMapper [core.UrlMapper]: 🗏 urlMapper.yaml
