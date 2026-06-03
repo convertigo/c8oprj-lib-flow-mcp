@@ -15,42 +15,42 @@ function assertTrue(condition, message) {
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.yaml"), "UTF-8"));
 var batchBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.batch.block.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/batch.block.yaml"), "UTF-8"));
 var batchBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.batch.flow.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/batch.flow.yaml"), "UTF-8"));
 var handleBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.handle.block.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/handle.block.yaml"), "UTF-8"));
 var handleBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.handle.flow.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/handle.flow.yaml"), "UTF-8"));
 var toolsCallBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.block.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/call.block.yaml"), "UTF-8"));
 var toolsCallBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.call.js"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/call.js"), "UTF-8"));
 var toolsAvailableBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.available.block.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/available.block.yaml"), "UTF-8"));
 var toolsAvailableBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tools.available.js"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/available.js"), "UTF-8"));
 var toolIdentifyBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tool.identify.block.yaml"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tool/identify.block.yaml"), "UTF-8"));
 var toolIdentifyBlockImplementationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp.tool.identify.js"), "UTF-8"));
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tool/identify.js"), "UTF-8"));
 assertTrue(mcpFlowSource.indexOf("block: fragment.use") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.flow") === -1 &&
 	mcpFlowSource.indexOf("block: mcp.batch") !== -1 &&
 	mcpFlowSource.indexOf("block: mcp.handle") !== -1,
 	"McpServer flow should route through graph composite MCP blocks");
-assertTrue(batchBlockSource.indexOf("file: mcp.batch.flow.yaml") !== -1 &&
+assertTrue(batchBlockSource.indexOf("file: batch.flow.yaml") !== -1 &&
 	/\bblock:\s*"?forEach"?/.test(batchBlockImplementationSource) &&
-	handleBlockSource.indexOf("file: mcp.handle.flow.yaml") !== -1 &&
+	handleBlockSource.indexOf("file: handle.flow.yaml") !== -1 &&
 	handleBlockImplementationSource.indexOf("mcp.tools.call") !== -1 &&
 	handleBlockImplementationSource.indexOf("mcp.resources.read") !== -1 &&
-	toolsCallBlockSource.indexOf("file: mcp.tools.call.js") !== -1 &&
+	toolsCallBlockSource.indexOf("file: call.js") !== -1 &&
 	toolsCallBlockImplementationSource.indexOf("TOOL_PREFIX") !== -1 &&
 	toolsCallBlockImplementationSource.indexOf("mcp.tools.call.inspect") === -1 &&
-	toolsAvailableBlockSource.indexOf("file: mcp.tools.available.js") !== -1 &&
+	toolsAvailableBlockSource.indexOf("file: available.js") !== -1 &&
 	toolsAvailableBlockImplementationSource.indexOf("TOOL_PREFIX") !== -1 &&
 	toolsAvailableBlockImplementationSource.indexOf("name: \"flow-catalog\"") === -1 &&
-	toolIdentifyBlockSource.indexOf("file: \"mcp.tool.identify.js\"") !== -1 &&
+	toolIdentifyBlockSource.indexOf("file: identify.js") !== -1 &&
 	toolIdentifyBlockImplementationSource.indexOf("flow-resource-search") === -1,
 	"MCP graph blocks should use catalog introspection instead of generated hard-coded tool lists");
 
@@ -126,7 +126,7 @@ var publicCatalog = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 assertTrue(!publicCatalog.result.result.structuredContent.blocks.some(function (block) {
-	return block.name === "mcp.tools.call";
+	return block.blockId === "mcp.tools.call";
 }), "MCP private blocks should be hidden from the public Flow catalog");
 var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -140,7 +140,7 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 				name: "flow-catalog",
 				arguments: {
 					projectDir: projectDir,
-					detail: "summary",
+					detail: "compact",
 					includePrivate: true
 				}
 			}
@@ -148,7 +148,7 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 assertTrue(privateCatalog.result.result.structuredContent.blocks.some(function (block) {
-	return block.name === "mcp.tools.call" && block.implementation === "rhino";
+	return block.blockId === "mcp.tools.call" && block.implementation === "rhino";
 }), "MCP private dynamic blocks should be visible when includePrivate=true");
 var traceFile = java.io.File.createTempFile("flow-mcp-trace", ".jsonl");
 traceFile["delete"]();
@@ -191,6 +191,19 @@ assertTrue(traceContent.indexOf("\"direction\":\"request\"") !== -1 &&
 	"MCP Flow trace JSONL was not written");
 assertTrue(traceContent.indexOf("/Users/") === -1,
 	"MCP Flow trace JSONL leaked absolute paths");
+var traceLines = traceContent.trim().split(/\r?\n/).map(function (line) {
+	return JSON.parse(line);
+});
+var traceResponse = traceLines.filter(function (line) {
+	return line.direction === "response" && line.tool === "flow-type-get";
+})[0];
+assertTrue(traceResponse &&
+	traceResponse.summary &&
+	traceResponse.summary.ok === true &&
+	traceResponse.durationMs >= 0 &&
+	traceResponse.payloadChars > 0 &&
+	traceResponse.payloadTruncated === false,
+	"MCP Flow trace JSONL did not include response metrics");
 var treeResponse = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -722,7 +735,7 @@ var customBlockDescriptorSource = [
 	"props: {}",
 	"implementation:",
 	"  runtime: rhino",
-	"  file: smoke.echo.js",
+	"  file: echo.js",
 	""
 ].join("\n");
 var customBlockImplementationSource = [
@@ -756,9 +769,9 @@ var blockCreate = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 print(JSON.stringify(blockCreate));
-assertTrue(blockCreate.result.result.structuredContent.name === "smoke.echo" &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke.echo.block.yaml").isFile() &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke.echo.js").isFile(),
+assertTrue(blockCreate.result.result.structuredContent.blockId === "smoke.echo" &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.block.yaml").isFile() &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.js").isFile(),
 	"MCP Flow flow-block-create did not write a project-local block");
 
 var blockDuplicate = JSON.parse(engine.run(JSON.stringify({
@@ -781,9 +794,9 @@ var blockDuplicate = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 print(JSON.stringify(blockDuplicate));
-assertTrue(blockDuplicate.result.result.structuredContent.name === "smoke.set" &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke.set.block.yaml").isFile() &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke.set.js").isFile(),
+assertTrue(blockDuplicate.result.result.structuredContent.blockId === "smoke.set" &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/set.block.yaml").isFile() &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/set.js").isFile(),
 	"MCP Flow flow-block-duplicate did not copy a visible block");
 
 var editedBlockDescriptorSource = customBlockDescriptorSource.replace("Project-local smoke block.", "Edited project-local smoke block.");
@@ -854,7 +867,7 @@ var resourceSearch = JSON.parse(engine.run(JSON.stringify({
 })));
 print(JSON.stringify(resourceSearch));
 assertTrue(resourceSearch.result.result.structuredContent.resources.some(function (resource) {
-	return resource.path === "libs/flow/blocks/smoke.echo.block.yaml";
+	return resource.path === "libs/flow/blocks/smoke/echo.block.yaml";
 }), "MCP Flow flow-resource-search did not find the custom block source");
 
 var resourceGet = JSON.parse(engine.run(JSON.stringify({
@@ -869,7 +882,7 @@ var resourceGet = JSON.parse(engine.run(JSON.stringify({
 				name: "flow-resource-get",
 				arguments: {
 					projectDir: targetProjectDir,
-					path: "libs/flow/blocks/smoke.echo.block.yaml"
+					path: "libs/flow/blocks/smoke/echo.block.yaml"
 				}
 			}
 		})
@@ -892,14 +905,13 @@ var resourcePatch = JSON.parse(engine.run(JSON.stringify({
 				name: "flow-resource-patch",
 				arguments: {
 					projectDir: targetProjectDir,
-					path: "libs/flow/blocks/smoke.echo.block.yaml",
+					path: "libs/flow/blocks/smoke/echo.block.yaml",
 					baseHash: resourceHash,
 					patch: [
-						"--- a/libs/flow/blocks/smoke.echo.block.yaml",
-						"+++ b/libs/flow/blocks/smoke.echo.block.yaml",
-						"@@ -1,6 +1,6 @@",
+						"--- a/libs/flow/blocks/smoke/echo.block.yaml",
+						"+++ b/libs/flow/blocks/smoke/echo.block.yaml",
+						"@@ -1,5 +1,5 @@",
 						" version: 1",
-						" name: \"smoke.echo\"",
 						"-description: \"Edited project-local smoke block.\"",
 						"+description: \"Patched project-local smoke block.\"",
 						" props: {}",

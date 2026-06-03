@@ -3,6 +3,7 @@
 	var File = Packages.java.io.File;
 	var FileWriter = Packages.java.io.FileWriter;
 	var BufferedWriter = Packages.java.io.BufferedWriter;
+	var System = Packages.java.lang.System;
 
 	function jsonRpcResult(id, result) {
 		return {
@@ -177,6 +178,18 @@
 		definition: true
 	};
 
+	function isSensitiveKey(key) {
+		key = String(key || "").toLowerCase();
+		return key.indexOf("password") !== -1 ||
+			key.indexOf("passwd") !== -1 ||
+			key.indexOf("secret") !== -1 ||
+			key.indexOf("token") !== -1 ||
+			key.indexOf("apikey") !== -1 ||
+			key.indexOf("api_key") !== -1 ||
+			key.indexOf("authorization") !== -1 ||
+			key.indexOf("cookie") !== -1;
+	}
+
 	function sanitizeJsonString(value, ctx, key) {
 		if (JSON_STRING_KEYS[key] !== true) {
 			return null;
@@ -198,6 +211,9 @@
 		}
 		if (value === null) {
 			return null;
+		}
+		if (isSensitiveKey(key)) {
+			return "[redacted]";
 		}
 		if (typeof value === "string") {
 			if (value === "" && EMPTY_METADATA_KEYS[key] === true) {
@@ -239,7 +255,7 @@
 		items = items || [];
 		limit = limit || 50;
 		return items.slice(0, limit).map(function (item) {
-			return item && (item.name || item.id || item.flow || item.nodeId || item.summary) || String(item);
+			return item && (item.block || item.blockId || item.name || item.id || item.flow || item.nodeId || item.uri || item.path || item.summary) || String(item);
 		});
 	}
 
@@ -330,15 +346,63 @@
 		return out;
 	}
 
+	function valueKeys(value) {
+		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
+			return value[key] !== undefined;
+		}) : [];
+	}
+
+	function textSummary(value) {
+		value = value || {};
+		if (!value || typeof value !== "object") {
+			return String(value);
+		}
+		if (value.error) {
+			return "Error: " + String(value.error.message || value.error.code || value.error) + ". See structuredContent.error.";
+		}
+		var parts = [];
+		if (value.ok === true) {
+			parts.push("OK");
+		}
+		if (value.name) {
+			parts.push(String(value.name));
+		}
+		if (value.query) {
+			parts.push("query=\"" + value.query + "\"");
+		}
+		if (value.count !== undefined || value.total !== undefined) {
+			parts.push("count=" + String(value.count !== undefined ? value.count : value.total));
+		}
+		if (value.nextCursor) {
+			parts.push("nextCursor=" + value.nextCursor);
+		}
+		if (value.matches) {
+			parts.push(String(value.matches.length) + " matches: " + listNames(value.matches, 6).join(", "));
+		} else if (value.blocks) {
+			parts.push(String(value.blocks.length) + " blocks: " + listNames(value.blocks, 8).join(", "));
+		} else if (value.flows) {
+			parts.push(String(value.flows.length) + " flows: " + listNames(value.flows, 8).join(", "));
+		} else if (value.resources) {
+			parts.push(String(value.resources.length) + " resources: " + listNames(value.resources, 6).join(", "));
+		} else if (value.children) {
+			parts.push(String(value.children.length) + " children: " + listNames(value.children, 8).join(", "));
+		} else if (value.result !== undefined) {
+			parts.push("result keys: " + valueKeys(value.result).slice(0, 10).join(", "));
+		} else {
+			var keys = valueKeys(value).slice(0, 12);
+			if (keys.length) {
+				parts.push("keys: " + keys.join(", "));
+			}
+		}
+		parts.push(value.hints ? "Use structuredContent for data; pass hints=false after reading hints." : "Use structuredContent for data.");
+		return parts.join(". ");
+	}
+
 	function textContent(value, ctx) {
 		value = sanitizeForMcp(value, ctx);
-		var text = JSON.stringify(value);
-		if (text.length > 1500) {
-			text = JSON.stringify(summarizeLargeValue(value));
-		}
 		return [{
 			type: "text",
-			text: text
+			text: textSummary(value)
 		}];
 	}
 
@@ -589,9 +653,43 @@
 	function traceSetting(ctx) {
 		var setting = symbolValue("flow.mcp.traceJsonl");
 		if (setting === undefined || setting === null || setting === "") {
-			setting = scopedPath(ctx, "config", "mcp") && ctx.scopes.config.mcp.traceJsonl;
+			setting = configMcpValue(ctx, "traceJsonl");
 		}
 		return setting === undefined || setting === null ? "" : String(setting);
+	}
+
+	function configMcpValue(ctx, key) {
+		try {
+			var mcp = ctx && ctx.scopes && ctx.scopes.config && ctx.scopes.config.mcp;
+			return mcp ? mcp[key] : "";
+		} catch (e) {
+			return "";
+		}
+	}
+
+	function intSetting(ctx, symbolName, configKey, fallback, min, max) {
+		var value = symbolValue(symbolName);
+		if (value === undefined || value === null || value === "") {
+			value = configMcpValue(ctx, configKey);
+		}
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		var number = parseInt(String(value), 10);
+		if (isNaN(number)) {
+			return fallback;
+		}
+		if (min !== undefined && number < min) {
+			return min;
+		}
+		if (max !== undefined && number > max) {
+			return max;
+		}
+		return number;
+	}
+
+	function traceMaxChars(ctx) {
+		return intSetting(ctx, "flow.mcp.traceJsonl.maxChars", "traceJsonlMaxChars", 30000, 500, 1000000);
 	}
 
 	function defaultTraceFile(ctx) {
@@ -625,20 +723,138 @@
 		}
 	}
 
-	function traceJsonl(ctx, direction, request, payload) {
+	function jsonChars(value) {
+		try {
+			return JSON.stringify(value).length;
+		} catch (e) {
+			return -1;
+		}
+	}
+
+	function tracePayload(ctx, value) {
+		var clean = sanitizeForMcp(value, ctx);
+		var chars = jsonChars(clean);
+		var maxChars = traceMaxChars(ctx);
+		if (chars > maxChars) {
+			return {
+				payload: summarizeLargeValue(clean),
+				payloadChars: chars,
+				payloadTruncated: true,
+				payloadLimit: maxChars
+			};
+		}
+		return {
+			payload: clean,
+			payloadChars: chars,
+			payloadTruncated: false
+		};
+	}
+
+	function requestSummary(request, extra) {
+		request = request || {};
+		extra = extra || {};
+		var params = request.params || {};
+		var summary = {
+			notification: request.id === undefined || request.id === null,
+			batch: extra.batch === true,
+			method: String(request.method || "")
+		};
+		if (extra.batch === true) {
+			summary.batchIndex = extra.batchIndex;
+			summary.batchLength = extra.batchLength;
+		}
+		if (summary.method === "tools/call") {
+			summary.kind = "tool";
+			summary.name = String(params.name || "");
+		} else if (summary.method === "resources/read") {
+			summary.kind = "resource";
+			summary.uri = String(params.uri || "");
+		} else if (summary.method === "resources/list") {
+			summary.kind = "resource-list";
+		} else if (summary.method.indexOf("notifications/") === 0) {
+			summary.kind = "notification";
+		} else {
+			summary.kind = summary.method || "unknown";
+		}
+		return summary;
+	}
+
+	function responseSummary(response) {
+		response = response || {};
+		var summary = {
+			ok: !response.error
+		};
+		if (response.error) {
+			summary.errorCode = response.error.code;
+			summary.errorMessage = String(response.error.message || "");
+			return summary;
+		}
+		var result = response.result;
+		if (result && result.structuredContent) {
+			result = result.structuredContent;
+		}
+		if (result && typeof result === "object") {
+			summary.resultKeys = Object.keys(result).slice(0, 20);
+			["count", "total", "nextCursor", "status", "message"].forEach(function (key) {
+				if (result[key] !== undefined && result[key] !== null && result[key] !== "") {
+					summary[key] = result[key];
+				}
+			});
+			if (result.blocks) {
+				summary.blocks = result.blocks.length;
+			}
+			if (result.flows) {
+				summary.flows = result.flows.length;
+			}
+			if (result.matches) {
+				summary.matches = result.matches.length;
+			}
+			if (result.resources) {
+				summary.resources = result.resources.length;
+			}
+		}
+		return summary;
+	}
+
+	function traceJsonl(ctx, direction, request, payload, extra) {
 		var file = traceFile(ctx);
 		if (!file) {
 			return;
 		}
 		try {
 			request = request || {};
-			appendJsonl(file, {
+			extra = extra || {};
+			var packed = tracePayload(ctx, payload);
+			var started = request.__flowMcpTraceStart || extra.started;
+			var record = {
 				time: new Date().toISOString(),
 				direction: direction,
 				id: request.id === undefined ? null : request.id,
 				method: request.method || "",
 				tool: toolName(request),
-				payload: sanitizeForMcp(payload, ctx)
+				summary: direction === "response" ? responseSummary(packed.payload) : requestSummary(request, extra),
+				payloadChars: packed.payloadChars,
+				payloadTruncated: packed.payloadTruncated,
+				payload: packed.payload
+			};
+			if (packed.payloadLimit !== undefined) {
+				record.payloadLimit = packed.payloadLimit;
+			}
+			if (started && direction === "response") {
+				record.durationMs = Math.max(0, Number(System.currentTimeMillis()) - Number(started));
+			}
+			appendJsonl(file, {
+				time: record.time,
+				direction: record.direction,
+				id: record.id,
+				method: record.method,
+				tool: record.tool,
+				durationMs: record.durationMs,
+				summary: record.summary,
+				payloadChars: record.payloadChars,
+				payloadTruncated: record.payloadTruncated,
+				payloadLimit: record.payloadLimit,
+				payload: record.payload
 			});
 		} catch (e) {
 			// Tracing must never break the MCP request path.
@@ -862,6 +1078,7 @@
 		}
 		if (args.hints !== false) {
 			out.hints = [
+				"If you understood, call with hints=false.",
 				"Use project='Name' for faster focused search.",
 				"Use kinds=['node'] and context=1 to emulate rg -C 1 over Flow nodes."
 			];
@@ -892,8 +1109,129 @@
 		return out;
 	}
 
+	function argBool(value, fallback) {
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		if (typeof value === "boolean") {
+			return value;
+		}
+		return String(value) === "true";
+	}
+
+	function argInt(value, fallback, min, max) {
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		var number = parseInt(String(value), 10);
+		if (isNaN(number)) {
+			return fallback;
+		}
+		if (min !== undefined && number < min) {
+			number = min;
+		}
+		if (max !== undefined && number > max) {
+			number = max;
+		}
+		return number;
+	}
+
+	function compactJsonPreview(value, options, depth) {
+		options = options || {};
+		depth = depth || 0;
+		if (value === null || value === undefined || typeof value !== "object") {
+			return value;
+		}
+		if (depth >= argInt(options.maxDepth, 4, 1, 12)) {
+			return {
+				type: Object.prototype.toString.call(value) === "[object Array]" ? "array" : "object",
+				omitted: true
+			};
+		}
+		if (Object.prototype.toString.call(value) === "[object Array]") {
+			var maxArrayItems = argInt(options.maxArrayItems, 3, 0, 50);
+			var arrayOut = {
+				type: "array",
+				length: value.length
+			};
+			arrayOut.items = value.slice(0, maxArrayItems).map(function (item) {
+				return compactJsonPreview(item, options, depth + 1);
+			});
+			if (value.length > maxArrayItems) {
+				arrayOut.last = compactJsonPreview(value[value.length - 1], options, depth + 1);
+				arrayOut.omittedItems = value.length - maxArrayItems;
+			}
+			return arrayOut;
+		}
+		var keys = Object.keys(value);
+		var maxObjectKeys = argInt(options.maxObjectKeys, 20, 1, 200);
+		var out = {};
+		keys.slice(0, maxObjectKeys).forEach(function (key) {
+			out[key] = compactJsonPreview(value[key], options, depth + 1);
+		});
+		if (keys.length > maxObjectKeys) {
+			out.__omittedKeys = keys.length - maxObjectKeys;
+			out.__keys = keys.slice(maxObjectKeys, maxObjectKeys + 50);
+		}
+		return out;
+	}
+
+	function compactRuntimeToolValue(request, value) {
+		var args = toolArguments(request);
+		if (!value || typeof value !== "object") {
+			return value;
+		}
+		var out = null;
+		function mutableOut() {
+			if (!out) {
+				out = {};
+				Object.keys(value).forEach(function (key) {
+					out[key] = value[key];
+				});
+			}
+			return out;
+		}
+		var maxResultChars = argInt(args.maxResultChars, 6000, 1000, 1000000);
+		if (value.result !== undefined) {
+			var chars = jsonChars(value.result);
+			var allowHugeResult = argBool(args.allowHugeResult || args.allowUnboundedResult, false);
+			var includeFullResult = argBool(args.includeFullResult || args.fullResult || args.allowLarge, false);
+			if (chars > maxResultChars && (!includeFullResult || !allowHugeResult)) {
+				var resultOut = mutableOut();
+				resultOut.result = compactJsonPreview(value.result, {
+					maxArrayItems: argInt(args.maxArrayItems, 3, 0, 50),
+					maxObjectKeys: argInt(args.maxObjectKeys, 20, 1, 200),
+					maxDepth: argInt(args.maxDepth, 5, 1, 12)
+				});
+				resultOut.resultCompacted = true;
+				resultOut.resultChars = chars;
+				resultOut.resultHint = "Result exceeded maxResultChars. Raise maxResultChars and pass allowHugeResult=true only when the complete runtime payload is required.";
+			}
+		}
+		if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {
+			var maxTraceChars = argInt(args.maxTraceChars, 6000, 1000, 1000000);
+			var traceChars = jsonChars(value.trace);
+			if (traceChars > maxTraceChars) {
+				var traceOut = mutableOut();
+				traceOut.trace = compactJsonPreview(value.trace, {
+					maxArrayItems: argInt(args.maxArrayItems, 2, 0, 50),
+					maxObjectKeys: argInt(args.maxTraceObjectKeys || args.maxObjectKeys, 12, 1, 200),
+					maxDepth: argInt(args.maxTraceDepth || args.maxDepth, 4, 1, 12)
+				});
+				traceOut.traceCompacted = true;
+				traceOut.traceChars = traceChars;
+				traceOut.traceHint = "Pass includeFullTrace=true only when full per-node runtime values are required.";
+			}
+		}
+		return out || value;
+	}
+
 	function compactToolValue(request, value) {
-		if (toolName(request) !== "flow-type-list" || !value || !value.types) {
+		var name = toolName(request);
+		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test") {
+			return compactRuntimeToolValue(request, value);
+		}
+		if (name !== "flow-type-list" || !value || !value.types) {
 			return value;
 		}
 		var out = {};
@@ -911,12 +1249,35 @@
 		if (typeof value === "string") {
 			value = JSON.parse(value);
 		}
-		traceJsonl(ctx, "request", Object.prototype.toString.call(value) === "[object Array]" ? {} : value, value);
+		var started = Number(System.currentTimeMillis());
+		if (Object.prototype.toString.call(value) === "[object Array]") {
+			value.forEach(function (item, index) {
+				if (item && typeof item === "object") {
+					item.__flowMcpTraceStart = Number(System.currentTimeMillis());
+				}
+				traceJsonl(ctx, "request", item || {}, item, {
+					batch: true,
+					batchIndex: index,
+					batchLength: value.length,
+					started: started
+				});
+			});
+		} else {
+			if (value && typeof value === "object") {
+				value.__flowMcpTraceStart = started;
+			}
+			traceJsonl(ctx, "request", value, value, { started: started });
+		}
 		return value;
 	}
 
 	function notification(ctx, request) {
-		return acceptNotification(ctx);
+		var response = acceptNotification(ctx);
+		traceJsonl(ctx, "response", request || {}, {
+			accepted: true,
+			noJsonRpcResponse: true
+		});
+		return response;
 	}
 
 	return {

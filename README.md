@@ -262,12 +262,17 @@ it with the Convertigo symbol:
 ```text
 flow.mcp.traceJsonl=true
 flow.mcp.traceJsonl=/path/to/flow-mcp.jsonl
+flow.mcp.traceJsonl.maxChars=30000
 ```
 
 When set to `true`, the default file is
 `<lib_flow_mcp project>/_private/flow-mcp-trace.jsonl`. Tracing is best-effort
-and never fails the MCP request path. Standalone tests may also pass
-`config.mcp.traceJsonl`, but production configuration should use symbols.
+and never fails the MCP request path. Each JSONL line includes a sanitized
+payload plus a compact `summary`, `payloadChars`, `payloadTruncated` and, for
+responses, `durationMs`. The optional `maxChars` symbol limits large payloads
+while preserving their summary. Standalone tests may also pass
+`config.mcp.traceJsonl` and `config.mcp.traceJsonlMaxChars`, but production
+configuration should use symbols.
 
 MCP resources provide the same guidance to agents that cannot read this repo:
 

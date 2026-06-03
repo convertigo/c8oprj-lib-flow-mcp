@@ -22,7 +22,7 @@
 	function toolMap(ctx) {
 		var map = {};
 		(ctx.blockList({ includePrivate: true, detail: "summary" }).blocks || []).forEach(function (block) {
-			var blockId = block.blockId || block.name;
+			var blockId = block.block || block.blockId || block.name;
 			var name = toolName(blockId);
 			if (name) {
 				map[name] = blockId;

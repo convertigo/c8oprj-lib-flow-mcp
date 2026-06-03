@@ -3,7 +3,7 @@ private: true
 icon: mdi:puzzle-outline
 tags:
 - mcp
-description: Runs the flow-catalog MCP tool.
+description: Lists the Flow block palette. Use query, namespace, provider, limit and cursor to stay narrow.
 display: tool flow-catalog -> {{ input.out }}
 props:
   request:
