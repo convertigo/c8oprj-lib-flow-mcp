@@ -4,7 +4,7 @@ icon: mdi:content-duplicate
 tags:
 - mcp
 description: Runs the flow-block-duplicate MCP tool.
-display: tool flow-block-duplicate -> {{ props.out }}
+display: tool flow-block-duplicate -> {{ input.out }}
 props:
   request:
     kind: expression

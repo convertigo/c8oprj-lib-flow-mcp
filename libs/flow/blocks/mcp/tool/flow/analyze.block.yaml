@@ -4,7 +4,7 @@ icon: mdi:chart-timeline-variant
 tags:
 - mcp
 description: Runs the flow-analyze MCP tool.
-display: tool flow-analyze -> {{ props.out }}
+display: tool flow-analyze -> {{ input.out }}
 props:
   request:
     kind: expression

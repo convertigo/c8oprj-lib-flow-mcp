@@ -4,7 +4,7 @@ icon: mdi:file-code-outline
 tags:
 - mcp
 description: Runs the flow-resource-get MCP tool.
-display: tool flow-resource-get -> {{ props.out }}
+display: tool flow-resource-get -> {{ input.out }}
 props:
   request:
     kind: expression

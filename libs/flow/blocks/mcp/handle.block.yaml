@@ -4,7 +4,7 @@ icon: mdi:router-network
 tags:
 - mcp
 description: Handles one MCP JSON-RPC request object.
-display: handle request -> {{ props.out }}
+display: handle request -> {{ input.out }}
 props:
   request:
     kind: expression

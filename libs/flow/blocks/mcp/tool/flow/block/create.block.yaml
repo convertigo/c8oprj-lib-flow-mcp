@@ -4,7 +4,7 @@ icon: mdi:puzzle-plus-outline
 tags:
 - mcp
 description: Runs the flow-block-create MCP tool.
-display: tool flow-block-create -> {{ props.out }}
+display: tool flow-block-create -> {{ input.out }}
 props:
   request:
     kind: expression

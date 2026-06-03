@@ -4,7 +4,7 @@ icon: mdi:source-branch-sync
 tags:
 - mcp
 description: Runs the flow-apply MCP tool.
-display: tool flow-apply -> {{ props.out }}
+display: tool flow-apply -> {{ input.out }}
 props:
   request:
     kind: expression

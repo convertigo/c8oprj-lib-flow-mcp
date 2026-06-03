@@ -4,7 +4,7 @@ icon: mdi:format-list-bulleted-square
 tags:
 - mcp
 description: Builds the MCP tools/list response.
-display: tools.list -> {{ props.out }}
+display: tools.list -> {{ input.out }}
 props:
   request:
     kind: expression

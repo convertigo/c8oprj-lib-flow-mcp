@@ -4,7 +4,7 @@ icon: mdi:file-tree-outline
 tags:
 - mcp
 description: Runs the flow-tree MCP tool.
-display: tool flow-tree -> {{ props.out }}
+display: tool flow-tree -> {{ input.out }}
 props:
   request:
     kind: expression

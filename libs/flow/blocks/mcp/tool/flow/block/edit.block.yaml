@@ -4,7 +4,7 @@ icon: mdi:puzzle-edit-outline
 tags:
 - mcp
 description: Runs the flow-block-edit MCP tool.
-display: tool flow-block-edit -> {{ props.out }}
+display: tool flow-block-edit -> {{ input.out }}
 props:
   request:
     kind: expression

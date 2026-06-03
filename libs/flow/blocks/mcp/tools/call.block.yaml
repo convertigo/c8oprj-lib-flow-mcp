@@ -4,7 +4,7 @@ icon: mdi:tools
 tags:
 - mcp
 description: Dispatches one MCP tools/call request by visible tool family.
-display: tools.call -> {{ props.out }}
+display: tools.call -> {{ input.out }}
 props:
   request:
     kind: expression

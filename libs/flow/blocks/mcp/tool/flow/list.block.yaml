@@ -4,7 +4,7 @@ icon: mdi:sitemap-outline
 tags:
 - mcp
 description: Runs the flow-list MCP tool.
-display: tool flow-list -> {{ props.out }}
+display: tool flow-list -> {{ input.out }}
 props:
   request:
     kind: expression

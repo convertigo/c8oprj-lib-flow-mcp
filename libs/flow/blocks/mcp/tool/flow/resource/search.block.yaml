@@ -4,7 +4,7 @@ icon: mdi:file-search-outline
 tags:
 - mcp
 description: Runs the flow-resource-search MCP tool.
-display: tool flow-resource-search -> {{ props.out }}
+display: tool flow-resource-search -> {{ input.out }}
 props:
   request:
     kind: expression

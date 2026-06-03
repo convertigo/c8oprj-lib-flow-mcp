@@ -19,7 +19,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 ## Authoring Rules
 
 - Treat a Flow as a readable execution graph and a block as a reusable function with typed properties, slots, hooks, and an implementation.
-- Use `input.*` for inputs and `local.*` for scratch data in new Flow sources. Treat `flow.*` as a compatibility alias and `props.*` as raw-node/hook vocabulary.
+- Use `input.*` for inputs and `local.*` for scratch data in Flow sources. `flow.*` and `props.*` are not expression scopes.
 - Prefer existing blocks from the current provider/namespace before creating new blocks.
 - Create custom blocks only when the behavior is reusable or hides unavoidable low-level code.
 - Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.

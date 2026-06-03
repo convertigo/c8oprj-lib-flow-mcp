@@ -4,7 +4,7 @@ icon: mdi:play-circle-outline
 tags:
 - mcp
 description: Runs the flow-run MCP tool.
-display: tool flow-run -> {{ props.out }}
+display: tool flow-run -> {{ input.out }}
 props:
   request:
     kind: expression

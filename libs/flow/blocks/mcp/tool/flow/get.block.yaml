@@ -4,7 +4,7 @@ icon: mdi:sitemap
 tags:
 - mcp
 description: Runs the flow-get MCP tool.
-display: tool flow-get -> {{ props.out }}
+display: tool flow-get -> {{ input.out }}
 props:
   request:
     kind: expression

@@ -10,7 +10,7 @@ Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the 
 
 Minimal Rhino block source shape: `(function(){ return { run:function(ctx,node){...} }; }())`.
 
-Use `input.*` inside Flow implementations and `local.*` for scratch state. `flow.*` is only a compatibility alias of `local.*`.
+Use `input.*` inside Flow implementations and `local.*` for scratch state. `flow.*` and `props.*` are not expression scopes.
 
 Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property. If Rhino code calls `ctx.lib("name")`, declare that library in the descriptor with `uses: [name]`.
 

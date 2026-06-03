@@ -4,7 +4,7 @@ icon: mdi:database-refresh-outline
 tags:
 - mcp
 description: Runs the flow-schema-reset MCP tool.
-display: tool flow-schema-reset -> {{ props.out }}
+display: tool flow-schema-reset -> {{ input.out }}
 props:
   request:
     kind: expression

@@ -4,7 +4,7 @@ icon: mdi:format-list-checks
 tags:
 - mcp
 description: Returns the Flow MCP tool descriptors.
-display: available tools -> {{ props.out }}
+display: available tools -> {{ input.out }}
 props:
   out:
     kind: path

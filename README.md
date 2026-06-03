@@ -44,8 +44,8 @@ Scope naming convention for new Flow sources:
 - `input.*` is the data received by the executable Flow or block implementation.
 - `local.*` is the private working scope of the current execution.
 - `config.*`, `current`, `result` keep their usual meanings.
-- `props.*` is for hooks/raw node compatibility, not for new Flow implementations.
-- `flow.*` is a temporary compatibility alias of `local.*`; do not use it in new examples.
+- `props.*` and `flow.*` are not expression scopes. JS hooks/raw implementations
+  can inspect the raw node with `ctx.props(node)`.
 
 For simple MCP tools, prefer this graph shape:
 

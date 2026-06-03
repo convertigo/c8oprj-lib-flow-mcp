@@ -4,7 +4,7 @@ icon: mdi:graph-outline
 tags:
 - mcp
 description: Runs the flow-context MCP tool.
-display: tool flow-context -> {{ props.out }}
+display: tool flow-context -> {{ input.out }}
 props:
   request:
     kind: expression

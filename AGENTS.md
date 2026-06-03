@@ -28,8 +28,8 @@ Rules:
 - Keep generated or one-off helper blocks private when they are not intended for
   projects referencing this library.
 - Use `input.*` for executable/block inputs and `local.*` for scratch state in
-  all new Flow YAML. `flow.*` is only a compatibility alias; `props.*` is for
-  hooks/raw node compatibility.
+  all new Flow YAML. `flow.*` and `props.*` are not expression scopes; JS
+  hooks/raw implementations can inspect the raw node with `ctx.props(node)`.
 
 Authoring loop for a blank agent context:
 

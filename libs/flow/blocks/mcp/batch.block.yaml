@@ -4,7 +4,7 @@ icon: mdi:call-split
 tags:
 - mcp
 description: Handles a JSON-RPC batch request.
-display: batch -> {{ props.out }}
+display: batch -> {{ input.out }}
 props:
   request:
     kind: expression

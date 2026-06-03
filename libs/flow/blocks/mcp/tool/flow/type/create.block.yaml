@@ -4,7 +4,7 @@ icon: mdi:shape-plus-outline
 tags:
 - mcp
 description: Runs the flow-type-create MCP tool.
-display: tool flow-type-create -> {{ props.out }}
+display: tool flow-type-create -> {{ input.out }}
 props:
   request:
     kind: expression

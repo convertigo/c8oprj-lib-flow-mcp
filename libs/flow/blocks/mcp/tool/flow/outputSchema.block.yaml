@@ -4,7 +4,7 @@ icon: mdi:code-json
 tags:
 - mcp
 description: Runs the flow-output-schema MCP tool.
-display: tool flow-output-schema -> {{ props.out }}
+display: tool flow-output-schema -> {{ input.out }}
 props:
   request:
     kind: expression

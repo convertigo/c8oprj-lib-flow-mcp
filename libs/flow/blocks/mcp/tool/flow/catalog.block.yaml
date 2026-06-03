@@ -4,7 +4,7 @@ icon: mdi:puzzle-outline
 tags:
 - mcp
 description: Runs the flow-catalog MCP tool.
-display: tool flow-catalog -> {{ props.out }}
+display: tool flow-catalog -> {{ input.out }}
 props:
   request:
     kind: expression

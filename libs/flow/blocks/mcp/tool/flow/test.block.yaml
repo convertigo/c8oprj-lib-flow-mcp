@@ -4,7 +4,7 @@ icon: mdi:test-tube
 tags:
 - mcp
 description: Runs the flow-test MCP tool.
-display: tool flow-test -> {{ props.out }}
+display: tool flow-test -> {{ input.out }}
 props:
   request:
     kind: expression
