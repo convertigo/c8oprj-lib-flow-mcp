@@ -1,0 +1,11 @@
+version: 1
+icon: "mdi:source-branch"
+tags:
+- composite
+description: "New flow Flow block."
+props: {}
+hooks:
+  file: flowBlock.hooks.js
+implementation:
+  runtime: "flow"
+  file: flowBlock.flow.yaml

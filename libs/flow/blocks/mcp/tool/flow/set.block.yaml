@@ -1,0 +1,18 @@
+version: 1
+private: true
+icon: "mdi:content-save-outline"
+description: "Runs the flow-set MCP tool."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+hooks:
+  file: set.hooks.js
+implementation:
+  runtime: "rhino"
+  file: set.js

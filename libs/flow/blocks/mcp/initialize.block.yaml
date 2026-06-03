@@ -1,0 +1,23 @@
+version: 1
+private: true
+icon: mdi:hand-wave-outline
+tags:
+- mcp
+description: Builds the MCP initialize response.
+display: initialize
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: initialize.hooks.js
+implementation:
+  runtime: flow
+  file: initialize.flow.yaml

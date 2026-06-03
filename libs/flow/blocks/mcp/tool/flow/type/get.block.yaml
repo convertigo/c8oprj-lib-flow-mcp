@@ -1,0 +1,23 @@
+version: 1
+private: true
+icon: mdi:shape-outline
+tags:
+- mcp
+description: Runs the flow-type-get MCP tool.
+display: tool flow-type-get -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: get.hooks.js
+implementation:
+  runtime: flow
+  file: get.flow.yaml

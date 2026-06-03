@@ -1,0 +1,18 @@
+version: 1
+private: true
+icon: "mdi:playlist-plus"
+description: "Runs the flow-node-add MCP tool."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+hooks:
+  file: add.hooks.js
+implementation:
+  runtime: "rhino"
+  file: add.js

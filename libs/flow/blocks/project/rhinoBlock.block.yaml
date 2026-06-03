@@ -1,0 +1,11 @@
+version: 1
+icon: "mdi:language-javascript"
+tags:
+- native
+description: "New rhino Flow block."
+props: {}
+hooks:
+  file: rhinoBlock.hooks.js
+implementation:
+  runtime: "rhino"
+  file: rhinoBlock.js

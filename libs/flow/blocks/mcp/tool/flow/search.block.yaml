@@ -1,0 +1,18 @@
+version: 1
+private: true
+icon: "mdi:magnify-scan"
+description: "Runs the flow-search MCP tool."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC tools/call request object."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the MCP response."
+hooks:
+  file: search.hooks.js
+implementation:
+  runtime: "rhino"
+  file: search.js

@@ -1,0 +1,23 @@
+version: 1
+private: true
+icon: mdi:alert-circle-outline
+tags:
+- mcp
+description: Builds a JSON-RPC method-not-found error.
+display: method.notFound
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: notFound.hooks.js
+implementation:
+  runtime: flow
+  file: notFound.flow.yaml

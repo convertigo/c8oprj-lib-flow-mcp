@@ -1,0 +1,23 @@
+version: 1
+private: true
+icon: mdi:router-network
+tags:
+- mcp
+description: Handles one MCP JSON-RPC request object.
+display: handle request -> {{ props.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: current
+    description: One MCP JSON-RPC request object.
+  out:
+    kind: path
+    mode: write
+    default: flow.response
+    description: Scope path receiving one MCP response.
+hooks:
+  file: handle.hooks.js
+implementation:
+  runtime: flow
+  file: handle.flow.yaml

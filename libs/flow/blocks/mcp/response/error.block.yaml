@@ -1,0 +1,30 @@
+version: 1
+private: true
+icon: "mdi:alert-circle-outline"
+description: "Wraps an error in a JSON-RPC error response."
+props:
+  request:
+    kind: "expression"
+    type: "object"
+    description: "MCP JSON-RPC request object."
+  code:
+    kind: "expression"
+    type: "number"
+    description: "JSON-RPC error code."
+  message:
+    kind: "expression"
+    type: "string"
+    description: "JSON-RPC error message."
+  data:
+    kind: "expression"
+    type: "object"
+    description: "Optional JSON-RPC error data."
+  out:
+    kind: "path"
+    mode: "write"
+    description: "Scope path receiving the JSON-RPC response."
+hooks:
+  file: error.hooks.js
+implementation:
+  runtime: "rhino"
+  file: error.js
