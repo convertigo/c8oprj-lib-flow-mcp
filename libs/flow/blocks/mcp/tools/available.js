@@ -1,5 +1,28 @@
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
+	var OMIT_SCHEMA_PROPERTIES = {
+		allowHugeResult: true,
+		projectDir: true,
+		doc: true,
+		detail: true,
+		hints: true,
+		includeAnalysis: true,
+		includeDefinition: true,
+		includeFlow: true,
+		includeFullResult: true,
+		includeFullTrace: true,
+		includeLibraries: true,
+		includePrivate: true,
+		includeSource: true,
+		includeTrace: true,
+		includeTypes: true,
+		maxArrayItems: true,
+		maxDepth: true,
+		maxFileBytes: true,
+		maxResultChars: true,
+		maxTraceChars: true,
+		mode: true
+	};
 
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
@@ -22,22 +45,54 @@
 	function indexBlocks(catalog) {
 		var byName = {};
 		(catalog.blocks || []).forEach(function (block) {
+			if (block.block) {
+				byName[block.block] = block;
+			}
+			if (block.id) {
+				byName[block.id] = block;
+			}
 			if (block.blockId) {
 				byName[block.blockId] = block;
 			}
-			byName[block.name] = block;
+			if (block.name) {
+				byName[block.name] = block;
+			}
 		});
 		return byName;
 	}
 
-	function targetFromImplementation(ctx, blockName) {
-		try {
-			var source = String((ctx.blockGet(blockName, {}) || {}).implementationSource || "");
-			var match = source.match(/\btarget:\s*["']?([A-Za-z0-9_.-]+)/);
-			return match ? match[1] : "";
-		} catch (e) {
+	function specificToolSchema(block) {
+		var properties = block && (block.props || block.properties) || {};
+		var keys = Object.keys(properties).filter(function (key) {
+			return key !== "out" && !OMIT_SCHEMA_PROPERTIES[key];
+		});
+		return keys.length > 0 && !(keys.length === 1 && keys[0] === "request");
+	}
+
+	function targetFromWrapperName(blockName, byName) {
+		var suffix = String(blockName || "").substring(TOOL_PREFIX.length);
+		if (!suffix) {
 			return "";
 		}
+		if (suffix === "catalog") {
+			return "block.list";
+		}
+		if (suffix === "block.test") {
+			return "flow.run";
+		}
+		var target = "";
+		if (["analyze", "apply", "context", "get", "list", "outputSchema", "run", "schema.reset", "test", "tree"].indexOf(suffix) !== -1) {
+			target = "flow." + suffix;
+		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 || suffix.indexOf("type.") === 0) {
+			target = suffix;
+		}
+		var candidates = target ? [target] : [];
+		for (var i = 0; i < candidates.length; i++) {
+			if (byName[candidates[i]]) {
+				return candidates[i];
+			}
+		}
+		return "";
 	}
 
 	function jsonSchemaType(prop) {
@@ -53,10 +108,14 @@
 	}
 
 	function schemaProperty(prop) {
+		var type = jsonSchemaType(prop);
 		var out = {
-			type: jsonSchemaType(prop)
+			type: type
 		};
-		["description", "default", "enum", "items"].forEach(function (key) {
+		if (type === "unknown") {
+			delete out.type;
+		}
+		["enum", "items"].forEach(function (key) {
 			if (prop && prop[key] !== undefined && prop[key] !== null && prop[key] !== "") {
 				out[key] = prop[key];
 			}
@@ -67,41 +126,38 @@
 	function inputSchema(block) {
 		var schema = {
 			type: "object",
-			properties: {}
+			properties: {},
+			additionalProperties: true
 		};
-		Object.keys(block && block.props || {}).forEach(function (name) {
-			if (name === "out") {
+		var properties = block && (block.props || block.properties) || {};
+		Object.keys(properties).forEach(function (name) {
+			if (name === "out" || OMIT_SCHEMA_PROPERTIES[name] === true) {
 				return;
 			}
-			schema.properties[name] = schemaProperty(block.props[name]);
+			schema.properties[name] = schemaProperty(properties[name]);
 		});
 		if (!schema.properties.project) {
 			schema.properties.project = {
 				type: "string",
-				description: "Target Convertigo project name."
-			};
-		}
-		if (!schema.properties.projectDir) {
-			schema.properties.projectDir = {
-				type: "string",
-				description: "Target project directory for standalone tests."
+				description: "Target project."
 			};
 		}
 		return schema;
 	}
 
 	function descriptorFor(ctx, wrapper, byName) {
-		var blockId = wrapper.blockId || wrapper.name;
+		var blockId = wrapper.blockId || wrapper.name || wrapper.block || "";
 		var name = toolName(blockId);
 		if (!name) {
 			return null;
 		}
-		var target = targetFromImplementation(ctx, blockId);
+		var target = targetFromWrapperName(blockId, byName);
 		var capability = target ? byName[target] : null;
-		var source = capability || wrapper;
+		var source = specificToolSchema(wrapper) ? wrapper : capability || wrapper;
+		var description = String(source.description || wrapper.description || "Flow MCP tool.");
 		return {
 			name: name,
-			description: source.description || wrapper.description || "Flow MCP tool.",
+			description: description.length > 120 ? description.substring(0, 117) + "..." : description,
 			inputSchema: inputSchema(source)
 		};
 	}
@@ -109,7 +165,7 @@
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var catalog = ctx.blockList({ includePrivate: true, detail: "full" });
+			var catalog = ctx.blockList({ includePrivate: true, detail: "compact", limit: 500, doc: false, hints: false });
 			var byName = indexBlocks(catalog);
 			var tools = [];
 			(catalog.blocks || []).forEach(function (block) {

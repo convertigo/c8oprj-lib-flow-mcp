@@ -41,6 +41,10 @@ props:
     kind: literal
     type: number
     description: "Target insertion index."
+  detail:
+    kind: text
+    type: string
+    description: "Response detail: summary (default) or full."
 hooks:
   file: duplicate.hooks.js
 implementation:

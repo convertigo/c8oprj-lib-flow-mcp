@@ -13,10 +13,18 @@ props:
     kind: text
     type: string
     description: "Canonical Flow YAML source to write."
+  definition:
+    kind: literal
+    type: object
+    description: "Canonical Flow definition object. Prefer direct node fields in definition.nodes[]."
   register:
     kind: literal
     type: boolean
     description: "Register/save the Flow DBO after writing."
+  detail:
+    kind: text
+    type: string
+    description: "Response detail: summary (default) or full."
 hooks:
   file: set.hooks.js
 implementation:

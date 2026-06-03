@@ -29,6 +29,10 @@ props:
     kind: expression
     type: object
     description: "Optional Flow definition object used instead of loading name."
+  detail:
+    kind: text
+    type: string
+    description: "Response detail: summary (default) or full."
 hooks:
   file: edit.hooks.js
 implementation:

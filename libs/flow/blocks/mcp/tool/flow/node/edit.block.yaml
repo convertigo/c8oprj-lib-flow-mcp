@@ -29,6 +29,10 @@ props:
     kind: literal
     type: boolean
     description: "Apply mutation without writing the Flow sidecar."
+  detail:
+    kind: text
+    type: string
+    description: "Response detail: summary (default) or full."
 hooks:
   file: edit.hooks.js
 implementation:

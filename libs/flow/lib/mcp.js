@@ -1249,13 +1249,211 @@
 				traceOut.traceHint = "Pass includeFullTrace=true only when full per-node runtime values are required.";
 			}
 		}
+		["local", "flow"].forEach(function (scopeKey) {
+			if (value[scopeKey] === undefined || argBool(args["includeFull" + scopeKey.charAt(0).toUpperCase() + scopeKey.substring(1)] || args.fullScopes, false)) {
+				return;
+			}
+			var maxScopeChars = argInt(args.maxScopeChars || args.maxFlowChars, 6000, 1000, 1000000);
+			var scopeChars = jsonChars(value[scopeKey]);
+			if (scopeChars > maxScopeChars) {
+				var scopeOut = mutableOut();
+				scopeOut[scopeKey] = compactJsonPreview(value[scopeKey], {
+					maxArrayItems: argInt(args.maxArrayItems, 3, 0, 50),
+					maxObjectKeys: argInt(args.maxScopeObjectKeys || args.maxObjectKeys, 20, 1, 200),
+					maxDepth: argInt(args.maxScopeDepth || args.maxDepth, 5, 1, 12)
+				});
+				scopeOut[scopeKey + "Compacted"] = true;
+				scopeOut[scopeKey + "Chars"] = scopeChars;
+				scopeOut[scopeKey + "Hint"] = "Pass includeFull" + scopeKey.charAt(0).toUpperCase() + scopeKey.substring(1) + "=true only when complete scope values are required.";
+			}
+		});
 		return out || value;
+	}
+
+	function compactAnalyzeToolValue(request, value) {
+		var args = toolArguments(request);
+		if (!value || typeof value !== "object" || responseDetail(request) === "full" || argBool(args.includeFullResponse || args.fullResponse, false)) {
+			return value;
+		}
+		var out = {
+			ok: value.ok !== false,
+			version: value.version,
+			pathCount: (value.paths || []).length,
+			readCount: (value.reads || []).length,
+			writeCount: (value.writes || []).length,
+			nodeCount: (value.nodes || []).length,
+			reads: (value.reads || []).slice(0, 30),
+			writes: (value.writes || []).slice(0, 30),
+			nodes: (value.nodes || []).slice(0, 40).map(function (node) {
+				return {
+					id: node.id,
+					block: node.block,
+					reads: (node.reads || []).slice(0, 6),
+					writes: (node.writes || []).slice(0, 6)
+				};
+			}),
+			errors: value.errors || [],
+			detail: "summary",
+			next: "Use detail:'full' only when complete schemas and node analysis are required."
+		};
+		if (value.returnSchemas && value.returnSchemas.length) {
+			out.returnSchemas = value.returnSchemas.slice(0, 5);
+		}
+		if (value.schemas && Object.keys(value.schemas).length) {
+			out.schemaPaths = Object.keys(value.schemas).slice(0, 40);
+			out.schemaCount = Object.keys(value.schemas).length;
+		}
+		return out;
+	}
+
+	function compactRegistration(registration) {
+		if (!registration || typeof registration !== "object") {
+			return registration;
+		}
+		var out = {};
+		["requested", "registered", "created", "updated", "saved", "refreshed", "schemaCacheCleared", "qname", "message"].forEach(function (key) {
+			if (registration[key] !== undefined && registration[key] !== null && registration[key] !== "") {
+				out[key] = registration[key];
+			}
+		});
+		if (registration.studioRefresh) {
+			out.studioRefresh = {
+				status: registration.studioRefresh.status,
+				refreshed: registration.studioRefresh.refreshed,
+				message: registration.studioRefresh.message
+			};
+		}
+		return out;
+	}
+
+	function compactAnalysis(analysis) {
+		if (!analysis || typeof analysis !== "object") {
+			return analysis;
+		}
+		return {
+			ok: analysis.ok !== false,
+			nodeCount: (analysis.nodes || []).length,
+			readCount: (analysis.reads || []).length,
+			writeCount: (analysis.writes || []).length,
+			reads: (analysis.reads || []).slice(0, 20),
+			writes: (analysis.writes || []).slice(0, 20),
+			nodes: (analysis.nodes || []).slice(0, 30).map(function (node) {
+				return {
+					id: node.id,
+					block: node.block,
+					reads: (node.reads || []).slice(0, 5),
+					writes: (node.writes || []).slice(0, 5)
+				};
+			}),
+			errors: analysis.errors || []
+		};
+	}
+
+	function compactDefinition(definition) {
+		if (!definition || typeof definition !== "object") {
+			return definition;
+		}
+		return {
+			version: definition.version || 1,
+			nodeCount: (definition.nodes || []).length,
+			nodes: (definition.nodes || []).slice(0, 30).map(function (node) {
+				return {
+					id: node.id,
+					block: node.block
+				};
+			})
+		};
+	}
+
+	function compactChildren(children) {
+		return (children || []).slice(0, 20).map(function (child) {
+			return {
+				name: child.name,
+				kind: child.kind,
+				type: child.type,
+				path: child.path,
+				summary: child.summary
+			};
+		});
+	}
+
+	function responseDetail(request) {
+		var args = toolArguments(request);
+		return String(args.detail || args.mode || args.response || "").toLowerCase();
+	}
+
+	function wantsFullMutationResponse(request) {
+		var args = toolArguments(request);
+		var detail = responseDetail(request);
+		return detail === "full" ||
+			detail === "debug" ||
+			argBool(args.includeFullResponse || args.fullResponse || args.verbose, false);
+	}
+
+	function compactWriteLikeValue(value) {
+		if (!value || typeof value !== "object") {
+			return value;
+		}
+		var out = {};
+		["ok", "status", "name", "file", "target", "message"].forEach(function (key) {
+			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
+				out[key] = value[key];
+			}
+		});
+		if (value.source !== undefined && value.source !== null) {
+			out.sourceChars = String(value.source).length;
+		}
+		if (value.definition) {
+			out.definition = compactDefinition(value.definition);
+		}
+		if (value.analysis) {
+			out.analysis = compactAnalysis(value.analysis);
+		}
+		if (value.children) {
+			out.childCount = value.children.length;
+			out.children = compactChildren(value.children);
+		}
+		if (value.registration) {
+			out.registration = compactRegistration(value.registration);
+		}
+		return out;
+	}
+
+	function compactMutationToolValue(request, value) {
+		if (wantsFullMutationResponse(request) || !value || typeof value !== "object") {
+			return value;
+		}
+		var out = compactWriteLikeValue(value);
+		if (value.written) {
+			out.written = compactWriteLikeValue(value.written);
+		}
+		if (value.source !== undefined && value.source !== null) {
+			out.sourceHint = "Rewritten YAML omitted by default. Pass detail:\"full\" only when the complete source is required.";
+		}
+		if (value.children) {
+			out.treeHint = "Virtual tree omitted/compacted by default. Call flow-tree for focused inspection.";
+		}
+		out.responseDetail = "summary";
+		return out;
 	}
 
 	function compactToolValue(request, value) {
 		var name = toolName(request);
 		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test") {
 			return compactRuntimeToolValue(request, value);
+		}
+		if (name === "flow-analyze") {
+			return compactAnalyzeToolValue(request, value);
+		}
+		if (name === "flow-set" ||
+				name === "flow-edit" ||
+				name === "flow-apply" ||
+				name === "flow-node-add" ||
+				name === "flow-node-edit" ||
+				name === "flow-node-move" ||
+				name === "flow-node-delete" ||
+				name === "flow-node-duplicate") {
+			return compactMutationToolValue(request, value);
 		}
 		if (name !== "flow-type-list" || !value || !value.types) {
 			return value;
