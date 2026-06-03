@@ -14,7 +14,7 @@
 			var request = ctx.expr(props.request || "input.request");
 			var mcp = ctx.lib("mcp");
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
-				var patch = args.properties || args.props || {};
+				var patch = args.properties || {};
 				patch = JSON.parse(JSON.stringify(patch));
 				if (args.newId || args.newNodeId) {
 					patch.id = String(args.newId || args.newNodeId);

@@ -3,7 +3,7 @@ private: true
 icon: mdi:chart-timeline-variant
 tags:
 - mcp
-description: Runs the flow-analyze MCP tool.
+description: Runs the flow-analyze MCP tool. Use it like a static schema/data-flow manager before editing expressions.
 display: tool flow-analyze -> {{ input.out }}
 props:
   request:

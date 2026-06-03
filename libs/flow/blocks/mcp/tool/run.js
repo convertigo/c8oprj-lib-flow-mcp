@@ -53,7 +53,7 @@
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
-				response = mcp.toolResponse(request, ctx.callBlock(target, { props: args }, { trace: false }), ctx);
+				response = mcp.toolResponse(request, ctx.callBlock(target, args, { trace: false }), ctx);
 			} catch (e) {
 				response = mcp.toolError(request, e, ctx);
 			}

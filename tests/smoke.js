@@ -135,16 +135,17 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 		request: JSON.stringify({
 			jsonrpc: "2.0",
 			id: 1002,
-			method: "tools/call",
-			params: {
-				name: "flow-catalog",
-				arguments: {
-					projectDir: projectDir,
-					detail: "compact",
-					includePrivate: true
+				method: "tools/call",
+				params: {
+					name: "flow-catalog",
+					arguments: {
+						projectDir: projectDir,
+						detail: "compact",
+						includePrivate: true,
+						limit: 200
+					}
 				}
-			}
-		})
+			})
 	}
 })));
 assertTrue(privateCatalog.result.result.structuredContent.blocks.some(function (block) {

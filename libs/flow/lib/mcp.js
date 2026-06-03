@@ -893,6 +893,33 @@
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
+		var name = toolName(request || {});
+		if (name === "flow-catalog") {
+			if (!args.detail && !args.mode) {
+				args.detail = "summary";
+			}
+			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
+				args.limit = 20;
+			}
+		} else if (name === "flow-search") {
+			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
+				args.limit = 20;
+			}
+			if (args.context === undefined || args.context === null || String(args.context) === "") {
+				args.context = 1;
+			}
+		} else if (name === "flow-tree") {
+			if (!args.detail && !args.mode) {
+				args.detail = "compact";
+			}
+			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
+				args.maxDepth = 4;
+			}
+		} else if (name === "flow-block-list") {
+			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
+				args.limit = 50;
+			}
+		}
 		var workspaceSearch = options.workspaceSearch === true
 			&& String(args.scope || "") === "workspace"
 			&& !args.project
@@ -952,8 +979,8 @@
 		if (args.block !== undefined && args.block !== null && String(args.block) !== "") {
 			node.block = String(args.block);
 		}
-		Object.keys(args.properties || args.props || {}).forEach(function (key) {
-			node[key] = (args.properties || args.props)[key];
+		Object.keys(args.properties || {}).forEach(function (key) {
+			node[key] = args.properties[key];
 		});
 		if (!node.block) {
 			throw new Error("flow-node-add requires block or node.block.");
@@ -989,7 +1016,7 @@
 				value: args.value
 			};
 		}
-		var patch = args.properties || args.props;
+		var patch = args.properties;
 		if (!patch || typeof patch !== "object") {
 			throw new Error("flow-node-edit requires property+value or properties.");
 		}
@@ -1011,7 +1038,7 @@
 	}
 
 	function nodeDuplicateMutation(args) {
-		var patch = copyJson(args.properties || args.props || {});
+		var patch = copyJson(args.properties || {});
 		if (args.newId || args.newNodeId) {
 			patch.id = String(args.newId || args.newNodeId);
 		}
@@ -1034,7 +1061,6 @@
 		request.mutation = mutation;
 		delete request.node;
 		delete request.properties;
-		delete request.props;
 		return applyNamedFlowMutation(ctx, request);
 	}
 

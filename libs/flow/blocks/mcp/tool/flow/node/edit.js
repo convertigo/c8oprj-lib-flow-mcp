@@ -14,7 +14,7 @@
 						value: args.value
 					};
 				} else {
-					var patch = args.properties || args.props;
+					var patch = args.properties;
 					if (!patch || typeof patch !== "object") {
 						throw new Error("flow-node-edit requires property+value or properties.");
 					}

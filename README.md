@@ -280,3 +280,4 @@ MCP resources provide the same guidance to agents that cannot read this repo:
 - `flow://guide/authoring`
 - `flow://guide/search-and-edit`
 - `flow://guide/custom-blocks`
+- `flow://guide/tracing`

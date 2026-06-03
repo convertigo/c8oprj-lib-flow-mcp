@@ -7,7 +7,7 @@
 		if (args.block !== undefined && args.block !== null && String(args.block) !== "") {
 			node.block = String(args.block);
 		}
-		var props = args.properties || args.props || {};
+		var props = args.properties || {};
 		Object.keys(props).forEach(function (key) {
 			node[key] = props[key];
 		});
