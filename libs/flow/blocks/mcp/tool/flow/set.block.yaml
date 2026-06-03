@@ -1,16 +1,20 @@
 version: 1
 private: true
 icon: "mdi:content-save-outline"
-description: "Runs the flow-set MCP tool."
+description: "Writes a named Flow sidecar and optionally registers it in the project."
 props:
-  request:
-    kind: "expression"
-    type: "object"
-    description: "MCP JSON-RPC tools/call request object."
-  out:
-    kind: "path"
-    mode: "write"
-    description: "Scope path receiving the MCP response."
+  name:
+    kind: text
+    type: string
+    description: "Project Flow sidecar name."
+  flowSource:
+    kind: text
+    type: string
+    description: "Canonical Flow YAML source to write."
+  register:
+    kind: literal
+    type: boolean
+    description: "Register/save the Flow DBO after writing."
 hooks:
   file: set.hooks.js
 implementation:

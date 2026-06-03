@@ -4,7 +4,3 @@ nodes:
     block: mcp.tool.run
     request: input.request
     target: type.list
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"

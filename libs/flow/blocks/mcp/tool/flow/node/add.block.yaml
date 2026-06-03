@@ -1,16 +1,48 @@
 version: 1
 private: true
 icon: "mdi:playlist-plus"
-description: "Runs the flow-node-add MCP tool."
+description: "Adds one node to a named Flow sidecar."
 props:
-  request:
-    kind: "expression"
-    type: "object"
-    description: "MCP JSON-RPC tools/call request object."
-  out:
-    kind: "path"
-    mode: "write"
-    description: "Scope path receiving the MCP response."
+  name:
+    kind: text
+    type: string
+    description: "Project Flow sidecar name."
+  id:
+    kind: text
+    type: string
+    description: "Stable id for the inserted node."
+  block:
+    kind: text
+    type: string
+    description: "Block name to instantiate."
+  properties:
+    kind: expression
+    type: object
+    description: "Properties to merge into the inserted node."
+  node:
+    kind: expression
+    type: object
+    description: "Complete node definition, alternative to id/block/properties."
+  parentNodeId:
+    kind: text
+    type: string
+    description: "Parent node receiving the inserted node."
+  beforeNodeId:
+    kind: text
+    type: string
+    description: "Insert before this sibling node."
+  afterNodeId:
+    kind: text
+    type: string
+    description: "Insert after this sibling node."
+  slot:
+    kind: text
+    type: string
+    description: "Target slot when inserting inside a container."
+  index:
+    kind: literal
+    type: number
+    description: "Target insertion index."
 hooks:
   file: add.hooks.js
 implementation:

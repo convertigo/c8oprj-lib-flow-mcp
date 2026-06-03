@@ -19,5 +19,3 @@ nodes:
 - id: "done"
   block: "return"
   value: "{{ local.responses }}"
-- id: "flow_run"
-  block: "flow.run"

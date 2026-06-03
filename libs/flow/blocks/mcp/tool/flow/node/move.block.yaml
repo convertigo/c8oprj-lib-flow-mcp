@@ -1,16 +1,40 @@
 version: 1
 private: true
 icon: "mdi:playlist-play"
-description: "Runs the flow-node-move MCP tool."
+description: "Moves one node in a named Flow sidecar."
 props:
-  request:
-    kind: "expression"
-    type: "object"
-    description: "MCP JSON-RPC tools/call request object."
-  out:
-    kind: "path"
-    mode: "write"
-    description: "Scope path receiving the MCP response."
+  name:
+    kind: text
+    type: string
+    description: "Project Flow sidecar name."
+  nodeId:
+    kind: text
+    type: string
+    description: "Node id to move."
+  parentNodeId:
+    kind: text
+    type: string
+    description: "Parent node receiving the moved node."
+  beforeNodeId:
+    kind: text
+    type: string
+    description: "Move before this sibling node."
+  afterNodeId:
+    kind: text
+    type: string
+    description: "Move after this sibling node."
+  slot:
+    kind: text
+    type: string
+    description: "Target slot when moving inside a container."
+  index:
+    kind: literal
+    type: number
+    description: "Target insertion index."
+  dryRun:
+    kind: literal
+    type: boolean
+    description: "Apply mutation without writing the Flow sidecar."
 hooks:
   file: move.hooks.js
 implementation:

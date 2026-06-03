@@ -1,16 +1,20 @@
 version: 1
 private: true
 icon: "mdi:playlist-remove"
-description: "Runs the flow-node-delete MCP tool."
+description: "Deletes one node from a named Flow sidecar."
 props:
-  request:
-    kind: "expression"
-    type: "object"
-    description: "MCP JSON-RPC tools/call request object."
-  out:
-    kind: "path"
-    mode: "write"
-    description: "Scope path receiving the MCP response."
+  name:
+    kind: text
+    type: string
+    description: "Project Flow sidecar name."
+  nodeId:
+    kind: text
+    type: string
+    description: "Node id to delete."
+  dryRun:
+    kind: literal
+    type: boolean
+    description: "Apply mutation without writing the Flow sidecar."
 hooks:
   file: delete.hooks.js
 implementation:

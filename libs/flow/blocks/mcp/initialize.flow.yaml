@@ -11,7 +11,3 @@ nodes:
       capabilities:
         tools: {}
         resources: {}
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"

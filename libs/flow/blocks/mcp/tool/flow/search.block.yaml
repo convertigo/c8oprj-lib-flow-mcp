@@ -1,16 +1,33 @@
 version: 1
 private: true
 icon: "mdi:magnify-scan"
-description: "Runs the flow-search MCP tool."
+description: "Searches Flow sidecars, nodes, catalog entries and learned schemas."
 props:
-  request:
-    kind: "expression"
-    type: "object"
-    description: "MCP JSON-RPC tools/call request object."
-  out:
-    kind: "path"
-    mode: "write"
-    description: "Scope path receiving the MCP response."
+  query:
+    kind: text
+    type: string
+    description: "Search text. Multi-word queries match unordered tokens."
+  scope:
+    kind: text
+    type: string
+    default: project
+    description: "Search scope: project or workspace."
+  kinds:
+    kind: literal
+    type: array
+    description: "Optional result kinds, such as flow, node, block, type or schema."
+  context:
+    kind: literal
+    type: number
+    description: "Number of neighboring nodes to include around node matches."
+  limit:
+    kind: literal
+    type: number
+    description: "Maximum number of matches to return."
+  cursor:
+    kind: text
+    type: string
+    description: "Pagination cursor returned by a previous search."
 hooks:
   file: search.hooks.js
 implementation:
