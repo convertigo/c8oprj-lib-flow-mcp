@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:play-box-outline"
 description: "Runs one MCP tool by calling a Flow block capability and wrapping the JSON-RPC response."
 props:

@@ -2,16 +2,16 @@ version: 1
 nodes:
   - id: availableTools
     block: mcp.tools.available
-    out: flow.tools
+    out: local.tools
   - id: payload
     block: json.object
-    out: flow.payload
+    out: local.payload
     fields:
       - id: tools
         block: json.field
         key: tools
-        value: "{{ flow.tools }}"
+        value: "{{ local.tools }}"
   - id: response
     block: mcp.response.result
     request: input.request
-    result: flow.payload
+    result: local.payload

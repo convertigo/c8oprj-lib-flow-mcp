@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:playlist-play"
 description: "Moves one node in a named Flow sidecar."
 props:

@@ -4,15 +4,15 @@ nodes:
     block: resource.list
     rootDir: libs/flow/resources
     pattern: "**/*.md"
-    out: flow.resourceList
+    out: local.resourceList
   - id: filterUri
     block: list.filter
-    items: flow.resourceList.resources
+    items: local.resourceList.resources
     where: current.uri == input.request.params.uri
-    out: flow.matches
+    out: local.matches
   - id: notFound
     block: if
-    condition: length(flow.matches) == 0
+    condition: length(local.matches) == 0
     then:
       - id: error
         block: mcp.response.error
@@ -27,34 +27,34 @@ nodes:
         value: "{{ local.response }}"
   - id: readResource
     block: resource.get
-    path: "{{ flow.matches.0.path }}"
-    out: flow.resource
+    path: "{{ local.matches.0.path }}"
+    out: local.resource
   - id: content
     block: json.object
-    out: flow.content
+    out: local.content
     fields:
       - id: uri
         block: json.field
         key: uri
-        value: "{{ flow.resource.uri }}"
+        value: "{{ local.resource.uri }}"
       - id: mimeType
         block: json.field
         key: mimeType
-        value: "{{ flow.resource.mimeType }}"
+        value: "{{ local.resource.mimeType }}"
       - id: text
         block: json.field
         key: text
-        value: "{{ flow.resource.content }}"
+        value: "{{ local.resource.content }}"
   - id: payload
     block: json.object
-    out: flow.payload
+    out: local.payload
     fields:
       - id: contents
         block: json.field
         key: contents
         value:
-          - "{{ flow.content }}"
+          - "{{ local.content }}"
   - id: wrapResult
     block: mcp.response.result
     request: input.request
-    result: flow.payload
+    result: local.payload

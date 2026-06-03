@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:alert-circle-outline"
 description: "Wraps an error in a JSON-RPC error response."
 props:

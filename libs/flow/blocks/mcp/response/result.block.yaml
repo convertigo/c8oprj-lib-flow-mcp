@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:reply"
 description: "Wraps a payload in a JSON-RPC result response."
 props:

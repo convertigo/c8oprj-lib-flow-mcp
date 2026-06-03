@@ -3,22 +3,22 @@ nodes:
   - id: parseRequest
     block: mcp.request
     request: input.request
-    out: flow.request
+    out: local.request
   - id: batch
     block: if
-    condition: length(flow.request) > 0
+    condition: length(local.request) > 0
     then:
       - id: handleBatch
         block: mcp.batch
-        request: flow.request
-        out: flow.response
+        request: local.request
+        out: local.response
       - id: returnBatch
         block: return
-        value: "{{ flow.response }}"
+        value: "{{ local.response }}"
   - id: handleSingle
     block: mcp.handle
-    request: flow.request
-    out: flow.response
+    request: local.request
+    out: local.response
   - id: returnSingle
     block: return
-    value: "{{ flow.response }}"
+    value: "{{ local.response }}"

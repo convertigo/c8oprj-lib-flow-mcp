@@ -14,7 +14,7 @@ props:
   out:
     kind: path
     mode: write
-    default: flow.response
+    default: local.response
     description: Scope path receiving the MCP response.
 hooks:
   file: call.hooks.js

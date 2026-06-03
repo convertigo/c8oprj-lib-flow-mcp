@@ -25,7 +25,7 @@ lib_flow_mcp.McpServer
   -> visible tools/call families (inspect, source, author, runtime)
   -> private mcp.* blocks
   -> reusable core/project blocks via ctx.callBlock(...)
-  -> optional low-level helpers in libs/flow/lib/mcp.js
+  -> explicit low-level libraries in libs/flow/lib/*.js, declared with uses
   -> lib_flow_engine.Engine
 ```
 
@@ -36,8 +36,16 @@ request, and `mcp.tools.call` is implemented with `mcp.tool.identify` and one
 branch per tool family. Private native `mcp.*` blocks keep the low-level
 JSON-RPC/Convertigo glue small. When reusable behavior has a clear contract,
 expose it as a block and call it with `ctx.callBlock(...)`; keep
-`libs/flow/lib/mcp.js` for local algorithmic helpers that would add noise to the
-Flow catalog.
+`libs/flow/lib/mcp.js` only for local algorithmic helpers that would add noise
+to the Flow catalog, and declare that dependency with `uses: [mcp]`.
+
+Scope naming convention for new Flow sources:
+
+- `input.*` is the data received by the executable Flow or block implementation.
+- `local.*` is the private working scope of the current execution.
+- `config.*`, `current`, `result` keep their usual meanings.
+- `props.*` is for hooks/raw node compatibility, not for new Flow implementations.
+- `flow.*` is a temporary compatibility alias of `local.*`; do not use it in new examples.
 
 For simple MCP tools, prefer this graph shape:
 
@@ -45,7 +53,7 @@ For simple MCP tools, prefer this graph shape:
 nodes:
   - id: run
     block: mcp.tool.run
-    request: props.request
+    request: input.request
     target: resource.search
     out: local.response
   - id: done
@@ -99,7 +107,8 @@ declared by `implementation.runtime`: usually `flow` for a graph made of blocks,
 or `rhino` with a peer `*.js` file for JVM/Java integration code. Rhino code may
 use Java classes through `Packages`, but not Node.js APIs such as `require`, npm
 modules or browser globals. Keep the runtime file to `run(ctx, node)` plus local
-helpers. Put static metadata in `*.block.yaml`, and optional dynamic
+helpers. Put shared helper dependencies in `uses`, static metadata in
+`*.block.yaml`, and optional dynamic
 `displayName(node)` / `analyze(ctx, node)` hooks in a separate `hooks.file`.
 
 Most tools accept either:

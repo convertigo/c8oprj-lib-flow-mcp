@@ -2,7 +2,7 @@
 	return {
 		displayName: function (node) {
 			var props = node.props || node;
-			return "result -> " + (props.out || "flow.response");
+			return "result -> " + (props.out || "local.response");
 		},
 
 		analyze: function (ctx, node) {

@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:sitemap-outline"
 description: "Applies one or more mutations to a named Flow sidecar."
 props:

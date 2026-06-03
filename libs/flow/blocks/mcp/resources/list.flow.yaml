@@ -4,18 +4,18 @@ nodes:
     block: resource.list
     rootDir: libs/flow/resources
     pattern: "**/*.md"
-    out: flow.resourceList
+    out: local.resourceList
   - id: initResources
     block: set
-    path: flow.resources
+    path: local.resources
     value: []
   - id: eachResource
     block: forEach
-    items: flow.resourceList.resources
+    items: local.resourceList.resources
     nodes:
       - id: pushResource
         block: json.push
-        path: flow.resources
+        path: local.resources
         nodes:
           - id: resourceObject
             block: json.object
@@ -38,13 +38,13 @@ nodes:
                 value: "{{ current.mimeType }}"
   - id: payload
     block: json.object
-    out: flow.payload
+    out: local.payload
     fields:
       - id: resources
         block: json.field
         key: resources
-        value: "{{ flow.resources }}"
+        value: "{{ local.resources }}"
   - id: wrapResult
     block: mcp.response.result
     request: input.request
-    result: flow.payload
+    result: local.payload

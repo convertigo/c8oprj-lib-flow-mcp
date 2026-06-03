@@ -2,52 +2,52 @@ version: 1
 nodes:
   - id: endpoint
     block: endpoint.current
-    out: flow.endpoint
+    out: local.endpoint
   - id: mcpUrl
     block: set
-    path: flow.mcpUrl
-    value: "{{ startsWith(input.mcpUrl, '{{') ? flow.endpoint.flowMcpUrl : default(input.mcpUrl, flow.endpoint.flowMcpUrl) }}"
+    path: local.mcpUrl
+    value: "{{ startsWith(input.mcpUrl, '{{') ? local.endpoint.flowMcpUrl : default(input.mcpUrl, local.endpoint.flowMcpUrl) }}"
   - id: codexHome
     block: path.resolveHome
     path: "{{ startsWith(input.codexHome, '{{') ? '~/.codex' : default(input.codexHome, '~/.codex') }}"
-    out: flow.codexHome
+    out: local.codexHome
   - id: skillPath
     block: path.resolveHome
-    path: "{{ flow.codexHome }}"
+    path: "{{ local.codexHome }}"
     suffix: skills/convertigo-flow-mcp/SKILL.md
-    out: flow.skillPath
+    out: local.skillPath
   - id: configPath
     block: path.resolveHome
-    path: "{{ flow.codexHome }}"
+    path: "{{ local.codexHome }}"
     suffix: config.toml
-    out: flow.configPath
+    out: local.configPath
   - id: skillAsset
     block: asset.read
     path: libs/flow/resources/skills/convertigo-flow-mcp/SKILL.md
-    out: flow.skillTemplate
+    out: local.skillTemplate
   - id: skillMarkdown
     block: template.render
-    template: "{{ flow.skillTemplate }}"
-    out: flow.skillMarkdown
+    template: "{{ local.skillTemplate }}"
+    out: local.skillMarkdown
   - id: writeSkill
     block: file.writeIfChanged
-    path: "{{ flow.skillPath }}"
-    content: "{{ flow.skillMarkdown }}"
+    path: "{{ local.skillPath }}"
+    content: "{{ local.skillMarkdown }}"
     dryRun: input.dryRun == true || input.dryRun == 'true'
-    out: flow.skillWrite
+    out: local.skillWrite
   - id: patchConfig
     block: toml.ensureSection
-    path: "{{ flow.configPath }}"
+    path: "{{ local.configPath }}"
     section: mcp_servers.convertigo-flow
     values:
-      url: "{{ flow.mcpUrl }}"
+      url: "{{ local.mcpUrl }}"
       startup_timeout_sec: 60
       enabled: true
     dryRun: input.dryRun == true || input.dryRun == 'true'
-    out: flow.configPatch
+    out: local.configPatch
   - id: summary
     block: json.object
-    out: flow.setup
+    out: local.setup
     fields:
       - id: ok
         block: json.field
@@ -64,11 +64,11 @@ nodes:
       - id: skillStatus
         block: json.field
         key: skillStatus
-        value: "{{ flow.skillWrite.status }}"
+        value: "{{ local.skillWrite.status }}"
       - id: configStatus
         block: json.field
         key: configStatus
-        value: "{{ flow.configPatch.status }}"
+        value: "{{ local.configPatch.status }}"
       - id: configServerName
         block: json.field
         key: configServerName
@@ -76,19 +76,19 @@ nodes:
       - id: resolvedCodexHome
         block: json.field
         key: resolvedCodexHome
-        value: "{{ flow.codexHome }}"
+        value: "{{ local.codexHome }}"
       - id: resolvedMcpUrl
         block: json.field
         key: resolvedMcpUrl
-        value: "{{ flow.mcpUrl }}"
+        value: "{{ local.mcpUrl }}"
       - id: skillPath
         block: json.field
         key: skillPath
-        value: "{{ flow.skillPath }}"
+        value: "{{ local.skillPath }}"
       - id: configPath
         block: json.field
         key: configPath
-        value: "{{ flow.configPath }}"
+        value: "{{ local.configPath }}"
       - id: dryRun
         block: json.field
         key: dryRun
@@ -96,7 +96,7 @@ nodes:
       - id: warnings
         block: json.field
         key: warnings
-        value: "{{ flow.endpoint.warnings }}"
+        value: "{{ local.endpoint.warnings }}"
       - id: nextSteps
         block: json.field
         key: nextSteps
@@ -106,4 +106,4 @@ nodes:
           - Use the convertigo-flow MCP server for Flow-native project authoring.
   - id: done
     block: return
-    value: "{{ flow.setup }}"
+    value: "{{ local.setup }}"

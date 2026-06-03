@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:code-json"
 description: "Parses an MCP JSON-RPC request payload."
 props:

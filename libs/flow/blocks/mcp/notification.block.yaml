@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:bell-outline"
 description: "Accepts MCP notifications without a JSON-RPC response."
 props:

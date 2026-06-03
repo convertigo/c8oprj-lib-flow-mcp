@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:magnify-scan"
 description: "Searches Flow sidecars, nodes, catalog entries and learned schemas."
 props:

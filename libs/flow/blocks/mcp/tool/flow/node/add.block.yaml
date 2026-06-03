@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:playlist-plus"
 description: "Adds one node to a named Flow sidecar."
 props:

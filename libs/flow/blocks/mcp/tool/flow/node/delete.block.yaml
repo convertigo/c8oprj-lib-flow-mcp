@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:playlist-remove"
 description: "Deletes one node from a named Flow sidecar."
 props:

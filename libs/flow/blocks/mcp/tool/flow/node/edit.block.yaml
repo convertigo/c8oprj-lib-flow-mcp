@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:playlist-edit"
 description: "Edits one node in a named Flow sidecar."
 props:

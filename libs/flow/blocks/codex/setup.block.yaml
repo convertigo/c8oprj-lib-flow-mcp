@@ -26,7 +26,7 @@ props:
     label: out
     kind: path
     mode: write
-    default: flow.setup
+    default: local.setup
     description: Scope path receiving the setup result.
 hooks:
   file: setup.hooks.js

@@ -32,7 +32,7 @@
 
 	return {
 		displayName: function (node) {
-			return "tools.call -> " + (prop(node, "out") || "flow.response");
+			return "tools.call -> " + (prop(node, "out") || "local.response");
 		},
 
 		analyze: function (ctx, node) {

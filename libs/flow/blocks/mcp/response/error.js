@@ -26,7 +26,7 @@
 				id: request.id === undefined ? null : request.id,
 				error: error
 			});
-			ctx.write(props.out || "flow.response", response);
+			ctx.write(props.out || "local.response", response);
 			return response;
 		}
 	};

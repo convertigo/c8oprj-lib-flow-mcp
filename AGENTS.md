@@ -14,7 +14,8 @@ Rules:
   promote reusable branches to composite graph blocks in
   `libs/flow/blocks/*.block.yaml`. Keep shared JavaScript helpers in
   `libs/flow/lib/mcp.js` only for low-level local details that are not useful as
-  Flow blocks.
+  Flow blocks, and declare those helpers with `uses` on each block that calls
+  `ctx.lib(...)`.
 - Keep the single-request router in `mcp.handle.block.yaml` so batch and
   request routing both expose their Flow implementation in the catalog tree.
 - Keep `tools/call` routing visible too: `mcp.tools.call.block.yaml` should
@@ -26,6 +27,9 @@ Rules:
   `/convertigo/api/mcp`, which belongs to the legacy Convertigo MCP project.
 - Keep generated or one-off helper blocks private when they are not intended for
   projects referencing this library.
+- Use `input.*` for executable/block inputs and `local.*` for scratch state in
+  all new Flow YAML. `flow.*` is only a compatibility alias; `props.*` is for
+  hooks/raw node compatibility.
 
 Authoring loop for a blank agent context:
 

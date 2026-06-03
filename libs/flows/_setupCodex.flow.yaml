@@ -5,7 +5,7 @@ nodes:
     codexHome: "{{ input.codexHome }}"
     mcpUrl: "{{ input.mcpUrl }}"
     dryRun: input.dryRun
-    out: flow.setup
+    out: local.setup
   - id: done
     block: return
-    value: "{{ flow.setup }}"
+    value: "{{ local.setup }}"

@@ -1,5 +1,7 @@
 version: 1
 private: true
+uses:
+  - mcp
 icon: "mdi:content-save-outline"
 description: "Writes a named Flow sidecar and optionally registers it in the project."
 props:

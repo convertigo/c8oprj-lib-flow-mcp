@@ -9,7 +9,7 @@
 	return {
 		displayName: function (node) {
 			var props = node.props || node;
-			return "error " + (props.code || "-32000") + " -> " + (props.out || "flow.response");
+			return "error " + (props.code || "-32000") + " -> " + (props.out || "local.response");
 		},
 
 		analyze: function (ctx, node) {
