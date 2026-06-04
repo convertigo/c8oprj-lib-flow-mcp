@@ -32,6 +32,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - Create custom blocks only when the behavior is reusable or hides unavoidable low-level code. Use `flow-block-code-set` for reusable blocks implemented with FlowScript: `input.*` are typed block properties, code may be a body or `block localName({ input }) { ... }`, template literals are accepted for simple string composition, and `return value;` returns the block result.
 - A `flow-block-code-set` dry run validates but does not register the block in the palette. After a clean dry run, save the block with `dry:false` before validating a Flow that calls it.
 - In compact FlowScript, pass typed values naturally: `name: current.name`, `items: sorted`, `enabled: true`. Use `{{ expression }}` mainly for mixed text templates or when diagnostics ask for canonical syntax.
+- Map arrays through reusable blocks with `const rows = list.map(items, custom.block({ prop: current.value }))`; the compiler lowers it to a Flow loop.
 - For JSON HTTP APIs, `http.get` exposes parsed JSON under `response.body`. Use `response.text` and `json.parse` only when the response is not already native JSON.
 - Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.
 - Do not edit generated or cached files unless an MCP tool explicitly returns them as writable Flow resources.
