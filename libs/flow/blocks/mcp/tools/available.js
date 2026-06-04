@@ -83,7 +83,9 @@
 		var target = "";
 		if (["analyze", "apply", "context", "get", "list", "outputSchema", "run", "schema.reset", "test", "tree"].indexOf(suffix) !== -1) {
 			target = "flow." + suffix;
-		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 || suffix.indexOf("source.") === 0 || suffix.indexOf("type.") === 0) {
+		} else if (suffix.indexOf("code.") === 0 || suffix.indexOf("source.") === 0) {
+			target = "flow." + suffix;
+		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 || suffix.indexOf("type.") === 0) {
 			target = suffix;
 		}
 		var candidates = target ? [target] : [];

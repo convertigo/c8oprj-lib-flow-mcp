@@ -225,16 +225,29 @@ On the `spike-flowscript` branch, the MCP also exposes an experimental source
 view for agents:
 
 ```text
+flow-code-get
+flow-code-set
+flow-code-patch
+flow-code-rg
+
 flow-source-get
 flow-source-validate
 flow-source-patch
 ```
 
-Use `flow-source-get` to read a Flow as code plus `revision`, then
-`flow-source-patch` with that revision and either a unified patch or full code
-replacement. The engine parses and validates the FlowScript, returns line-based
-diagnostics when a block/property is invalid, and writes the regular Flow YAML
-sidecar only after validation succeeds.
+Prefer `flow-code-*` for normal agent work:
+
+- `flow-code-get({qname})` returns only FlowScript `code` plus `revision`.
+- `flow-code-set({qname, revision?, code, dry?})` validates and optionally writes.
+- `flow-code-patch({qname, revision, codepatch|code, dry?})` applies a revision-checked edit.
+- `flow-code-rg({qname?, pattern})` returns small FlowScript extracts.
+
+The engine parses and validates the FlowScript, returns line-based diagnostics
+when a block/property is invalid, and writes the regular Flow YAML sidecar only
+after validation succeeds.
+
+Keep `flow-source-*` for compiler/debug work where canonical definitions, YAML
+or full analysis are intentionally needed.
 
 This is a research path to measure whether agents transpose code instincts more
 efficiently than direct block/tree MCP editing.

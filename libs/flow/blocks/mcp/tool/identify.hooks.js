@@ -8,7 +8,7 @@
 		if (name.match(/^flow-(catalog|analyze|search|context|tree|output-schema)$/)) {
 			return "inspect";
 		}
-		if (name.match(/^flow-(resource|block|type)-/) && name !== "flow-block-test") {
+		if (name.match(/^flow-(resource|block|code|type)-/) && name !== "flow-block-test") {
 			return "source";
 		}
 		if (name.match(/^flow-(run|test|block-test)$/)) {
