@@ -1214,6 +1214,69 @@
 		return out;
 	}
 
+	function compactSchemaType(schema) {
+		if (!schema || typeof schema !== "object") {
+			return schema === null ? "null" : typeof schema;
+		}
+		if (schema.type) {
+			return String(schema.type);
+		}
+		if (schema.properties) {
+			return "object";
+		}
+		return "unknown";
+	}
+
+	function compactSchemaJoin(prefix, key) {
+		return prefix ? prefix + "." + key : String(key);
+	}
+
+	function compactSchemaPaths(schema, prefix, out, limit) {
+		if (out.length >= limit) {
+			return;
+		}
+		if (!schema || typeof schema !== "object") {
+			if (prefix) {
+				out.push(prefix);
+			}
+			return;
+		}
+		if (schema.type === "array") {
+			if (prefix) {
+				out.push(prefix);
+			}
+			compactSchemaPaths(schema.items, prefix, out, limit);
+			return;
+		}
+		var source = schema.properties || schema;
+		var keys = Object.keys(source || {}).filter(function (key) {
+			return ["type", "items", "properties", "required", "description"].indexOf(key) === -1;
+		});
+		if (keys.length === 0) {
+			if (prefix) {
+				out.push(prefix);
+			}
+			return;
+		}
+		if (prefix) {
+			out.push(prefix);
+		}
+		keys.forEach(function (key) {
+			if (out.length < limit) {
+				compactSchemaPaths(source[key], compactSchemaJoin(prefix, key), out, limit);
+			}
+		});
+	}
+
+	function compactSchemaSummary(schema, limit) {
+		var paths = [];
+		compactSchemaPaths(schema, "", paths, limit || 16);
+		return {
+			type: compactSchemaType(schema),
+			paths: paths
+		};
+	}
+
 	function compactRuntimeToolValue(request, value) {
 		var args = toolArguments(request);
 		if (!value || typeof value !== "object") {
@@ -1314,8 +1377,13 @@
 			out.returnSchemas = value.returnSchemas.slice(0, 5);
 		}
 		if (value.schemas && Object.keys(value.schemas).length) {
-			out.schemaPaths = Object.keys(value.schemas).slice(0, 40);
+			var schemaKeys = Object.keys(value.schemas).slice(0, 40);
+			out.schemaPaths = schemaKeys;
 			out.schemaCount = Object.keys(value.schemas).length;
+			out.schemaSummaries = {};
+			schemaKeys.slice(0, argInt(args.maxSchemaSummaries, 8, 0, 20)).forEach(function (key) {
+				out.schemaSummaries[key] = compactSchemaSummary(value.schemas[key], argInt(args.maxSchemaPaths, 16, 4, 80));
+			});
 		}
 		return out;
 	}
