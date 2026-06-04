@@ -17,6 +17,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - Before editing, inspect the current Flow with `flow-tree` or `flow-get`; after editing, validate with `flow-test` or `flow-run`.
 - For project-local implementation files, prefer `flow-resource-get` then `flow-resource-patch` with the returned base hash.
 - Keep responses compact: request summaries first, expand only the relevant node, block, type, or resource.
+- After the first palette/catalog response, pass `hints:false` and `doc:false` unless a diagnostic is unclear.
 - For a new Flow, preview a complete `definition` with `flow-block-test`, then write once with `flow-set`.
 - For a new FlowScript-backed custom block, prefer `flow-block-code-set` over raw `flow-block-create` descriptor YAML.
 
@@ -29,7 +30,9 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - For usage examples, create a private executable Flow named `sample_*`. Use comments only for subtle choices, not boilerplate.
 - Prefer existing blocks from the current provider/namespace before creating new blocks.
 - Create custom blocks only when the behavior is reusable or hides unavoidable low-level code. Use `flow-block-code-set` for reusable blocks implemented with FlowScript: `input.*` are typed block properties, code may be a body or `block localName({ input }) { ... }`, template literals are accepted for simple string composition, and `return value;` returns the block result.
+- A `flow-block-code-set` dry run validates but does not register the block in the palette. After a clean dry run, save the block with `dry:false` before validating a Flow that calls it.
 - In compact FlowScript, pass typed values naturally: `name: current.name`, `items: sorted`, `enabled: true`. Use `{{ expression }}` mainly for mixed text templates or when diagnostics ask for canonical syntax.
+- For JSON HTTP APIs, `http.get` exposes parsed JSON under `response.body`. Use `response.text` and `json.parse` only when the response is not already native JSON.
 - Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.
 - Do not edit generated or cached files unless an MCP tool explicitly returns them as writable Flow resources.
 - Do not call `flow-schema-reset` unless an existing learned schema is stale.
