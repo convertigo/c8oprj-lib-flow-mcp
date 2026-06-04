@@ -917,7 +917,7 @@
 			}
 		} else if (name === "flow-block-list") {
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
-				args.limit = 50;
+				args.limit = 20;
 			}
 		}
 		var workspaceSearch = options.workspaceSearch === true
