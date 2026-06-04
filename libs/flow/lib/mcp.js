@@ -376,6 +376,12 @@
 		if (value.nextCursor) {
 			parts.push("nextCursor=" + value.nextCursor);
 		}
+		if (value.warnings && value.warnings.length) {
+			parts.push("warnings=" + value.warnings.length + ": " +
+				value.warnings.slice(0, 2).map(function (warning) {
+					return warning.hint || warning.message || warning.code || "warning";
+				}).join(" | "));
+		}
 		if (value.matches) {
 			parts.push(String(value.matches.length) + " matches: " + listNames(value.matches, 6).join(", "));
 		} else if (value.blocks) {
