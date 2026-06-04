@@ -5,7 +5,7 @@
 
 	function toolGroup(name) {
 		name = String(name || "");
-		if (name.match(/^flow-(catalog|analyze|search|context|tree|output-schema)$/)) {
+		if (name.match(/^flow-(catalog|analyze|search|context|tree|output-schema)$/) || name.match(/^flow-requestable-/)) {
 			return "inspect";
 		}
 		if (name.match(/^flow-(resource|block|code|type)-/) && name !== "flow-block-test") {

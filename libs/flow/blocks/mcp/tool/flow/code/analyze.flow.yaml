@@ -1,0 +1,6 @@
+version: 1
+nodes:
+  - id: analyzeCode
+    block: mcp.tool.run
+    request: input.request
+    target: flow.code.analyze

@@ -1451,13 +1451,60 @@
 		return out;
 	}
 
+	function compactRequestableSchemaToolValue(request, value) {
+		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
+			return value;
+		}
+		if (value.ok === false || value.error) {
+			return value;
+		}
+		var args = toolArguments(request);
+		var limit = argInt(args.limit || args.maxPaths, 60, 1, 500);
+		var paths = value.paths || [];
+		var arrayPaths = value.arrayPaths || [];
+		var leafPaths = value.leafPaths || [];
+		if (arrayPaths.length) {
+			leafPaths = leafPaths.filter(function (entry) {
+				return arrayPaths.some(function (arrayPath) {
+					return String(entry.path || "").indexOf(String(arrayPath) + ".") === 0;
+				});
+			});
+		}
+		var leafLimit = argInt(args.leafLimit || args.maxLeafPaths, 25, 0, 200);
+		var out = {
+			ok: true,
+			target: value.target,
+			learned: value.learned === true,
+			pathCount: paths.length,
+			paths: paths.slice(0, limit),
+			arrayPaths: arrayPaths.slice(0, 30),
+			leafPaths: leafPaths.slice(0, leafLimit),
+			flowScript: value.flowScript,
+			responseDetail: "summary",
+			next: "Use paths/arrayPaths to write FlowScript expressions. Use detail:'full' only when the complete schema object or sample is required."
+		};
+		if (paths.length > limit) {
+			out.omittedPaths = paths.length - limit;
+		}
+		if (leafPaths.length > leafLimit) {
+			out.omittedLeafPaths = leafPaths.length - leafLimit;
+		}
+		if ((args.includeSchema === true || args.schema === true) && value.schema && jsonChars(value.schema) < 12000) {
+			out.schema = value.schema;
+		}
+		return out;
+	}
+
 	function compactToolValue(request, value) {
 		var name = toolName(request);
-		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test") {
+		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run") {
 			return compactRuntimeToolValue(request, value);
 		}
-		if (name === "flow-analyze") {
+		if (name === "flow-analyze" || name === "flow-code-analyze") {
 			return compactAnalyzeToolValue(request, value);
+		}
+		if (name === "flow-requestable-schema") {
+			return compactRequestableSchemaToolValue(request, value);
 		}
 		if (name === "flow-set" ||
 				name === "flow-edit" ||

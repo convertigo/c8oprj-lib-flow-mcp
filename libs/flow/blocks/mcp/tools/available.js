@@ -1,5 +1,30 @@
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
+	var PUBLIC_TOOLS = {
+		"flow-block-create": true,
+		"flow-block-duplicate": true,
+		"flow-block-edit": true,
+		"flow-block-get": true,
+		"flow-catalog": true,
+		"flow-code-analyze": true,
+		"flow-code-get": true,
+		"flow-code-patch": true,
+		"flow-code-rg": true,
+		"flow-code-run": true,
+		"flow-code-set": true,
+		"flow-list": true,
+		"flow-requestable-list": true,
+		"flow-requestable-schema": true,
+		"flow-resource-get": true,
+		"flow-resource-patch": true,
+		"flow-resource-search": true,
+		"flow-schema-reset": true,
+		"flow-search": true,
+		"flow-test": true,
+		"flow-type-create": true,
+		"flow-type-get": true,
+		"flow-type-list": true
+	};
 	var OMIT_SCHEMA_PROPERTIES = {
 		allowHugeResult: true,
 		projectDir: true,
@@ -13,6 +38,7 @@
 		includeFullTrace: true,
 		includeLibraries: true,
 		includePrivate: true,
+		includeSample: true,
 		includeSource: true,
 		includeTrace: true,
 		includeTypes: true,
@@ -85,7 +111,8 @@
 			target = "flow." + suffix;
 		} else if (suffix.indexOf("code.") === 0 || suffix.indexOf("source.") === 0) {
 			target = "flow." + suffix;
-		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 || suffix.indexOf("type.") === 0) {
+		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 ||
+				suffix.indexOf("requestable.") === 0 || suffix.indexOf("type.") === 0) {
 			target = suffix;
 		}
 		var candidates = target ? [target] : [];
@@ -104,9 +131,11 @@
 			return type;
 		}
 		if (["expression", "template", "literal"].indexOf(kind) !== -1) {
-			return type || "object";
+			return ["string", "number", "integer", "boolean", "array", "object", "null", "unknown"].indexOf(type) !== -1
+				? type
+				: "object";
 		}
-		return type || "string";
+		return "string";
 	}
 
 	function schemaProperty(prop) {
@@ -150,7 +179,7 @@
 	function descriptorFor(ctx, wrapper, byName) {
 		var blockId = wrapper.blockId || wrapper.name || wrapper.block || "";
 		var name = toolName(blockId);
-		if (!name) {
+		if (!name || PUBLIC_TOOLS[name] !== true) {
 			return null;
 		}
 		var target = targetFromWrapperName(blockId, byName);
