@@ -1,0 +1,6 @@
+version: 1
+nodes:
+  - id: runSourceValidate
+    block: mcp.tool.run
+    request: input.request
+    target: flow.source.validate

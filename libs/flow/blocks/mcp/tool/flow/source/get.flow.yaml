@@ -1,0 +1,6 @@
+version: 1
+nodes:
+  - id: runSourceGet
+    block: mcp.tool.run
+    request: input.request
+    target: flow.source.get

@@ -219,6 +219,26 @@ Block authoring is intentionally explicit:
 Core and shared blocks are read-only through this MCP surface. Duplicate them
 first when an agent needs a custom variant.
 
+## FlowScript spike tools
+
+On the `spike-flowscript` branch, the MCP also exposes an experimental source
+view for agents:
+
+```text
+flow-source-get
+flow-source-validate
+flow-source-patch
+```
+
+Use `flow-source-get` to read a Flow as code plus `revision`, then
+`flow-source-patch` with that revision and either a unified patch or full code
+replacement. The engine parses and validates the FlowScript, returns line-based
+diagnostics when a block/property is invalid, and writes the regular Flow YAML
+sidecar only after validation succeeds.
+
+This is a research path to measure whether agents transpose code instincts more
+efficiently than direct block/tree MCP editing.
+
 For iterative maintenance, prefer patching the project-local resource instead
 of replacing a whole source file:
 

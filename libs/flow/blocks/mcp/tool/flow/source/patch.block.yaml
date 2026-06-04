@@ -1,0 +1,24 @@
+version: 1
+private: true
+icon: mdi:file-edit-outline
+tags:
+- mcp
+- flowscript
+description: Applies a revision-checked FlowScript patch and writes the Flow sidecar.
+display: tool flow-source-patch -> {{ input.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: patch.hooks.js
+implementation:
+  runtime: flow
+  file: patch.flow.yaml

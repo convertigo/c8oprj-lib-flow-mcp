@@ -1,0 +1,24 @@
+version: 1
+private: true
+icon: mdi:file-check-outline
+tags:
+- mcp
+- flowscript
+description: Validates FlowScript and returns Flow YAML plus diagnostics without writing.
+display: tool flow-source-validate -> {{ input.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: validate.hooks.js
+implementation:
+  runtime: flow
+  file: validate.flow.yaml
