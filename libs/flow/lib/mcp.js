@@ -1217,11 +1217,13 @@
 			}
 			return out;
 		}
-		var maxResultChars = argInt(args.maxResultChars, 6000, 1000, 1000000);
+		var detail = responseDetail(request);
+		var fullDetail = detail === "full" || detail === "debug";
+		var maxResultChars = argInt(args.maxResultChars, 6000, 1000, fullDetail ? 1000000 : 12000);
 		if (value.result !== undefined) {
 			var chars = jsonChars(value.result);
-			var allowHugeResult = argBool(args.allowHugeResult || args.allowUnboundedResult, false);
-			var includeFullResult = argBool(args.includeFullResult || args.fullResult || args.allowLarge, false);
+			var allowHugeResult = fullDetail && argBool(args.allowHugeResult || args.allowUnboundedResult, false);
+			var includeFullResult = fullDetail && argBool(args.includeFullResult || args.fullResult || args.allowLarge, false);
 			if (chars > maxResultChars && (!includeFullResult || !allowHugeResult)) {
 				var resultOut = mutableOut();
 				resultOut.result = compactJsonPreview(value.result, {
@@ -1231,7 +1233,7 @@
 				});
 				resultOut.resultCompacted = true;
 				resultOut.resultChars = chars;
-				resultOut.resultHint = "Result exceeded maxResultChars. Raise maxResultChars and pass allowHugeResult=true only when the complete runtime payload is required.";
+				resultOut.resultHint = "Result exceeded maxResultChars. Use detail:'full' with includeFullResult=true and allowHugeResult=true only when the complete runtime payload is required.";
 			}
 		}
 		if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {
