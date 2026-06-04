@@ -10,6 +10,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
 - For a new Flow, build and preview a complete `definition` with `flow-block-test`, then call `flow-set` once. This is usually cheaper and safer than adding nodes one by one.
 - In complete `definition.nodes[]`, write node properties as direct fields: `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not use nested `props` or `properties` there.
+- Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`. JavaScript array/object literals are still not expression syntax; use literal properties or `json.object/json.field`.
 - For broad edits, use `flow-get.definition`, modify that object, then send it back through `flow-set`.
 - `flow-tree` is compact by default through MCP. Use `detail:"full"` only when a UI-like tree with full `definition` and `info` strings is really needed.
 - Prefer `flow-node-add/edit/move/delete/duplicate` for common node operations on an existing Flow.

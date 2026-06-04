@@ -10,6 +10,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 ## Route
 
 - Prefer the `convertigo-flow` MCP server when the task concerns Flow, FlowEngine, Flow blocks, property types, Flow schemas, or Flow-native backend authoring.
+- The MCP server name uses a hyphen: `convertigo-flow`, not `convertigo_flow`.
 - Start with `resources/list`, then read `flow://guide/start` when available.
 - Use `tools/list` once, then prefer `flow-search`, `flow-tree`, `flow-catalog`, and targeted mutation tools over broad dumps.
 - Prefer `flow-search` `kind:"sample"` matches before browsing the palette. Project search also includes visible library samples named `sample_*`.
@@ -22,6 +23,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 
 - Treat a Flow as a readable execution graph and a block as a reusable function with typed properties, slots, hooks, and an implementation.
 - Use `input.*` for inputs and `local.*` for scratch data in Flow sources. `flow.*` and `props.*` are not expression scopes.
+- Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`; use literal properties or JSON blocks for array/object construction.
 - In complete Flow definitions, put node properties directly on each node: `{id, block, requestable, out}`. Do not nest them under `props` or `properties`; `properties` is only for node mutation tools.
 - For usage examples, create a private executable Flow named `sample_*`. Use comments only for subtle choices, not boilerplate.
 - Prefer existing blocks from the current provider/namespace before creating new blocks.
