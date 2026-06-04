@@ -3,9 +3,9 @@
 Create or modify a Flow sidecar with the smallest loop that proves behavior:
 
 - `flow-list` only to enumerate known Flow names.
-- `flow-search` to locate samples, nodes, schemas, block docs or existing examples. Multi-word queries match unordered tokens, like a small `rg`.
+- `flow-search` to locate samples, nodes, schemas, block docs or existing examples. Project search also includes visible library samples.
 - Prefer `kind:"sample"` matches. A sample is a private executable Flow named `sample_*`, meant to be copied as a pattern.
-- Avoid `flow-catalog` when a sample exists. Use `flow-block-get` for one unknown block, and `flow-catalog` signature/summary only to discover names.
+- Avoid `flow-catalog` when a sample exists. `flow-catalog` defaults to typed signatures; use `flow-block-get` only for one unclear block.
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
 - For a new Flow, build and preview a complete `definition` with `flow-block-test`, then call `flow-set` once. This is usually cheaper and safer than adding nodes one by one.

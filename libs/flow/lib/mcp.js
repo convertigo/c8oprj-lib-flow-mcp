@@ -896,7 +896,7 @@
 		var name = toolName(request || {});
 		if (name === "flow-catalog") {
 			if (!args.detail && !args.mode) {
-				args.detail = "summary";
+				args.detail = "signature";
 			}
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
 				args.limit = 20;

@@ -2,8 +2,8 @@
 
 Default route for an unknown Flow project:
 
-1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call sort`. Prefer `project` scope; use `scope:"workspace"` only for discovery across loaded Studio projects.
-2. Prefer `kind:"sample"` matches: samples are private executable Flows whose name starts with `sample_`. Open them with `flow-tree`, copy the pattern, then adapt it.
+1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library. Use `scope:"workspace"` only for discovery across loaded Studio projects.
+2. Prefer `kind:"sample"` matches even when only part of the query matched: samples are private executable Flows whose name starts with `sample_`. Open them with `flow-tree`, copy the pattern, then adapt it.
 3. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching sample or Flow exists.
 4. For a new Flow, build a small `definition`, preview it with `flow-block-test`, then write it once with `flow-set`; avoid incremental `flow-node-add` unless you are editing an existing Flow.
 5. Call `flow-context` before writing expressions or templates.
@@ -24,7 +24,7 @@ Keep responses small: after reading this guide, pass `doc:false,hints:false` on 
 
 Mutation tools and `flow-block-get` return compact summaries by default. Call `flow-tree` or `flow-get` for focused inspection; pass `detail:"full"` only when debugging the tool response itself or editing block implementation source.
 
-Sample convention for the POC: a sample is a private executable Flow named `sample_*`. Run it with `flow-test name:"sample_..."`, inspect it with `flow-tree`, then copy the pattern. It should show one useful pattern and include comments only for non-obvious choices such as “use this syntax because ...”. Do not add boilerplate comments that repeat the node label.
+Sample convention for the POC: a sample is a private executable Flow named `sample_*`. `flow-search` returns project samples plus visible library samples. Run it with `flow-test project:"provider" name:"sample_..."`, inspect it with `flow-tree`, then copy the pattern. It should show one useful pattern and include comments only for non-obvious choices such as “use this syntax because ...”. Do not add boilerplate comments that repeat the node label.
 
 Do not call `flow-schema-reset` during normal authoring. Use it only when an existing learned schema is stale and blocks picker/output-schema work.
 

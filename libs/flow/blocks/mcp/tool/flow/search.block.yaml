@@ -13,7 +13,7 @@ props:
     kind: text
     type: string
     default: project
-    description: "Search scope: project or workspace."
+    description: "Search scope: project or workspace. Project scope also includes visible library samples."
   kinds:
     kind: literal
     type: array
@@ -30,6 +30,11 @@ props:
     kind: text
     type: string
     description: "Pagination cursor returned by a previous search."
+  includeLibrarySamples:
+    kind: literal
+    type: boolean
+    default: true
+    description: "Include sample_* Flows from visible Flow libraries while searching the project."
 hooks:
   file: search.hooks.js
 implementation:

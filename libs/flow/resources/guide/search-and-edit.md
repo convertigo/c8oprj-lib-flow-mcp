@@ -1,6 +1,6 @@
 # Search And Edit
 
-`flow-search` is the Flow equivalent of `rg`; multi-word queries match unordered tokens.
+`flow-search` is the Flow equivalent of `rg` for Flow authoring. Project scope also searches visible library samples, and sample matches are scored token by token so a partial pattern can still be useful.
 
 Samples are private executable Flows whose name starts with `sample_`. They are indexed as `kind:"sample"` and should be opened first when they match the requested feature.
 

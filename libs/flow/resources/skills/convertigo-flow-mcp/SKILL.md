@@ -12,7 +12,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - Prefer the `convertigo-flow` MCP server when the task concerns Flow, FlowEngine, Flow blocks, property types, Flow schemas, or Flow-native backend authoring.
 - Start with `resources/list`, then read `flow://guide/start` when available.
 - Use `tools/list` once, then prefer `flow-search`, `flow-tree`, `flow-catalog`, and targeted mutation tools over broad dumps.
-- Prefer `flow-search` `kind:"sample"` matches before browsing the palette. Samples are private executable Flows named `sample_*`.
+- Prefer `flow-search` `kind:"sample"` matches before browsing the palette. Project search also includes visible library samples named `sample_*`.
 - Before editing, inspect the current Flow with `flow-tree` or `flow-get`; after editing, validate with `flow-test` or `flow-run`.
 - For project-local implementation files, prefer `flow-resource-get` then `flow-resource-patch` with the returned base hash.
 - Keep responses compact: request summaries first, expand only the relevant node, block, type, or resource.
