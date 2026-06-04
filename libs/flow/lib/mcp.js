@@ -1165,6 +1165,18 @@
 	function compactJsonPreview(value, options, depth) {
 		options = options || {};
 		depth = depth || 0;
+		if (typeof value === "string") {
+			var maxStringChars = argInt(options.maxStringChars, 500, 20, 5000);
+			if (value.length > maxStringChars) {
+				return {
+					type: "string",
+					length: value.length,
+					preview: value.substring(0, maxStringChars),
+					truncated: true
+				};
+			}
+			return value;
+		}
 		if (value === null || value === undefined || typeof value !== "object") {
 			return value;
 		}
