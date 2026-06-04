@@ -3,8 +3,8 @@ private: true
 icon: mdi:puzzle-check-outline
 tags:
 - mcp
-description: Runs the flow-block-test MCP tool.
-display: tool flow-block-test -> {{ input.out }}
+description: Previews an unsaved Flow definition before writing it with flow-set.
+display: preview Flow definition -> {{ input.out }}
 props:
   request:
     kind: expression

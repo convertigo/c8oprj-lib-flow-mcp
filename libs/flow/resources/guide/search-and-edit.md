@@ -2,7 +2,9 @@
 
 `flow-search` is the Flow equivalent of `rg`; multi-word queries match unordered tokens.
 
-Useful arguments: `query`, `kinds:["node"]`, `context:1`, `limit`, `cursor`.
+Samples are private executable Flows whose name starts with `sample_`. They are indexed as `kind:"sample"` and should be opened first when they match the requested feature.
+
+Useful arguments: `query`, `kinds:["sample","node"]`, `context:1`, `limit`, `cursor`.
 
 Each node match returns `flowQName`, `flow`, `nodeId`, canonical JSON Pointer `path`, `summary` and `snippet`.
 

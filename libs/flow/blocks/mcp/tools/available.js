@@ -154,7 +154,9 @@
 		var target = targetFromWrapperName(blockId, byName);
 		var capability = target ? byName[target] : null;
 		var source = specificToolSchema(wrapper) ? wrapper : capability || wrapper;
-		var description = String(source.description || wrapper.description || "Flow MCP tool.");
+		var description = String(name === "flow-block-test"
+			? wrapper.description || source.description || "Flow MCP tool."
+			: source.description || wrapper.description || "Flow MCP tool.");
 		return {
 			name: name,
 			description: description.length > 120 ? description.substring(0, 117) + "..." : description,

@@ -12,16 +12,18 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - Prefer the `convertigo-flow` MCP server when the task concerns Flow, FlowEngine, Flow blocks, property types, Flow schemas, or Flow-native backend authoring.
 - Start with `resources/list`, then read `flow://guide/start` when available.
 - Use `tools/list` once, then prefer `flow-search`, `flow-tree`, `flow-catalog`, and targeted mutation tools over broad dumps.
+- Prefer `flow-search` `kind:"sample"` matches before browsing the palette. Samples are private executable Flows named `sample_*`.
 - Before editing, inspect the current Flow with `flow-tree` or `flow-get`; after editing, validate with `flow-test` or `flow-run`.
 - For project-local implementation files, prefer `flow-resource-get` then `flow-resource-patch` with the returned base hash.
 - Keep responses compact: request summaries first, expand only the relevant node, block, type, or resource.
-- For a new Flow, test a complete `definition` with `flow-block-test`, then write once with `flow-set`.
+- For a new Flow, preview a complete `definition` with `flow-block-test`, then write once with `flow-set`.
 
 ## Authoring Rules
 
 - Treat a Flow as a readable execution graph and a block as a reusable function with typed properties, slots, hooks, and an implementation.
 - Use `input.*` for inputs and `local.*` for scratch data in Flow sources. `flow.*` and `props.*` are not expression scopes.
 - In complete Flow definitions, put node properties directly on each node: `{id, block, requestable, out}`. Do not nest them under `props` or `properties`; `properties` is only for node mutation tools.
+- For usage examples, create a private executable Flow named `sample_*`. Use comments only for subtle choices, not boilerplate.
 - Prefer existing blocks from the current provider/namespace before creating new blocks.
 - Create custom blocks only when the behavior is reusable or hides unavoidable low-level code.
 - Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.

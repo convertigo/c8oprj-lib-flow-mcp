@@ -3,11 +3,12 @@
 Create or modify a Flow sidecar with the smallest loop that proves behavior:
 
 - `flow-list` only to enumerate known Flow names.
-- `flow-search` to locate nodes, schemas, block docs or existing examples. Multi-word queries match unordered tokens, like a small `rg`.
-- Avoid `flow-catalog detail:"compact"` when an example exists. Use `flow-block-get` for one unknown block, and `flow-catalog` summary only to discover names.
+- `flow-search` to locate samples, nodes, schemas, block docs or existing examples. Multi-word queries match unordered tokens, like a small `rg`.
+- Prefer `kind:"sample"` matches. A sample is a private executable Flow named `sample_*`, meant to be copied as a pattern.
+- Avoid `flow-catalog` when a sample exists. Use `flow-block-get` for one unknown block, and `flow-catalog` signature/summary only to discover names.
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
-- For a new Flow, build and test a complete `definition` with `flow-block-test`, then call `flow-set` once. This is usually cheaper and safer than adding nodes one by one.
+- For a new Flow, build and preview a complete `definition` with `flow-block-test`, then call `flow-set` once. This is usually cheaper and safer than adding nodes one by one.
 - In complete `definition.nodes[]`, write node properties as direct fields: `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not use nested `props` or `properties` there.
 - For broad edits, use `flow-get.definition`, modify that object, then send it back through `flow-set`.
 - `flow-tree` is compact by default through MCP. Use `detail:"full"` only when a UI-like tree with full `definition` and `info` strings is really needed.
@@ -21,3 +22,5 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Do not use `flow-schema-reset` unless an old learned schema is clearly stale.
 
 Do not read every Flow sidecar up front. Search first, then open the narrow target.
+
+For reusable examples, create a private executable Flow named `sample_*`. Keep comments didactic: explain subtle syntax or design choices, not what the node label already says.

@@ -18,6 +18,8 @@ Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors und
 
 Use `flow-block-create` or `flow-type-create` for project-local additions, then validate with `flow-block-test`, `flow-catalog` or `flow-type-get`.
 
+When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
+
 For maintenance, prefer `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`; it is closer to how coding agents work on files.
 
 Duplicate a core/shared block with `flow-block-duplicate` before editing it with `flow-block-edit`.
