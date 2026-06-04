@@ -16,7 +16,9 @@ Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)
 
 Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors under `libs/flow/types/editors/*.html`.
 
-Use `flow-block-create` or `flow-type-create` for project-local additions, then validate with `flow-block-test`, `flow-catalog` or `flow-type-get`.
+Use `flow-block-code-set` for project-local blocks implemented with FlowScript. It accepts `{name, code, properties, description}` and compiles the implementation to the canonical block files. Use raw `flow-block-create` only when you must provide descriptor/implementation sources yourself. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
+
+In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
 When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
 
