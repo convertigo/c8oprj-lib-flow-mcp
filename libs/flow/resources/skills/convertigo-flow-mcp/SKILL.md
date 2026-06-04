@@ -28,7 +28,7 @@ Use this skill when working with the experimental Convertigo Flow engine or the 
 - In complete Flow definitions, put node properties directly on each node: `{id, block, requestable, out}`. Do not nest them under `props` or `properties`; `properties` is only for node mutation tools.
 - For usage examples, create a private executable Flow named `sample_*`. Use comments only for subtle choices, not boilerplate.
 - Prefer existing blocks from the current provider/namespace before creating new blocks.
-- Create custom blocks only when the behavior is reusable or hides unavoidable low-level code. Use `flow-block-code-set` for reusable blocks implemented with FlowScript: `input.*` are typed block properties, and `return value;` returns the block result.
+- Create custom blocks only when the behavior is reusable or hides unavoidable low-level code. Use `flow-block-code-set` for reusable blocks implemented with FlowScript: `input.*` are typed block properties, code may be a body or `block localName({ input }) { ... }`, template literals are accepted for simple string composition, and `return value;` returns the block result.
 - Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.
 - Do not edit generated or cached files unless an MCP tool explicitly returns them as writable Flow resources.
 - Do not call `flow-schema-reset` unless an existing learned schema is stale.
