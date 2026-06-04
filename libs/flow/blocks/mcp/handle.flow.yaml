@@ -44,6 +44,17 @@ nodes:
       - id: returnResourcesList
         block: return
         value: "{{ local.response }}"
+  - id: resourceTemplatesList
+    block: if
+    condition: input.request.method == "resources/templates/list"
+    then:
+      - id: handleResourceTemplatesList
+        block: mcp.resources.templates.list
+        request: input.request
+        out: local.response
+      - id: returnResourceTemplatesList
+        block: return
+        value: "{{ local.response }}"
   - id: resourcesRead
     block: if
     condition: input.request.method == "resources/read"

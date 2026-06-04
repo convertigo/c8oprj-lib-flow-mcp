@@ -1,0 +1,15 @@
+version: 1
+nodes:
+  - id: payload
+    block: json.object
+    out: local.payload
+    fields:
+      - id: resourceTemplates
+        block: json.field
+        key: resourceTemplates
+        value: []
+  - id: wrapResult
+    block: mcp.response.result
+    request: input.request
+    result: local.payload
+    out: local.response
