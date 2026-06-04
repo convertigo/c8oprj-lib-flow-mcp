@@ -22,7 +22,7 @@ In FlowScript block code, `input.*` contains the block properties. Use `return v
 
 A dry `flow-block-code-set` validates source only. It does not register the block in the project palette, so save it with `dry:false` before compiling a Flow that calls it.
 
-When calling a block from compact FlowScript, use direct typed values where possible: `user.summary({ name: current.name, email: current.email })`, `forEach({ items: sorted })`, or `set({ path: "local.count", value: news.length })`. Use `{{ expression }}` only for mixed text templates, for example `"Hello {{ input.name }}"`, or when working with low-level canonical node data.
+When calling a block from compact FlowScript, use direct typed values where possible: `user.summary({ name: current.name, email: current.email })`, `forEach({ items: sorted })`, or `set({ path: "local.count", value: news.length })`. Quoted expression strings such as `items: "local.items"` are accepted for low-level calls, but the bare form is clearer. Use `{{ expression }}` only for mixed text templates, for example `"Hello {{ input.name }}"`, or when working with low-level canonical node data.
 
 Reusable blocks can be used as array mappers: `const labels = list.map(items, text.label({ value: current.name }))`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
 
