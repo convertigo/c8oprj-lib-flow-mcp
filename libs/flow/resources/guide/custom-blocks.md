@@ -26,7 +26,7 @@ When calling a block from compact FlowScript, use direct typed values where poss
 
 Reusable blocks can be used as array mappers: `const labels = list.map(items, text.label({ value: current.name }))`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
 
-Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-create`, a canonical descriptor using `implementation.runtime: "rhino"`, and a small `*.js` implementation returning `{ run: function (ctx, node) { ... } }`. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Keep orchestration in FlowScript and keep the Rhino block focused.
+Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-create`, a canonical descriptor using `implementation.runtime: "rhino"`, and a small `*.js` implementation returning `{ run: function (ctx, node) { ... } }`. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`. Keep orchestration in FlowScript and keep the Rhino block focused.
 
 When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
 
