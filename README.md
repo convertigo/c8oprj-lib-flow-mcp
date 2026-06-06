@@ -111,6 +111,12 @@ helpers. Put shared helper dependencies in `uses`, static metadata in
 `*.block.yaml`, and optional dynamic
 `displayName(node)` / `analyze(ctx, node)` hooks in a separate `hooks.file`.
 
+Do not use a Rhino block as a shortcut for a whole backend feature. Keep HTTP
+fetches in `http.get`/`http.request`, Convertigo calls in `requestable.call`,
+array transforms in `list.*`, JSON shaping in `json.*`, and response assignment
+in FlowScript. If only parsing or one Java bridge is missing, create that small
+primitive and compose it visibly from the Flow.
+
 Most tools accept either:
 
 - `project`: Convertigo project name, resolved by the live engine;

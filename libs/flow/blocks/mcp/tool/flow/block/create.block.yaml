@@ -3,7 +3,7 @@ private: true
 icon: mdi:puzzle-plus-outline
 tags:
 - mcp
-description: Runs the flow-block-create MCP tool.
+description: Raw project block creation. Rhino HTTP/requestable code is rejected; prefer flow-block-code-set and keep IO visible through FlowScript nodes.
 display: tool flow-block-create -> {{ input.out }}
 props:
   request:

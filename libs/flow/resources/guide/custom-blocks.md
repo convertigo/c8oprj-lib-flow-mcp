@@ -26,7 +26,9 @@ When calling a block from compact FlowScript, use direct typed values where poss
 
 Reusable blocks can be used as array mappers: `const labels = list.map(items, text.label({ value: current.name }))`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
 
-Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-create`, a canonical descriptor using `implementation.runtime: "rhino"`, and a small `*.js` implementation returning `{ run: function (ctx, node) { ... } }`. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`. Keep orchestration in FlowScript and keep the Rhino block focused.
+Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-create`, a canonical descriptor using `implementation.runtime: "rhino"`, and a small `*.js` implementation returning `{ run: function (ctx, node) { ... } }`. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
+
+Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO (`http.get`, `http.request`, `requestable.call`), transforms (`list.*`), JSON shaping (`json.*`), files/resources and sessions. If only parsing or a Java bridge is missing, create that one primitive and keep orchestration in FlowScript. Project Rhino blocks must not open URLs, sockets, or Convertigo requestables directly; the engine rejects those implementations so the graph stays inspectable.
 
 When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
 

@@ -16,6 +16,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Prefer `flow-node-add/edit/move/delete/duplicate` for common node operations on an existing Flow.
 - Node mutation tools use `properties` for node properties. That is an MCP tool argument, not the Flow definition shape. Do not send `props`.
 - For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.
+- Custom Rhino blocks are for missing low-level primitives only. They must not do HTTP or Convertigo requestable calls directly; use visible `http.get`/`http.request` and `requestable.call` nodes.
 - Use `flow-edit` for lower-level mutations; use `dryRun:true` when unsure.
 - Mutation tools and `flow-block-get` return compact responses by default. Use `detail:"full"` only when debugging the response or editing source; otherwise inspect with `flow-tree`.
 - With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.

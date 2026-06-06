@@ -53,7 +53,9 @@ flow-resource-search / flow-resource-get / flow-resource-patch for project JS/YA
 ```
 
 Prefer editing Flow sidecars over adding custom blocks. Prefer project-local
-custom blocks over changing the shared core library.
+custom blocks over changing the shared core library. A Rhino block must be a
+small primitive, not a hidden backend feature. Use FlowScript and standard
+blocks for HTTP, requestables, list/JSON transforms and response mapping.
 Core and shared blocks are read-only through MCP: use `flow-block-duplicate`
 to create a project-local variant, then `flow-block-edit` to replace its
 source.

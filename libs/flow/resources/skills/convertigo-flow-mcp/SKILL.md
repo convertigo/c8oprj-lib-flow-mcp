@@ -1,46 +1,122 @@
 ---
 name: convertigo-flow-mcp
-description: Use Convertigo Flow MCP to inspect, create, edit, test, and run Convertigo Flow projects through a compact MCP-first workflow.
+description: Use Convertigo Flow to inspect, create, edit, test, and run Convertigo Flow backends through the convertigo-flow MCP server. Prefer FlowScript code tools over raw Flow tree or YAML editing.
 ---
 
-# ConvertigoFlowMCP
+# Convertigo Flow
 
-Use this skill when working with the experimental Convertigo Flow engine or the Flow-native MCP server.
+Use this skill when working with the experimental Convertigo Flow engine, FlowEngine, Flow blocks, property types, Flow schemas, FlowScript, or the Flow-native MCP server.
 
-## Route
+Do not use the legacy `convertigo` MCP server for Flow authoring unless the user explicitly asks to compare with legacy Convertigo MCP.
 
-- Prefer the `convertigo-flow` MCP server when the task concerns Flow, FlowEngine, Flow blocks, property types, Flow schemas, or Flow-native backend authoring.
-- The MCP server name uses a hyphen: `convertigo-flow`, not `convertigo_flow`.
-- Start with `resources/list`, then read `flow://guide/start` when available.
-- Use `tools/list` once, then prefer `flow-search`, `flow-tree`, `flow-catalog`, and targeted mutation tools over broad dumps.
-- Prefer `flow-search` `kind:"sample"` matches before browsing the palette. Project search also includes visible library samples named `sample_*`.
-- Before editing, inspect the current Flow with `flow-tree` or `flow-get`; after editing, validate with `flow-test` or `flow-run`.
-- For project-local implementation files, prefer `flow-resource-get` then `flow-resource-patch` with the returned base hash.
-- Keep responses compact: request summaries first, expand only the relevant node, block, type, or resource.
-- After the first palette/catalog response, pass `hints:false` and `doc:false` unless a diagnostic is unclear.
-- For a new Flow, preview a complete `definition` with `flow-block-test`, then write once with `flow-set`.
-- For a new FlowScript-backed custom block, prefer `flow-block-code-set` over raw `flow-block-create` descriptor YAML.
+## MCP Server
+
+- MCP server: `convertigo-flow`
+- Use the hyphenated name `convertigo-flow`, not `convertigo_flow`.
+- Endpoint is configured in `~/.codex/config.toml`; if it changes, run `lib_flow_mcp._setupCodex`.
+
+## Default Workflow
+
+Prefer the compact code path:
+
+1. For an existing Flow, call `flow-code-get({ project, qname })`.
+2. Edit the returned FlowScript code.
+3. Validate with `flow-code-set({ project, qname, revision, code, dry:true })`.
+4. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean.
+5. Test with `flow-code-run`, `flow-test`, or the runtime URL:
+   `http://localhost:18080/convertigo/projects/<project>/.json?__sequence=<flowName>`.
+
+For a new Flow, write FlowScript first and validate with `dry:true`. Use `flow-catalog` only when diagnostics do not identify the missing block or property. Keep catalog requests narrow: `limit <= 10`, and after the first call use `doc:false` and `hints:false`.
+
+Use `flow-source-*`, `flow-tree`, and raw mutation tools only when debugging the compiler/model conversion itself.
+
+## FlowScript Model
+
+FlowScript is a JavaScript-like source view compiled to normal Flow YAML. It is not arbitrary JavaScript: one function call maps to one Flow block.
+
+Use this style:
+
+```javascript
+function BuildSummary({ input, config, result }) {
+  var source = requestable.call(input.sourceRequestable)
+
+  var sortedItems = list.sort(source.items, {
+    by: current.label,
+    direction: "asc"
+  })
+
+  var rows = list.map(sortedItems, {
+    label: current.label,
+    value: current.value
+  })
+
+  result.rows = rows
+  result.count = rows.length
+  return result
+}
+```
+
+Compiler rules:
+
+- `var name = block(...)` writes the block output to `local.name`.
+- `name.child.path` becomes `local.name.child.path`.
+- `result.key = value` writes the response scope.
+- `list.map(items, { field: current.value })` lowers to an explicit Flow loop.
+- `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
 ## Authoring Rules
 
-- Treat a Flow as a readable execution graph and a block as a reusable function with typed properties, slots, hooks, and an implementation.
-- Use `input.*` for inputs and `local.*` for scratch data in Flow sources. `flow.*` and `props.*` are not expression scopes.
-- Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`; use literal properties or JSON blocks for array/object construction.
-- In complete Flow definitions, put node properties directly on each node: `{id, block, requestable, out}`. Do not nest them under `props` or `properties`; `properties` is only for node mutation tools.
-- For usage examples, create a private executable Flow named `sample_*`. Use comments only for subtle choices, not boilerplate.
-- Prefer existing blocks from the current provider/namespace before creating new blocks.
-- Create custom blocks only when the behavior is reusable or hides unavoidable low-level code. Use `flow-block-code-set` for reusable blocks implemented with FlowScript: `input.*` are typed block properties, code may be a body or `block localName({ input }) { ... }`, template literals are accepted for simple string composition, and `return value;` returns the block result. Provide `outputs` when the return type is known; otherwise the tool registers `out` as unknown.
-- A `flow-block-code-set` dry run validates but does not register the block in the palette. After a clean dry run, save the block with `dry:false` before validating a Flow that calls it.
-- In compact FlowScript, pass typed values naturally: `name: current.name`, `items: sorted`, `enabled: true`. Quoted expression strings such as `items: "local.items"` are tolerated for low-level calls, but prefer the bare form. Use `{{ expression }}` mainly for mixed text templates or when diagnostics ask for canonical syntax.
-- Map arrays through reusable blocks with `const rows = list.map(items, custom.block({ prop: current.value }))`; the compiler lowers it to a Flow loop.
-- For Rhino/Java primitives, use `flow-block-create` with `implementation.runtime: "rhino"` and a small `run(ctx,node)` implementation. Use `ctx.template(props.key)` for template properties and `ctx.expr(props.key)` for expression properties; `ctx.input(props)` is for generic value-style properties. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JS operations such as `.length`; keep the Flow orchestration in FlowScript.
-- For JSON HTTP APIs, `http.get` exposes parsed JSON under `response.body`. Use `response.text` and `json.parse` only when the response is not already native JSON.
-- Keep Rhino code small and localized inside block implementations; use Flow blocks for orchestration. Declare any `ctx.lib("name")` dependency with `uses: [name]`.
-- Do not edit generated or cached files unless an MCP tool explicitly returns them as writable Flow resources.
-- Do not call `flow-schema-reset` unless an existing learned schema is stale.
+- Use `input.*` for request inputs, `config.*` for configuration, `local.*` for scratch data, `current.*` inside iterations, and `result.*` for output.
+- Do not write `props` or `properties` wrappers in nodes or code. Put block properties directly in calls.
+- Prefer `var value = block(...)` and `result.key = value` over explicit `out`, `set`, `json.object`, `json.field`, and `json.push` when compact syntax expresses the same intent.
+- Pass typed values naturally: `items: sorted`, `name: current.name`, `enabled: true`.
+- Use `{{ expression }}` mainly for mixed text templates or when diagnostics require canonical syntax.
+- Flow expressions are null-safe and support indexes such as `items[0]`.
+- For JSON HTTP APIs, `http.get` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed.
+- Prefer existing blocks from the current provider/namespace before creating new ones.
+- Keep the visible algorithm in FlowScript. Do not hide a complete backend feature in one custom Rhino block.
+- Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
+- If only one operation is missing, create only that missing primitive. Example: use `http.get` in FlowScript, then a small custom `extractSomething({ html })` block if extraction cannot be expressed with existing blocks.
+- HTTP and Convertigo requestable calls are never valid reasons for a Rhino custom block. Use `http.get`/`http.request` and `requestable.call` so the graph remains inspectable.
 
-## Local MCP Endpoint
+## Custom Blocks
 
-- Expected Codex MCP server: `convertigo-flow`.
-- The endpoint URL is configured in `.codex/config.toml`; this skill intentionally does not duplicate it.
-- If the endpoint changes, run `lib_flow_mcp._setupCodex` again.
+For a project-local FlowScript block:
+
+1. Use `flow-block-code-set({ project, name, code, properties, outputs, dry:true })`.
+2. In block code, read typed properties from `input.*`.
+3. Return the block value with `return value`.
+4. Save with `dry:false` only after validation is clean.
+
+For a Rhino/Java primitive:
+
+1. Use `flow-block-create` only when FlowScript cannot express the low-level bridge.
+2. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
+3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
+4. Do not reimplement standard blocks in Rhino. Use `http.get`/`http.request` for HTTP, `requestable.call` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
+5. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
+6. Keep orchestration in FlowScript.
+
+If a web page or API needs parsing that no block can express, split it:
+
+```javascript
+function ReadExternalData({ input, config, result }) {
+  var page = http.get("https://example.com/data")
+  var extracted = domain.extract({ html: page.text })
+  result.items = extracted.items
+  return result
+}
+```
+
+The custom `domain.extract` block may parse text, but it must not open sockets, call URLs, call requestables, sort final results, or build the whole response.
+
+## Discovery
+
+- Start with `flow-code-*` tools.
+- Use `flow-code-rg` for small code extracts.
+- Use `flow-search` to find existing Flows, samples, blocks, or resources.
+- Prefer visible library samples named `sample_*` before browsing the full catalog.
+- Use `flow-requestable-list` and `flow-requestable-schema` to discover legacy sequence/transaction/Flow outputs.
+- Use learned schemas only when safe; avoid raw samples unless the user asks.
+
+Treat FlowScript diagnostics like compiler errors. Fix the reported line first, then retry validation.

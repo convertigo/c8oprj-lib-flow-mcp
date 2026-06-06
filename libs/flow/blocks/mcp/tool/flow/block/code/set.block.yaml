@@ -5,7 +5,7 @@ tags:
 - mcp
 - flowscript
 - block
-description: Creates or updates one project-local Flow block implemented with FlowScript code.
+description: Creates or updates one project-local FlowScript block. Prefer this for reusable composed behavior; keep the parent Flow algorithm visible.
 display: tool flow-block-code-set -> {{ input.out }}
 props:
   request:
