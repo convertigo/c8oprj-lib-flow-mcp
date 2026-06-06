@@ -85,31 +85,31 @@ resources/list
 resources/read flow://guide/start
 tools/list
 flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
-flow-tree / flow-get only for the narrow target
+flow-code-rg / flow-code-get for FlowScript source
+flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema when downstream nodes need the result shape
 flow-schema-reset before rerunning an HTTP learn scenario when the output changed
-flow-get.definition -> edit object -> flow-set.definition for broad model edits
-flow-node-add / flow-node-edit / flow-node-move / flow-node-delete / flow-node-duplicate
-flow-apply / flow-edit for lower-level mutations
-flow-test
+flow-code-set dry:true for broad Flow edits, then dry:false when clean
+flow-code-patch for revision-checked maintenance edits
+flow-code-run / flow-test
 flow-catalog only when search/examples are insufficient; it is summary by default
-flow-block-get / flow-type-get only for source-level authoring
-flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only when the catalog is insufficient
-flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/YAML/HTML/CSS resources and Flow libraries
+flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local FlowScript blocks
+flow-block-code-set only when reusable vocabulary is needed
+flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases
+flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/HTML/CSS resources and Flow libraries
 ```
 
 The default path remains catalog-first and sidecar-first. Custom blocks are
 project vocabulary, not automatic core changes.
 
-Project-local blocks use a `*.block.yaml` descriptor. Their implementation is
-declared by `implementation.runtime`: usually `flow` for a graph made of blocks,
-or `rhino` with a peer `*.js` file for JVM/Java integration code. Rhino code may
-use Java classes through `Packages`, but not Node.js APIs such as `require`, npm
-modules or browser globals. Keep the runtime file to `run(ctx, node)` plus local
-helpers. Put shared helper dependencies in `uses`, static metadata in
-`*.block.yaml`, and optional dynamic
-`displayName(node)` / `analyze(ctx, node)` hooks in a separate `hooks.file`.
+Project-local FlowScript blocks use a canonical `*.block.js` source containing
+`_meta` plus one function. Use descriptor-backed Rhino blocks only for JVM/Java
+integration code or low-level primitives. Rhino code may use Java classes
+through `Packages`, but not Node.js APIs such as `require`, npm modules or
+browser globals. Keep the runtime file to `run(ctx, node)` plus local helpers.
+Put shared helper dependencies in `uses`; optional dynamic
+`displayName(node)` / `analyze(ctx, node)` hooks stay separate from runtime code.
 
 Do not use a Rhino block as a shortcut for a whole backend feature. Keep HTTP
 fetches in `http.get`/`http.request`, Convertigo calls in `requestable.call`,
@@ -249,8 +249,9 @@ Prefer `flow-code-*` for normal agent work:
 - `flow-code-rg({qname?, pattern})` returns small FlowScript extracts.
 
 The engine parses and validates the FlowScript, returns line-based diagnostics
-when a block/property is invalid, and writes the regular Flow YAML sidecar only
-after validation succeeds.
+when a block/property is invalid, and writes the canonical FlowScript sidecar
+after validation succeeds. Legacy YAML sidecars are only fallback inputs during
+the spike migration.
 
 Keep `flow-source-*` for compiler/debug work where canonical definitions, YAML
 or full analysis are intentionally needed.
@@ -265,7 +266,8 @@ of replacing a whole source file:
 flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unified diff)
 ```
 
-The patch API is limited to `libs/flow/blocks/**/*.js`,
+The patch API is limited to Flow resources such as
+`libs/flow/blocks/**/*.js`, `libs/flow/blocks/**/*.block.js`,
 `libs/flow/blocks/**/*.block.yaml`, `libs/flow/fragments/**/*.fragment.yaml`,
 `libs/flow/lib/**/*.js`, `libs/flow/types/**/*.{type.yaml,js}` and
 `libs/flow/types/editors/**/*.{html,css,js}`. It validates block/type/library

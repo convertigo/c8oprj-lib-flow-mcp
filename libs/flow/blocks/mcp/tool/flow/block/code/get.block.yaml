@@ -5,7 +5,7 @@ tags:
 - mcp
 - flowscript
 - block
-description: Reads one project-local Flow block implemented as FlowScript code.
+description: Reads project-local FlowScript block code, or returns a FlowScript mirror for a descriptor-backed Flow block.
 display: tool flow-block-code-get -> {{ input.out }}
 props:
   request:
