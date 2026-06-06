@@ -32,7 +32,10 @@ Use `flow-source-*`, `flow-tree`, and raw mutation tools only when debugging the
 
 ## FlowScript Model
 
-FlowScript is a JavaScript-like source view compiled to normal Flow YAML. It is not arbitrary JavaScript: one function call maps to one Flow block.
+FlowScript is the preferred JavaScript-like source for project Flows on this
+spike. It is compiled to the internal Flow node model at load/validation time;
+do not edit generated YAML when FlowScript is available. It is not arbitrary
+JavaScript: one function call maps to one Flow block.
 
 Use this style:
 
@@ -84,9 +87,10 @@ Compiler rules:
 For a project-local FlowScript block:
 
 1. Use `flow-block-code-set({ project, name, code, properties, outputs, dry:true })`.
-2. In block code, read typed properties from `input.*`.
-3. Return the block value with `return value`.
-4. Save with `dry:false` only after validation is clean.
+2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
+3. In block code, read typed properties from `input.*`.
+4. Return the block value with `return value`.
+5. Save with `dry:false` only after validation is clean.
 
 For a Rhino/Java primitive:
 

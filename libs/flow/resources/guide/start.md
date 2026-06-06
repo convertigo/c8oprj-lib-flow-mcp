@@ -5,12 +5,12 @@ Default route for an unknown Flow project:
 1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library. Use `scope:"workspace"` only for discovery across loaded Studio projects.
 2. Prefer `kind:"sample"` matches even when only part of the query matched: samples are private executable Flows whose name starts with `sample_`. Open them with `flow-tree`, copy the pattern, then adapt it.
 3. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching sample or Flow exists.
-4. For a new Flow, build a small `definition`, preview it with `flow-block-test`, then write it once with `flow-set`; avoid incremental `flow-node-add` unless you are editing an existing Flow.
+4. For a new Flow, write compact FlowScript, preview it with `flow-code-run`, then write it once with `flow-code-set`; avoid raw `definition`/YAML editing unless debugging the compiler.
 5. Call `flow-context` before writing expressions or templates.
 6. Edit existing Flows with targeted `flow-node-*` or `flow-edit`, then validate with `flow-test` or `flow-output-schema`.
 7. For custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
-Custom Rhino blocks are descriptor-first: static metadata is in `*.block.yaml`, runtime code is limited to `run(ctx,node)` in `*.js`, and dynamic labels/analysis live in `hooks.file`.
+Project-local FlowScript blocks are code-first: `flow-block-code-set` writes a canonical `.block.js` with `_meta` and one function. Custom Rhino blocks remain descriptor-first: static metadata is in `*.block.yaml`, runtime code is limited to `run(ctx,node)` in `*.js`, and dynamic labels/analysis live in `hooks.file`.
 
 Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` and `props.*` are not expression scopes. Blocks that load JavaScript helpers with `ctx.lib(...)` must declare them with `uses` so the dependency is visible in the catalog.
 
@@ -18,7 +18,7 @@ For JSON HTTP APIs, prefer `const response = http.get({ url })` and read `respon
 
 Keep the visible algorithm in FlowScript. A custom Rhino block must not hide an entire backend feature such as fetch + parse + normalize + sort + response. If one primitive is missing, create only that primitive, for example `domain.extractState({ html })`, and keep HTTP, loops, list transforms and result mapping as Flow blocks. Project Rhino blocks are rejected if they perform HTTP or Convertigo requestable calls directly; use `http.get`/`http.request` and `requestable.call` instead.
 
-`flow-get` returns both YAML `source` and a JSON `definition`. `flow-set`, `flow-run`, `flow-test`, `flow-tree` and `flow-apply` accept that same `definition` shape, so an agent may get, modify and set without rewriting YAML by hand.
+Prefer `flow-code-get`, `flow-code-set`, `flow-code-patch`, `flow-code-run`, and `flow-code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
 
 In `definition.nodes[]`, node properties are direct fields, for example `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not nest graph fields under `props` or `properties` in a complete definition. `properties` is only an MCP argument for `flow-node-add/edit` when mutating an existing Flow.
 

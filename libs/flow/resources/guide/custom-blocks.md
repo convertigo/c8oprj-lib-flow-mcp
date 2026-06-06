@@ -2,9 +2,11 @@
 
 Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.
 
-Block contracts live under `libs/flow/blocks/*.block.yaml`. Rhino blocks use a
-separate `*.js` implementation; Flow-backed blocks use a separate
-`*.flow.yaml` implementation.
+For project-local FlowScript blocks, the canonical source lives under
+`libs/flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
+the visible contract and one FlowScript function for the implementation. Legacy
+YAML descriptors are still accepted for Rhino/native escape hatches and older
+blocks.
 
 Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.
 
@@ -16,7 +18,7 @@ Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)
 
 Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors under `libs/flow/types/editors/*.html`.
 
-Use `flow-block-code-set` for project-local blocks implemented with FlowScript. It accepts `{name, code, properties, description}` and compiles the implementation to the canonical block files. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. The code can be just the block body or an explicit `block localName({ input }) { ... }` wrapper. Use raw `flow-block-create` only when you must provide descriptor/implementation sources yourself. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
+Use `flow-block-code-set` for project-local blocks implemented with FlowScript. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. The code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `flow-block-code-get`. Use raw `flow-block-create` only for Rhino/native or legacy descriptor work. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
 
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
