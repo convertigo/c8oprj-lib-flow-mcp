@@ -91,6 +91,8 @@ For a project-local FlowScript block:
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
 5. Save with `dry:false` only after validation is clean.
+6. For edits, call `flow-block-code-get`, preserve `revision`, then use
+   `flow-block-code-patch({ project, name, revision, codepatch })`.
 
 For a Rhino/Java primitive:
 
