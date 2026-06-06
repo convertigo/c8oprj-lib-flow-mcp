@@ -612,6 +612,7 @@
 		if (boolArg(args.autoSave, true) === true) {
 			Engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
+			result.yamlFallbackRemoved = removeFlowYamlFallback(args, writeResult, project);
 			try {
 				Engine.theApp.schemaManager.clearCache(String(project.getName()));
 				result.schemaCacheCleared = true;
@@ -624,6 +625,39 @@
 		}
 		result.message = result.created ? "Flow DBO created" : "Flow DBO updated";
 		return result;
+	}
+
+	function removeFlowYamlFallback(args, writeResult, project) {
+		if (!writeResult || String(writeResult.format || "") !== "flowscript") {
+			return false;
+		}
+		if (boolArg(args.writeYaml, false) === true || boolArg(args.writeYamlMirror, false) === true || boolArg(args.saveYaml, false) === true) {
+			return false;
+		}
+		try {
+			var projectDir = new Packages.java.io.File(String(project.getDirPath()));
+			var flowsDir = new Packages.java.io.File(projectDir, "libs/flows");
+			var files = flowsDir.isDirectory() ? flowsDir.listFiles() : null;
+			if (!files) {
+				return 0;
+			}
+			var removed = 0;
+			var list = Packages.java.util.Arrays.asList(files).toArray();
+			for (var i = 0; i < list.length; i++) {
+				var yamlFile = list[i];
+				var filename = String(yamlFile.getName());
+				if (!yamlFile.isFile() || !filename.endsWith(".flow.yaml")) {
+					continue;
+				}
+				var codeFile = new Packages.java.io.File(flowsDir, filename.substring(0, filename.length - ".flow.yaml".length) + ".flow.js");
+				if (codeFile.isFile() && yamlFile["delete"]()) {
+					removed++;
+				}
+			}
+			return removed;
+		} catch (_ignoreYamlFallback) {
+			return 0;
+		}
 	}
 
 	function loadedProjectTargets() {
