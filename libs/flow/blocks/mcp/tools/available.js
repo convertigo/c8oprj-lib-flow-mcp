@@ -4,6 +4,7 @@
 		"flow-block-create": true,
 		"flow-block-code-get": true,
 		"flow-block-code-patch": true,
+		"flow-block-code-rg": true,
 		"flow-block-code-set": true,
 		"flow-block-duplicate": true,
 		"flow-block-edit": true,

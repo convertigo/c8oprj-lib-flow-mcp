@@ -93,6 +93,8 @@ For a project-local FlowScript block:
 5. Save with `dry:false` only after validation is clean.
 6. For edits, call `flow-block-code-get`, preserve `revision`, then use
    `flow-block-code-patch({ project, name, revision, codepatch })`.
+7. To locate code first, use `flow-block-code-rg({ project, pattern, name? })`
+   before falling back to `flow-resource-search`.
 
 For a Rhino/Java primitive:
 
@@ -120,6 +122,7 @@ The custom `domain.extract` block may parse text, but it must not open sockets, 
 
 - Start with `flow-code-*` tools.
 - Use `flow-code-rg` for small code extracts.
+- Use `flow-block-code-rg` for small project-local FlowScript block extracts.
 - Use `flow-search` to find existing Flows, samples, blocks, or resources.
 - Prefer visible library samples named `sample_*` before browsing the full catalog.
 - Use `flow-requestable-list` and `flow-requestable-schema` to discover legacy sequence/transaction/Flow outputs.

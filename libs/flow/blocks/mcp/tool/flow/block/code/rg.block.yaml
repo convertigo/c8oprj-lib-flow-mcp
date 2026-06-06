@@ -1,0 +1,26 @@
+version: 1
+private: true
+icon: mdi:puzzle-search-outline
+tags:
+- mcp
+- flowscript
+- block
+- search
+description: Searches FlowScript block code and returns small matching extracts.
+display: tool flow-block-code-rg -> {{ input.out }}
+props:
+  request:
+    kind: expression
+    type: object
+    default: input.request
+    description: MCP JSON-RPC tools/call request object.
+  out:
+    kind: path
+    mode: write
+    default: local.response
+    description: Scope path receiving the MCP response.
+hooks:
+  file: rg.hooks.js
+implementation:
+  runtime: flow
+  file: rg.flow.yaml

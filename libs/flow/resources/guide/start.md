@@ -8,7 +8,7 @@ Default route for an unknown Flow project:
 4. For a new Flow, write compact FlowScript, preview it with `flow-code-run`, then write it once with `flow-code-set`; avoid raw `definition`/YAML editing unless debugging the compiler.
 5. Call `flow-context` before writing expressions or templates.
 6. Edit existing Flows with targeted `flow-node-*` or `flow-edit`, then validate with `flow-test` or `flow-output-schema`.
-7. For FlowScript block source, use `flow-block-code-get` then `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
+7. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
 Project-local FlowScript blocks are code-first: `flow-block-code-set` writes a canonical `.block.js` with `_meta` and one function. Custom Rhino blocks remain descriptor-first: static metadata is in `*.block.yaml`, runtime code is limited to `run(ctx,node)` in `*.js`, and dynamic labels/analysis live in `hooks.file`.
 
