@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: applyFlowMutation
-    block: mcp.tool.run
-    request: input.request
-    target: flow.apply

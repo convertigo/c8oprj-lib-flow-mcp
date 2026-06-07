@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runBlockCodeRg
-    block: mcp.tool.run
-    request: input.request
-    target: block.code.rg

@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runTypeGet
-    block: mcp.tool.run
-    request: input.request
-    target: type.get

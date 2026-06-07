@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runResourceSearch
-    block: mcp.tool.run
-    request: input.request
-    target: resource.search

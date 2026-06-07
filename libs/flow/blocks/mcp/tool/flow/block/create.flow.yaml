@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runBlockCreate
-    block: mcp.tool.run
-    request: input.request
-    target: block.create

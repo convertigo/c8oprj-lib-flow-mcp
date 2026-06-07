@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runBlockCodeGet
-    block: mcp.tool.run
-    request: input.request
-    target: block.code.get

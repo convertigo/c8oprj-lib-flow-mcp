@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runBlockList
-    block: mcp.tool.run
-    request: input.request
-    target: block.list

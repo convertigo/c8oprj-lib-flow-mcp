@@ -1,6 +1,0 @@
-version: 1
-nodes:
-  - id: runResourceGet
-    block: mcp.tool.run
-    request: input.request
-    target: resource.get
