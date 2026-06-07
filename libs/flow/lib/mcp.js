@@ -3,6 +3,8 @@
 	var File = Packages.java.io.File;
 	var FileWriter = Packages.java.io.FileWriter;
 	var BufferedWriter = Packages.java.io.BufferedWriter;
+	var Files = Packages.java.nio.file.Files;
+	var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
 	var System = Packages.java.lang.System;
 
 	function jsonRpcResult(id, result) {
@@ -613,8 +615,10 @@
 		} catch (_ignoreDirtyFlags) {
 		}
 		if (boolArg(args.autoSave, true) === true) {
+			var flowScriptSidecars = snapshotFlowScriptSidecars(project, writeResult);
 			Engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
+			result.flowScriptSidecarsRestored = restoreFlowScriptSidecars(project, writeResult, flowScriptSidecars, name);
 			result.yamlFallbackRemoved = removeFlowYamlFallback(args, writeResult, project);
 			try {
 				Engine.theApp.schemaManager.clearCache(String(project.getName()));
@@ -630,8 +634,71 @@
 		return result;
 	}
 
+	function isFlowScriptWrite(writeResult) {
+		return writeResult && String(writeResult.format || "") === "flowscript";
+	}
+
+	function flowScriptsDir(project) {
+		return new File(new File(String(project.getDirPath())), "libs/flows");
+	}
+
+	function readUtf8(file) {
+		return String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+	}
+
+	function writeUtf8(file, content) {
+		var parent = file.getParentFile();
+		if (parent != null) {
+			parent.mkdirs();
+		}
+		Files.write(file.toPath(), new Packages.java.lang.String(String(content)).getBytes(StandardCharsets.UTF_8));
+	}
+
+	function snapshotFlowScriptSidecars(project, writeResult) {
+		if (!isFlowScriptWrite(writeResult)) {
+			return null;
+		}
+		var dir = flowScriptsDir(project);
+		var files = dir.isDirectory() ? dir.listFiles() : null;
+		var snapshot = [];
+		if (!files) {
+			return snapshot;
+		}
+		var list = Packages.java.util.Arrays.asList(files).toArray();
+		for (var i = 0; i < list.length; i++) {
+			var file = list[i];
+			var name = String(file.getName());
+			if (file.isFile() && name.endsWith(".flow.js")) {
+				snapshot.push({
+					name: name,
+					content: readUtf8(file)
+				});
+			}
+		}
+		return snapshot;
+	}
+
+	function restoreFlowScriptSidecars(project, writeResult, snapshot, flowName) {
+		if (!isFlowScriptWrite(writeResult)) {
+			return 0;
+		}
+		var dir = flowScriptsDir(project);
+		var restored = 0;
+		if (snapshot) {
+			for (var i = 0; i < snapshot.length; i++) {
+				writeUtf8(new File(dir, snapshot[i].name), snapshot[i].content);
+				restored++;
+			}
+		}
+		if (writeResult.code !== undefined && writeResult.code !== null && flowName) {
+			writeUtf8(new File(dir, String(flowName) + ".flow.js"), writeResult.code);
+			restored++;
+		}
+		return restored;
+	}
+
 	function removeFlowYamlFallback(args, writeResult, project) {
-		if (!writeResult || String(writeResult.format || "") !== "flowscript") {
+		if (!isFlowScriptWrite(writeResult)) {
 			return false;
 		}
 		if (boolArg(args.writeYaml, false) === true || boolArg(args.writeYamlMirror, false) === true || boolArg(args.saveYaml, false) === true) {
