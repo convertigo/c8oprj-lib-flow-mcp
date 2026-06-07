@@ -36,7 +36,7 @@ const _meta = {
 
 	function withSource(ctx, args, write) {
 		var flow = ctx.flowGet(write.name, args);
-		return Object.assign({}, write, { source: flow.source });
+		return Object.assign({}, write, { source: flow.source, code: flow.code });
 	}
 
 	return {

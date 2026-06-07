@@ -599,7 +599,10 @@
 			project.add(flow);
 			result.created = true;
 		}
-		if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
+		if (writeResult && String(writeResult.format || "") === "flowscript" &&
+				writeResult.code !== undefined && writeResult.code !== null) {
+			flow.setFlowSource(String(writeResult.code));
+		} else if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
 			flow.setFlowSource(String(writeResult.source));
 		}
 		result.registered = true;
