@@ -4,9 +4,9 @@ Prefer core blocks and core property types. Add project-local vocabulary only wh
 
 For project-local FlowScript blocks, the canonical source lives under
 `libs/flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
-the visible contract and one FlowScript function for the implementation. Legacy
-YAML descriptors are still accepted for Rhino/native escape hatches and older
-blocks.
+the visible contract and either one FlowScript function or one Rhino IIFE for
+the implementation. Legacy YAML descriptors are still accepted only as migration
+fallbacks for older blocks.
 
 Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.
 
@@ -18,7 +18,7 @@ Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)
 
 Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors under `libs/flow/types/editors/*.html`.
 
-Use `flow-block-code-set` for project-local blocks implemented with FlowScript. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. The code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `flow-block-code-get`. Use raw `flow-block-create` only for Rhino/native or legacy descriptor work. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
+Use `flow-block-code-set` for project-local blocks. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. FlowScript code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `flow-block-code-get`. Rhino code must be a complete `_meta` with `runtime: "rhino"` followed by an IIFE returning `{ run: function (ctx, node) { ... } }`. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
 
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
@@ -34,7 +34,7 @@ When calling a block from compact FlowScript, use direct typed values where poss
 
 Reusable blocks can be used as array mappers: `const labels = list.map(items, text.label({ value: current.name }))`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
 
-Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-create`, a canonical descriptor using `implementation.runtime: "rhino"`, and a small `*.js` implementation returning `{ run: function (ctx, node) { ... } }`. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
+Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-code-set` and a canonical `.block.js` source. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
 
 Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO (`http.get`, `http.request`, `requestable.call`), transforms (`list.*`), JSON shaping (`json.*`), files/resources and sessions. If only parsing or a Java bridge is missing, create that one primitive and keep orchestration in FlowScript. Project Rhino blocks must not open URLs, sockets, or Convertigo requestables directly; the engine rejects those implementations so the graph stays inspectable.
 

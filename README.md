@@ -31,7 +31,7 @@ lib_flow_mcp.McpServer
 
 The flow graph owns the visible protocol routing. Reusable protocol branches
 that deserve a palette/catalog item are composite graph blocks in
-`libs/flow/blocks/*.block.yaml`; for example `mcp.handle` routes one JSON-RPC
+`libs/flow/blocks/*.block.js`; for example `mcp.handle` routes one JSON-RPC
 request, and `mcp.tools.call` is implemented with `mcp.tool.identify` and one
 branch per tool family. Private native `mcp.*` blocks keep the low-level
 JSON-RPC/Convertigo glue small. When reusable behavior has a clear contract,
@@ -94,20 +94,21 @@ flow-code-set dry:true for broad Flow edits, then dry:false when clean
 flow-code-patch for revision-checked maintenance edits
 flow-code-run / flow-test
 flow-catalog only when search/examples are insufficient; it is summary by default
-flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local FlowScript blocks
+flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local blocks
 flow-block-code-set only when reusable vocabulary is needed
-flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases
+flow-block-create / flow-block-duplicate / flow-block-edit are compatibility facades that still write canonical .block.js
+flow-type-create only for project-local property type definitions
 flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/HTML/CSS resources and Flow libraries
 ```
 
 The default path remains catalog-first and sidecar-first. Custom blocks are
 project vocabulary, not automatic core changes.
 
-Project-local FlowScript blocks use a canonical `*.block.js` source containing
-`_meta` plus one function. Use descriptor-backed Rhino blocks only for JVM/Java
-integration code or low-level primitives. Rhino code may use Java classes
+Project-local blocks use a canonical `*.block.js` source containing `_meta`
+plus either one FlowScript function or one Rhino IIFE. Use Rhino blocks only for
+JVM/Java integration code or low-level primitives. Rhino code may use Java classes
 through `Packages`, but not Node.js APIs such as `require`, npm modules or
-browser globals. Keep the runtime file to `run(ctx, node)` plus local helpers.
+browser globals. Keep the Rhino IIFE to `run(ctx, node)` plus local helpers.
 Put shared helper dependencies in `uses`; optional dynamic
 `displayName(node)` / `analyze(ctx, node)` hooks stay separate from runtime code.
 
@@ -217,7 +218,8 @@ or `properties.id` to avoid creating duplicate ids.
 Block authoring is intentionally explicit:
 
 - `flow-block-get` reads any visible block source.
-- `flow-block-create` writes a new project-local block.
+- `flow-block-code-set` writes canonical project-local `.block.js` source.
+- `flow-block-create` is a compatibility facade that also writes `.block.js`.
 - `flow-block-duplicate` copies a core/shared/project block to a new
   project-local name.
 - `flow-block-edit` replaces the source of an existing project-local block.
@@ -267,8 +269,7 @@ flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unifi
 ```
 
 The patch API is limited to Flow resources such as
-`libs/flow/blocks/**/*.js`, `libs/flow/blocks/**/*.block.js`,
-`libs/flow/blocks/**/*.block.yaml`, `libs/flow/fragments/**/*.fragment.yaml`,
+`libs/flow/blocks/**/*.block.js`, `libs/flow/fragments/**/*.fragment.yaml`,
 `libs/flow/lib/**/*.js`, `libs/flow/types/**/*.{type.yaml,js}` and
 `libs/flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
 resources and parses Flow/fragment YAML by default.

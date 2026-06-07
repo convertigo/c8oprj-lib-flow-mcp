@@ -1,3 +1,26 @@
+const _meta = {
+  "version": 1,
+  "private": true,
+  "icon": "mdi:format-list-checks",
+  "tags": [
+    "mcp"
+  ],
+  "description": "Returns the Flow MCP tool descriptors.",
+  "display": "available tools -> {{ input.out }}",
+  "hooks": {
+    "file": "available.hooks.js"
+  },
+  "properties": {
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "default": "local.tools",
+      "description": "Scope path receiving the tool descriptors."
+    }
+  },
+  "runtime": "rhino"
+}
+
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var PUBLIC_TOOLS = {

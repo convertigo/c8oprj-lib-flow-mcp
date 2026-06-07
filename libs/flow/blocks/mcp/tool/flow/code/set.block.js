@@ -1,3 +1,34 @@
+const _meta = {
+  "version": 1,
+  "private": true,
+  "icon": "mdi:file-check-outline",
+  "tags": [
+    "mcp",
+    "flowscript",
+    "code"
+  ],
+  "description": "Validates and writes FlowScript code with optional revision checking.",
+  "display": "tool flow-code-set -> {{ input.out }}",
+  "hooks": {
+    "file": "set.hooks.js"
+  },
+  "properties": {
+    "request": {
+      "kind": "expression",
+      "type": "object",
+      "default": "input.request",
+      "description": "MCP JSON-RPC tools/call request object."
+    },
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "default": "local.response",
+      "description": "Scope path receiving the MCP response."
+    }
+  },
+  "runtime": "rhino"
+}
+
 (function () {
 	function isDry(args) {
 		return args && (args.dry === true || args.dryRun === true || String(args.dry) === "true" || String(args.dryRun) === "true");

@@ -1,3 +1,26 @@
+const _meta = {
+  "version": 1,
+  "private": true,
+  "icon": "mdi:tag-search-outline",
+  "description": "Extracts the MCP tool name, group and arguments.",
+  "hooks": {
+    "file": "identify.hooks.js"
+  },
+  "properties": {
+    "request": {
+      "kind": "expression",
+      "type": "object",
+      "description": "MCP JSON-RPC tools/call request object."
+    },
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "description": "Scope path receiving {name, group, arguments}."
+    }
+  },
+  "runtime": "rhino"
+}
+
 (function () {
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];

@@ -1,3 +1,49 @@
+const _meta = {
+  "version": 1,
+  "private": true,
+  "icon": "mdi:play-box-outline",
+  "uses": [
+    "mcp"
+  ],
+  "description": "Runs one MCP tool by calling a Flow block capability and wrapping the JSON-RPC response.",
+  "hooks": {
+    "file": "run.hooks.js"
+  },
+  "properties": {
+    "request": {
+      "kind": "expression",
+      "type": "object",
+      "description": "MCP JSON-RPC tools/call request object."
+    },
+    "target": {
+      "kind": "text",
+      "type": "string",
+      "description": "Flow block capability called with prepared MCP arguments."
+    },
+    "args": {
+      "kind": "template",
+      "type": "object",
+      "description": "Optional argument overrides merged after MCP arguments."
+    },
+    "workspaceSearch": {
+      "kind": "literal",
+      "type": "boolean",
+      "description": "Allow workspace search without resolving a project."
+    },
+    "resolveProject": {
+      "kind": "literal",
+      "type": "boolean",
+      "description": "Resolve project/projectDir before calling the target block. Default true."
+    },
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "description": "Scope path receiving the MCP response."
+    }
+  },
+  "runtime": "rhino"
+}
+
 (function () {
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];

@@ -98,7 +98,7 @@ For a project-local FlowScript block:
 
 For a Rhino/Java primitive:
 
-1. Use `flow-block-create` only when FlowScript cannot express the low-level bridge.
+1. Use `flow-block-code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
 2. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
 3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
 4. Do not reimplement standard blocks in Rhino. Use `http.get`/`http.request` for HTTP, `requestable.call` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
