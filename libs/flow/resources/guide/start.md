@@ -2,12 +2,12 @@
 
 Default route for an unknown Flow project:
 
-1. Call `flow-search` first with natural tokens, for example `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library. Use `scope:"workspace"` only for discovery across loaded Studio projects.
-2. Prefer `kind:"sample"` matches even when only part of the query matched: samples are private executable Flows whose name starts with `sample_`. Open them with `flow-tree`, copy the pattern, then adapt it.
-3. Inspect only useful matches with `flow-tree` or `flow-get`; do not read the whole catalog when a matching sample or Flow exists.
-4. For a new Flow, write compact FlowScript, preview it with `flow-code-run`, then write it once with `flow-code-set`; avoid raw `definition`/YAML editing unless debugging the compiler.
-5. Call `flow-context` before writing expressions or templates.
-6. Edit existing Flows with targeted `flow-node-*` or `flow-edit`, then validate with `flow-test` or `flow-output-schema`.
+1. For a simple new Flow, write compact FlowScript first. Do not search/copy existing Flows unless this is maintenance, reuse, or an unclear pattern.
+2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy sequence or transaction shape is needed.
+3. Preview/test with `flow-code-run`, then call `flow-code-set` once with `dry:true` and once with `dry:false` after diagnostics are clean.
+4. Stop after a successful `flow-code-run` plus save unless the user explicitly asked for deployed HTTP validation.
+5. Use `flow-search` only when the block/pattern is unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
+6. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
 7. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
 Project-local blocks are code-first: `flow-block-code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
@@ -25,6 +25,8 @@ In `definition.nodes[]`, node properties are direct fields, for example `{id:"ca
 When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.
 
 Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls. Discovery tools are paginated by default; keep using `limit` and `cursor` instead of asking for unbounded catalog/tree data.
+
+Avoid shell commands for routine checks. Do not run `git status`, `git diff`, `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow. If the prompt gives `project` and `qname`, trust them; do not inspect workspace YAML/XML to rediscover them. Use MCP tool results as the source of truth. Do not call `flow-test` after saving when `flow-code-run` already proved the result.
 
 Mutation tools and `flow-block-get` return compact summaries by default. Call `flow-tree` or `flow-get` for focused inspection; pass `detail:"full"` only when debugging the tool response itself or editing block implementation source.
 

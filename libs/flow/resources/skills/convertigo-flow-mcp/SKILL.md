@@ -19,14 +19,31 @@ Do not use the legacy `convertigo` MCP server for Flow authoring unless the user
 
 Prefer the compact code path:
 
-1. For an existing Flow, call `flow-code-get({ project, qname })`.
-2. Edit the returned FlowScript code.
+1. For a new Flow, write fresh compact FlowScript first; do not inspect/copy
+   existing Flows unless this is a maintenance task or the user asks to reuse a
+   nearby pattern.
+2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
+   requestable shape is needed.
 3. Validate with `flow-code-set({ project, qname, revision, code, dry:true })`.
-4. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean. This is a fast FlowScript write by default; pass `saveProject:true` only when a full Convertigo project export is required, and `refresh:true` only when the Studio UI must refresh immediately.
-5. Test with `flow-code-run`, `flow-test`, or the runtime URL:
-   `http://localhost:18080/convertigo/projects/<project>/.json?__sequence=<flowName>`.
+4. Run/test with `flow-code-run`.
+5. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean. This is a fast FlowScript write by default; pass `saveProject:true` only when a full Convertigo project export is required, and `refresh:true` only when the Studio UI must refresh immediately.
+6. Stop when `flow-code-run` proves the requested result and the save succeeds.
 
-For a new Flow, write FlowScript first and validate with `dry:true`. Use `flow-catalog` only when diagnostics do not identify the missing block or property. Keep catalog requests narrow: `limit <= 10`, and after the first call use `doc:false` and `hints:false`.
+Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
+`sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
+If the prompt gives `project` and `qname`, trust them; do not inspect workspace
+files to discover project YAML/XML. Use MCP tool results as the source of truth.
+Treat `flow-code-run` as the test for a new Flow. Do not call `flow-test` after
+saving unless the user explicitly asks to test the saved Flow. Use the runtime
+URL only when the user explicitly asks for deployed HTTP validation or
+`flow-code-run` cannot prove the behavior.
+
+For an existing Flow, call `flow-code-get({ project, qname })`, edit the returned
+FlowScript, and preserve `revision` when patching.
+
+Use `flow-catalog` only when diagnostics do not identify the missing block or
+property. Keep catalog requests narrow: `limit <= 10`, and after the first call
+use `doc:false` and `hints:false`.
 
 Use `flow-source-*`, `flow-tree`, and raw mutation tools only when debugging the compiler/model conversion itself.
 

@@ -1406,9 +1406,9 @@
 		} else if (value.dry) {
 			out.next = "Dry validation passed. Retry flow-code-set with dry:false to save.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
-			out.next = "Fast save done. Use flow-test for validation. Pass saveProject:true only when a full Convertigo project export is required; pass refresh:true only for Studio UI refresh.";
+			out.next = "Fast save done. If flow-code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {
-			out.next = "Saved. Use flow-test or the runtime URL for one validation.";
+			out.next = "Saved. If flow-code-run already proved the result, stop; otherwise use flow-test for one validation.";
 		}
 		return out;
 	}
@@ -1557,6 +1557,7 @@
 
 	function compactRuntimeToolValue(request, value) {
 		var args = toolArguments(request);
+		var name = toolName(request);
 		if (!value || typeof value !== "object") {
 			return value;
 		}
@@ -1622,6 +1623,13 @@
 				scopeOut[scopeKey + "Hint"] = "Pass includeFull" + scopeKey.charAt(0).toUpperCase() + scopeKey.substring(1) + "=true only when complete scope values are required.";
 			}
 		});
+		if (name === "flow-code-run" && value.ok !== false) {
+			var runOut = mutableOut();
+			runOut.next = "Run/test passed. Save once with flow-code-set dry:false; do not call flow-test after saving unless the user explicitly asks to test the saved Flow.";
+		} else if (name === "flow-test" && value.ok !== false) {
+			var testOut = mutableOut();
+			testOut.next = "Saved Flow test passed. Stop unless the user asked for another validation.";
+		}
 		return out || value;
 	}
 
