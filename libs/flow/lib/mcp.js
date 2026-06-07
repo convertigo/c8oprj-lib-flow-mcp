@@ -1245,6 +1245,107 @@
 		return out;
 	}
 
+	function compactFlowListToolValue(request, value) {
+		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
+			return value;
+		}
+		var flows = value.flows || [];
+		return {
+			ok: value.ok !== false,
+			count: flows.length,
+			flows: flows.map(function (flow) {
+				return {
+					name: flow.name,
+					format: flow.format || ""
+				};
+			}),
+			responseDetail: "summary",
+			next: "Use flow-code-get for one Flow source, or flow-code-set dry:true to validate a new FlowScript draft."
+		};
+	}
+
+	function compactDiagnosticCandidate(candidate) {
+		candidate = candidate || {};
+		var out = {};
+		["block", "property", "signature"].forEach(function (key) {
+			if (candidate[key] !== undefined && candidate[key] !== null && candidate[key] !== "") {
+				out[key] = candidate[key];
+			}
+		});
+		if (candidate.description) {
+			out.description = String(candidate.description);
+		}
+		return out;
+	}
+
+	function compactFlowCodeDiagnostic(diagnostic) {
+		diagnostic = diagnostic || {};
+		var out = {};
+		["severity", "code", "line", "message", "block", "property", "path", "actual", "next"].forEach(function (key) {
+			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
+				out[key] = diagnostic[key];
+			}
+		});
+		if (diagnostic.hint && (!diagnostic.candidates || !diagnostic.candidates.length)) {
+			out.hint = diagnostic.hint;
+		}
+		if (diagnostic.expected) {
+			out.expected = (diagnostic.expected || []).slice(0, 12);
+			if ((diagnostic.expected || []).length > out.expected.length) {
+				out.omittedExpected = diagnostic.expected.length - out.expected.length;
+			}
+		}
+		if (diagnostic.candidates) {
+			out.candidates = (diagnostic.candidates || []).slice(0, 3).map(compactDiagnosticCandidate);
+		}
+		if (diagnostic.create && (!diagnostic.candidates || !diagnostic.candidates.length)) {
+			out.create = diagnostic.create;
+		}
+		return out;
+	}
+
+	function compactFlowCodeError(error) {
+		if (!error || typeof error !== "object") {
+			return error;
+		}
+		var out = {};
+		["code", "message", "hint"].forEach(function (key) {
+			if (error[key] !== undefined && error[key] !== null && error[key] !== "") {
+				out[key] = error[key];
+			}
+		});
+		if (error.details) {
+			out.diagnostics = (error.details || []).map(compactFlowCodeDiagnostic);
+		}
+		return out;
+	}
+
+	function compactFlowCodeWriteToolValue(request, value) {
+		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
+			return value;
+		}
+		var out = {};
+		["ok", "qname", "name", "dry", "revision", "oldRevision"].forEach(function (key) {
+			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
+				out[key] = value[key];
+			}
+		});
+		if (value.error) {
+			out.error = compactFlowCodeError(value.error);
+		}
+		if (value.warnings) {
+			out.warnings = (value.warnings || []).slice(0, 5).map(compactFlowCodeDiagnostic);
+		}
+		if (value.registration) {
+			out.registration = compactRegistration(value.registration);
+		}
+		out.responseDetail = "summary";
+		out.next = value.ok === false
+			? "Fix diagnostics, then retry flow-code-set dry:true before saving."
+			: (value.dry ? "Dry validation passed. Retry flow-code-set with dry:false to save." : "Saved. Use flow-test or the runtime URL for one validation.");
+		return out;
+	}
+
 	function argBool(value, fallback) {
 		if (value === undefined || value === null || value === "") {
 			return fallback;
@@ -1675,6 +1776,12 @@
 
 	function compactToolValue(request, value) {
 		var name = toolName(request);
+		if (name === "flow-list") {
+			return compactFlowListToolValue(request, value);
+		}
+		if (name === "flow-code-set" || name === "flow-code-patch") {
+			return compactFlowCodeWriteToolValue(request, value);
+		}
 		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run") {
 			return compactRuntimeToolValue(request, value);
 		}

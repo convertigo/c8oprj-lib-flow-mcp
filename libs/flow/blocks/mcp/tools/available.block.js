@@ -24,13 +24,10 @@ const _meta = {
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var PUBLIC_TOOLS = {
-		"flow-block-create": true,
 		"flow-block-code-get": true,
 		"flow-block-code-patch": true,
 		"flow-block-code-rg": true,
 		"flow-block-code-set": true,
-		"flow-block-duplicate": true,
-		"flow-block-edit": true,
 		"flow-block-get": true,
 		"flow-catalog": true,
 		"flow-code-analyze": true,
@@ -47,10 +44,7 @@ const _meta = {
 		"flow-resource-search": true,
 		"flow-schema-reset": true,
 		"flow-search": true,
-		"flow-test": true,
-		"flow-type-create": true,
-		"flow-type-get": true,
-		"flow-type-list": true
+		"flow-test": true
 	};
 	var OMIT_SCHEMA_PROPERTIES = {
 		allowHugeResult: true,
