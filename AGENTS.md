@@ -67,11 +67,10 @@ the returned `revision`. For libraries, editors, type descriptors and other
 resources, use `flow-resource-search`, `flow-resource-get`, then
 `flow-resource-patch` with the returned `baseHash`.
 
-Custom FlowScript blocks use a canonical `*.block.js` file containing `_meta`
-and one function. Use descriptor-backed Rhino blocks only for JVM/Java
-integration or low-level algorithmic code. Rhino code may use Java classes
-through `Packages`, but not Node.js APIs such as `require`, npm modules or
-browser globals.
+Custom blocks use a canonical `*.block.js` file containing `_meta` and one
+implementation body. Use Rhino runtime only for JVM/Java integration or
+low-level algorithmic code. Rhino code may use Java classes through `Packages`,
+but not Node.js APIs such as `require`, npm modules or browser globals.
 
 Most tools accept `project` or `projectDir`. Use `project` for real Convertigo
 workspaces and reserve `projectDir` for standalone tests. Never assume the MCP

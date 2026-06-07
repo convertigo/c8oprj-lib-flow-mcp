@@ -1,6 +1,6 @@
 const _meta = {
   "version": 1,
-  "description": "Reads project-local FlowScript block code, or returns a FlowScript mirror for a descriptor-backed Flow block.",
+  "description": "Reads canonical project-local Flow block code with revision information.",
   "icon": "mdi:puzzle-search-outline",
   "properties": {
     "request": {
