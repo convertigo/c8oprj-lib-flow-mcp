@@ -22,7 +22,7 @@ Prefer the compact code path:
 1. For an existing Flow, call `flow-code-get({ project, qname })`.
 2. Edit the returned FlowScript code.
 3. Validate with `flow-code-set({ project, qname, revision, code, dry:true })`.
-4. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean.
+4. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean. This is a fast FlowScript write by default; pass `saveProject:true` only when a full Convertigo project export is required, and `refresh:true` only when the Studio UI must refresh immediately.
 5. Test with `flow-code-run`, `flow-test`, or the runtime URL:
    `http://localhost:18080/convertigo/projects/<project>/.json?__sequence=<flowName>`.
 

@@ -565,6 +565,9 @@
 			created: false,
 			updated: false,
 			saved: false,
+			projectSaved: false,
+			flowDeclarationSaved: false,
+			saveMode: "fast",
 			refreshed: false,
 			qname: "",
 			message: ""
@@ -614,24 +617,82 @@
 			project.hasChanged = true;
 		} catch (_ignoreDirtyFlags) {
 		}
-		if (boolArg(args.autoSave, true) === true) {
+		var saveProject = boolArg(args.saveProject, false) === true ||
+			boolArg(args.exportProject, false) === true ||
+			boolArg(args.autoSave, false) === true;
+		if (saveProject) {
+			result.saveMode = "project";
 			var flowScriptSidecars = snapshotFlowScriptSidecars(project, writeResult);
 			Engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
+			result.projectSaved = true;
 			result.flowScriptSidecarsRestored = restoreFlowScriptSidecars(project, writeResult, flowScriptSidecars, name);
 			result.yamlFallbackRemoved = removeFlowYamlFallback(args, writeResult, project);
-			try {
-				Engine.theApp.schemaManager.clearCache(String(project.getName()));
-				result.schemaCacheCleared = true;
-			} catch (_ignoreSchemaCache) {
-			}
+		} else {
+			result.saved = true;
+			result.flowDeclarationSaved = result.created ? saveFlowDeclaration(project, flow, name, args) : false;
+			result.yamlFallbackRemoved = removeFlowYamlFallback(args, writeResult, project);
 		}
-		if (boolArg(args.refresh, true) === true) {
+		try {
+			Engine.theApp.schemaManager.clearCache(String(project.getName()));
+			result.schemaCacheCleared = true;
+		} catch (_ignoreSchemaCache) {
+		}
+		if (boolArg(args.refresh, false) === true) {
 			result.studioRefresh = studioRefreshQName(String(project.getName()));
 			result.refreshed = result.studioRefresh && result.studioRefresh.refreshed === true;
 		}
 		result.message = result.created ? "Flow DBO created" : "Flow DBO updated";
 		return result;
+	}
+
+	function saveFlowDeclaration(project, flow, name, args) {
+		args = args || {};
+		var projectDir = new File(String(project.getDirPath()));
+		var sequencesDir = new File(new File(projectDir, "_c8oProject"), "sequences");
+		var sequenceFile = new File(sequencesDir, String(name) + ".yaml");
+		if (!sequenceFile.isFile()) {
+			writeUtf8(sequenceFile, "includeTrace: " + (boolArg(args.includeTrace, false) ? "true" : "false") + "\n");
+		}
+		return ensureProjectFlowDeclaration(projectDir, name);
+	}
+
+	function ensureProjectFlowDeclaration(projectDir, name) {
+		var projectFile = new File(projectDir, "c8oProject.yaml");
+		if (!projectFile.isFile()) {
+			return false;
+		}
+		var flowLine = "  ↓" + String(name) + " [flow.Flow]: 🗏 sequences/" + String(name) + ".yaml";
+		var content = readUtf8(projectFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+		var lines = content.split("\n");
+		for (var i = 0; i < lines.length; i++) {
+			if (String(lines[i]).indexOf("↓" + String(name) + " [flow.Flow]:") !== -1) {
+				return false;
+			}
+		}
+		var insertAt = -1;
+		for (var j = 0; j < lines.length; j++) {
+			if (/^  ↓.+ \[flow\.Flow\]:/.test(String(lines[j]))) {
+				insertAt = j + 1;
+			}
+		}
+		if (insertAt === -1) {
+			for (var k = 0; k < lines.length; k++) {
+				if (/^  ↓(project|FlowEngine|MobileApplication) /.test(String(lines[k]))) {
+					insertAt = k;
+					break;
+				}
+			}
+		}
+		if (insertAt === -1) {
+			insertAt = lines.length;
+			if (insertAt > 0 && lines[insertAt - 1] === "") {
+				insertAt--;
+			}
+		}
+		lines.splice(insertAt, 0, flowLine);
+		writeUtf8(projectFile, lines.join("\n").replace(/\n+$/g, "") + "\n");
+		return true;
 	}
 
 	function isFlowScriptWrite(writeResult) {
@@ -1340,9 +1401,15 @@
 			out.registration = compactRegistration(value.registration);
 		}
 		out.responseDetail = "summary";
-		out.next = value.ok === false
-			? "Fix diagnostics, then retry flow-code-set dry:true before saving."
-			: (value.dry ? "Dry validation passed. Retry flow-code-set with dry:false to save." : "Saved. Use flow-test or the runtime URL for one validation.");
+		if (value.ok === false) {
+			out.next = "Fix diagnostics, then retry flow-code-set dry:true before saving.";
+		} else if (value.dry) {
+			out.next = "Dry validation passed. Retry flow-code-set with dry:false to save.";
+		} else if (value.registration && value.registration.saveMode === "fast") {
+			out.next = "Fast save done. Use flow-test for validation. Pass saveProject:true only when a full Convertigo project export is required; pass refresh:true only for Studio UI refresh.";
+		} else {
+			out.next = "Saved. Use flow-test or the runtime URL for one validation.";
+		}
 		return out;
 	}
 
@@ -1604,7 +1671,9 @@
 			return registration;
 		}
 		var out = {};
-		["requested", "registered", "created", "updated", "saved", "refreshed", "schemaCacheCleared", "qname", "message"].forEach(function (key) {
+		["requested", "registered", "created", "updated", "saved", "projectSaved", "flowDeclarationSaved",
+			"saveMode", "refreshed", "schemaCacheCleared", "flowScriptSidecarsRestored",
+			"yamlFallbackRemoved", "qname", "message"].forEach(function (key) {
 			if (registration[key] !== undefined && registration[key] !== null && registration[key] !== "") {
 				out[key] = registration[key];
 			}
