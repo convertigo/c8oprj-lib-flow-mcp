@@ -31,11 +31,15 @@ const _meta = {
 		"flow-block-get": true,
 		"flow-catalog": true,
 		"flow-code-analyze": true,
+		"flow-code-check": true,
+		"flow-code-discard": true,
 		"flow-code-get": true,
 		"flow-code-patch": true,
+		"flow-code-promote": true,
 		"flow-code-rg": true,
 		"flow-code-run": true,
 		"flow-code-set": true,
+		"flow-code-status": true,
 		"flow-list": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
@@ -68,7 +72,8 @@ const _meta = {
 		maxFileBytes: true,
 		maxResultChars: true,
 		maxTraceChars: true,
-		mode: true
+		mode: true,
+		draft: true
 	};
 
 	function prop(node, key) {
@@ -175,7 +180,23 @@ const _meta = {
 		return out;
 	}
 
-	function inputSchema(block) {
+	function omitSchemaPropertyForTool(toolName, name) {
+		if (name === "code" && /^flow-code-(check|run|analyze)$/.test(String(toolName || ""))) {
+			return true;
+		}
+		if (name === "dry" && /^flow-code-(set|patch)$/.test(String(toolName || ""))) {
+			return true;
+		}
+		if ((name === "saveProject" || name === "refresh") && /^flow-code-(set|patch)$/.test(String(toolName || ""))) {
+			return true;
+		}
+		if ((name === "saveProject" || name === "refresh" || name === "clearDraft") && String(toolName || "") === "flow-code-promote") {
+			return true;
+		}
+		return name === "out" || OMIT_SCHEMA_PROPERTIES[name] === true;
+	}
+
+	function inputSchema(block, toolName) {
 		var schema = {
 			type: "object",
 			properties: {},
@@ -183,7 +204,7 @@ const _meta = {
 		};
 		var properties = block && (block.props || block.properties) || {};
 		Object.keys(properties).forEach(function (name) {
-			if (name === "out" || OMIT_SCHEMA_PROPERTIES[name] === true) {
+			if (omitSchemaPropertyForTool(toolName, name)) {
 				return;
 			}
 			schema.properties[name] = schemaProperty(properties[name]);
@@ -192,6 +213,12 @@ const _meta = {
 			schema.properties.project = {
 				type: "string",
 				description: "Target project."
+			};
+		}
+		if (/^flow-code-(set|patch|check|run|analyze|promote)$/.test(String(toolName || ""))) {
+			schema.properties.maxDiagnostics = {
+				type: "integer",
+				description: "Maximum diagnostics to return. Default 8, max 25."
 			};
 		}
 		return schema;
@@ -212,7 +239,7 @@ const _meta = {
 		return {
 			name: name,
 			description: description.length > 120 ? description.substring(0, 117) + "..." : description,
-			inputSchema: inputSchema(source)
+			inputSchema: inputSchema(source, name)
 		};
 	}
 

@@ -1072,6 +1072,12 @@
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
 				args.limit = 20;
 			}
+			if (args.doc === undefined || args.doc === null || String(args.doc) === "") {
+				args.doc = false;
+			}
+			if (args.hints === undefined || args.hints === null || String(args.hints) === "") {
+				args.hints = false;
+			}
 		} else if (name === "flow-search") {
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
 				args.limit = 20;
@@ -1090,6 +1096,15 @@
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
 				args.limit = 20;
 			}
+		}
+		if (/^flow-code-(get|set|patch|check|run|analyze)$/.test(name)) {
+			args.draft = true;
+		}
+		if (/^flow-code-(check|run|analyze)$/.test(name)) {
+			delete args.code;
+			delete args.flowScript;
+			delete args.flowSource;
+			delete args.definition;
 		}
 		var workspaceSearch = options.workspaceSearch === true
 			&& String(args.scope || "") === "workspace"
@@ -1321,7 +1336,7 @@
 				};
 			}),
 			responseDetail: "summary",
-			next: "Use flow-code-get for one Flow source, or flow-code-set dry:true to validate a new FlowScript draft."
+			next: "Use flow-code-get for one Flow source, or flow-code-set to edit a working copy."
 		};
 	}
 
@@ -1339,10 +1354,15 @@
 		return out;
 	}
 
+	function diagnosticLimit(request) {
+		var args = toolArguments(request);
+		return argInt(args.maxDiagnostics || args.diagnosticLimit || args.diagnosticsLimit, 8, 1, 25);
+	}
+
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "code", "line", "message", "block", "property", "path", "actual", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
@@ -1365,7 +1385,30 @@
 		return out;
 	}
 
-	function compactFlowCodeError(error) {
+	function compactFlowCodeDiagnosticReport(request, details) {
+		var diagnostics = [];
+		var diagnosticCount = 0;
+		var hasMore = false;
+		if (Object.prototype.toString.call(details) === "[object Array]") {
+			diagnostics = details;
+			diagnosticCount = diagnostics.length;
+		} else if (details && typeof details === "object") {
+			diagnostics = details.diagnostics || [];
+			diagnosticCount = Number(details.diagnosticCount || diagnostics.length);
+			hasMore = details.hasMore === true;
+		}
+		var limit = diagnosticLimit(request);
+		var shown = diagnostics.slice(0, limit).map(compactFlowCodeDiagnostic);
+		diagnosticCount = Math.max(diagnosticCount, diagnostics.length);
+		return {
+			diagnosticCount: diagnosticCount,
+			diagnosticsShown: shown.length,
+			hasMore: hasMore || diagnosticCount > shown.length,
+			diagnostics: shown
+		};
+	}
+
+	function compactFlowCodeError(request, error) {
 		if (!error || typeof error !== "object") {
 			return error;
 		}
@@ -1376,7 +1419,11 @@
 			}
 		});
 		if (error.details) {
-			out.diagnostics = (error.details || []).map(compactFlowCodeDiagnostic);
+			var report = compactFlowCodeDiagnosticReport(request, error.details);
+			out.diagnosticCount = report.diagnosticCount;
+			out.diagnosticsShown = report.diagnosticsShown;
+			out.hasMore = report.hasMore;
+			out.diagnostics = report.diagnostics;
 		}
 		return out;
 	}
@@ -1385,14 +1432,38 @@
 		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
 			return value;
 		}
+		var name = toolName(request);
 		var out = {};
-		["ok", "qname", "name", "dry", "revision", "oldRevision"].forEach(function (key) {
+		["ok", "qname", "name", "dry", "written", "promoted", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];
 			}
 		});
+		if (value.draft === true || value.workingCopy === true) {
+			out.workingCopy = true;
+		}
+		if (value.codeFile) {
+			out.codeFile = value.codeFile;
+		}
+		if (value.workingCodeFile) {
+			out.workingCodeFile = value.workingCodeFile;
+		}
+		if (value.officialCodeFile) {
+			out.officialCodeFile = value.officialCodeFile;
+		}
 		if (value.error) {
-			out.error = compactFlowCodeError(value.error);
+			out.error = compactFlowCodeError(request, value.error);
+		}
+		if (value.diagnostics) {
+			var report = compactFlowCodeDiagnosticReport(request, {
+				diagnostics: value.diagnostics,
+				diagnosticCount: value.diagnosticCount,
+				hasMore: value.hasMore
+			});
+			out.diagnosticCount = report.diagnosticCount;
+			out.diagnosticsShown = report.diagnosticsShown;
+			out.hasMore = report.hasMore;
+			out.diagnostics = report.diagnostics;
 		}
 		if (value.warnings) {
 			out.warnings = (value.warnings || []).slice(0, 5).map(compactFlowCodeDiagnostic);
@@ -1402,7 +1473,23 @@
 		}
 		out.responseDetail = "summary";
 		if (value.ok === false) {
-			out.next = "Fix diagnostics, then retry flow-code-set dry:true before saving.";
+			out.next = value.draft
+				? "Patch the working copy with flow-code-patch, then check again with flow-code-check."
+				: "Fix diagnostics, then retry flow-code-set before saving.";
+		} else if (name === "flow-code-status") {
+			out.next = value.dirty
+				? "Run/check the working copy, then promote to save or discard to cancel."
+				: "No unsaved working copy. Use flow-code-set or flow-code-patch to edit.";
+		} else if (name === "flow-code-discard") {
+			out.next = "Working copy discarded. Use flow-code-get to read the official Flow or flow-code-set to edit again.";
+		} else if (value.draft && value.written) {
+			out.next = "Working copy updated and checked. Run with flow-code-run without sending code, then save with flow-code-promote.";
+		} else if (value.draft) {
+			out.next = "Working copy check passed. Run with flow-code-run without sending code, then save with flow-code-promote.";
+		} else if (name === "flow-code-check") {
+			out.next = "Check passed.";
+		} else if (value.promoted) {
+			out.next = "Working copy saved to the official Flow. Stop if flow-code-run already proved the result.";
 		} else if (value.dry) {
 			out.next = "Dry validation passed. Retry flow-code-set with dry:false to save.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
@@ -1561,6 +1648,9 @@
 		if (!value || typeof value !== "object") {
 			return value;
 		}
+		if (value.error && name === "flow-code-run") {
+			return compactFlowCodeWriteToolValue(request, value);
+		}
 		var out = null;
 		function mutableOut() {
 			if (!out) {
@@ -1625,7 +1715,13 @@
 		});
 		if (name === "flow-code-run" && value.ok !== false) {
 			var runOut = mutableOut();
-			runOut.next = "Run/test passed. Save once with flow-code-set dry:false; do not call flow-test after saving unless the user explicitly asks to test the saved Flow.";
+			if (value.draft === true) {
+				runOut.workingCopy = true;
+				delete runOut.draft;
+			}
+			runOut.next = value.draft === true
+				? "Working copy run/test passed. Save once with flow-code-promote; do not resend code."
+				: "Official Flow run/test passed. Stop unless the user asked for another validation.";
 		} else if (name === "flow-test" && value.ok !== false) {
 			var testOut = mutableOut();
 			testOut.next = "Saved Flow test passed. Stop unless the user asked for another validation.";
@@ -1856,7 +1952,8 @@
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
 		}
-		if (name === "flow-code-set" || name === "flow-code-patch") {
+		if (name === "flow-code-set" || name === "flow-code-patch" || name === "flow-code-check" ||
+				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard") {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
 		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run") {

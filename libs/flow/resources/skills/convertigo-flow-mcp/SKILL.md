@@ -24,10 +24,12 @@ Prefer the compact code path:
    nearby pattern.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
-3. Validate with `flow-code-set({ project, qname, revision, code, dry:true })`.
-4. Run/test with `flow-code-run`.
-5. Save with `flow-code-set({ project, qname, revision, code, dry:false })` only after diagnostics are clean. This is a fast FlowScript write by default; pass `saveProject:true` only when a full Convertigo project export is required, and `refresh:true` only when the Studio UI must refresh immediately.
-6. Stop when `flow-code-run` proves the requested result and the save succeeds.
+3. Write the editable working copy with `flow-code-set({ project, qname, code })`.
+4. Patch the working copy with `flow-code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
+5. Run/test with `flow-code-run({ project, qname })` without sending code again.
+6. Use `flow-code-status({ project, qname })` only when dirty/revision state is unclear, or `flow-code-discard({ project, qname })` to cancel the working copy.
+7. Save with `flow-code-promote({ project, qname })` only after it works.
+8. Stop when `flow-code-run` proves the requested result and the promotion succeeds.
 
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
@@ -37,6 +39,9 @@ Treat `flow-code-run` as the test for a new Flow. Do not call `flow-test` after
 saving unless the user explicitly asks to test the saved Flow. Use the runtime
 URL only when the user explicitly asks for deployed HTTP validation or
 `flow-code-run` cannot prove the behavior.
+Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user
+explicitly asks for low-level debugging. The default FlowScript path behaves like
+an editor buffer: write/check/run the working copy, then promote once to save.
 
 For an existing Flow, call `flow-code-get({ project, qname })`, edit the returned
 FlowScript, and preserve `revision` when patching.
@@ -82,6 +87,10 @@ Compiler rules:
 - `name.child.path` becomes `local.name.child.path`.
 - `result.key = value` writes the response scope.
 - `list.map(items, { field: current.value })` lowers to an explicit Flow loop.
+- Natural shorthands are accepted when they read like JavaScript:
+  `http.get("https://...")`, `list.filter(items, current.ok)`,
+  `list.sort(items, { by: current.label })`, and
+  `list.map(items, { label: current.label })`.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
 ## Authoring Rules

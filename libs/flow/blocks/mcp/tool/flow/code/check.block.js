@@ -1,7 +1,7 @@
 const _meta = {
   "version": 1,
-  "description": "Runs the current FlowScript working copy or official Flow.",
-  "icon": "mdi:play-box-outline",
+  "description": "Checks the current FlowScript working copy without running it.",
+  "icon": "mdi:check-decagram-outline",
   "properties": {
     "request": {
       "kind": "expression",
@@ -27,9 +27,9 @@ const _meta = {
     "flowscript",
     "code"
   ],
-  "display": "tool flow-code-run -> {{ input.out }}"
+  "display": "tool flow-code-check -> {{ input.out }}"
 }
 
-function mcp_tool_flow_code_run({ input, config, result }) {
-  mcp.tool.run({ id: "runCode", request: input.request, target: "flow.code.run" })
+function mcp_tool_flow_code_check({ input, config, result }) {
+  mcp.tool.run({ id: "checkCode", request: input.request, target: "flow.code.check" })
 }

@@ -8,7 +8,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Avoid `flow-catalog` when a sample exists. `flow-catalog` defaults to typed signatures; use `flow-block-get` only for one unclear block.
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
-- For a new Flow, write compact FlowScript first and preview/test it with `flow-code-run`, then call `flow-code-set` once with `dry:true` and once with `dry:false` after diagnostics are clean. `flow-code-set` is a fast write by default; use `saveProject:true` only for an explicit full Convertigo export and `refresh:true` only for an explicit Studio UI refresh.
+- For a new Flow, write compact FlowScript first with `flow-code-set`, patch the working copy with `flow-code-patch`, check it with `flow-code-check`, run it with `flow-code-run`, then call `flow-code-promote` once after diagnostics and runtime behavior are clean. Use `flow-code-status` when you need dirty/revision state and `flow-code-discard` to cancel the buffer. Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user explicitly asks for low-level debugging.
 - Use raw `definition.nodes[]` only when debugging the compiler/model conversion. In that shape, node properties are direct fields: `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not use nested `props` or `properties` there.
 - Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`. JavaScript array/object literals are still not expression syntax; use literal properties or `json.object/json.field`.
 - For broad edits, use `flow-code-get`, patch the returned code, then send it back through `flow-code-patch` with the returned `revision`.
@@ -23,7 +23,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - `flow-test` with realistic input and `includeTrace:true` only while debugging. Avoid `includeFlow`, `includeFullResult` and `includeFullTrace` during normal authoring.
 - Do not use `flow-schema-reset` unless an old learned schema is clearly stale.
 
-After `flow-code-run` has proved the requested result and `flow-code-set dry:false`
+After `flow-code-run` has proved the requested result and `flow-code-promote`
 succeeds, stop. Avoid shell commands such as `git status`, `git diff`, `sed`,
 `cat`, `pwd`, `flow-test`, or ad hoc HTTP scripts for routine confirmation.
 If the prompt gives `project` and `qname`, trust them; do not inspect workspace

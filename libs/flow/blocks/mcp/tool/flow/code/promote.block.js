@@ -1,16 +1,16 @@
 const _meta = {
   "version": 1,
   "private": true,
-  "icon": "mdi:file-edit-outline",
+  "icon": "mdi:source-commit",
   "tags": [
     "mcp",
     "flowscript",
     "code"
   ],
-  "description": "Applies a revision-checked FlowScript patch or replacement.",
-  "display": "tool flow-code-patch -> {{ input.out }}",
+  "description": "Promotes a checked FlowScript draft to the official Flow model.",
+  "display": "tool flow-code-promote -> {{ input.out }}",
   "hooks": {
-    "file": "patch.hooks.js"
+    "file": "promote.hooks.js"
   },
   "properties": {
     "request": {
@@ -30,14 +30,6 @@ const _meta = {
 }
 
 (function () {
-	function isDry(args) {
-		return args && (args.dry === true || args.dryRun === true || String(args.dry) === "true" || String(args.dryRun) === "true");
-	}
-
-	function isDraft(args) {
-		return args && (args.draft === true || String(args.draft) === "true" || String(args.mode) === "draft" || String(args.stage) === "draft");
-	}
-
 	function withSource(ctx, args, write) {
 		var flow = ctx.flowGet(write.name, args);
 		return Object.assign({}, write, { source: flow.source, code: flow.code });
@@ -49,8 +41,8 @@ const _meta = {
 			var request = ctx.expr(props.request || "input.request");
 			var mcp = ctx.lib("mcp");
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
-				var write = ctx.flowCodePatch(args);
-				if (write.ok === true && !isDry(args) && !isDraft(args)) {
+				var write = ctx.flowCodePromote(args);
+				if (write.ok === true) {
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
 				}
 				return write;

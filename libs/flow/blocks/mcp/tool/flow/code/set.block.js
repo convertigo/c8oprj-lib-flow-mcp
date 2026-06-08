@@ -34,6 +34,10 @@ const _meta = {
 		return args && (args.dry === true || args.dryRun === true || String(args.dry) === "true" || String(args.dryRun) === "true");
 	}
 
+	function isDraft(args) {
+		return args && (args.draft === true || String(args.draft) === "true" || String(args.mode) === "draft" || String(args.stage) === "draft");
+	}
+
 	function withSource(ctx, args, write) {
 		var flow = ctx.flowGet(write.name, args);
 		return Object.assign({}, write, { source: flow.source, code: flow.code });
@@ -46,7 +50,7 @@ const _meta = {
 			var mcp = ctx.lib("mcp");
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
 				var write = ctx.flowCodeSet(args);
-				if (write.ok === true && !isDry(args)) {
+				if (write.ok === true && !isDry(args) && !isDraft(args)) {
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
 				}
 				return write;

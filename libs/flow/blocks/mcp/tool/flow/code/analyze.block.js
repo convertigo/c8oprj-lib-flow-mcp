@@ -1,6 +1,6 @@
 const _meta = {
   "version": 1,
-  "description": "Analyzes FlowScript code in memory without writing the Flow.",
+  "description": "Analyzes the current FlowScript working copy or official Flow.",
   "icon": "mdi:file-search-outline",
   "properties": {
     "request": {

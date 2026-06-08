@@ -4,21 +4,22 @@ Default route for an unknown Flow project:
 
 1. For a simple new Flow, write compact FlowScript first. Do not search/copy existing Flows unless this is maintenance, reuse, or an unclear pattern.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy sequence or transaction shape is needed.
-3. Preview/test with `flow-code-run`, then call `flow-code-set` once with `dry:true` and once with `dry:false` after diagnostics are clean.
-4. Stop after a successful `flow-code-run` plus save unless the user explicitly asked for deployed HTTP validation.
-5. Use `flow-search` only when the block/pattern is unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
-6. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-7. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
+3. Write the working copy with `flow-code-set`, patch it with `flow-code-patch` if needed, then check/run it with `flow-code-check` and `flow-code-run`.
+4. Treat it like an editor buffer: use `flow-code-status` to see dirty state, `flow-code-discard` to cancel, and `flow-code-promote` once after diagnostics and runtime behavior are clean.
+5. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
+6. Use `flow-search` only when the block/pattern is unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
+7. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
+8. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
 Project-local blocks are code-first: `flow-block-code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
 
 Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` and `props.*` are not expression scopes. Blocks that load JavaScript helpers with `ctx.lib(...)` must declare them with `uses` so the dependency is visible in the catalog.
 
-For JSON HTTP APIs, prefer `const response = http.get({ url })` and read `response.body`; parse `response.text` only when the body is not already native JSON.
+For JSON HTTP APIs, use the visible HTTP block: `var response = http.get("https://...")` or `http.get({ url })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. Natural list syntax is accepted: `list.filter(items, current.ok)`, `list.sort(items, { by: current.label })`, and `list.map(items, { label: current.label })`.
 
 Keep the visible algorithm in FlowScript. A custom Rhino block must not hide an entire backend feature such as fetch + parse + normalize + sort + response. If one primitive is missing, create only that primitive, for example `domain.extractState({ html })`, and keep HTTP, loops, list transforms and result mapping as Flow blocks. Project Rhino blocks are rejected if they perform HTTP or Convertigo requestable calls directly; use `http.get`/`http.request` and `requestable.call` instead.
 
-Prefer `flow-code-get`, `flow-code-set`, `flow-code-patch`, `flow-code-run`, and `flow-code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
+Prefer `flow-code-get`, `flow-code-set`, `flow-code-patch`, `flow-code-check`, `flow-code-run`, `flow-code-status`, `flow-code-discard`, `flow-code-promote`, and `flow-code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
 
 In `definition.nodes[]`, node properties are direct fields, for example `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not nest graph fields under `props` or `properties` in a complete definition. `properties` is only an MCP argument for `flow-node-add/edit` when mutating an existing Flow.
 

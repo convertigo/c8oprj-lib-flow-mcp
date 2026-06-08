@@ -1,7 +1,7 @@
 const _meta = {
   "version": 1,
-  "description": "Runs the current FlowScript working copy or official Flow.",
-  "icon": "mdi:play-box-outline",
+  "description": "Discards a FlowScript working copy and falls back to the official Flow.",
+  "icon": "mdi:file-undo-outline",
   "properties": {
     "request": {
       "kind": "expression",
@@ -27,9 +27,9 @@ const _meta = {
     "flowscript",
     "code"
   ],
-  "display": "tool flow-code-run -> {{ input.out }}"
+  "display": "tool flow-code-discard -> {{ input.out }}"
 }
 
-function mcp_tool_flow_code_run({ input, config, result }) {
-  mcp.tool.run({ id: "runCode", request: input.request, target: "flow.code.run" })
+function mcp_tool_flow_code_discard({ input, config, result }) {
+  mcp.tool.run({ id: "discardCode", request: input.request, target: "flow.code.discard" })
 }
