@@ -29,6 +29,8 @@ const _meta = {
 		"flow-block-code-rg": true,
 		"flow-block-code-set": true,
 		"flow-block-get": true,
+		"flow-cache-clear": true,
+		"flow-cache-info": true,
 		"flow-catalog": true,
 		"flow-code-analyze": true,
 		"flow-code-check": true,
@@ -133,7 +135,9 @@ const _meta = {
 			return "flow.run";
 		}
 		var target = "";
-		if (["analyze", "apply", "context", "get", "list", "outputSchema", "run", "schema.reset", "test", "tree"].indexOf(suffix) !== -1) {
+		if (["cache.clear", "cache.info"].indexOf(suffix) !== -1) {
+			target = suffix;
+		} else if (["analyze", "apply", "context", "get", "list", "outputSchema", "run", "schema.reset", "test", "tree"].indexOf(suffix) !== -1) {
 			target = "flow." + suffix;
 		} else if (suffix.indexOf("code.") === 0 || suffix.indexOf("source.") === 0) {
 			target = "flow." + suffix;
