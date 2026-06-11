@@ -61,6 +61,16 @@ Core and shared blocks are read-only through MCP: use `flow-block-duplicate`
 to create a project-local variant, then `flow-block-edit` to replace its
 source.
 
+For external HTTP APIs, prefer a reusable typed FlowScript sub-block instead of
+inlining provider details in the main executable Flow. The sub-block should
+expose simple `input.*` properties such as `city`, `latitude`, `longitude`,
+`apiKey` or `limit`, call `http.get` / `http.request`, and return a small typed
+object. The executable Flow should call that block and shape `result.*`.
+
+When FlowScript reads `input.foo`, treat `foo` as a request input that should be
+visible to users and tests. If Flow MCP tools report `inputVariables`, use it as
+the list of request variables/test inputs to create or document.
+
 When maintaining an existing FlowScript block, prefer
 `flow-block-code-rg`, `flow-block-code-get`, then `flow-block-code-patch` with
 the returned `revision`. For libraries, editors, type descriptors and other
@@ -80,7 +90,7 @@ Prefer targeted mutations over rewriting a whole Flow source. Use:
 
 - `flow-search` to get `flowQName`, `nodeId` and a compact context;
 - `flow-code-get` then `flow-code-patch` for existing FlowScript;
-- `flow-code-set` with `dry:true` before saving a new or rewritten Flow;
+- `flow-code-set` to update the FlowScript working copy before run/promote;
 - `flow-tree`, `flow-node-*`, `flow-apply` and `flow-edit` only for low-level
   model inspection or compiler debugging.
 
