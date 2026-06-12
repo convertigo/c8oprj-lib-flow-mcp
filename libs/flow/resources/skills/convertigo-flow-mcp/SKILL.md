@@ -22,6 +22,9 @@ Prefer the compact code path:
 1. For a new Flow, write fresh compact FlowScript first; do not inspect/copy
    existing Flows unless this is a maintenance task or the user asks to reuse a
    nearby pattern.
+   Do not call `flow-list`, `flow-code-get`, `flow-code-rg`, or `flow-catalog`
+   just to learn conventions for a straightforward new Flow; use the syntax in
+   this skill, then let diagnostics guide corrections.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
 3. Write the editable working copy with `flow-code-set({ project, qname, code })`.
@@ -45,6 +48,10 @@ an editor buffer: write/check/run the working copy, then promote once to save.
 
 For an existing Flow, call `flow-code-get({ project, qname })`, edit the returned
 FlowScript, and preserve `revision` when patching.
+
+Use `codepatch` only for real unified diffs with `@@` hunks. If you are not
+sure how to build that patch, call `flow-code-patch` or `flow-code-set` with the
+full replacement `code` instead of sending an approximate patch format.
 
 Use `flow-catalog` only when diagnostics do not identify the missing block or
 property. Keep catalog requests narrow: `limit <= 10`, and after the first call
@@ -75,7 +82,9 @@ function BuildSummary({ input, config, result }) {
     value: current.value
   })
 
+  var firstFiveRows = sortedItems.slice(0, 5)
   result.rows = rows
+  result.firstFiveRows = firstFiveRows
   result.count = rows.length
   return result
 }
@@ -87,10 +96,20 @@ Compiler rules:
 - `name.child.path` becomes `local.name.child.path`.
 - `result.key = value` writes the response scope.
 - `list.map(items, { field: current.value })` lowers to an explicit Flow loop.
+- `list.map(items, { select: { field: current.value } })` is also accepted when
+  a catalog signature exposes the `select` property.
 - Natural shorthands are accepted when they read like JavaScript:
   `http.get("https://...")`, `list.filter(items, current.ok)`,
   `list.sort(items, { by: current.label })`, and
   `list.map(items, { label: current.label })`.
+- Simple chained reads after a block call are accepted:
+  `var users = http.get("https://...").body` lowers to `http.get` plus an
+  explicit `json.select`.
+- Use `list.take(items, 5)` or `items.slice(0, 5)` for top-N/first-N array
+  selection. `list.take(items, { count: 5, offset: 0 })` is also accepted when
+  using signature-style options. Do not emulate this with hard-coded
+  `mapped[0]..mapped[4]`.
+- Use either `items.length` or `list.length(items)` for array counts.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
 ## Authoring Rules
@@ -101,7 +120,7 @@ Compiler rules:
 - Pass typed values naturally: `items: sorted`, `name: current.name`, `enabled: true`.
 - Use `{{ expression }}` mainly for mixed text templates or when diagnostics require canonical syntax.
 - Flow expressions are null-safe and support indexes such as `items[0]`.
-- For JSON HTTP APIs, `http.get` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed.
+- For JSON HTTP APIs, `http.get(url)` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods; `http.request("GET", url)` is accepted but `http.get(url)` is clearer.
 - Prefer existing blocks from the current provider/namespace before creating new ones.
 - Keep the visible algorithm in FlowScript. Do not hide a complete backend feature in one custom Rhino block.
 - Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
@@ -144,14 +163,40 @@ function ReadExternalData({ input, config, result }) {
 
 The custom `domain.extract` block may parse text, but it must not open sockets, call URLs, call requestables, sort final results, or build the whole response.
 
+Do not wrap a FlowScript block return in `{ out: ... }`. The block returns one
+value; the caller's `var weather = weather.openMeteo(...)` or explicit `out`
+property decides where that value is written. Prefer:
+
+```javascript
+return { temperature: response.body.current.temperature_2m, unit: "C" }
+```
+
+not:
+
+```javascript
+return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
+```
+
 ## Discovery
 
 - Start with `flow-code-*` tools.
+- If Flow tools are not loaded yet, use one narrow tool discovery query:
+  `flow-code-set flow-code-run flow-code-promote flow-requestable-list` with
+  a small limit. Do not ask for every Flow tool up front.
 - Use `flow-code-rg` for small code extracts.
 - Use `flow-block-code-rg` for small project-local FlowScript block extracts.
+- Do not use `flow-block-code-get` to learn standard blocks such as
+  `http.get`, `http.request`, `requestable.call`, `list.filter`, `list.sort`,
+  `list.take`, `list.map`, `json.select`, `set`, or `return`; they are already
+  covered by this skill and diagnostics.
+- If `flow-block-code-get` reports `UNKNOWN_BLOCK`, do not probe more invented
+  names. Use a returned candidate only if it matches the intent, call
+  `flow-catalog` once, or create a project block for the missing concept.
 - Use `flow-search` to find existing Flows, samples, blocks, or resources.
 - Prefer visible library samples named `sample_*` before browsing the full catalog.
 - Use `flow-requestable-list` and `flow-requestable-schema` to discover legacy sequence/transaction/Flow outputs.
+- Never substitute `.void.void` or another placeholder requestable when the
+  requested domain requestable is missing. Report the blockage instead.
 - Use learned schemas only when safe; avoid raw samples unless the user asks.
 
 Treat FlowScript diagnostics like compiler errors. Fix the reported line first, then retry validation.

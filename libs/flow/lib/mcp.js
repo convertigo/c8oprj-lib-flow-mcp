@@ -1456,7 +1456,9 @@
 		} else if (value.promoted) {
 			out.next = "Working copy saved to the official Flow. Stop if flow-code-run already proved the result.";
 		} else if (value.dry) {
-			out.next = "Dry validation passed. Retry flow-code-set with dry:false to save.";
+			out.next = name.indexOf("flow-block-code-") === 0
+				? "Dry validation passed. Retry flow-block-code-set with dry:false to save the block."
+				: "Dry validation passed. Retry flow-code-set with dry:false to save.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
 			out.next = "Fast save done. If flow-code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {
@@ -1645,7 +1647,12 @@
 				resultOut.resultHint = "Result exceeded maxResultChars. Use detail:'full' with includeFullResult=true and allowHugeResult=true only when the complete runtime payload is required.";
 			}
 		}
-		if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {
+		if (value.trace !== undefined && name === "flow-code-run" && !argBool(args.includeTrace || args.includeFullTrace || args.fullTrace, false)) {
+			var noTraceOut = mutableOut();
+			noTraceOut.traceNodeCount = value.trace && value.trace.nodes ? value.trace.nodes.length : 0;
+			delete noTraceOut.trace;
+			noTraceOut.traceHint = "Trace omitted by default for flow-code-run. Pass includeTrace=true for compact trace or includeFullTrace=true only for full per-node values.";
+		} else if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {
 			var maxTraceChars = argInt(args.maxTraceChars, 6000, 1000, 1000000);
 			var traceChars = jsonChars(value.trace);
 			if (traceChars > maxTraceChars) {
@@ -1678,6 +1685,26 @@
 				scopeOut[scopeKey + "Hint"] = "Pass includeFull" + scopeKey.charAt(0).toUpperCase() + scopeKey.substring(1) + "=true only when complete scope values are required.";
 			}
 		});
+		if (name === "flow-code-run" && value.schemaUpdates !== undefined &&
+				!argBool(args.includeSchemaUpdates || args.includeFullSchemaUpdates || args.fullSchemaUpdates, false)) {
+			var schemaOut = mutableOut();
+			var schemaLimit = argInt(args.maxSchemaUpdates, 5, 0, 50);
+			schemaOut.schemaUpdateCount = (value.schemaUpdates || []).length || 0;
+			schemaOut.schemaUpdates = (value.schemaUpdates || []).slice(0, schemaLimit).map(function (update) {
+				return {
+					scope: update.scope,
+					node: update.node,
+					block: update.block,
+					property: update.property,
+					file: update.file,
+					schema: compactSchemaSummary(update.schema, argInt(args.maxSchemaPaths, 12, 4, 80))
+				};
+			});
+			if ((value.schemaUpdates || []).length > schemaLimit) {
+				schemaOut.schemaUpdatesOmitted = value.schemaUpdates.length - schemaLimit;
+			}
+			schemaOut.schemaUpdatesHint = "Schema updates compacted by default. Pass includeSchemaUpdates=true only when full learned schemas are required.";
+		}
 		if (name === "flow-code-run" && value.ok !== false) {
 			var runOut = mutableOut();
 			if (value.draft === true) {
@@ -1919,6 +1946,9 @@
 		}
 		if (name === "flow-code-set" || name === "flow-code-patch" || name === "flow-code-check" ||
 				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard") {
+			return compactFlowCodeWriteToolValue(request, value);
+		}
+		if (name === "flow-block-code-set" || name === "flow-block-code-patch") {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
 		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run") {

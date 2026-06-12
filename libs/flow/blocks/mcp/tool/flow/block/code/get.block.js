@@ -1,6 +1,6 @@
 const _meta = {
   "version": 1,
-  "description": "Reads canonical project-local Flow block code with revision information.",
+  "description": "Reads project-local custom block code only; do not use for standard http/list/json/requestable blocks.",
   "icon": "mdi:puzzle-search-outline",
   "properties": {
     "request": {

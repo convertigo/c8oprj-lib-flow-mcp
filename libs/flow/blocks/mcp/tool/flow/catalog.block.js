@@ -1,6 +1,6 @@
 const _meta = {
   "version": 1,
-  "description": "Lists the Flow block palette. Use query, namespace, provider, limit and cursor to stay narrow.",
+  "description": "Lists palette only for unknown blocks; do not call for standard http/list/filter/sort/take/map FlowScript.",
   "icon": "mdi:puzzle-outline",
   "properties": {
     "request": {

@@ -240,6 +240,9 @@ const _meta = {
 		var description = String(name === "flow-block-test"
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
+		if (name === "flow-catalog") {
+			description = wrapper.description || description;
+		}
 		return {
 			name: name,
 			description: description.length > 120 ? description.substring(0, 117) + "..." : description,
