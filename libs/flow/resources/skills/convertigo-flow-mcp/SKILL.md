@@ -165,6 +165,8 @@ types, defaults, or descriptions in Studio.
 - Use `{{ expression }}` mainly for mixed text templates or when diagnostics require canonical syntax.
 - Flow expressions are null-safe and support indexes such as `items[0]`.
 - For JSON HTTP APIs, `http.get({ url })` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods. All HTTP shortcuts share the `http.request` runtime stack for proxy, authentication, tracing and future platform configuration.
+- Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` to run child nodes with temporary configuration overrides. Root keys are config branches, `then` is the reserved child slot, and nested objects are deep-merged then restored after the slot:
+  `config.use({ http: { timeout: 30000, headers: { Authorization: config.github.token } }, then: function () { var page = http.get({ url: config.github.url }) } })`.
 - Prefer existing blocks from the current provider/namespace before creating new ones.
 - Keep the visible algorithm in FlowScript. Do not hide a complete backend feature in one custom Rhino block.
 - Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
