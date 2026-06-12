@@ -32,7 +32,7 @@ contains a phrase, property, helper call or expression.
 
 When calling a block from compact FlowScript, use direct typed values where possible: `user.summary({ name: current.name, email: current.email })`, `forEach({ items: sorted })`, or `set({ path: "local.count", value: news.length })`. Quoted expression strings such as `items: "local.items"` are accepted for low-level calls, but the bare form is clearer. Use `{{ expression }}` only for mixed text templates, for example `"Hello {{ input.name }}"`, or when working with low-level canonical node data.
 
-Reusable blocks can be used as array mappers: `const labels = list.map(items, text.label({ value: current.name }))`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
+Reusable blocks can be used as array mappers: `const labels = list.map({ items, select: text.label({ value: current.name }) })`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
 
 Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `flow-block-code-set` and a canonical `.block.js` source. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
 

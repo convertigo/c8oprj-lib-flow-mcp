@@ -73,10 +73,11 @@ var response = http.request({ method: "GET", url })
 ```
 
 Shortcuts such as `http.get`, `http.post`, `http.put`, and `http.delete` are
-real Flow blocks that delegate to the shared `http.request` stack. Positional
-forms like `http.get(url)` or `http.request("GET", url)` may be accepted during
-authoring, but diagnostics will canonicalize them to `block.name({ params })`;
-use the canonical object form in final code.
+real Flow blocks that delegate to the shared `http.request` stack. Flow block
+calls are not JavaScript function calls: every block accepts exactly one object
+parameter. Positional forms such as `http.get(url)`,
+`http.request("GET", url)`, `list.sort(items, by)`, or `list.take(items, 5)`
+are invalid.
 
 Use this style:
 
@@ -112,19 +113,18 @@ Compiler rules:
 - `name.child.path` becomes `local.name.child.path`.
 - `result.key = value` writes the response scope.
 - `list.map({ items, select: { field: current.value } })` lowers to an explicit Flow loop.
-- Natural shorthands are accepted when they read like JavaScript, but the
-  canonical form remains `block.name({ params... })`:
-  `http.get({ url: "https://..." })`, `list.filter({ items, where: current.ok })`,
-  `list.sort(items, { by: current.label })`, and
-  `list.map(items, { label: current.label })`.
+- Block calls must use the canonical object form: `block.name({ key: value })`.
+  Diagnostics for invalid signatures list accepted keys as `key`, optional
+  `key?`, or optional with default `key??default`.
 - Simple chained reads after a block call are accepted:
   `var users = http.get({ url: "https://..." }).body` lowers to `http.get` plus an
   explicit `json.select`.
 - Use `list.take({ items, count: 5 })` for top-N/first-N array selection.
-  `list.take(items, 5)` or `items.slice(0, 5)` are tolerated shortcuts but
-  produce canonicalization warnings. Do not emulate this with hard-coded
-  `mapped[0]..mapped[4]`.
-- Use either `items.length` or `list.length(items)` for array counts.
+  `list.take(items, 5)` and `items.slice(0, 5)` are invalid.
+  Do not emulate this with hard-coded `mapped[0]..mapped[4]`.
+- Use either `items.length` or `length(items)` for array counts. Do not use
+  `count(items)`, `Count(items)`, `len(items)`, `list.count(...)`, or a
+  `list.count` block; they do not exist.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
 ## Flow Contract
@@ -190,7 +190,7 @@ For a Rhino/Java primitive:
 1. Use `flow-block-code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
 2. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
 3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
-4. Do not reimplement standard blocks in Rhino. Use `http.get`/`http.request` for HTTP, `requestable.call` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
+4. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
 5. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
 6. Keep orchestration in FlowScript.
 
@@ -198,7 +198,7 @@ If a web page or API needs parsing that no block can express, split it:
 
 ```javascript
 function ReadExternalData({ input, config, result }) {
-  var page = http.get("https://example.com/data")
+  var page = http.get({ url: "https://example.com/data" })
   var extracted = domain.extract({ html: page.text })
   result.items = extracted.items
   return result
