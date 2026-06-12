@@ -179,7 +179,7 @@ For a project-local FlowScript block:
 2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
-5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong. Use `dry:true` only for low-level validation debugging.
+5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
 6. For edits, call `flow-block-code-get`, preserve `revision`, then use
    `flow-block-code-patch({ project, name, revision, codepatch })`.
 7. To locate code first, use `flow-block-code-rg({ project, pattern, name? })`

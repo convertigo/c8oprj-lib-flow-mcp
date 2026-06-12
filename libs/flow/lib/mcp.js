@@ -1476,8 +1476,8 @@
 			out.next = "Working copy saved to the official Flow. Stop if flow-code-run already proved the result.";
 		} else if (value.dry) {
 			out.next = name.indexOf("flow-block-code-") === 0
-				? "Dry validation passed. Call flow-block-code-set without dry to register the block, then run a Flow that uses it."
-				: "Dry validation passed. Prefer the working-copy path: call flow-code-set without dry, then flow-code-run and flow-code-promote.";
+				? "Low-level validation passed. Call flow-block-code-set normally to register the block, then run a Flow that uses it."
+				: "Low-level validation passed. Prefer the working-copy path: call flow-code-set normally, then flow-code-run and flow-code-promote.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
 			out.next = "Fast save done. If flow-code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {

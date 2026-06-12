@@ -22,7 +22,7 @@ Use `flow-block-code-set` for project-local blocks. It accepts `{name, code, pro
 
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
-Use `flow-block-code-set` without `dry` when the block should become available in the project palette. `dry:true` validates source only and is reserved for low-level debugging.
+Use `flow-block-code-set` directly when the block should become available in the project palette. Treat it like writing code: register it, run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
 
 For edits, prefer `flow-block-code-get` followed by `flow-block-code-patch`
 with the returned `revision`. Use full `code` replacement only when the patch

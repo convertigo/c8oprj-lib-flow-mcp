@@ -188,7 +188,7 @@ const _meta = {
 		if (name === "code" && /^flow-code-(check|run|analyze)$/.test(String(toolName || ""))) {
 			return true;
 		}
-		if (name === "dry" && /^flow-code-(set|patch)$/.test(String(toolName || ""))) {
+		if (name === "dry" && /^flow-(?:block-)?code-(set|patch)$/.test(String(toolName || ""))) {
 			return true;
 		}
 		if ((name === "saveProject" || name === "refresh") && /^flow-code-(set|patch)$/.test(String(toolName || ""))) {
