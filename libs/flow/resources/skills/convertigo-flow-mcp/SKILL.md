@@ -66,23 +66,39 @@ spike. It is compiled to the internal Flow node model at load/validation time;
 do not edit generated YAML when FlowScript is available. It is not arbitrary
 JavaScript: one function call maps to one Flow block.
 
+Canonical block calls always use named parameters:
+
+```javascript
+var response = http.request({ method: "GET", url })
+```
+
+Shortcuts such as `http.get`, `http.post`, `http.put`, and `http.delete` are
+real Flow blocks that delegate to the shared `http.request` stack. Positional
+forms like `http.get(url)` or `http.request("GET", url)` may be accepted during
+authoring, but diagnostics will canonicalize them to `block.name({ params })`;
+use the canonical object form in final code.
+
 Use this style:
 
 ```javascript
 function BuildSummary({ input, config, result }) {
-  var source = requestable.call(input.sourceRequestable)
+  var source = requestable.call({ requestable: input.sourceRequestable })
 
-  var sortedItems = list.sort(source.items, {
+  var sortedItems = list.sort({
+    items: source.items,
     by: current.label,
     direction: "asc"
   })
 
-  var rows = list.map(sortedItems, {
-    label: current.label,
-    value: current.value
+  var rows = list.map({
+    items: sortedItems,
+    select: {
+      label: current.label,
+      value: current.value
+    }
   })
 
-  var firstFiveRows = sortedItems.slice(0, 5)
+  var firstFiveRows = list.take({ items: sortedItems, count: 5 })
   result.rows = rows
   result.firstFiveRows = firstFiveRows
   result.count = rows.length
@@ -95,19 +111,18 @@ Compiler rules:
 - `var name = block(...)` writes the block output to `local.name`.
 - `name.child.path` becomes `local.name.child.path`.
 - `result.key = value` writes the response scope.
-- `list.map(items, { field: current.value })` lowers to an explicit Flow loop.
-- `list.map(items, { select: { field: current.value } })` is also accepted when
-  a catalog signature exposes the `select` property.
-- Natural shorthands are accepted when they read like JavaScript:
-  `http.get("https://...")`, `list.filter(items, current.ok)`,
+- `list.map({ items, select: { field: current.value } })` lowers to an explicit Flow loop.
+- Natural shorthands are accepted when they read like JavaScript, but the
+  canonical form remains `block.name({ params... })`:
+  `http.get({ url: "https://..." })`, `list.filter({ items, where: current.ok })`,
   `list.sort(items, { by: current.label })`, and
   `list.map(items, { label: current.label })`.
 - Simple chained reads after a block call are accepted:
-  `var users = http.get("https://...").body` lowers to `http.get` plus an
+  `var users = http.get({ url: "https://..." }).body` lowers to `http.get` plus an
   explicit `json.select`.
-- Use `list.take(items, 5)` or `items.slice(0, 5)` for top-N/first-N array
-  selection. `list.take(items, { count: 5, offset: 0 })` is also accepted when
-  using signature-style options. Do not emulate this with hard-coded
+- Use `list.take({ items, count: 5 })` for top-N/first-N array selection.
+  `list.take(items, 5)` or `items.slice(0, 5)` are tolerated shortcuts but
+  produce canonicalization warnings. Do not emulate this with hard-coded
   `mapped[0]..mapped[4]`.
 - Use either `items.length` or `list.length(items)` for array counts.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
@@ -120,11 +135,11 @@ Compiler rules:
 - Pass typed values naturally: `items: sorted`, `name: current.name`, `enabled: true`.
 - Use `{{ expression }}` mainly for mixed text templates or when diagnostics require canonical syntax.
 - Flow expressions are null-safe and support indexes such as `items[0]`.
-- For JSON HTTP APIs, `http.get(url)` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods; `http.request("GET", url)` is accepted but `http.get(url)` is clearer.
+- For JSON HTTP APIs, `http.get({ url })` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods. All HTTP shortcuts share the `http.request` runtime stack for proxy, authentication, tracing and future platform configuration.
 - Prefer existing blocks from the current provider/namespace before creating new ones.
 - Keep the visible algorithm in FlowScript. Do not hide a complete backend feature in one custom Rhino block.
 - Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
-- If only one operation is missing, create only that missing primitive. Example: use `http.get` in FlowScript, then a small custom `extractSomething({ html })` block if extraction cannot be expressed with existing blocks.
+- If only one operation is missing, create only that missing primitive. Example: use `http.get({ url })` in FlowScript, then a small custom `extractSomething({ html })` block if extraction cannot be expressed with existing blocks.
 - HTTP and Convertigo requestable calls are never valid reasons for a Rhino custom block. Use `http.get`/`http.request` and `requestable.call` so the graph remains inspectable.
 
 ## Custom Blocks
