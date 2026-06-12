@@ -15,6 +15,11 @@ Project-local blocks are code-first: `flow-block-code-set` writes a canonical `.
 
 Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` and `props.*` are not expression scopes. Blocks that load JavaScript helpers with `ctx.lib(...)` must declare them with `uses` so the dependency is visible in the catalog.
 
+For executable Flows with request variables or reusable tests, declare a
+top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
+`flow-code-*` tools report these as `inputDefinitions`, `inputVariables`, and
+`testCases`; if absent, `inputVariables` are inferred from `input.foo` reads.
+
 For JSON HTTP APIs, use the visible HTTP block: `var response = http.get("https://...")` or `http.get({ url })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. Natural list syntax is accepted: `list.filter(items, current.ok)`, `list.sort(items, { by: current.label })`, and `list.map(items, { label: current.label })`.
 
 Keep the visible algorithm in FlowScript. A custom Rhino block must not hide an entire backend feature such as fetch + parse + normalize + sort + response. If one primitive is missing, create only that primitive, for example `domain.extractState({ html })`, and keep HTTP, loops, list transforms and result mapping as Flow blocks. Project Rhino blocks are rejected if they perform HTTP or Convertigo requestable calls directly; use `http.get`/`http.request` and `requestable.call` instead.

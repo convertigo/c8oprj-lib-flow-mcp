@@ -90,9 +90,9 @@ flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema when downstream nodes need the result shape
 flow-schema-reset before rerunning an HTTP learn scenario when the output changed
-flow-code-set dry:true for broad Flow edits, then dry:false when clean
-flow-code-patch for revision-checked maintenance edits
-flow-code-run / flow-test
+flow-code-set for broad Flow edits; it writes the FlowScript working copy
+flow-code-patch for revision-checked maintenance edits on that working copy
+flow-code-check / flow-code-run, then flow-code-promote once behavior is clean
 flow-catalog only when search/examples are insufficient; it is summary by default
 flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local blocks
 flow-block-code-set only when reusable vocabulary is needed
@@ -111,6 +111,24 @@ through `Packages`, but not Node.js APIs such as `require`, npm modules or
 browser globals. Keep the Rhino IIFE to `run(ctx, node)` plus local helpers.
 Put shared helper dependencies in `uses`; optional dynamic
 `displayName(node)` / `analyze(ctx, node)` hooks stay separate from runtime code.
+
+Executable Flows may declare request variables and reusable test inputs with a
+top-level FlowScript contract:
+
+```javascript
+const _flow = {
+  inputs: {
+    city: { type: "string", description: "City name.", default: "Paris" }
+  },
+  tests: {
+    checkParis: { input: { city: "Paris" } }
+  }
+}
+```
+
+`flow-code-*` tools expose this as `inputDefinitions`, `inputVariables`, and
+`testCases`. Without `_flow.inputs`, inputs are only inferred from `input.foo`
+reads.
 
 Do not use a Rhino block as a shortcut for a whole backend feature. Keep HTTP
 fetches in `http.get`/`http.request`, Convertigo calls in `requestable.call`,
@@ -246,8 +264,10 @@ flow-source-patch
 Prefer `flow-code-*` for normal agent work:
 
 - `flow-code-get({qname})` returns only FlowScript `code` plus `revision`.
-- `flow-code-set({qname, revision?, code, dry?})` validates and optionally writes.
-- `flow-code-patch({qname, revision, codepatch|code, dry?})` applies a revision-checked edit.
+- `flow-code-set({qname, revision?, code})` writes and validates the FlowScript working copy.
+- `flow-code-patch({qname, revision, codepatch|code})` applies a revision-checked edit to the working copy.
+- `flow-code-run({qname, input?})` runs the current working copy without resending code.
+- `flow-code-promote({qname, revision?})` saves the working copy to the official Flow.
 - `flow-code-rg({qname?, pattern})` returns small FlowScript extracts.
 
 The engine parses and validates the FlowScript, returns line-based diagnostics

@@ -1433,6 +1433,25 @@
 		if (value.warnings) {
 			out.warnings = (value.warnings || []).slice(0, 5).map(compactFlowCodeDiagnostic);
 		}
+		if (value.inputVariables) {
+			out.inputVariables = (value.inputVariables || []).slice(0, 30);
+		}
+		if (value.inputDefinitions) {
+			out.inputDefinitions = compactJsonPreview(value.inputDefinitions, {
+				maxDepth: 3,
+				maxObjectKeys: 20,
+				maxArrayItems: 3,
+				maxStringChars: 160
+			});
+		}
+		if (value.testCases) {
+			out.testCases = compactJsonPreview(value.testCases, {
+				maxDepth: 3,
+				maxObjectKeys: 12,
+				maxArrayItems: 2,
+				maxStringChars: 160
+			});
+		}
 		if (value.registration) {
 			out.registration = compactRegistration(value.registration);
 		}
@@ -1457,8 +1476,8 @@
 			out.next = "Working copy saved to the official Flow. Stop if flow-code-run already proved the result.";
 		} else if (value.dry) {
 			out.next = name.indexOf("flow-block-code-") === 0
-				? "Dry validation passed. Retry flow-block-code-set with dry:false to save the block."
-				: "Dry validation passed. Retry flow-code-set with dry:false to save.";
+				? "Dry validation passed. Call flow-block-code-set without dry to register the block, then run a Flow that uses it."
+				: "Dry validation passed. Prefer the working-copy path: call flow-code-set without dry, then flow-code-run and flow-code-promote.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
 			out.next = "Fast save done. If flow-code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {

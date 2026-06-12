@@ -127,6 +127,35 @@ Compiler rules:
 - Use either `items.length` or `list.length(items)` for array counts.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
+## Flow Contract
+
+Declare request inputs and reusable test inputs in an optional top-level
+`_flow` object. The compiler preserves this metadata and `flow-code-*` tools
+report it as `inputDefinitions`, `inputVariables`, and `testCases`.
+
+```javascript
+const _flow = {
+  inputs: {
+    city: { type: "string", description: "City name to query.", default: "Paris" },
+    limit: { type: "number", description: "Maximum items.", default: 5 }
+  },
+  tests: {
+    checkParis: { input: { city: "Paris", limit: 3 } }
+  }
+}
+
+function CityDigest({ input, config, result }) {
+  var response = http.get({ url: `https://example.test/${input.city}` })
+  result.city = input.city
+  result.count = input.limit
+  return result
+}
+```
+
+If `_flow.inputs` is absent, the tools still infer `inputVariables` from
+`input.foo` reads. Prefer explicit `_flow.inputs` when a human should see labels,
+types, defaults, or descriptions in Studio.
+
 ## Authoring Rules
 
 - Use `input.*` for request inputs, `config.*` for configuration, `local.*` for scratch data, `current.*` inside iterations, and `result.*` for output.
@@ -146,11 +175,11 @@ Compiler rules:
 
 For a project-local FlowScript block:
 
-1. Use `flow-block-code-set({ project, name, code, properties, outputs, dry:true })`.
+1. Use `flow-block-code-set({ project, name, code, properties, outputs })`.
 2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
-5. Save with `dry:false` only after validation is clean.
+5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong. Use `dry:true` only for low-level validation debugging.
 6. For edits, call `flow-block-code-get`, preserve `revision`, then use
    `flow-block-code-patch({ project, name, revision, codepatch })`.
 7. To locate code first, use `flow-block-code-rg({ project, pattern, name? })`
