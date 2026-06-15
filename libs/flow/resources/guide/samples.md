@@ -7,9 +7,9 @@ the same MCP tools used for normal authoring.
 Read these first:
 
 ```json
-{"tool":"flow-code-get","arguments":{"project":"lib_flow_mcp","qname":"sample_blocks_flow_and_rhino"}}
-{"tool":"flow-block-code-get","arguments":{"project":"lib_flow_mcp","name":"sample.formatGreeting"}}
-{"tool":"flow-block-code-get","arguments":{"project":"lib_flow_mcp","name":"sample.sha256"}}
+{"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"sample_blocks_flow_and_rhino"}}
+{"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"blocks.sample.formatGreeting"}}
+{"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"blocks.sample.sha256"}}
 ```
 
 What they demonstrate:

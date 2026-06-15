@@ -37,20 +37,20 @@ Authoring loop for a blank agent context:
 resources/list
 resources/read flow://guide/start
 resources/read flow://guide/samples
-flow-code-get sample_blocks_flow_and_rhino and flow-block-code-get sample.formatGreeting/sample.sha256 to learn real DSL shape
+code-get sample_blocks_flow_and_rhino and code-get blocks.sample.formatGreeting/blocks.sample.sha256 to learn real DSL shape
 tools/list
 flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
-flow-code-rg / flow-code-get for FlowScript source
+code-rg / code-get for FlowScript source
 flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema before wiring downstream nodes
 flow-schema-reset before rerunning an HTTP learn scenario when the output changed
-flow-code-set for broad Flow edits; it writes the FlowScript working copy
-flow-code-patch for revision-checked maintenance edits on that working copy
-flow-code-check / flow-code-run, then flow-code-promote once behavior is clean
+code-set for broad Flow edits; it writes the FlowScript working copy
+code-patch for revision-checked maintenance edits on that working copy
+code-check / code-run, then code-promote once behavior is clean
 flow-catalog only when search/examples are insufficient; it is summary by default
-flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local FlowScript blocks
-flow-block-code-set only when reusable vocabulary is needed
+code-rg / code-get / code-patch for project-local FlowScript blocks
+code-set only when reusable vocabulary is needed
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases
 flow-resource-search / flow-resource-get / flow-resource-patch for project JS/HTML/CSS/library/type/resource maintenance patches
 ```
@@ -74,11 +74,11 @@ visible to users and tests. If Flow MCP tools report `inputVariables`, use it as
 the list of request variables/test inputs to create or document.
 Prefer explicit top-level `const _flow = { inputs: {...}, tests: {...} }` when
 the Flow has human-facing request variables, comments/defaults, or reusable test
-inputs. `flow-code-*` tools report this contract as `inputDefinitions`,
+inputs. `code-*` tools report this contract as `inputDefinitions`,
 `inputVariables`, and `testCases`.
 
 When maintaining an existing FlowScript block, prefer
-`flow-block-code-rg`, `flow-block-code-get`, then `flow-block-code-patch` with
+`code-rg`, `code-get`, then `code-patch` with
 the returned `revision`. For libraries, editors, type descriptors and other
 resources, use `flow-resource-search`, `flow-resource-get`, then
 `flow-resource-patch` with the returned `baseHash`.
@@ -95,8 +95,8 @@ host project is the project being edited.
 Prefer targeted mutations over rewriting a whole Flow source. Use:
 
 - `flow-search` to get `flowQName`, `nodeId` and a compact context;
-- `flow-code-get` then `flow-code-patch` for existing FlowScript;
-- `flow-code-set` to update the FlowScript working copy before run/promote;
+- `code-get` then `code-patch` for existing FlowScript;
+- `code-set` to update the FlowScript working copy before run/promote;
 - `flow-tree`, `flow-node-*`, `flow-apply` and `flow-edit` only for low-level
   model inspection or compiler debugging.
 

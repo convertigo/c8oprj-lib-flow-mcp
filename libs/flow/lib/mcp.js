@@ -1062,10 +1062,10 @@
 				args.limit = 20;
 			}
 		}
-		if (/^flow-code-(get|set|patch|check|run|analyze)$/.test(name)) {
+		if (/^(?:flow-)?code-(get|set|patch|check|run|analyze)$/.test(name)) {
 			args.draft = true;
 		}
-		if (/^flow-code-(check|run|analyze)$/.test(name)) {
+		if (/^(?:flow-)?code-(check|run|analyze)$/.test(name)) {
 			delete args.code;
 			delete args.flowScript;
 			delete args.flowSource;
@@ -1301,7 +1301,7 @@
 				};
 			}),
 			responseDetail: "summary",
-			next: "Use flow-code-get for one Flow source, or flow-code-set to edit a working copy."
+			next: "Use code-get for one Flow or block source, or code-set to edit a working copy."
 		};
 	}
 
@@ -1458,30 +1458,30 @@
 		out.responseDetail = "summary";
 		if (value.ok === false) {
 			out.next = value.draft
-				? "Patch the working copy with flow-code-patch, then check again with flow-code-check."
-				: "Fix diagnostics, then retry flow-code-set before saving.";
-		} else if (name === "flow-code-status") {
+				? "Patch the working copy with code-patch, then check again with code-check."
+				: "Fix diagnostics, then retry code-set before saving.";
+		} else if (name === "flow-code-status" || name === "code-status") {
 			out.next = value.dirty
 				? "Run/check the working copy, then promote to save or discard to cancel."
-				: "No unsaved working copy. Use flow-code-set or flow-code-patch to edit.";
-		} else if (name === "flow-code-discard") {
-			out.next = "Working copy discarded. Use flow-code-get to read the official Flow or flow-code-set to edit again.";
+				: "No unsaved working copy. Use code-set or code-patch to edit.";
+		} else if (name === "flow-code-discard" || name === "code-discard") {
+			out.next = "Working copy discarded. Use code-get to read the official Flow or code-set to edit again.";
 		} else if (value.draft && value.written) {
-			out.next = "Working copy updated and checked. Run with flow-code-run without sending code, then save with flow-code-promote.";
+			out.next = "Working copy updated and checked. Run with code-run without sending code, then save with code-promote.";
 		} else if (value.draft) {
-			out.next = "Working copy check passed. Run with flow-code-run without sending code, then save with flow-code-promote.";
-		} else if (name === "flow-code-check") {
+			out.next = "Working copy check passed. Run with code-run without sending code, then save with code-promote.";
+		} else if (name === "flow-code-check" || name === "code-check") {
 			out.next = "Check passed.";
 		} else if (value.promoted) {
-			out.next = "Working copy saved to the official Flow. Stop if flow-code-run already proved the result.";
+			out.next = "Working copy saved to the official Flow. Stop if code-run already proved the result.";
 		} else if (value.dry) {
 			out.next = name.indexOf("flow-block-code-") === 0
-				? "Low-level validation passed. Call flow-block-code-set normally to register the block, then run a Flow that uses it."
-				: "Low-level validation passed. Prefer the working-copy path: call flow-code-set normally, then flow-code-run and flow-code-promote.";
+				? "Low-level validation passed. Call code-set normally to register the block, then run a Flow that uses it."
+				: "Low-level validation passed. Prefer the working-copy path: call code-set normally, then code-run and code-promote.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
-			out.next = "Fast save done. If flow-code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
+			out.next = "Fast save done. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {
-			out.next = "Saved. If flow-code-run already proved the result, stop; otherwise use flow-test for one validation.";
+			out.next = "Saved. If code-run already proved the result, stop; otherwise use flow-test for one validation.";
 		}
 		return out;
 	}
@@ -1634,7 +1634,7 @@
 		if (!value || typeof value !== "object") {
 			return value;
 		}
-		if (value.error && name === "flow-code-run") {
+		if (value.error && (name === "flow-code-run" || name === "code-run")) {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
 		var out = null;
@@ -1666,11 +1666,11 @@
 				resultOut.resultHint = "Result exceeded maxResultChars. Use detail:'full' with includeFullResult=true and allowHugeResult=true only when the complete runtime payload is required.";
 			}
 		}
-		if (value.trace !== undefined && name === "flow-code-run" && !argBool(args.includeTrace || args.includeFullTrace || args.fullTrace, false)) {
+		if (value.trace !== undefined && (name === "flow-code-run" || name === "code-run") && !argBool(args.includeTrace || args.includeFullTrace || args.fullTrace, false)) {
 			var noTraceOut = mutableOut();
 			noTraceOut.traceNodeCount = value.trace && value.trace.nodes ? value.trace.nodes.length : 0;
 			delete noTraceOut.trace;
-			noTraceOut.traceHint = "Trace omitted by default for flow-code-run. Pass includeTrace=true for compact trace or includeFullTrace=true only for full per-node values.";
+			noTraceOut.traceHint = "Trace omitted by default for code-run. Pass includeTrace=true for compact trace or includeFullTrace=true only for full per-node values.";
 		} else if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {
 			var maxTraceChars = argInt(args.maxTraceChars, 6000, 1000, 1000000);
 			var traceChars = jsonChars(value.trace);
@@ -1704,7 +1704,7 @@
 				scopeOut[scopeKey + "Hint"] = "Pass includeFull" + scopeKey.charAt(0).toUpperCase() + scopeKey.substring(1) + "=true only when complete scope values are required.";
 			}
 		});
-		if (name === "flow-code-run" && value.schemaUpdates !== undefined &&
+		if ((name === "flow-code-run" || name === "code-run") && value.schemaUpdates !== undefined &&
 				!argBool(args.includeSchemaUpdates || args.includeFullSchemaUpdates || args.fullSchemaUpdates, false)) {
 			var schemaOut = mutableOut();
 			var schemaLimit = argInt(args.maxSchemaUpdates, 5, 0, 50);
@@ -1724,14 +1724,14 @@
 			}
 			schemaOut.schemaUpdatesHint = "Schema updates compacted by default. Pass includeSchemaUpdates=true only when full learned schemas are required.";
 		}
-		if (name === "flow-code-run" && value.ok !== false) {
+		if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
 			var runOut = mutableOut();
 			if (value.draft === true) {
 				runOut.workingCopy = true;
 				delete runOut.draft;
 			}
 			runOut.next = value.draft === true
-				? "Working copy run/test passed. Save once with flow-code-promote; do not resend code."
+				? "Working copy run/test passed. Save once with code-promote; do not resend code."
 				: "Official Flow run/test passed. Stop unless the user asked for another validation.";
 		} else if (name === "flow-test" && value.ok !== false) {
 			var testOut = mutableOut();
@@ -1964,16 +1964,18 @@
 			return compactFlowListToolValue(request, value);
 		}
 		if (name === "flow-code-set" || name === "flow-code-patch" || name === "flow-code-check" ||
-				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard") {
+				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard" ||
+				name === "code-set" || name === "code-patch" || name === "code-check" ||
+				name === "code-promote" || name === "code-status" || name === "code-discard") {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
 		if (name === "flow-block-code-set" || name === "flow-block-code-patch") {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
-		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run") {
+		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run" || name === "code-run") {
 			return compactRuntimeToolValue(request, value);
 		}
-		if (name === "flow-analyze" || name === "flow-code-analyze") {
+		if (name === "flow-analyze" || name === "flow-code-analyze" || name === "code-analyze") {
 			return compactAnalyzeToolValue(request, value);
 		}
 		if (name === "flow-requestable-schema") {

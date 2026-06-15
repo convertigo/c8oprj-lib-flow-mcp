@@ -57,16 +57,16 @@ var list = JSON.parse(engine.run(JSON.stringify({
 print(JSON.stringify(list));
 assertTrue(list.ok === true, "MCP Flow tools/list failed");
 assertTrue(list.result.result.tools.some(function (tool) {
-	return tool.name === "flow-code-run";
-}), "MCP Flow tools/list did not expose flow-code-run");
+	return tool.name === "code-run";
+}), "MCP Flow tools/list did not expose code-run");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-search";
 }), "MCP Flow tools/list did not expose flow-search");
 assertTrue(list.result.result.tools.some(function (tool) {
-	return tool.name === "flow-block-code-get";
+	return tool.name === "code-get";
 }) && list.result.result.tools.some(function (tool) {
-	return tool.name === "flow-block-code-set";
-}), "MCP Flow tools/list did not expose block code get/set");
+	return tool.name === "code-set";
+}), "MCP Flow tools/list did not expose code get/set");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-resource-patch";
 }), "MCP Flow tools/list did not expose resource patching");
@@ -329,7 +329,7 @@ var sampleFlowCode = JSON.parse(engine.run(JSON.stringify({
 			id: 1023,
 			method: "tools/call",
 			params: {
-				name: "flow-code-get",
+				name: "code-get",
 				arguments: {
 					projectDir: projectDir,
 					qname: "sample_blocks_flow_and_rhino"
@@ -340,7 +340,7 @@ var sampleFlowCode = JSON.parse(engine.run(JSON.stringify({
 })));
 assertTrue(sampleFlowCode.result.result.structuredContent.code.indexOf("const _flow") !== -1 &&
 	sampleFlowCode.result.result.structuredContent.code.indexOf("Only call Flow blocks with one object containing named parameters") !== -1,
-	"MCP Flow flow-code-get did not expose the executable sample FlowScript");
+	"MCP Flow code-get did not expose the executable sample FlowScript");
 
 var sampleFlowBlockCode = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -351,17 +351,17 @@ var sampleFlowBlockCode = JSON.parse(engine.run(JSON.stringify({
 			id: 1024,
 			method: "tools/call",
 			params: {
-				name: "flow-block-code-get",
+				name: "code-get",
 				arguments: {
 					projectDir: projectDir,
-					name: "sample.formatGreeting"
+					qname: "blocks.sample.formatGreeting"
 				}
 			}
 		})
 	}
 })));
 assertTrue(sampleFlowBlockCode.result.result.structuredContent.code.indexOf("function sample_formatGreeting") !== -1,
-	"MCP Flow flow-block-code-get did not expose the FlowScript sample block");
+	"MCP Flow code-get did not expose the FlowScript sample block");
 
 var sampleRhinoBlockCode = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -372,10 +372,10 @@ var sampleRhinoBlockCode = JSON.parse(engine.run(JSON.stringify({
 			id: 1025,
 			method: "tools/call",
 			params: {
-				name: "flow-block-code-get",
+				name: "code-get",
 				arguments: {
 					projectDir: projectDir,
-					name: "sample.sha256"
+					qname: "blocks.sample.sha256"
 				}
 			}
 		})
@@ -383,7 +383,7 @@ var sampleRhinoBlockCode = JSON.parse(engine.run(JSON.stringify({
 })));
 assertTrue(sampleRhinoBlockCode.result.result.structuredContent.code.indexOf("Use Rhino 1.9.0 features") !== -1 &&
 	sampleRhinoBlockCode.result.result.structuredContent.code.indexOf("Packages.java.security.MessageDigest") !== -1,
-	"MCP Flow flow-block-code-get did not expose the Rhino sample block");
+	"MCP Flow code-get did not expose the Rhino sample block");
 
 var guideResourceSearch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -451,7 +451,7 @@ var targetFlowCode = [
 	"}",
 	""
 ].join("\n");
-var codeSet = callTool(3, "flow-code-set", {
+var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke",
 	code: targetFlowCode
@@ -459,16 +459,16 @@ var codeSet = callTool(3, "flow-code-set", {
 print(JSON.stringify(codeSet));
 assertTrue(codeSet.result.result.structuredContent.ok === true &&
 	codeSet.result.result.structuredContent.diagnostics.length === 0,
-	"MCP Flow flow-code-set did not accept a target projectDir working copy");
+	"MCP Flow code-set did not accept a target projectDir working copy");
 
-var codeCheck = callTool(4, "flow-code-check", {
+var codeCheck = callTool(4, "code-check", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
 });
 assertTrue(codeCheck.result.result.structuredContent.ok === true,
-	"MCP Flow flow-code-check did not validate the working copy");
+	"MCP Flow code-check did not validate the working copy");
 
-var codeRun = callTool(5, "flow-code-run", {
+var codeRun = callTool(5, "code-run", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke",
 	input: {
@@ -478,26 +478,26 @@ var codeRun = callTool(5, "flow-code-run", {
 print(JSON.stringify(codeRun));
 assertTrue(codeRun.result.result.structuredContent.result.target === "ok" &&
 	codeRun.result.result.structuredContent.result.first === "a",
-	"MCP Flow flow-code-run did not execute the working copy");
+	"MCP Flow code-run did not execute the working copy");
 
-var codePromote = callTool(6, "flow-code-promote", {
+var codePromote = callTool(6, "code-promote", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
 });
 print(JSON.stringify(codePromote));
 assertTrue(codePromote.result.result.structuredContent.ok === true,
-	"MCP Flow flow-code-promote did not save the working copy");
+	"MCP Flow code-promote did not save the working copy");
 
 var targetFile = new java.io.File(targetDir, "libs/flows/TargetSmoke.flow.js");
-assertTrue(targetFile.isFile(), "MCP Flow flow-code-promote did not write the target FlowScript");
+assertTrue(targetFile.isFile(), "MCP Flow code-promote did not write the target FlowScript");
 
-var codeGet = callTool(7, "flow-code-get", {
+var codeGet = callTool(7, "code-get", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
 });
 assertTrue(codeGet.result.result.structuredContent.code.indexOf("function TargetSmoke") !== -1 &&
 	codeGet.result.result.structuredContent.code.indexOf("description: \"Target value.\"") !== -1,
-	"MCP Flow flow-code-get did not return the saved FlowScript");
+	"MCP Flow code-get did not return the saved FlowScript");
 
 var listTarget = callTool(8, "flow-list", {
 	projectDir: targetProjectDir
@@ -549,25 +549,25 @@ var customBlockCode = [
 	"}",
 	""
 ].join("\n");
-var blockSet = callTool(12, "flow-block-code-set", {
+var blockSet = callTool(12, "code-set", {
 	projectDir: targetProjectDir,
-	name: "smoke.echo",
+	qname: "blocks.smoke.echo",
 	code: customBlockCode,
 	overwrite: true
 });
 print(JSON.stringify(blockSet));
 assertTrue(blockSet.result.result.structuredContent.name === "smoke.echo" &&
 	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.block.js").isFile(),
-	"MCP Flow flow-block-code-set did not write a canonical project-local block");
+	"MCP Flow code-set did not write a canonical project-local block");
 
-var blockGet = callTool(13, "flow-block-code-get", {
+var blockGet = callTool(13, "code-get", {
 	projectDir: targetProjectDir,
-	name: "smoke.echo"
+	qname: "blocks.smoke.echo"
 });
 assertTrue(blockGet.result.result.structuredContent.code.indexOf("function smoke_echo") !== -1 &&
 	(blockGet.result.result.structuredContent.format === "blockjs" ||
 		blockGet.result.result.structuredContent.format === "flowscript"),
-	"MCP Flow flow-block-code-get did not read the project-local block");
+	"MCP Flow code-get did not read the project-local block");
 
 var resourceSearch = callTool(14, "flow-resource-search", {
 	projectDir: targetProjectDir,

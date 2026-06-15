@@ -24,35 +24,36 @@ Prefer the compact code path:
    to reuse a nearby pattern. In a fresh context, or with a smaller model, read
    the short DSL samples first: call `resources/read` on `flow://guide/samples`,
    then inspect `sample_blocks_flow_and_rhino`, `sample.formatGreeting`, and
-   `sample.sha256` with `flow-code-get` / `flow-block-code-get`.
-   Do not call broad `flow-list`, `flow-code-rg`, or `flow-catalog` just to
+   `sample.sha256` with `code-get` using Flow qnames or block qnames like
+   `blocks.sample.sha256`.
+   Do not call broad `flow-list`, `code-rg`, or `flow-catalog` just to
    learn conventions; use samples, this skill, then diagnostics.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
-3. Write the editable working copy with `flow-code-set({ project, qname, code })`.
-4. Patch the working copy with `flow-code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
-5. Run/test with `flow-code-run({ project, qname })` without sending code again.
-6. Use `flow-code-status({ project, qname })` only when dirty/revision state is unclear, or `flow-code-discard({ project, qname })` to cancel the working copy.
-7. Save with `flow-code-promote({ project, qname })` only after it works.
-8. Stop when `flow-code-run` proves the requested result and the promotion succeeds.
+3. Write the editable working copy with `code-set({ project, qname, code })`.
+4. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
+5. Run/test with `code-run({ project, qname })` without sending code again.
+6. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
+7. Save with `code-promote({ project, qname })` only after it works.
+8. Stop when `code-run` proves the requested result and the promotion succeeds.
 
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
 If the prompt gives `project` and `qname`, trust them; do not inspect workspace
 files to discover project YAML/XML. Use MCP tool results as the source of truth.
-Treat `flow-code-run` as the test for a new Flow. Do not call `flow-test` after
+Treat `code-run` as the test for a new Flow. Do not call `flow-test` after
 saving unless the user explicitly asks to test the saved Flow. Use the runtime
 URL only when the user explicitly asks for deployed HTTP validation or
-`flow-code-run` cannot prove the behavior.
+`code-run` cannot prove the behavior.
 Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user
 explicitly asks for low-level debugging. The default FlowScript path behaves like
 an editor buffer: write/check/run the working copy, then promote once to save.
 
-For an existing Flow, call `flow-code-get({ project, qname })`, edit the returned
+For an existing Flow, call `code-get({ project, qname })`, edit the returned
 FlowScript, and preserve `revision` when patching.
 
 Use `codepatch` only for real unified diffs with `@@` hunks. If you are not
-sure how to build that patch, call `flow-code-patch` or `flow-code-set` with the
+sure how to build that patch, call `code-patch` or `code-set` with the
 full replacement `code` instead of sending an approximate patch format.
 
 Use `flow-catalog` only when diagnostics do not identify the missing block or
@@ -133,7 +134,7 @@ Compiler rules:
 ## Flow Contract
 
 Declare request inputs and reusable test inputs in an optional top-level
-`_flow` object. The compiler preserves this metadata and `flow-code-*` tools
+`_flow` object. The compiler preserves this metadata and `code-*` tools
 report it as `inputDefinitions`, `inputVariables`, and `testCases`.
 
 ```javascript
@@ -180,19 +181,19 @@ types, defaults, or descriptions in Studio.
 
 For a project-local FlowScript block:
 
-1. Use `flow-block-code-set({ project, name, code, properties, outputs })`.
+1. Use `code-set({ project, qname:"blocks.namespace.name", code, properties, outputs })`.
 2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
 5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
-6. For edits, call `flow-block-code-get`, preserve `revision`, then use
-   `flow-block-code-patch({ project, name, revision, codepatch })`.
-7. To locate code first, use `flow-block-code-rg({ project, pattern, name? })`
+6. For edits, call `code-get`, preserve `revision`, then use
+   `code-patch({ project, qname:"blocks.namespace.name", revision, codepatch })`.
+7. To locate code first, use `code-rg({ project, qname:"blocks.namespace.name", pattern })`
    before falling back to `flow-resource-search`.
 
 For a Rhino/Java primitive:
 
-1. Use `flow-block-code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
+1. Use `code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
 2. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
 3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
 4. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
@@ -229,17 +230,17 @@ return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
 
 ## Discovery
 
-- Start with `flow-code-*` tools.
+- Start with `code-*` tools.
 - If Flow tools are not loaded yet, use one narrow tool discovery query:
-  `flow-code-set flow-code-run flow-code-promote flow-requestable-list` with
+  `code-set code-run code-promote flow-requestable-list` with
   a small limit. Do not ask for every Flow tool up front.
-- Use `flow-code-rg` for small code extracts.
-- Use `flow-block-code-rg` for small project-local FlowScript block extracts.
-- Do not use `flow-block-code-get` to learn standard blocks such as
+- Use `code-rg` for small code extracts.
+- Use `code-rg` for small project-local FlowScript block extracts.
+- Do not use `code-get` to learn standard blocks such as
   `http.get`, `http.request`, `requestable.call`, `list.filter`, `list.sort`,
   `list.take`, `list.map`, `json.select`, `set`, or `return`; they are already
   covered by this skill and diagnostics.
-- If `flow-block-code-get` reports `UNKNOWN_BLOCK`, do not probe more invented
+- If `code-get` reports `UNKNOWN_BLOCK`, do not probe more invented
   names. Use a returned candidate only if it matches the intent, call
   `flow-catalog` once, or create a project block for the missing concept.
 - Use `flow-search` to find existing Flows, samples, blocks, or resources.

@@ -23,25 +23,22 @@ const _meta = {
 
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
+	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var PUBLIC_TOOLS = {
-		"flow-block-code-get": true,
-		"flow-block-code-patch": true,
-		"flow-block-code-rg": true,
-		"flow-block-code-set": true,
+		"code-analyze": true,
+		"code-check": true,
+		"code-discard": true,
+		"code-get": true,
+		"code-patch": true,
+		"code-promote": true,
+		"code-rg": true,
+		"code-run": true,
+		"code-set": true,
+		"code-status": true,
 		"flow-block-get": true,
 		"flow-cache-clear": true,
 		"flow-cache-info": true,
 		"flow-catalog": true,
-		"flow-code-analyze": true,
-		"flow-code-check": true,
-		"flow-code-discard": true,
-		"flow-code-get": true,
-		"flow-code-patch": true,
-		"flow-code-promote": true,
-		"flow-code-rg": true,
-		"flow-code-run": true,
-		"flow-code-set": true,
-		"flow-code-status": true,
 		"flow-list": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
@@ -90,10 +87,14 @@ const _meta = {
 	}
 
 	function toolName(blockName) {
-		if (String(blockName || "").indexOf(TOOL_PREFIX) !== 0) {
-			return "";
+		blockName = String(blockName || "");
+		if (blockName.indexOf(CODE_TOOL_PREFIX) === 0) {
+			return "code-" + camelToKebab(blockName.substring(CODE_TOOL_PREFIX.length));
 		}
-		return "flow-" + camelToKebab(String(blockName).substring(TOOL_PREFIX.length));
+		if (blockName.indexOf(TOOL_PREFIX) === 0) {
+			return "flow-" + camelToKebab(blockName.substring(TOOL_PREFIX.length));
+		}
+		return "";
 	}
 
 	function indexBlocks(catalog) {
@@ -124,7 +125,13 @@ const _meta = {
 	}
 
 	function targetFromWrapperName(blockName, byName) {
-		var suffix = String(blockName || "").substring(TOOL_PREFIX.length);
+		var blockNameText = String(blockName || "");
+		if (blockNameText.indexOf(CODE_TOOL_PREFIX) === 0) {
+			var codeSuffix = blockNameText.substring(CODE_TOOL_PREFIX.length);
+			var codeTarget = "flow.code." + codeSuffix;
+			return byName[codeTarget] ? codeTarget : "";
+		}
+		var suffix = blockNameText.substring(TOOL_PREFIX.length);
 		if (!suffix) {
 			return "";
 		}
@@ -185,16 +192,16 @@ const _meta = {
 	}
 
 	function omitSchemaPropertyForTool(toolName, name) {
-		if (name === "code" && /^flow-code-(check|run|analyze)$/.test(String(toolName || ""))) {
+		if (name === "code" && /^(?:flow-)?code-(check|run|analyze)$/.test(String(toolName || ""))) {
 			return true;
 		}
-		if (name === "dry" && /^flow-(?:block-)?code-(set|patch)$/.test(String(toolName || ""))) {
+		if (name === "dry" && /^(?:flow-(?:block-)?)?code-(set|patch)$/.test(String(toolName || ""))) {
 			return true;
 		}
-		if ((name === "saveProject" || name === "refresh") && /^flow-code-(set|patch)$/.test(String(toolName || ""))) {
+		if ((name === "saveProject" || name === "refresh") && /^(?:flow-)?code-(set|patch)$/.test(String(toolName || ""))) {
 			return true;
 		}
-		if ((name === "saveProject" || name === "refresh" || name === "clearDraft") && String(toolName || "") === "flow-code-promote") {
+		if ((name === "saveProject" || name === "refresh" || name === "clearDraft") && /^(?:flow-)?code-promote$/.test(String(toolName || ""))) {
 			return true;
 		}
 		return name === "out" || OMIT_SCHEMA_PROPERTIES[name] === true;
@@ -219,7 +226,18 @@ const _meta = {
 				description: "Target project."
 			};
 		}
-		if (/^flow-code-(set|patch|check|run|analyze|promote)$/.test(String(toolName || ""))) {
+		if (/^code-/.test(String(toolName || ""))) {
+			schema.properties.qname = schema.properties.qname || {
+				type: "string",
+				description: "Target Flow qname, or target block qname as Project.blocks.namespace.name."
+			};
+			schema.properties.kind = {
+				type: "string",
+				enum: ["flow", "block"],
+				description: "Optional explicit target kind. Usually inferred from qname."
+			};
+		}
+		if (/^(?:flow-)?code-(set|patch|check|run|analyze|promote)$/.test(String(toolName || ""))) {
 			schema.properties.maxDiagnostics = {
 				type: "integer",
 				description: "Maximum diagnostics to return. Default 8, max 25."
@@ -237,7 +255,9 @@ const _meta = {
 		var target = targetFromWrapperName(blockId, byName);
 		var capability = target ? byName[target] : null;
 		var source = specificToolSchema(wrapper) ? wrapper : capability || wrapper;
-		var description = String(name === "flow-block-test"
+		var description = String(name.indexOf("code-") === 0
+			? wrapper.description || source.description || "Flow MCP tool."
+			: name === "flow-block-test"
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "flow-catalog") {
