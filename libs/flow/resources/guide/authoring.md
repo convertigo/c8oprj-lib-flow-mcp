@@ -5,6 +5,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - `flow-list` only to enumerate known Flow names.
 - `flow-search` to locate samples, nodes, schemas, block docs or existing examples only when the block or pattern is unclear. Project search also includes visible library samples.
 - Prefer `kind:"sample"` matches only when you need a pattern. A sample is a private executable Flow named `sample_*`, meant to be copied as a pattern.
+- Read `flow://guide/samples` for concrete FlowScript examples. Prefer `flow-code-get({project:"lib_flow_mcp",qname:"sample_blocks_flow_and_rhino"})` and `flow-block-code-get` on the referenced sample blocks over rereading general syntax rules.
 - Avoid `flow-catalog` when a sample exists. `flow-catalog` defaults to typed signatures; use `flow-block-get` only for one unclear block.
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
@@ -33,4 +34,4 @@ YAML/XML to rediscover them.
 
 Do not read every Flow sidecar up front. Search first, then open the narrow target.
 
-For reusable examples, create a private executable Flow named `sample_*`. Keep comments didactic: explain subtle syntax or design choices, not what the node label already says.
+For reusable examples, create a private executable Flow named `sample_*`. Keep comments didactic: explain subtle syntax or design choices, not what the node label already says. Good comments look like `// Only call Flow blocks with one object containing named parameters.` Rhino sample blocks should start with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.

@@ -9,7 +9,8 @@ Default route for an unknown Flow project:
 5. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
 6. Use `flow-search` only when the block/pattern is unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
 7. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-8. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
+8. For real DSL examples, read `flow://guide/samples`, then call `flow-code-get` or `flow-block-code-get` on the named samples. Do this before reading broad theory.
+9. For FlowScript block source, use `flow-block-code-rg`, then `flow-block-code-get` and `flow-block-code-patch`. For other custom block/composite block/fragment/type/editor/library source code, use `flow-resource-search`, `flow-resource-get`, then `flow-resource-patch` with `baseHash`.
 
 Project-local blocks are code-first: `flow-block-code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
 
@@ -38,7 +39,7 @@ Avoid shell commands for routine checks. Do not run `git status`, `git diff`, `s
 
 Mutation tools and `flow-block-get` return compact summaries by default. Call `flow-tree` or `flow-get` for focused inspection; pass `detail:"full"` only when debugging the tool response itself or editing block implementation source.
 
-Sample convention for the POC: a sample is a private executable Flow named `sample_*`. `flow-search` returns project samples plus visible library samples. Run it with `flow-test project:"provider" name:"sample_..."`, inspect it with `flow-tree`, then copy the pattern. It should show one useful pattern and include comments only for non-obvious choices such as “use this syntax because ...”. Do not add boilerplate comments that repeat the node label.
+Sample convention for the POC: a sample is a private executable Flow named `sample_*`. `flow-search` returns project samples plus visible library samples. Read real sample sources with `flow-code-get({project:"lib_flow_mcp",qname:"sample_blocks_flow_and_rhino"})` and sample blocks with `flow-block-code-get({project:"lib_flow_mcp",name:"sample.formatGreeting"})` or `flow-block-code-get({project:"lib_flow_mcp",name:"sample.sha256"})`. Run samples with `flow-code-run` or `flow-test`, inspect with `flow-tree`, then copy the pattern. Samples should show one useful pattern and include comments only for non-obvious choices such as “Only call Flow blocks with one object containing named parameters.” Do not add boilerplate comments that repeat the node label.
 
 Do not call `flow-schema-reset` during normal authoring. Use it only when an existing learned schema is stale and blocks picker/output-schema work.
 

@@ -8,7 +8,14 @@ the visible contract and either one FlowScript function or one Rhino IIFE for
 the implementation. Legacy YAML descriptors are still accepted only as migration
 fallbacks for older blocks.
 
-Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not.
+Before creating a new block, inspect real samples:
+
+```json
+{"tool":"flow-block-code-get","arguments":{"project":"lib_flow_mcp","name":"sample.formatGreeting"}}
+{"tool":"flow-block-code-get","arguments":{"project":"lib_flow_mcp","name":"sample.sha256"}}
+```
+
+Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not. Start Rhino sample or project blocks with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
 
 Minimal Rhino block source shape: `(function(){ return { run:function(ctx,node){...} }; }())`.
 

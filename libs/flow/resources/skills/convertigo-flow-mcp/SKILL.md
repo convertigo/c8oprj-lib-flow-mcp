@@ -20,11 +20,13 @@ Do not use the legacy `convertigo` MCP server for Flow authoring unless the user
 Prefer the compact code path:
 
 1. For a new Flow, write fresh compact FlowScript first; do not inspect/copy
-   existing Flows unless this is a maintenance task or the user asks to reuse a
-   nearby pattern.
-   Do not call `flow-list`, `flow-code-get`, `flow-code-rg`, or `flow-catalog`
-   just to learn conventions for a straightforward new Flow; use the syntax in
-   this skill, then let diagnostics guide corrections.
+   existing application Flows unless this is a maintenance task or the user asks
+   to reuse a nearby pattern. In a fresh context, or with a smaller model, read
+   the short DSL samples first: call `resources/read` on `flow://guide/samples`,
+   then inspect `sample_blocks_flow_and_rhino`, `sample.formatGreeting`, and
+   `sample.sha256` with `flow-code-get` / `flow-block-code-get`.
+   Do not call broad `flow-list`, `flow-code-rg`, or `flow-catalog` just to
+   learn conventions; use samples, this skill, then diagnostics.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
 3. Write the editable working copy with `flow-code-set({ project, qname, code })`.
@@ -116,6 +118,7 @@ Compiler rules:
 - Block calls must use the canonical object form: `block.name({ key: value })`.
   Diagnostics for invalid signatures list accepted keys as `key`, optional
   `key?`, or optional with default `key??default`.
+- Real samples include comments such as `// Only call Flow blocks with one object containing named parameters.` Treat those comments as DSL constraints.
 - Simple chained reads after a block call are accepted:
   `var users = http.get({ url: "https://..." }).body` lowers to `http.get` plus an
   explicit `json.select`.
@@ -194,7 +197,8 @@ For a Rhino/Java primitive:
 3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
 4. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
 5. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
-6. Keep orchestration in FlowScript.
+6. Start Rhino examples with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+7. Keep orchestration in FlowScript.
 
 If a web page or API needs parsing that no block can express, split it:
 
@@ -240,6 +244,8 @@ return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
   `flow-catalog` once, or create a project block for the missing concept.
 - Use `flow-search` to find existing Flows, samples, blocks, or resources.
 - Prefer visible library samples named `sample_*` before browsing the full catalog.
+- For sample-driven learning, read `flow://guide/samples`, then inspect
+  `sample_blocks_flow_and_rhino`, `sample.formatGreeting`, and `sample.sha256`.
 - Use `flow-requestable-list` and `flow-requestable-schema` to discover legacy sequence/transaction/Flow outputs.
 - Never substitute `.void.void` or another placeholder requestable when the
   requested domain requestable is missing. Report the blockage instead.

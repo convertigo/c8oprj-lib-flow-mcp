@@ -36,6 +36,8 @@ Authoring loop for a blank agent context:
 ```text
 resources/list
 resources/read flow://guide/start
+resources/read flow://guide/samples
+flow-code-get sample_blocks_flow_and_rhino and flow-block-code-get sample.formatGreeting/sample.sha256 to learn real DSL shape
 tools/list
 flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
 flow-code-rg / flow-code-get for FlowScript source
@@ -111,4 +113,12 @@ optional `context`. Start with `doc:true,hints:true`, then pass
 
 MCP resources mirror this guide for clients that do not read repo files:
 `flow://guide/start`, `flow://guide/authoring`,
-`flow://guide/search-and-edit`, and `flow://guide/custom-blocks`.
+`flow://guide/search-and-edit`, `flow://guide/custom-blocks`, and
+`flow://guide/samples`.
+
+Prefer demonstration by example over broad theory for blank agents. Keep sample
+Flows and sample blocks small, executable/readable through MCP, and commented
+only when the comment teaches a DSL rule, for example:
+`// Only call Flow blocks with one object containing named parameters.`
+Rhino sample blocks should start with:
+`// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
