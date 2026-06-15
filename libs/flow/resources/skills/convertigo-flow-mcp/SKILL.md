@@ -23,9 +23,8 @@ Prefer the compact code path:
    existing application Flows unless this is a maintenance task or the user asks
    to reuse a nearby pattern. In a fresh context, or with a smaller model, read
    the short DSL samples first: call `resources/read` on `flow://guide/samples`,
-   then inspect `sample_blocks_flow_and_rhino`, `sample.formatGreeting`, and
-   `sample.sha256` with `code-get` using Flow qnames or block qnames like
-   `blocks.sample.sha256`.
+   then inspect `sample_blocks_flow_and_rhino` with `qname` and
+   `sample.formatGreeting` / `sample.sha256` with `block`.
    Do not call broad `flow-list`, `code-rg`, or `flow-catalog` just to
    learn conventions; use samples, this skill, then diagnostics.
 2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
@@ -181,14 +180,14 @@ types, defaults, or descriptions in Studio.
 
 For a project-local FlowScript block:
 
-1. Use `code-set({ project, qname:"blocks.namespace.name", code, properties, outputs })`.
+1. Use `code-set({ project, block:"namespace.name", code, properties, outputs })`.
 2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
 5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
 6. For edits, call `code-get`, preserve `revision`, then use
-   `code-patch({ project, qname:"blocks.namespace.name", revision, codepatch })`.
-7. To locate code first, use `code-rg({ project, qname:"blocks.namespace.name", pattern })`
+   `code-patch({ project, block:"namespace.name", revision, codepatch })`.
+7. To locate code first, use `code-rg({ project, block:"namespace.name", pattern })`
    before falling back to `flow-resource-search`.
 
 For a Rhino/Java primitive:

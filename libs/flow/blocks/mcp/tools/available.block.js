@@ -229,12 +229,16 @@ const _meta = {
 		if (/^code-/.test(String(toolName || ""))) {
 			schema.properties.qname = schema.properties.qname || {
 				type: "string",
-				description: "Target Flow qname, or target block qname as Project.blocks.namespace.name."
+				description: "Real Convertigo Flow DBO qname, for example Project.FlowName. Do not use for blocks."
+			};
+			schema.properties.block = {
+				type: "string",
+				description: "Project-local FlowScript block name, for example sample.sha256."
 			};
 			schema.properties.kind = {
 				type: "string",
 				enum: ["flow", "block"],
-				description: "Optional explicit target kind. Usually inferred from qname."
+				description: "Optional explicit target kind. Usually inferred from block or qname."
 			};
 		}
 		if (/^(?:flow-)?code-(set|patch|check|run|analyze|promote)$/.test(String(toolName || ""))) {

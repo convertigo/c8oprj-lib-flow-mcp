@@ -354,7 +354,7 @@ var sampleFlowBlockCode = JSON.parse(engine.run(JSON.stringify({
 				name: "code-get",
 				arguments: {
 					projectDir: projectDir,
-					qname: "blocks.sample.formatGreeting"
+					block: "sample.formatGreeting"
 				}
 			}
 		})
@@ -375,7 +375,7 @@ var sampleRhinoBlockCode = JSON.parse(engine.run(JSON.stringify({
 				name: "code-get",
 				arguments: {
 					projectDir: projectDir,
-					qname: "blocks.sample.sha256"
+					block: "sample.sha256"
 				}
 			}
 		})
@@ -551,7 +551,7 @@ var customBlockCode = [
 ].join("\n");
 var blockSet = callTool(12, "code-set", {
 	projectDir: targetProjectDir,
-	qname: "blocks.smoke.echo",
+	block: "smoke.echo",
 	code: customBlockCode,
 	overwrite: true
 });
@@ -562,12 +562,21 @@ assertTrue(blockSet.result.result.structuredContent.name === "smoke.echo" &&
 
 var blockGet = callTool(13, "code-get", {
 	projectDir: targetProjectDir,
-	qname: "blocks.smoke.echo"
+	block: "smoke.echo"
 });
 assertTrue(blockGet.result.result.structuredContent.code.indexOf("function smoke_echo") !== -1 &&
 	(blockGet.result.result.structuredContent.format === "blockjs" ||
 		blockGet.result.result.structuredContent.format === "flowscript"),
 	"MCP Flow code-get did not read the project-local block");
+
+var invalidBlockQName = callTool(131, "code-get", {
+	projectDir: targetProjectDir,
+	qname: "blocks.smoke.echo"
+});
+assertTrue(invalidBlockQName.result.error &&
+	invalidBlockQName.result.error.data &&
+	invalidBlockQName.result.error.data.code === "INVALID_CODE_QNAME",
+	"MCP Flow code-get should reject block names passed as qname");
 
 var resourceSearch = callTool(14, "flow-resource-search", {
 	projectDir: targetProjectDir,

@@ -8,8 +8,8 @@ Read these first:
 
 ```json
 {"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"sample_blocks_flow_and_rhino"}}
-{"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"blocks.sample.formatGreeting"}}
-{"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"blocks.sample.sha256"}}
+{"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.formatGreeting"}}
+{"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.sha256"}}
 ```
 
 What they demonstrate:

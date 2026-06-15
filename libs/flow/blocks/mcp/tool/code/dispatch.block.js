@@ -67,11 +67,7 @@ const _meta = {
 		if (kind === "block" || kind === "flow") {
 			return kind;
 		}
-		var qname = String(args.qname || "");
-		if (qname.indexOf(".blocks.") !== -1 || qname.indexOf("blocks.") === 0) {
-			return "block";
-		}
-		if (args.block === true || nonEmpty(args.blockName)) {
+		if (nonEmpty(args.block) || nonEmpty(args.blockName)) {
 			return "block";
 		}
 		return "flow";
@@ -79,15 +75,8 @@ const _meta = {
 
 	function normalizeBlockArgs(args) {
 		args = copyJson(args);
-		var qname = String(args.qname || "");
-		if (qname.indexOf(".blocks.") !== -1) {
-			var index = qname.indexOf(".blocks.");
-			if (!nonEmpty(args.project)) {
-				args.project = qname.substring(0, index);
-			}
-			args.name = qname.substring(index + ".blocks.".length);
-		} else if (qname.indexOf("blocks.") === 0) {
-			args.name = qname.substring("blocks.".length);
+		if (!nonEmpty(args.name) && nonEmpty(args.block)) {
+			args.name = String(args.block);
 		}
 		if (!nonEmpty(args.name) && nonEmpty(args.blockName)) {
 			args.name = String(args.blockName);
@@ -96,12 +85,17 @@ const _meta = {
 		delete args.kind;
 		delete args.type;
 		delete args.target;
+		delete args.block;
 		delete args.blockName;
 		return args;
 	}
 
 	function normalizeFlowArgs(args) {
 		args = copyJson(args);
+		var qname = String(args.qname || "");
+		if (qname.indexOf(".") > 0 && !nonEmpty(args.project)) {
+			args.project = qname.substring(0, qname.indexOf("."));
+		}
 		if (String(args.qname || "").indexOf(".") === 0 && nonEmpty(args.project)) {
 			args.name = String(args.qname).substring(1);
 			delete args.qname;
@@ -115,12 +109,20 @@ const _meta = {
 	function routed(ctx, node, request, operation, out) {
 		var mcp = ctx.lib("mcp");
 		var args = requestArgs(request);
+		var qname = String(args.qname || "");
+		if (qname.indexOf(".blocks.") !== -1 || qname.indexOf("blocks.") === 0) {
+			return mcp.toolError(request, {
+				code: "INVALID_CODE_QNAME",
+				message: "qname is reserved for real Convertigo DBO qnames, not project block names.",
+				hint: "Use block:\"namespace.name\" for project-local FlowScript blocks, or qname:\"Project.Flow\" for executable Flow DBOs."
+			}, ctx);
+		}
 		var kind = normalizeKind(args);
 		if (kind === "block" && BLOCK_OPERATIONS[operation] !== true) {
 			return mcp.toolError(request, {
 				code: "UNSUPPORTED_BLOCK_CODE_OPERATION",
 				message: "code-" + operation + " is only available for executable Flows.",
-				hint: "Use code-get, code-set, code-patch or code-rg for Project.blocks.namespace.name targets."
+					hint: "Use code-get, code-set, code-patch or code-rg with block:\"namespace.name\" for project-local FlowScript blocks."
 			}, ctx);
 		}
 		var internalName = kind === "block" ? "flow-block-code-" + operation : "flow-code-" + operation;

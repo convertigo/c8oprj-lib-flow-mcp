@@ -37,7 +37,7 @@ Authoring loop for a blank agent context:
 resources/list
 resources/read flow://guide/start
 resources/read flow://guide/samples
-code-get sample_blocks_flow_and_rhino and code-get blocks.sample.formatGreeting/blocks.sample.sha256 to learn real DSL shape
+code-get sample_blocks_flow_and_rhino and code-get block:sample.formatGreeting/block:sample.sha256 to learn real DSL shape
 tools/list
 flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
 code-rg / code-get for FlowScript source
