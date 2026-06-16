@@ -37,17 +37,20 @@ Authoring loop for a blank agent context:
 resources/list
 resources/read flow://guide/start
 resources/read flow://guide/samples
-code-get sample_blocks_flow_and_rhino and code-get block:sample.formatGreeting/block:sample.sha256 to learn real DSL shape
+resources/read flow://guide/rhino-block-api before writing Rhino blocks
+code-get sample_blocks_flow_and_rhino, sample_list_filter_sort_map, sample_json_object_output, and block:sample.formatGreeting/block:sample.sha256 to learn real DSL shape
 tools/list
-flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
-code-rg / code-get for FlowScript source
+write the first FlowScript draft with code-set before broad discovery
+code-check / code-run to let compiler/runtime diagnostics guide the next edit
+if code-run returns unsaved:true or workingCopy:true, call code-promote before stopping
+flow-search only after the first draft when a block, pattern or schema is still unknown
+code-get with pattern, or code-rg, for existing FlowScript extracts only during maintenance
 flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema before wiring downstream nodes
 flow-schema-reset before rerunning an HTTP learn scenario when the output changed
-code-set for broad Flow edits; it writes the FlowScript working copy
 code-patch for revision-checked maintenance edits on that working copy
-code-check / code-run, then code-promote once behavior is clean
+code-promote once executable Flow behavior is clean; do not promote project-local blocks
 flow-catalog only when search/examples are insufficient; it is summary by default
 code-rg / code-get / code-patch for project-local FlowScript blocks
 code-set only when reusable vocabulary is needed
@@ -59,6 +62,9 @@ Prefer editing Flow sidecars over adding custom blocks. Prefer project-local
 custom blocks over changing the shared core library. A Rhino block must be a
 small primitive, not a hidden backend feature. Use FlowScript and standard
 blocks for HTTP, requestables, list/JSON transforms and response mapping.
+For array projections, prefer `var mapped = list.map({ items, select: {
+field: current.field } }); result.mapped = mapped`; do not hard-code fixed
+indexes for dynamic lists.
 Core and shared blocks are read-only through MCP: use `flow-block-duplicate`
 to create a project-local variant, then `flow-block-edit` to replace its
 source.
@@ -113,8 +119,8 @@ optional `context`. Start with `doc:true,hints:true`, then pass
 
 MCP resources mirror this guide for clients that do not read repo files:
 `flow://guide/start`, `flow://guide/authoring`,
-`flow://guide/search-and-edit`, `flow://guide/custom-blocks`, and
-`flow://guide/samples`.
+`flow://guide/search-and-edit`, `flow://guide/custom-blocks`,
+`flow://guide/rhino-block-api`, and `flow://guide/samples`.
 
 Prefer demonstration by example over broad theory for blank agents. Keep sample
 Flows and sample blocks small, executable/readable through MCP, and commented

@@ -90,9 +90,9 @@ const _meta = {
 		return args;
 	}
 
-	function normalizeFlowArgs(args) {
-		args = copyJson(args);
-		var qname = String(args.qname || "");
+		function normalizeFlowArgs(args) {
+			args = copyJson(args);
+			var qname = String(args.qname || "");
 		if (qname.indexOf(".") > 0 && !nonEmpty(args.project)) {
 			args.project = qname.substring(0, qname.indexOf("."));
 		}
@@ -103,36 +103,76 @@ const _meta = {
 		delete args.kind;
 		delete args.type;
 		delete args.target;
-		return args;
-	}
+			return args;
+		}
 
-	function routed(ctx, node, request, operation, out) {
-		var mcp = ctx.lib("mcp");
-		var args = requestArgs(request);
-		var qname = String(args.qname || "");
-		if (qname.indexOf(".blocks.") !== -1 || qname.indexOf("blocks.") === 0) {
-			return mcp.toolError(request, {
-				code: "INVALID_CODE_QNAME",
+		function hasSearchPattern(args) {
+			return nonEmpty(args.pattern) || nonEmpty(args.query) || nonEmpty(args.q);
+		}
+
+		function routed(ctx, node, request, operation, out) {
+			var mcp = ctx.lib("mcp");
+			var args = requestArgs(request);
+			var effectiveOperation = operation === "get" && hasSearchPattern(args) ? "rg" : operation;
+			var qname = String(args.qname || "");
+			if (qname.indexOf(".blocks.") !== -1 || qname.indexOf("blocks.") === 0) {
+				return mcp.toolError(request, {
+					code: "INVALID_CODE_QNAME",
 				message: "qname is reserved for real Convertigo DBO qnames, not project block names.",
 				hint: "Use block:\"namespace.name\" for project-local FlowScript blocks, or qname:\"Project.Flow\" for executable Flow DBOs."
 			}, ctx);
 		}
-		var kind = normalizeKind(args);
-		if (kind === "block" && BLOCK_OPERATIONS[operation] !== true) {
+			var rawTarget = String(args.qname || args.name || args.flow || "");
+			if (rawTarget.indexOf("flow://") === 0) {
+				return mcp.toolError(request, {
+					code: "RESOURCE_URI_USED_AS_CODE_TARGET",
+					message: "code-" + effectiveOperation + " reads or edits FlowScript code, not MCP resources.",
+					hint: "Use MCP resources/read for " + rawTarget + ". Use code-get only with qname:\"Project.Flow\" or block:\"namespace.name\"."
+				}, ctx);
+			}
+		if (/^sample\./.test(qname) && !nonEmpty(args.project) && !nonEmpty(args.block)) {
 			return mcp.toolError(request, {
-				code: "UNSUPPORTED_BLOCK_CODE_OPERATION",
-				message: "code-" + operation + " is only available for executable Flows.",
-					hint: "Use code-get, code-set, code-patch or code-rg with block:\"namespace.name\" for project-local FlowScript blocks."
+				code: "SAMPLE_BLOCK_TARGET_AMBIGUOUS",
+				message: qname + " looks like a sample block name, not an executable Flow qname.",
+				hint: "Use code-get with project:\"lib_flow_mcp\", block:\"" + qname + "\" for sample blocks. Use qname only for executable Flow DBOs."
 			}, ctx);
 		}
-		var internalName = kind === "block" ? "flow-block-code-" + operation : "flow-code-" + operation;
-		var internalBlock = kind === "block"
-			? "mcp.tool.flow.block.code." + operation
-			: "mcp.tool.flow.code." + operation;
-		var internalArgs = kind === "block" ? normalizeBlockArgs(args) : normalizeFlowArgs(args);
-		var internalRequest = setRequestArgs(request, internalName, internalArgs);
-		return ctx.callBlock(internalBlock, {
-			request: internalRequest,
+		var kind = normalizeKind(args);
+			if (kind === "block" && operation === "promote") {
+				var blockArgs = normalizeBlockArgs(args);
+				var blockName = String(blockArgs.name || "");
+			return mcp.toolResponse(request, {
+				ok: true,
+				name: blockName,
+				block: blockName,
+				blockAlreadySaved: true,
+				promoted: false,
+					next: "Project-local blocks have no draft/promote step: code-set/code-patch write the canonical .block.js directly. Run an executable Flow that uses the block."
+				}, ctx);
+			}
+			if (kind === "block" && BLOCK_OPERATIONS[effectiveOperation] !== true) {
+				return mcp.toolError(request, {
+					code: "UNSUPPORTED_BLOCK_CODE_OPERATION",
+					message: "code-" + effectiveOperation + " is only available for executable Flows.",
+					hint: "Use code-get, code-set, code-patch or code-rg with block:\"namespace.name\" for project-local FlowScript blocks. To validate a block, run an executable Flow that calls it."
+				}, ctx);
+			}
+			var internalName = kind === "block" ? "flow-block-code-" + effectiveOperation : "flow-code-" + effectiveOperation;
+			var internalBlock = kind === "block"
+				? "mcp.tool.flow.block.code." + effectiveOperation
+				: "mcp.tool.flow.code." + effectiveOperation;
+			var internalArgs = kind === "block" ? normalizeBlockArgs(args) : normalizeFlowArgs(args);
+			if (effectiveOperation === "rg" && !nonEmpty(internalArgs.pattern) && nonEmpty(internalArgs.query)) {
+				internalArgs.pattern = internalArgs.query;
+			}
+			if (effectiveOperation === "rg" && !nonEmpty(internalArgs.pattern) && nonEmpty(internalArgs.q)) {
+				internalArgs.pattern = internalArgs.q;
+			}
+			delete internalArgs.query;
+			delete internalArgs.q;
+			var internalRequest = setRequestArgs(request, internalName, internalArgs);
+			return ctx.callBlock(internalBlock, {
+				request: internalRequest,
 			out: out
 		}, { trace: false });
 	}

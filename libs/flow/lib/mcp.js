@@ -1399,14 +1399,15 @@
 		}
 		var name = toolName(request);
 		var out = {};
-		["ok", "qname", "name", "dry", "written", "promoted", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared"].forEach(function (key) {
+		["ok", "qname", "name", "block", "dry", "written", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];
 			}
 		});
-		if (value.draft === true || value.workingCopy === true) {
-			out.workingCopy = true;
-		}
+			if (value.draft === true || value.workingCopy === true) {
+				out.workingCopy = true;
+				out.unsaved = true;
+			}
 		if (value.codeFile) {
 			out.codeFile = value.codeFile;
 		}
@@ -1466,12 +1467,14 @@
 				: "No unsaved working copy. Use code-set or code-patch to edit.";
 		} else if (name === "flow-code-discard" || name === "code-discard") {
 			out.next = "Working copy discarded. Use code-get to read the official Flow or code-set to edit again.";
-		} else if (value.draft && value.written) {
-			out.next = "Working copy updated and checked. Run with code-run without sending code, then save with code-promote.";
-		} else if (value.draft) {
-			out.next = "Working copy check passed. Run with code-run without sending code, then save with code-promote.";
-		} else if (name === "flow-code-check" || name === "code-check") {
-			out.next = "Check passed.";
+			} else if (value.blockAlreadySaved) {
+				out.next = value.next || "Project-local block source is already saved by code-set/code-patch. Run an executable Flow that uses the block.";
+			} else if (value.draft && value.written) {
+				out.next = "UNSAVED WORKING COPY: code-set updated and checked only the draft. Run with code-run without sending code, then call code-promote to save; do not stop after draft-only success.";
+			} else if (value.draft) {
+				out.next = "UNSAVED WORKING COPY: check passed only for the draft. Run with code-run without sending code, then call code-promote to save; do not stop after draft-only success.";
+			} else if (name === "flow-code-check" || name === "code-check") {
+				out.next = "Check passed.";
 		} else if (value.promoted) {
 			out.next = "Working copy saved to the official Flow. Stop if code-run already proved the result.";
 		} else if (value.dry) {
@@ -1724,16 +1727,27 @@
 			}
 			schemaOut.schemaUpdatesHint = "Schema updates compacted by default. Pass includeSchemaUpdates=true only when full learned schemas are required.";
 		}
-		if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
-			var runOut = mutableOut();
-			if (value.draft === true) {
-				runOut.workingCopy = true;
-				delete runOut.draft;
-			}
-			runOut.next = value.draft === true
-				? "Working copy run/test passed. Save once with code-promote; do not resend code."
-				: "Official Flow run/test passed. Stop unless the user asked for another validation.";
-		} else if (name === "flow-test" && value.ok !== false) {
+			if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
+				var runOut = mutableOut();
+				if (value.draft === true) {
+					runOut.workingCopy = true;
+					runOut.unsaved = true;
+					delete runOut.draft;
+				}
+				runOut.next = value.draft === true
+					? "PASSED ON DRAFT: code-run proved the working copy. If the returned result matches the user request, call code-promote({project,qname,revision}) now. Do not resend code or rewrite for cosmetic changes."
+					: "Official Flow run/test passed. Stop unless the user asked for another validation.";
+				if (value.draft === true) {
+					var warnings = runOut.warnings || [];
+					warnings.push({
+						severity: "warning",
+						code: "FLOW_CODE_UNSAVED_WORKING_COPY",
+						message: "code-run executed an unsaved working copy.",
+						hint: "Promote this revision before stopping. Patch only if the runtime result is functionally wrong."
+					});
+					runOut.warnings = warnings;
+				}
+			} else if (name === "flow-test" && value.ok !== false) {
 			var testOut = mutableOut();
 			testOut.next = "Saved Flow test passed. Stop unless the user asked for another validation.";
 		}

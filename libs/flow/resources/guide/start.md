@@ -2,17 +2,20 @@
 
 Default route for an unknown Flow project:
 
-1. For a simple new Flow, write compact FlowScript first. Do not search/copy existing Flows unless this is maintenance, reuse, or an unclear pattern.
-2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy sequence or transaction shape is needed.
-3. Write the working copy with `code-set`, patch it with `code-patch` if needed, then check/run it with `code-check` and `code-run`.
-4. Treat it like an editor buffer: use `code-status` to see dirty state, `code-discard` to cancel, and `code-promote` once after diagnostics and runtime behavior are clean.
-5. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
-6. Use `flow-search` only when the block/pattern is unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
-7. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-8. For real DSL examples, read `flow://guide/samples`, then call `code-get` on the named Flow and block samples. Do this before reading broad theory.
-9. For FlowScript source, use `code-rg`, then `code-get` and `code-patch`. Address executable Flows with a real Convertigo DBO qname such as `qname:"Project.Flow"`, and project-local blocks with `block:"namespace.name"` plus `project`. Do not encode blocks in `qname`.
+1. For a simple new Flow, learn syntax from small samples, then write compact FlowScript first. Do not search/copy existing application Flows unless this is maintenance, reuse, or an unclear pattern.
+2. In a fresh context, read the MCP resource `flow://guide/samples` with `resources/read`, then call the exact `code-get` examples listed there. Use them only to learn syntax: one block call, one object of named parameters, local variables, and `result.*` output. Do not pass `flow://...` URIs to `code-get`.
+3. After that syntax warm-up, start coding directly with `code-set`. Do not browse the full catalog first; let `code-set`, `code-check` and `code-run` diagnostics suggest block names, properties and signatures.
+4. Use `flow-requestable-list` and `flow-requestable-schema` only when a legacy sequence or transaction shape is needed.
+5. Write the working copy with `code-set`, patch it with `code-patch` if needed, then check/run it with `code-check` and `code-run`.
+6. Treat it like an editor buffer: use `code-status` to see dirty state, `code-discard` to cancel, and `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, call `code-promote` before stopping.
+7. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
+8. Use `flow-search` only after the first draft when the block/pattern is still unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
+9. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
+10. For FlowScript source, use `code-get({ pattern:"..." })` or `code-rg` for extracts, then `code-get` and `code-patch` for edits. Address executable Flows with a real Convertigo DBO qname such as `qname:"Project.Flow"`, and project-local blocks with `block:"namespace.name"` plus `project`. Do not encode blocks in `qname`.
 
 Project-local blocks are code-first: `code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
+
+When creating a Rhino primitive, read `flow://guide/rhino-block-api` first instead of searching files on disk for `ctx.*` examples.
 
 Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` and `props.*` are not expression scopes. Blocks that load JavaScript helpers with `ctx.lib(...)` must declare them with `uses` so the dependency is visible in the catalog.
 
@@ -22,6 +25,8 @@ top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
 `testCases`; if absent, `inputVariables` are inferred from `input.foo` reads.
 
 For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`.
+
+For array projections, assign the mapping to a variable and then copy it to the response: `var rows = list.map({ items, select: { label: current.label } }); result.rows = rows`. Do not hard-code fixed indexes such as `rows[0]`, `rows[1]` for a dynamic list.
 
 Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` when a subtree needs temporary configuration such as an HTTP profile. Root keys are config branches, `then` is reserved for child nodes, and nested objects are deep-merged then restored. Example: `config.use({ http: { timeout: 30000, headers: { Authorization: config.github.token } }, then: function () { var page = http.get({ url: config.github.url }) } })`.
 

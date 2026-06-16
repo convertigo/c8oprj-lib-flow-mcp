@@ -226,21 +226,54 @@ const _meta = {
 				description: "Target project."
 			};
 		}
-		if (/^code-/.test(String(toolName || ""))) {
-			schema.properties.qname = schema.properties.qname || {
-				type: "string",
-				description: "Real Convertigo Flow DBO qname, for example Project.FlowName. Do not use for blocks."
-			};
-			schema.properties.block = {
-				type: "string",
-				description: "Project-local FlowScript block name, for example sample.sha256."
-			};
-			schema.properties.kind = {
-				type: "string",
-				enum: ["flow", "block"],
-				description: "Optional explicit target kind. Usually inferred from block or qname."
-			};
-		}
+		var supportsBlockTarget = /^code-(get|set|patch|rg)$/.test(String(toolName || ""));
+			if (/^code-/.test(String(toolName || ""))) {
+				schema.properties.qname = schema.properties.qname || {
+					type: "string",
+					description: "Executable Flow DBO qname, for example Project.FlowName. Do not use for blocks or flow:// resources."
+				};
+			if (supportsBlockTarget) {
+				schema.properties.block = {
+					type: "string",
+					description: "Project-local FlowScript block name, for example sample.sha256. Supported only by code-get, code-set, code-patch and code-rg."
+				};
+				schema.properties.kind = {
+					type: "string",
+					enum: ["flow", "block"],
+					description: "Optional explicit target kind. Usually inferred from block or qname."
+					};
+				}
+				if (toolName === "code-get") {
+					schema.properties.pattern = {
+						type: "string",
+						description: "Optional text/regex search pattern. When present, code-get returns small extracts like code-rg instead of full code."
+					};
+					schema.properties.query = {
+						type: "string",
+						description: "Alias for pattern."
+					};
+					schema.properties.q = {
+						type: "string",
+						description: "Short alias for pattern."
+					};
+					schema.properties.regex = {
+						type: "boolean",
+						description: "Treat pattern as a regular expression."
+					};
+					schema.properties.caseSensitive = {
+						type: "boolean",
+						description: "Use case-sensitive matching."
+					};
+					schema.properties.context = {
+						type: "integer",
+						description: "Context lines around each match."
+					};
+					schema.properties.limit = {
+						type: "integer",
+						description: "Maximum number of extracts."
+					};
+				}
+			}
 		if (/^(?:flow-)?code-(set|patch|check|run|analyze|promote)$/.test(String(toolName || ""))) {
 			schema.properties.maxDiagnostics = {
 				type: "integer",
@@ -264,6 +297,15 @@ const _meta = {
 			: name === "flow-block-test"
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
+		if (name === "code-set") {
+			description = "Writes/checks FlowScript. For executable Flows it updates a working copy; for project-local blocks it saves the .block.js directly.";
+		} else if (name === "code-patch") {
+			description = "Patches FlowScript. For executable Flows patch the working copy; for project-local blocks patch the saved .block.js directly.";
+		} else if (name === "code-promote") {
+			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
+			} else if (name === "code-get") {
+				description = "Reads FlowScript for qname:\"Project.Flow\" or block:\"namespace.name\"; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
+			}
 		if (name === "flow-catalog") {
 			description = wrapper.description || description;
 		}

@@ -19,22 +19,33 @@ Do not use the legacy `convertigo` MCP server for Flow authoring unless the user
 
 Prefer the compact code path:
 
-1. For a new Flow, write fresh compact FlowScript first; do not inspect/copy
-   existing application Flows unless this is a maintenance task or the user asks
-   to reuse a nearby pattern. In a fresh context, or with a smaller model, read
-   the short DSL samples first: call `resources/read` on `flow://guide/samples`,
-   then inspect `sample_blocks_flow_and_rhino` with `qname` and
-   `sample.formatGreeting` / `sample.sha256` with `block`.
-   Do not call broad `flow-list`, `code-rg`, or `flow-catalog` just to
-   learn conventions; use samples, this skill, then diagnostics.
-2. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
+1. Learn only the syntax from small real samples, then start coding. In a fresh
+   context, especially with a smaller model, read the MCP resource
+   `flow://guide/samples` with `resources/read`, then inspect the exact samples
+   named there with `code-get`. Use them to learn FlowScript shape, not to find
+   or copy a near-identical application Flow. Never pass `flow://...` resource
+   URIs to `code-get`.
+2. After the syntax warm-up, write the FlowScript algorithm as you would like
+   to describe it. Do not browse the full catalog first. Let `code-set`,
+   `code-check` and `code-run` diagnostics guide you with block candidates,
+   accepted properties and signatures.
+3. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`, or
+   `flow-block-get` before the first `code-set` unless the requested feature
+   needs an unknown legacy requestable schema or the compiler diagnostics ask
+   for one focused lookup.
+4. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
-3. Write the editable working copy with `code-set({ project, qname, code })`.
-4. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
-5. Run/test with `code-run({ project, qname })` without sending code again.
-6. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
-7. Save with `code-promote({ project, qname })` only after it works.
-8. Stop when `code-run` proves the requested result and the promotion succeeds.
+5. Write the editable working copy with `code-set({ project, qname, code })`.
+6. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
+7. Run/test with `code-run({ project, qname })` without sending code again.
+8. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
+9. Save executable Flows with `code-promote({ project, qname })` only after
+   they work. Do not call `code-promote` for project-local blocks:
+   `code-set`/`code-patch` save their `.block.js` directly.
+10. If `code-run` returns `unsaved:true` or `workingCopy:true`, it proved the
+   draft. If the runtime result matches the request, call `code-promote`
+   immediately; do not resend code or rewrite for cosmetic changes.
+11. Stop when `code-run` proves the requested result and the promotion succeeds.
 
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
@@ -49,7 +60,9 @@ explicitly asks for low-level debugging. The default FlowScript path behaves lik
 an editor buffer: write/check/run the working copy, then promote once to save.
 
 For an existing Flow, call `code-get({ project, qname })`, edit the returned
-FlowScript, and preserve `revision` when patching.
+FlowScript, and preserve `revision` when patching. For a narrow read, call
+`code-get({ project, qname, pattern:"text" })` to get extracts like `code-rg`
+without loading the whole source.
 
 Use `codepatch` only for real unified diffs with `@@` hunks. If you are not
 sure how to build that patch, call `code-patch` or `code-set` with the
@@ -114,7 +127,15 @@ Compiler rules:
 - `var name = block(...)` writes the block output to `local.name`.
 - `name.child.path` becomes `local.name.child.path`.
 - `result.key = value` writes the response scope.
+- Prefer assigning block results to a local variable, then copying that value to
+  `result.*`: `var cities = list.map({ ... }); result.cities = cities`.
+  This is clearer for Flow analysis than embedding a block call directly in a
+  `result.* = block(...)` assignment.
 - `list.map({ items, select: { field: current.value } })` lowers to an explicit Flow loop.
+- For projections, use `list.map` with an object `select` and keep it visible:
+  `var cities = list.map({ items: topUsers, select: { name: current.name,
+  city: current.address.city, company: current.company.name } })`. Do not
+  hard-code `topUsers[0]`, `topUsers[1]`, etc. for dynamic lists.
 - Block calls must use the canonical object form: `block.name({ key: value })`.
   Diagnostics for invalid signatures list accepted keys as `key`, optional
   `key?`, or optional with default `key??default`.
@@ -128,6 +149,10 @@ Compiler rules:
 - Use either `items.length` or `length(items)` for array counts. Do not use
   `count(items)`, `Count(items)`, `len(items)`, `list.count(...)`, or a
   `list.count` block; they do not exist.
+- Small string methods are valid on scope paths in expressions:
+  `local.text.trim()`, `local.text.toLowerCase()`, `local.text.toUpperCase()`,
+  `local.text.includes("x")`, `local.text.startsWith("x")`,
+  `local.text.endsWith("x")`. For larger transformations, use or create a block.
 - `function` is preferred so normal JS editors parse the file; the older `flow` keyword is tolerated.
 
 ## Flow Contract
@@ -181,7 +206,8 @@ types, defaults, or descriptions in Studio.
 For a project-local FlowScript block:
 
 1. Use `code-set({ project, block:"namespace.name", code, properties, outputs })`.
-2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`.
+2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`
+   directly. There is no `code-promote` step for blocks.
 3. In block code, read typed properties from `input.*`.
 4. Return the block value with `return value`.
 5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
@@ -192,13 +218,16 @@ For a project-local FlowScript block:
 
 For a Rhino/Java primitive:
 
-1. Use `code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
-2. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
-3. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
-4. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
-5. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
-6. Start Rhino examples with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
-7. Keep orchestration in FlowScript.
+1. Read the MCP resource `flow://guide/rhino-block-api` first. It documents
+   the available `ctx.*` helpers, so do not use shell `rg` over sibling repos to
+   discover Rhino API examples.
+2. Use `code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
+3. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
+4. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
+5. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
+6. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
+7. Start Rhino examples with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+8. Keep orchestration in FlowScript.
 
 If a web page or API needs parsing that no block can express, split it:
 
