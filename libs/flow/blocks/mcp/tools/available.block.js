@@ -223,7 +223,7 @@ const _meta = {
 		if (!schema.properties.project) {
 			schema.properties.project = {
 				type: "string",
-				description: "Target project."
+				description: "Target Convertigo project name, not a filesystem path."
 			};
 		}
 		var supportsBlockTarget = /^code-(get|set|patch|rg)$/.test(String(toolName || ""));
@@ -312,6 +312,14 @@ const _meta = {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
+		} else if (name === "flow-resource-search") {
+			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
+		} else if (name === "flow-resource-get") {
+			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
+		} else if (name === "flow-cache-info") {
+			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
+		} else if (name === "flow-requestable-list") {
+			description = "Lists requestables for one project. Requires project; use only when legacy requestables are needed.";
 		}
 		return {
 			name: name,

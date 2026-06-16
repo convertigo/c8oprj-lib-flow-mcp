@@ -29,10 +29,12 @@ Prefer the compact code path:
    to describe it. Do not browse the full catalog first. Let `code-set`,
    `code-check` and `code-run` diagnostics guide you with block candidates,
    accepted properties and signatures.
-3. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`, or
-   `flow-block-get` before the first `code-set` unless the requested feature
+3. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
+   `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
+   `flow-cache-info` before the first `code-set` unless the requested feature
    needs an unknown legacy requestable schema or the compiler diagnostics ask
-   for one focused lookup.
+   for one focused lookup. `flow-resource-*` is for project-local resource files,
+   not for executable FlowScript.
 4. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
 5. Write the editable working copy with `code-set({ project, qname, code })`.
@@ -264,6 +266,9 @@ return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
   a small limit. Do not ask for every Flow tool up front.
 - Use `code-rg` for small code extracts.
 - Use `code-rg` for small project-local FlowScript block extracts.
+- Use `flow-resource-search/get` only for non-FlowScript resource files,
+  editors, guides, or library assets. Do not use it to find executable Flows,
+  blocks, or samples; use `code-get`, `code-rg`, `flow-search`, or diagnostics.
 - Do not use `code-get` to learn standard blocks such as
   `http.get`, `http.request`, `requestable.call`, `list.filter`, `list.sort`,
   `list.take`, `list.map`, `json.select`, `set`, or `return`; they are already

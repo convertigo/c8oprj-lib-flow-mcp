@@ -51,7 +51,7 @@ Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO
 
 When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
 
-For maintenance, prefer `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`; it is closer to how coding agents work on files.
+For maintenance of non-FlowScript resources, use `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`. For executable Flows and project blocks, prefer `code-get`, `code-rg`, `code-set`, and `code-patch`; they are shorter and preserve the FlowScript model.
 
 Duplicate a core/shared block with `flow-block-duplicate` before editing it with `flow-block-edit`.
 

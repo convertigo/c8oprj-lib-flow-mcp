@@ -1031,7 +1031,19 @@
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
 		var hasExplicitProject = args.project || args.projectDir;
-		if ((name === "flow-list" || name === "flow-catalog") && !hasExplicitProject && String(args.scope || "") !== "workspace") {
+		if (args.project && (String(args.project).indexOf("/") !== -1 || String(args.project).indexOf("\\") !== -1)) {
+			throw new Error(name + " expects project:\"<Convertigo project name>\". Use projectDir only for standalone tests with a filesystem path.");
+		}
+		var requiresProject = {
+			"flow-catalog": true,
+			"flow-list": true,
+			"flow-resource-get": true,
+			"flow-resource-patch": true,
+			"flow-resource-search": true,
+			"flow-requestable-list": true,
+			"flow-requestable-schema": true
+		};
+		if (requiresProject[name] === true && !hasExplicitProject && String(args.scope || "") !== "workspace") {
 			throw new Error(name + " requires an explicit project. This MCP endpoint runs in lib_flow_mcp and is not necessarily the target project; call " + name + " with project:\"<target project>\".");
 		}
 		if (name === "flow-catalog") {
