@@ -1040,6 +1040,7 @@
 			"flow-resource-get": true,
 			"flow-resource-patch": true,
 			"flow-resource-search": true,
+			"flow-search": true,
 			"flow-requestable-list": true,
 			"flow-requestable-schema": true
 		};
@@ -1059,10 +1060,17 @@
 			}
 		} else if (name === "flow-search") {
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
-				args.limit = 20;
+				args.limit = 10;
 			}
+			args.limit = argInt(args.limit, 10, 1, 10);
 			if (args.context === undefined || args.context === null || String(args.context) === "") {
-				args.context = 1;
+				args.context = 0;
+			}
+			if (args.doc === undefined || args.doc === null || String(args.doc) === "") {
+				args.doc = false;
+			}
+			if (args.hints === undefined || args.hints === null || String(args.hints) === "") {
+				args.hints = false;
 			}
 		} else if (name === "flow-tree") {
 			if (!args.detail && !args.mode) {
@@ -1095,6 +1103,10 @@
 		} else if (name === "flow-resource-get") {
 			if (args.allowLarge !== true && (args.maxBytes === undefined || args.maxBytes === null || String(args.maxBytes) === "")) {
 				args.maxBytes = 12000;
+			}
+		} else if (name === "flow-test") {
+			if (String(args.flowSource || "").toLowerCase() === "draft" || args.definition !== undefined) {
+				throw new Error("flow-test cannot validate FlowScript working copies. Use code-run({project,qname}) after code-set/code-patch; code-run executes the draft without resending code.");
 			}
 		}
 		if (/^(?:flow-)?code-(get|set|patch|check|run|analyze)$/.test(name)) {

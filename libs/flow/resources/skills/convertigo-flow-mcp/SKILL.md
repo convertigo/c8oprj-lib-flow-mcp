@@ -57,6 +57,9 @@ Treat `code-run` as the test for a new Flow. Do not call `flow-test` after
 saving unless the user explicitly asks to test the saved Flow. Use the runtime
 URL only when the user explicitly asks for deployed HTTP validation or
 `code-run` cannot prove the behavior.
+Never use `flow-test` with `flowSource:"draft"` or inline `definition` for
+FlowScript work. Drafts are editor buffers; `code-run` executes the current
+working copy without resending code.
 Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user
 explicitly asks for low-level debugging. The default FlowScript path behaves like
 an editor buffer: write/check/run the working copy, then promote once to save.

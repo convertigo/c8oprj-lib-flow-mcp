@@ -310,6 +310,8 @@ const _meta = {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
+		} else if (name === "flow-search") {
+			description = "Focused search over one project. Requires project; max 10 results. Do not use as a broad block inventory.";
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
 		} else if (name === "flow-resource-search") {
@@ -320,6 +322,8 @@ const _meta = {
 			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
 		} else if (name === "flow-requestable-list") {
 			description = "Lists requestables for one project. Requires project; use only when legacy requestables are needed.";
+		} else if (name === "flow-test") {
+			description = "Saved-flow validation only. For FlowScript drafts use code-run after code-set/code-patch.";
 		}
 		return {
 			name: name,
