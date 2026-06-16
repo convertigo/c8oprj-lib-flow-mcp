@@ -1070,6 +1070,20 @@
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
 				args.limit = 20;
 			}
+		} else if (name === "flow-resource-search") {
+			args.limit = argInt(args.limit, 10, 1, 10);
+			args.maxFileBytes = argInt(args.maxFileBytes, 120000, 1000, 120000);
+			args.snippetChars = argInt(args.snippetChars || args.maxSnippetChars, 180, 40, 220);
+			if (args.doc === undefined || args.doc === null || String(args.doc) === "") {
+				args.doc = false;
+			}
+			if (args.hints === undefined || args.hints === null || String(args.hints) === "") {
+				args.hints = false;
+			}
+		} else if (name === "flow-resource-get") {
+			if (args.allowLarge !== true && (args.maxBytes === undefined || args.maxBytes === null || String(args.maxBytes) === "")) {
+				args.maxBytes = 12000;
+			}
 		}
 		if (/^(?:flow-)?code-(get|set|patch|check|run|analyze)$/.test(name)) {
 			args.draft = true;
