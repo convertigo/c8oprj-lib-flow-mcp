@@ -1528,6 +1528,8 @@
 			out.next = name.indexOf("flow-block-code-") === 0
 				? "Low-level validation passed. Call code-set normally to register the block, then run a Flow that uses it."
 				: "Low-level validation passed. Prefer the working-copy path: call code-set normally, then code-run and code-promote.";
+		} else if (value.block) {
+			out.next = "Project-local block source is saved. Validate it through an executable Flow using code-run; do not call flow-test for FlowScript drafts.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
 			out.next = "Fast save done. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
 		} else {
