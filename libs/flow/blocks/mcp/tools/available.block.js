@@ -307,7 +307,11 @@ const _meta = {
 				description = "Reads FlowScript for qname:\"Project.Flow\" or block:\"namespace.name\"; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
 			}
 		if (name === "flow-catalog") {
-			description = wrapper.description || description;
+			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
+		} else if (name === "flow-list") {
+			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
+		} else if (name === "flow-block-get") {
+			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
 		}
 		return {
 			name: name,

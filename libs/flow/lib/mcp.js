@@ -1030,13 +1030,15 @@
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
+		var hasExplicitProject = args.project || args.projectDir;
+		if ((name === "flow-list" || name === "flow-catalog") && !hasExplicitProject && String(args.scope || "") !== "workspace") {
+			throw new Error(name + " requires an explicit project. This MCP endpoint runs in lib_flow_mcp and is not necessarily the target project; call " + name + " with project:\"<target project>\".");
+		}
 		if (name === "flow-catalog") {
 			if (!args.detail && !args.mode) {
 				args.detail = "signature";
 			}
-			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
-				args.limit = 20;
-			}
+			args.limit = argInt(args.limit, 10, 1, 10);
 			if (args.doc === undefined || args.doc === null || String(args.doc) === "") {
 				args.doc = false;
 			}
@@ -1056,6 +1058,13 @@
 			}
 			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
 				args.maxDepth = 4;
+			}
+		} else if (name === "flow-block-get") {
+			var wantsSource = argBool(args.includeSource || args.includeCode || args.includeImplementation || args.includeHooks || args.allowSource, false);
+			if (!wantsSource && (String(args.detail || args.mode || "").toLowerCase() === "full" ||
+					String(args.detail || args.mode || "").toLowerCase() === "debug")) {
+				args.detail = "compact";
+				args.fullDetailIgnored = true;
 			}
 		} else if (name === "flow-block-list") {
 			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
@@ -1751,7 +1760,27 @@
 			var testOut = mutableOut();
 			testOut.next = "Saved Flow test passed. Stop unless the user asked for another validation.";
 		}
-		return out || value;
+		var compacted = out || value;
+		if ((name === "flow-code-run" || name === "code-run") && compacted && typeof compacted === "object") {
+			var runtimeText = "";
+			try {
+				runtimeText = JSON.stringify(compacted.error || compacted.result || compacted);
+			} catch (e) {
+				runtimeText = "";
+			}
+			if (runtimeText.indexOf("Java.type") !== -1 ||
+					(runtimeText.indexOf("Java") !== -1 && (runtimeText.indexOf("not defined") !== -1 || runtimeText.indexOf("n'est pas") !== -1))) {
+				var hints = compacted.warnings || [];
+				hints.push({
+					severity: "warning",
+					code: "RHINO_USES_PACKAGES_NOT_JAVA_TYPE",
+					message: "Rhino blocks do not expose Java.type.",
+					hint: "Use Packages.java.lang.ProcessBuilder or Packages.<package.Class> in Rhino 1.9.0, not Java.type(...)."
+				});
+				compacted.warnings = hints;
+			}
+		}
+		return compacted;
 	}
 
 	function compactAnalyzeToolValue(request, value) {

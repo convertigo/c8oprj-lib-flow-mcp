@@ -138,6 +138,13 @@ const _meta = {
 			}, ctx);
 		}
 		var kind = normalizeKind(args);
+			if (kind === "block" && !nonEmpty(args.project) && !nonEmpty(args.projectDir)) {
+				return mcp.toolError(request, {
+					code: "PROJECT_REQUIRED_FOR_BLOCK_CODE",
+					message: "Project-local block code requires an explicit project.",
+					hint: "Call code-" + effectiveOperation + " with project:\"<target project>\", block:\"namespace.name\". Do not rely on the MCP endpoint project."
+				}, ctx);
+			}
 			if (kind === "block" && operation === "promote") {
 				var blockArgs = normalizeBlockArgs(args);
 				var blockName = String(blockArgs.name || "");
