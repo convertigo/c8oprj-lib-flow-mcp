@@ -26,6 +26,8 @@ What they demonstrate:
 - comments that explain non-obvious DSL rules;
 - the rule that Flow block calls use one object of named parameters:
   `block.name({ key: value })`.
+- positional JavaScript-style calls are invalid; if diagnostics suggest a
+  canonical object form, patch the source to that exact form.
 - list projection style: `var rows = list.map({ items, select: { field:
   current.field } }); result.rows = rows`.
 

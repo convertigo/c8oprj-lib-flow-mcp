@@ -25,10 +25,11 @@ Prefer the compact code path:
    named there with `code-get`. Use them to learn FlowScript shape, not to find
    or copy a near-identical application Flow. Never pass `flow://...` resource
    URIs to `code-get`.
-2. After the syntax warm-up, write the FlowScript algorithm as you would like
-   to describe it. Do not browse the full catalog first. Let `code-set`,
-   `code-check` and `code-run` diagnostics guide you with block candidates,
-   accepted properties and signatures.
+2. After the syntax warm-up, write the FlowScript algorithm directly, but stay
+   inside the strict Flow DSL. Every block call is `block.name({ key: value })`
+   with one object argument. Do not browse the full catalog first. Let
+   `code-set`, `code-check` and `code-run` diagnostics guide you with block
+   candidates, accepted properties and signatures.
 3. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
@@ -143,7 +144,8 @@ Compiler rules:
   hard-code `topUsers[0]`, `topUsers[1]`, etc. for dynamic lists.
 - Block calls must use the canonical object form: `block.name({ key: value })`.
   Diagnostics for invalid signatures list accepted keys as `key`, optional
-  `key?`, or optional with default `key??default`.
+  `key?`, or optional with default `key??default`. Do not rely on positional
+  JavaScript-style calls being normalized; they are validation errors.
 - Real samples include comments such as `// Only call Flow blocks with one object containing named parameters.` Treat those comments as DSL constraints.
 - Simple chained reads after a block call are accepted:
   `var users = http.get({ url: "https://..." }).body` lowers to `http.get` plus an

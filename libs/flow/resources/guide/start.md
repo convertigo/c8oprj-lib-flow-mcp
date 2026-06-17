@@ -2,9 +2,9 @@
 
 Default route for an unknown Flow project:
 
-1. For a simple new Flow, learn syntax from small samples, then write compact FlowScript first. Do not search/copy existing application Flows unless this is maintenance, reuse, or an unclear pattern.
+1. For a simple new Flow, learn syntax from small samples, then write compact FlowScript first. FlowScript is strict: every block call is `block.name({ key: value })` with one object argument. Do not search/copy existing application Flows unless this is maintenance, reuse, or an unclear pattern.
 2. In a fresh context, read the MCP resource `flow://guide/samples` with `resources/read`, then call the exact `code-get` examples listed there. Use them only to learn syntax: one block call, one object of named parameters, local variables, and `result.*` output. Do not pass `flow://...` URIs to `code-get`.
-3. After that syntax warm-up, start coding directly with `code-set`. Do not browse the full catalog first; let `code-set`, `code-check` and `code-run` diagnostics suggest block names, properties and signatures.
+3. After that syntax warm-up, start coding directly with `code-set` in the strict DSL. Do not browse the full catalog first; let `code-set`, `code-check` and `code-run` diagnostics suggest block names, properties and signatures.
 4. Use `flow-requestable-list` and `flow-requestable-schema` only when a legacy sequence or transaction shape is needed.
 5. Write the working copy with `code-set`, patch it with `code-patch` if needed, then check/run it with `code-check` and `code-run`.
 6. Treat it like an editor buffer: use `code-status` to see dirty state, `code-discard` to cancel, and `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, call `code-promote` before stopping.
@@ -24,7 +24,7 @@ top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
 `code-*` tools report these as `inputDefinitions`, `inputVariables`, and
 `testCases`; if absent, `inputVariables` are inferred from `input.foo` reads.
 
-For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`.
+For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`. Positional JavaScript-style calls such as `http.get(url)`, `list.sort(items, by)`, or `requestable.call(".GetFeed")` are invalid; diagnostics show the accepted object keys.
 
 For array projections, assign the mapping to a variable and then copy it to the response: `var rows = list.map({ items, select: { label: current.label } }); result.rows = rows`. Do not hard-code fixed indexes such as `rows[0]`, `rows[1]` for a dynamic list.
 

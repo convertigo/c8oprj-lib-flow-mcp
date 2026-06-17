@@ -40,7 +40,7 @@ resources/read flow://guide/samples
 resources/read flow://guide/rhino-block-api before writing Rhino blocks
 code-get sample_blocks_flow_and_rhino, sample_list_filter_sort_map, sample_json_object_output, and block:sample.formatGreeting/block:sample.sha256 to learn real DSL shape
 tools/list
-write the first FlowScript draft with code-set before broad discovery
+write the first FlowScript draft with code-set before broad discovery; every block call must be block.name({ key: value }) with one object argument
 code-check / code-run to let compiler/runtime diagnostics guide the next edit
 if code-run returns unsaved:true or workingCopy:true, call code-promote before stopping
 flow-search only after the first draft when a block, pattern or schema is still unknown
@@ -62,6 +62,10 @@ Prefer editing Flow sidecars over adding custom blocks. Prefer project-local
 custom blocks over changing the shared core library. A Rhino block must be a
 small primitive, not a hidden backend feature. Use FlowScript and standard
 blocks for HTTP, requestables, list/JSON transforms and response mapping.
+Positional JavaScript-style calls such as `http.get(url)`,
+`list.sort(items, by)`, or `requestable.call(".GetFeed")` are invalid in
+FlowScript even when a compiler diagnostic can suggest the canonical object
+form.
 For array projections, prefer `var mapped = list.map({ items, select: {
 field: current.field } }); result.mapped = mapped`; do not hard-code fixed
 indexes for dynamic lists.
