@@ -2,6 +2,7 @@
 
 Create or modify a Flow sidecar with the smallest loop that proves behavior:
 
+- If the user gives a `project`, `qname`, or `block`, that is the target contract. If Flow MCP cannot access it, stop and report the exact blocker instead of falling back to another project or to legacy MCP project discovery.
 - For a new Flow, start with the syntax warm-up: read the MCP resource
   `flow://guide/samples` with `resources/read` and the exact `code-get`
   examples listed there, then write the first FlowScript draft with

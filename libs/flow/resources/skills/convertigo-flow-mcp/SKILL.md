@@ -7,7 +7,7 @@ description: Use Convertigo Flow to inspect, create, edit, test, and run Convert
 
 Use this skill when working with the experimental Convertigo Flow engine, FlowEngine, Flow blocks, property types, Flow schemas, FlowScript, or the Flow-native MCP server.
 
-Do not use the legacy `convertigo` MCP server for Flow authoring unless the user explicitly asks to compare with legacy Convertigo MCP.
+Do not use the legacy `convertigo` MCP server for Flow authoring unless the user explicitly asks to compare with legacy Convertigo MCP. If the user provides a target `project`, `qname`, or `block` and Flow MCP cannot access it, stop and report that exact blocker. Never substitute another project, never create in a "similar" project, and never use legacy MCP project discovery to work around a missing Flow MCP target.
 
 ## MCP Server
 
@@ -54,6 +54,9 @@ Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
 If the prompt gives `project` and `qname`, trust them; do not inspect workspace
 files to discover project YAML/XML. Use MCP tool results as the source of truth.
+If the target project/qname is missing or inaccessible, stop and report it. Do
+not call legacy `convertigo` tools such as `project_list`, and do not create the
+Flow in another project.
 Treat `code-run` as the test for a new Flow. Do not call `flow-test` after
 saving unless the user explicitly asks to test the saved Flow. Use the runtime
 URL only when the user explicitly asks for deployed HTTP validation or
