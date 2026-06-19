@@ -127,8 +127,10 @@ const _flow = {
 ```
 
 `flow-code-*` tools expose this as `inputDefinitions`, `inputVariables`, and
-`testCases`. Without `_flow.inputs`, inputs are only inferred from `input.foo`
-reads.
+`testCases`. Explicit `_flow.inputs` are synchronized to Convertigo request
+variables so Studio, SDK callers and generated test cases see the same contract.
+Without `_flow.inputs`, inputs are only inferred from `input.foo` reads and
+authoring tools report a warning asking for the missing declarations.
 
 Do not use a Rhino block as a shortcut for a whole backend feature. Keep HTTP
 fetches in `http.get`/`http.request`, Convertigo calls in `requestable.call`,

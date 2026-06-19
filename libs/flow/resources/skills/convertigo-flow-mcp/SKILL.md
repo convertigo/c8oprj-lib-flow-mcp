@@ -192,7 +192,9 @@ function CityDigest({ input, config, result }) {
 
 If `_flow.inputs` is absent, the tools still infer `inputVariables` from
 `input.foo` reads. Prefer explicit `_flow.inputs` when a human should see labels,
-types, defaults, or descriptions in Studio.
+types, defaults, or descriptions in Studio. Explicit inputs are synchronized to
+Convertigo request variables by `code-set`, `code-promote`, and Flow loading;
+missing declarations are reported as authoring diagnostics.
 
 ## Authoring Rules
 

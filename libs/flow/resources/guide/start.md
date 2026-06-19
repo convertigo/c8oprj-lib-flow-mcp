@@ -23,7 +23,9 @@ Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` 
 For executable Flows with request variables or reusable tests, declare a
 top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
 `code-*` tools report these as `inputDefinitions`, `inputVariables`, and
-`testCases`; if absent, `inputVariables` are inferred from `input.foo` reads.
+`testCases`. Explicit inputs are synchronized to Convertigo request variables so
+Studio and SDK callers see the same contract; if absent, `inputVariables` are
+inferred from `input.foo` reads and authoring diagnostics ask for declarations.
 
 For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`. Positional JavaScript-style calls such as `http.get(url)`, `list.sort(items, by)`, or `requestable.call(".GetFeed")` are invalid; diagnostics show the accepted object keys.
 

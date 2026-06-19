@@ -130,7 +130,8 @@ var privateCatalog = JSON.parse(engine.run(JSON.stringify({
 						projectDir: projectDir,
 						detail: "compact",
 						includePrivate: true,
-						limit: 200
+						q: "mcp.tools.call",
+						limit: 10
 					}
 				}
 			})
