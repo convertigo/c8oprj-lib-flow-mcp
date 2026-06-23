@@ -25,6 +25,11 @@ Rules:
   custom JavaScript wrapper.
 - Use `/convertigo/api/flow-mcp` as the HTTP entry point. Do not use
   `/convertigo/api/mcp`, which belongs to the legacy Convertigo MCP project.
+- For Git work on Flow library projects, treat
+  `/Users/nicolas/git/c8oprj-lib-flow-process` and
+  `/Users/nicolas/git/c8oprj-lib-flow-k8s` as canonical. The Studio runtime
+  workspace may expose them as `lib_flow_process` and `lib_flow_k8s` symlinks;
+  continue using those project names in MCP calls.
 - Keep generated or one-off helper blocks private when they are not intended for
   projects referencing this library.
 - Use `input.*` for executable/block inputs and `local.*` for scratch state in
@@ -49,6 +54,7 @@ flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema before wiring downstream nodes
 flow-output-schema with detail:full when declared/static/learned sources or warnings must be compared
+for read-only schema audits, judge the user-facing contract from sources.effective and top-level warnings; declared:false is not a problem when inference is clean
 flow-output-schema with action:adopt when a verified result schema should become the explicit _flow.outputs contract
 flow-output-schema with action:remove when an explicit _flow.outputs contract should be deleted so inference can resume
 flow-node-output-schema for one HTTP/exec/parser/list node before changing block outputs or learned schemas

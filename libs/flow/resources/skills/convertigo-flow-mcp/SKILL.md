@@ -15,6 +15,21 @@ Do not use the legacy `convertigo` MCP server for Flow authoring unless the user
 - Use the hyphenated name `convertigo-flow`, not `convertigo_flow`.
 - Endpoint is configured in `~/.codex/config.toml`; if it changes, run `lib_flow_mcp._setupCodex`.
 
+## Project Repositories
+
+Use MCP project names for authoring, not filesystem paths. For Git work, the
+canonical local repositories are:
+
+- `lib_flow_engine`: `/Users/nicolas/git/lib_flow_engine`
+- `lib_flow_mcp`: `/Users/nicolas/git/lib_flow_mcp`
+- `lib_flow_process`: `/Users/nicolas/git/c8oprj-lib-flow-process`
+- `lib_flow_k8s`: `/Users/nicolas/git/c8oprj-lib-flow-k8s`
+
+The Studio runtime workspace can expose `lib_flow_process` and `lib_flow_k8s`
+as symlinks to those `c8oprj-*` repositories. Do not edit old physical copies
+under `runtime-ConvertigoStudio`; reload the MCP project if the runtime view
+looks stale.
+
 ## Default Workflow
 
 Prefer the compact code path:
@@ -22,7 +37,10 @@ Prefer the compact code path:
 1. For read-only schema audits or maintenance triage on known targets, skip the
    sample warm-up. Use `flow-output-schema({ project, qname, detail:"full" })`
    and `flow-node-output-schema` directly, with narrow `code-get` or
-   `flow-search` only when a warning needs source context.
+   `flow-search` only when a warning needs source context. Judge user-facing
+   quality from `sources.effective` and top-level `warnings`, not from every
+   stale or weaker `sources.learned` path. `declared:false` is acceptable when
+   `effective` is inferred cleanly from `static` or `learned`.
 2. Learn only the syntax from small real samples, then start coding. In a fresh
    context, especially with a smaller model, read the MCP resource
    `flow://guide/samples` with `resources/read`, then inspect the exact samples
@@ -212,6 +230,13 @@ rerun `code-run({ project, qname })`, then check `flow-output-schema` again.
 Use `flow-output-schema({ project, qname, detail:"full" })` when you need to
 compare `declared`, `static`, `learned` and `effective` sources or inspect
 warnings before adopting a contract.
+For read-only audits, decide from `sources.effective.summary.leafPaths` and the
+top-level `warnings` array. Do not treat `unknown` in `sources.learned` as a
+bug when `effective` is static or merged and has no warnings. Also do not treat
+`declared:false` as a problem by itself: explicit `_flow.outputs` is optional.
+Some raw schema payloads redact sensitive-looking field values such as
+`secretName`; check `summary.leafPaths` before concluding that a redacted field
+lost its type.
 If `learned` contains fields no longer produced by the current Flow/block code,
 or `unknown` array items caused by an old runtime sample, treat it as stale.
 Use `flow-schema-reset({ project, flowName })` for a stale Flow-level learned
@@ -240,6 +265,17 @@ hooks), call `flow-cache-clear({ project })`; the next MCP/Studio call uses a
 fresh bridge runtime without restarting the whole Convertigo engine.
 Do not loosen a block to `unknown` to fix a partial Flow result; only add block
 `outputs` or hooks when the node feeding `result.*` is truly under-typed.
+
+Minimal maintenance recipe for a fresh context:
+
+1. Run `flow-output-schema({ project, qname, detail:"full" })`.
+2. If top-level `warnings` is empty and `sources.effective` has the expected
+   leaf paths, stop the schema audit.
+3. If a warning points to one producer, inspect it with
+   `flow-node-output-schema` and a narrow `code-get`/`flow-search`.
+4. If code must change, use `code-get` with its `revision`, then
+   `code-patch`, `code-check`, `code-run`, and `code-promote` for executable
+   Flows. For project-local blocks, `code-set`/`code-patch` save directly.
 
 ## Authoring Rules
 
