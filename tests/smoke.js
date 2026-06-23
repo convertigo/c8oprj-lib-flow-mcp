@@ -613,6 +613,48 @@ var nodePointerSchemaTarget = callTool(112, "flow-node-output-schema", {
 assertTrue(nodePointerSchemaTarget.result.result.structuredContent.target.nodePointer === "/nodes/0" &&
 	nodePointerSchemaTarget.result.result.structuredContent.schema.items.properties.temperature.type === "integer",
 	"MCP Flow flow-node-output-schema did not accept a node pointer");
+var adoptNodeSchemaTarget = callTool(115, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	flowName: "NodeSchemaAdoptSmoke",
+	flowSource: nodeSchemaSource,
+	nodeId: "sourceItems",
+	action: "adopt",
+	schema: {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				city: { type: "string" },
+				temperature: { type: "number" },
+				source: { type: "string" }
+			}
+		}
+	}
+});
+assertTrue(adoptNodeSchemaTarget.result.result.structuredContent.action === "adopt" &&
+	adoptNodeSchemaTarget.result.result.structuredContent.source === "schema",
+	"MCP Flow flow-node-output-schema did not adopt a manual node schema");
+var learnedNodeSchemaTarget = callTool(116, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	flowName: "NodeSchemaAdoptSmoke",
+	flowSource: nodeSchemaSource,
+	nodeId: "sourceItems",
+	source: "learned",
+	detail: "full"
+});
+assertTrue(learnedNodeSchemaTarget.result.result.structuredContent.source === "learned" &&
+	learnedNodeSchemaTarget.result.result.structuredContent.schema.items.properties.source.type === "string",
+	"MCP Flow flow-node-output-schema did not read the adopted node schema");
+var removeNodeSchemaTarget = callTool(117, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	flowName: "NodeSchemaAdoptSmoke",
+	flowSource: nodeSchemaSource,
+	nodeId: "sourceItems",
+	action: "remove"
+});
+assertTrue(removeNodeSchemaTarget.result.result.structuredContent.action === "remove" &&
+	removeNodeSchemaTarget.result.result.structuredContent.deleted === true,
+	"MCP Flow flow-node-output-schema did not remove the adopted node schema");
 
 var adoptTargetSchema = callTool(101, "flow-output-schema", {
 	projectDir: targetProjectDir,

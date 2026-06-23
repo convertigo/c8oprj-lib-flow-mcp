@@ -219,9 +219,12 @@ For one producer node, call `flow-node-output-schema({ project, qname, nodeId,
 detail:"full" })`. Use it for HTTP/exec/parser nodes whose declared block output
 is generic but whose learned runtime schema is richer. If the Flow contains
 duplicate node ids, pass the JSON Pointer `path` returned by `flow-search` as
-`nodePointer`. Use `action:"reset"` on that tool, or `flow-schema-reset`, only
-when the learned node schema is stale.
-Use `flow-schema-reset` only when a stale learned schema masks current output.
+`nodePointer`. To record a verified node schema, call
+`flow-node-output-schema({ project, qname, nodeId, action:"adopt",
+source:"learned" })`, `source:"static"`, or pass `schema:{...}`. To go back to
+inference for that node output, call `action:"remove"`. Use
+`flow-schema-reset` only when a stale learned schema masks current output across
+broader scope.
 After editing shared Flow engine JavaScript (`Engine.js`, modules, blocks or
 hooks), call `flow-cache-clear({ project })`; the next MCP/Studio call uses a
 fresh bridge runtime without restarting the whole Convertigo engine.

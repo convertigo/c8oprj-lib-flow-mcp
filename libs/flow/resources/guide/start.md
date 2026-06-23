@@ -38,6 +38,10 @@ warnings. For a single producer, use
 `flow-node-output-schema({ project, qname, nodeId, detail:"full" })`, especially
 after HTTP/exec/parser blocks learn a runtime schema. If `nodeId` is ambiguous,
 pass the JSON Pointer `path` returned by `flow-search` as `nodePointer`.
+To keep a verified producer schema, call
+`flow-node-output-schema({ project, qname, nodeId, action:"adopt",
+source:"learned" })`, `source:"static"`, or pass `schema:{...}`. Use
+`action:"remove"` to drop that node schema and resume inference.
 An explicit result contract is optional `_flow.outputs`. If it is absent,
 static and learned schemas infer the result. If a verified static or learned
 schema should become the contract, call
@@ -70,6 +74,9 @@ Mutation tools and `flow-block-get` return compact summaries by default. Call `f
 
 Sample convention for the POC: a sample is a private executable Flow named `sample_*`. `flow-search` returns project samples plus visible library samples. Read real sample sources with `code-get({project:"lib_flow_mcp",qname:"sample_blocks_flow_and_rhino"})` and sample blocks with `code-get({project:"lib_flow_mcp",block:"sample.formatGreeting"})` or `code-get({project:"lib_flow_mcp",block:"sample.sha256"})`. Run executable samples with `code-run` or `flow-test`, inspect with `flow-tree`, then copy the pattern. Samples should show one useful pattern and include comments only for non-obvious choices such as “Only call Flow blocks with one object containing named parameters.” Do not add boilerplate comments that repeat the node label.
 
-Do not call `flow-schema-reset` during normal authoring. Use it only when an existing learned schema is stale and blocks picker/output-schema work.
+Do not call `flow-schema-reset` during normal authoring. Prefer
+`flow-node-output-schema action:"remove"` for one producer; use
+`flow-schema-reset` only when an existing learned schema is stale and blocks
+picker/output-schema work across broader scope.
 
 For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is enabled with the Convertigo symbol `flow.mcp.traceJsonl` (`true` for the default project `_private/flow-mcp-trace.jsonl`, or a file path). See `flow://guide/tracing`.

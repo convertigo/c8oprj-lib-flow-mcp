@@ -1,6 +1,6 @@
 const _meta = {
   "version": 1,
-  "description": "Reads or resets the best known output schema for one Flow node.",
+  "description": "Reads, adopts or removes the best known output schema for one Flow node.",
   "icon": "mdi:code-json",
   "uses": [
     "mcp"
@@ -47,10 +47,15 @@ const _meta = {
       "type": "string",
       "description": "Schema source to read: effective, declared, static or learned."
     },
+    "schema": {
+      "kind": "expression",
+      "type": "object",
+      "description": "Manual schema to adopt for this node output."
+    },
     "action": {
       "kind": "text",
       "type": "string",
-      "description": "Action: read (default) or reset to delete the learned node schema."
+      "description": "Action: read (default), adopt, remove or reset."
     },
     "detail": {
       "kind": "text",
@@ -78,40 +83,35 @@ const _meta = {
 }
 
 // Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html
-(function () {
-	function actionFor(args) {
-		var action = String(args.action || "read").toLowerCase();
-		if (args.reset === true || args.remove === true || args["delete"] === true) {
-			action = "reset";
+	(function () {
+		function actionFor(args) {
+			var action = String(args.action || "read").toLowerCase();
+			if (args.adopt === true) {
+				action = "adopt";
+			}
+			if (args.reset === true) {
+				action = "reset";
+			}
+			if (args.remove === true || args["delete"] === true) {
+				action = "remove";
+			}
+			return action;
 		}
-		return action;
-	}
 
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");
 			var request = mcp.requestValue(ctx, props.request);
-			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
-				args = mcp.withNamedFlowSource(ctx, args);
-				var action = actionFor(args);
-				if (action === "read" || action === "") {
-					return ctx.nodeOutputSchemaSource(args);
-				}
-				if (action !== "reset") {
-					throw new Error("flow-node-output-schema action must be read or reset.");
-				}
-				var resetArgs = {
-					projectDir: args.projectDir,
-					project: args.project,
-					flowName: args.flowName || args.name,
-					name: args.name || args.flowName,
-					node: args.nodeId || args.node || args.id,
-					property: args.property || "out",
-					out: args.path || args.outPath || args.scope || ""
-				};
-				return ctx.schemaReset(resetArgs);
-			});
+				var response = mcp.runToolBlock(ctx, request, {}, function (args) {
+					args = mcp.withNamedFlowSource(ctx, args);
+					var action = actionFor(args);
+					if (action === "read" || action === "" || action === "adopt" || action === "remove" || action === "reset") {
+						args.action = action || "read";
+						return ctx.nodeOutputSchemaSource(args);
+					}
+					throw new Error("flow-node-output-schema action must be read, adopt, remove or reset.");
+				});
 			ctx.write(props.out || "local.response", response);
 			return response;
 		}

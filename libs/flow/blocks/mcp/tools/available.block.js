@@ -319,7 +319,7 @@ const _meta = {
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {
-			description = "Reads or resets the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
+			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-get") {

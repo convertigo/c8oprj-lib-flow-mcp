@@ -89,7 +89,8 @@ flow-code-rg / flow-code-get for FlowScript source
 flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema when downstream nodes need the result shape
-flow-schema-reset before rerunning an HTTP learn scenario when the output changed
+flow-node-output-schema when one HTTP/exec/parser producer needs schema inspection, adoption or removal
+flow-schema-reset only for broader stale learned-schema cleanup
 flow-code-set for broad Flow edits; it writes the FlowScript working copy
 flow-code-patch for revision-checked maintenance edits on that working copy
 flow-code-check / flow-code-run, then flow-code-promote once behavior is clean

@@ -33,7 +33,9 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   detail:"full" })` for one producer node, especially HTTP/exec/parser blocks
   with generic declared output and richer learned output. If `nodeId` is
   ambiguous, pass the JSON Pointer `path` returned by `flow-search` as
-  `nodePointer`.
+  `nodePointer`. Use `action:"adopt"` with `source:"learned"`, `source:"static"`
+  or `schema:{...}` to keep a verified node schema; use `action:"remove"` to
+  resume inference for that node output.
 - `_flow.outputs` is optional. If present, it is the explicit Flow result
   contract used by requestable schemas and pickers; if absent, inference still
   works. After a verified run, use `flow-output-schema({ project, qname,
@@ -53,7 +55,9 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Mutation tools and `flow-block-get` return compact responses by default. Use `detail:"full"` only when debugging the response or editing source; otherwise inspect with `flow-tree`.
 - With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.
 - `flow-test` with realistic input and `includeTrace:true` only while debugging. Avoid `includeFlow`, `includeFullResult` and `includeFullTrace` during normal authoring.
-- Do not use `flow-schema-reset` unless an old learned schema is clearly stale.
+- Do not use `flow-schema-reset` unless an old learned schema is clearly stale
+  across broader scope. Prefer `flow-node-output-schema action:"remove"` for one
+  producer node.
 
 After `code-run` has proved the requested result and `code-promote`
 succeeds, stop. Avoid shell commands such as `git status`, `git diff`, `sed`,
