@@ -19,36 +19,40 @@ Do not use the legacy `convertigo` MCP server for Flow authoring unless the user
 
 Prefer the compact code path:
 
-1. Learn only the syntax from small real samples, then start coding. In a fresh
+1. For read-only schema audits or maintenance triage on known targets, skip the
+   sample warm-up. Use `flow-output-schema({ project, qname, detail:"full" })`
+   and `flow-node-output-schema` directly, with narrow `code-get` or
+   `flow-search` only when a warning needs source context.
+2. Learn only the syntax from small real samples, then start coding. In a fresh
    context, especially with a smaller model, read the MCP resource
    `flow://guide/samples` with `resources/read`, then inspect the exact samples
    named there with `code-get`. Use them to learn FlowScript shape, not to find
    or copy a near-identical application Flow. Never pass `flow://...` resource
    URIs to `code-get`.
-2. After the syntax warm-up, write the FlowScript algorithm directly, but stay
+3. After the syntax warm-up, write the FlowScript algorithm directly, but stay
    inside the strict Flow DSL. Every block call is `block.name({ key: value })`
    with one object argument. Do not browse the full catalog first. Let
    `code-set`, `code-check` and `code-run` diagnostics guide you with block
    candidates, accepted properties and signatures.
-3. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
+4. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
    needs an unknown legacy requestable schema or the compiler diagnostics ask
    for one focused lookup. `flow-resource-*` is for project-local resource files,
    not for executable FlowScript.
-4. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
+5. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
-5. Write the editable working copy with `code-set({ project, qname, code })`.
-6. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
-7. Run/test with `code-run({ project, qname })` without sending code again.
-8. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
-9. Save executable Flows with `code-promote({ project, qname })` only after
+6. Write the editable working copy with `code-set({ project, qname, code })`.
+7. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
+8. Run/test with `code-run({ project, qname })` without sending code again.
+9. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
+10. Save executable Flows with `code-promote({ project, qname })` only after
    they work. Do not call `code-promote` for project-local blocks:
    `code-set`/`code-patch` save their `.block.js` directly.
-10. If `code-run` returns `unsaved:true` or `workingCopy:true`, it proved the
+11. If `code-run` returns `unsaved:true` or `workingCopy:true`, it proved the
    draft. If the runtime result matches the request, call `code-promote`
    immediately; do not resend code or rewrite for cosmetic changes.
-11. Stop when `code-run` proves the requested result and the promotion succeeds.
+12. Stop when `code-run` proves the requested result and the promotion succeeds.
 
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
