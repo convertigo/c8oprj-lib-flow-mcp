@@ -18,7 +18,10 @@ const _meta = {
   },
   "outputs": {
     "out": {
-      "type": "unknown"
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
     }
   },
   "private": true,

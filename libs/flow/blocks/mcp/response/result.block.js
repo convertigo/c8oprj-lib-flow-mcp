@@ -34,7 +34,7 @@ const _meta = {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");
-			var request = ctx.expr(props.request || "input.request") || {};
+			var request = mcp.requestValue(ctx, props.request);
 			var result = ctx.expr(props.result || "({})");
 			var response = mcp.finalizeResponse(ctx, request, {
 				jsonrpc: "2.0",

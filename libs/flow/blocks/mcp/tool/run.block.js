@@ -90,7 +90,7 @@ const _meta = {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");
-			var request = ctx.expr(props.request || "input.request") || {};
+			var request = mcp.requestValue(ctx, props.request);
 			var target = targetName(ctx, props.target);
 			var response;
 			try {

@@ -103,8 +103,8 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var request = ctx.expr(props.request || "input.request");
 			var mcp = ctx.lib("mcp");
+			var request = mcp.requestValue(ctx, props.request);
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
 				return mcp.applyNodeMutation(ctx, args, position(args, {
 					op: "insert",

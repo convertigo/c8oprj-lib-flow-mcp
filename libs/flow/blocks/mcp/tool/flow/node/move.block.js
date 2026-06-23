@@ -72,8 +72,8 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var request = ctx.expr(props.request || "input.request");
 			var mcp = ctx.lib("mcp");
+			var request = mcp.requestValue(ctx, props.request);
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
 				if (!args.beforeNodeId && !args.afterNodeId && !args.parentNodeId && args.index === undefined) {
 					throw new Error("flow-node-move requires beforeNodeId, afterNodeId, parentNodeId or index.");

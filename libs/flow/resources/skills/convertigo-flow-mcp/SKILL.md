@@ -177,6 +177,10 @@ const _flow = {
     city: { type: "string", description: "City name to query.", default: "Paris" },
     limit: { type: "number", description: "Maximum items.", default: 5 }
   },
+  outputs: {
+    city: { type: "string" },
+    count: { type: "integer" }
+  },
   tests: {
     checkParis: { input: { city: "Paris", limit: 3 } }
   }
@@ -195,6 +199,34 @@ If `_flow.inputs` is absent, the tools still infer `inputVariables` from
 types, defaults, or descriptions in Studio. Explicit inputs are synchronized to
 Convertigo request variables by `code-set`, `code-promote`, and Flow loading;
 missing declarations are reported as authoring diagnostics.
+
+Flow result schemas are inferred from `result.*` writes, explicit `return`
+values, and learned runtime results after a named `code-run` or requestable
+execution. For Flow maintenance, check `flow-output-schema({ project, qname })`
+before changing blocks. If runtime returns fields missing from the schema,
+rerun `code-run({ project, qname })`, then check `flow-output-schema` again.
+Use `flow-output-schema({ project, qname, detail:"full" })` when you need to
+compare `declared`, `static`, `learned` and `effective` sources or inspect
+warnings before adopting a contract.
+Optional `_flow.outputs` is the explicit result contract. If absent, output
+schemas are inferred. If present, it wins over static/learned inference for
+requestable schemas and value pickers. To record a verified schema, call
+`flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
+`source:"learned"` after a successful run. To go back to inference, call
+`flow-output-schema({ project, qname, action:"remove" })`. You can also pass
+`schema:{...}` to adopt a hand-written contract.
+For one producer node, call `flow-node-output-schema({ project, qname, nodeId,
+detail:"full" })`. Use it for HTTP/exec/parser nodes whose declared block output
+is generic but whose learned runtime schema is richer. If the Flow contains
+duplicate node ids, pass the JSON Pointer `path` returned by `flow-search` as
+`nodePointer`. Use `action:"reset"` on that tool, or `flow-schema-reset`, only
+when the learned node schema is stale.
+Use `flow-schema-reset` only when a stale learned schema masks current output.
+After editing shared Flow engine JavaScript (`Engine.js`, modules, blocks or
+hooks), call `flow-cache-clear({ project })`; the next MCP/Studio call uses a
+fresh bridge runtime without restarting the whole Convertigo engine.
+Do not loosen a block to `unknown` to fix a partial Flow result; only add block
+`outputs` or hooks when the node feeding `result.*` is truly under-typed.
 
 ## Authoring Rules
 
@@ -220,12 +252,21 @@ For a project-local FlowScript block:
 1. Use `code-set({ project, block:"namespace.name", code, properties, outputs })`.
 2. It writes canonical `libs/flow/blocks/<namespace>/<name>.block.js`
    directly. There is no `code-promote` step for blocks.
-3. In block code, read typed properties from `input.*`.
-4. Return the block value with `return value`.
-5. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
-6. For edits, call `code-get`, preserve `revision`, then use
+3. Declare `outputs` for stable shapes. Do not leave `unknown` when the result
+   is knowable.
+4. If the output depends on an input path or expression, add `hooks.file` with
+   an analyzer that uses helpers such as `ctx.addSameSchema`,
+   `ctx.addArraySchema`, `ctx.schemaForExpression`, `ctx.schemaForPath`,
+   `ctx.itemSchema`/`ctx.itemSchemaFor`, and `ctx.addSchema`.
+5. For item-scoped expression properties, set `current:"item"` and
+   `sourceProperty:"items"` so `flow-context` and pickers expose typed
+   `current.*` paths.
+6. In block code, read typed properties from `input.*`.
+7. Return the block value with `return value`.
+8. Run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
+9. For edits, call `code-get`, preserve `revision`, then use
    `code-patch({ project, block:"namespace.name", revision, codepatch })`.
-7. To locate code first, use `code-rg({ project, block:"namespace.name", pattern })`
+10. To locate code first, use `code-rg({ project, block:"namespace.name", pattern })`
    before falling back to `flow-resource-search`.
 
 For a Rhino/Java primitive:

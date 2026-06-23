@@ -69,7 +69,8 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var request = ctx.expr(prop(node, "request") || "input.request") || {};
+			var mcp = ctx.lib("mcp");
+			var request = mcp.requestValue(ctx, prop(node, "request"));
 			var name = String(request.params && request.params.name || "");
 			var block = toolMap(ctx)[name];
 			var out = props.out || "local.response";

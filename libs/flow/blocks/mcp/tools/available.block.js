@@ -40,6 +40,8 @@ const _meta = {
 		"flow-cache-info": true,
 		"flow-catalog": true,
 		"flow-list": true,
+		"flow-node-output-schema": true,
+		"flow-output-schema": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
 		"flow-resource-get": true,
@@ -314,6 +316,10 @@ const _meta = {
 			description = "Focused search over one project. Requires project; max 10 results. Do not use as a broad block inventory.";
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
+		} else if (name === "flow-output-schema") {
+			description = "Reads/adopts/removes a Flow result schema contract. Use before wiring downstream pickers.";
+		} else if (name === "flow-node-output-schema") {
+			description = "Reads or resets the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-get") {

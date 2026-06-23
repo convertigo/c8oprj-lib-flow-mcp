@@ -31,6 +31,32 @@ Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors und
 
 Use `code-set` for project-local blocks with `block:"namespace.name"` or `kind:"block", name:"namespace.name"`. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. FlowScript code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `code-get`. Rhino code must be a complete `_meta` with `runtime: "rhino"` followed by an IIFE returning `{ run: function (ctx, node) { ... } }`. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
 
+## Output Schemas
+
+Do not leave block outputs as `unknown` when the result shape is stable or
+derivable. A static contract belongs in `_meta.outputs`, for example
+`outputs:{out:{type:"array",items:{type:"string"}}}`. Use this for wrappers,
+protocol responses and primitives that always return the same shape.
+
+When the output depends on an input schema, keep the static `outputs` broad and
+add a `hooks.file` analyzer. Common helpers are:
+
+- `ctx.addSameSchema(outPath, sourcePath)` for filters, sorts, takes and other
+  pass-through transforms.
+- `ctx.addArraySchema(outPath, itemSchema)` for mappers and pluck-like blocks.
+- `ctx.schemaForExpression(value)` when a property can be a scope expression.
+- `ctx.schemaForPath(path)` for selector/path properties.
+- `ctx.itemSchema(schema)` or `ctx.itemSchemaFor(path)` for `current.*` item
+  propagation.
+- `ctx.addSchema(outPath, schema)` to publish the derived schema; node
+  `outputs[].schema`, picker paths and `outputSchema` are updated from this.
+
+For item-scoped expression properties such as `where`, `by` or `select`, set the
+property metadata to `current:"item"` and `sourceProperty:"items"` so
+`flow-context` exposes `current.name`, `current.age`, etc. Unknown is acceptable
+only for deliberately generic values, learned external payloads before the first
+run, or project block templates.
+
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
 Use `code-set` directly when the block should become available in the project palette. Treat it like writing code: register it, run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.

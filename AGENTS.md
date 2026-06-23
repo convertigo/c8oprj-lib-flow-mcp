@@ -48,6 +48,11 @@ code-get with pattern, or code-rg, for existing FlowScript extracts only during 
 flow-tree / flow-get only for model-conversion debugging
 flow-context when choosing paths or expressions
 flow-output-schema before wiring downstream nodes
+flow-output-schema with detail:full when declared/static/learned sources or warnings must be compared
+flow-output-schema with action:adopt when a verified result schema should become the explicit _flow.outputs contract
+flow-output-schema with action:remove when an explicit _flow.outputs contract should be deleted so inference can resume
+flow-node-output-schema for one HTTP/exec/parser/list node before changing block outputs or learned schemas
+flow-cache-clear after editing lib_flow_engine JavaScript modules, blocks or hooks so the next MCP call uses a fresh Flow runtime
 flow-schema-reset before rerunning an HTTP learn scenario when the output changed
 code-patch for revision-checked maintenance edits on that working copy
 code-promote once executable Flow behavior is clean; do not promote project-local blocks
@@ -57,6 +62,15 @@ code-set only when reusable vocabulary is needed
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases
 flow-resource-search / flow-resource-get / flow-resource-patch for project JS/HTML/CSS/library/type/resource maintenance patches
 ```
+
+For custom block outputs, prefer a real schema over `unknown`. Use static
+`outputs` for stable result shapes. If the shape depends on an input path or
+expression, add a `hooks.file` analyzer that calls helpers such as
+`ctx.addSameSchema`, `ctx.addArraySchema`, `ctx.schemaForExpression`,
+`ctx.schemaForPath`, `ctx.itemSchema`/`ctx.itemSchemaFor`, and finally
+`ctx.addSchema(outPath, schema)`. For item-scoped properties, declare
+`current:"item"` and `sourceProperty:"items"` so `flow-context` and pickers
+expose typed `current.*` paths.
 
 Prefer editing Flow sidecars over adding custom blocks. Prefer project-local
 custom blocks over changing the shared core library. A Rhino block must be a
@@ -86,6 +100,18 @@ Prefer explicit top-level `const _flow = { inputs: {...}, tests: {...} }` when
 the Flow has human-facing request variables, comments/defaults, or reusable test
 inputs. `code-*` tools report this contract as `inputDefinitions`,
 `inputVariables`, and `testCases`.
+Executable Flows may also declare optional `_flow.outputs`. When present, it is
+the explicit result contract used by `flow-output-schema`, requestable schemas
+and value pickers. When absent, static analysis plus learned runtime schemas
+infer the result. Use `flow-output-schema({ project, qname, action:"adopt",
+source:"static"|"learned" })` after a verified run to write `_flow.outputs`, or
+`flow-output-schema({ project, qname, action:"remove" })` to delete it.
+Use `flow-output-schema({ project, qname, detail:"full" })` to compare
+declared/static/learned/effective sources and warnings before adopting. For a
+single node, use `flow-node-output-schema({ project, qname, nodeId })`; this is
+especially useful after an HTTP, exec or parser node learned a richer runtime
+schema than its generic block declaration. If `nodeId` is ambiguous, reuse the
+JSON Pointer `path` returned by `flow-search` as `nodePointer`.
 
 When maintaining an existing FlowScript block, prefer
 `code-rg`, `code-get`, then `code-patch` with

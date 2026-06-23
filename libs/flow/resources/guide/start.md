@@ -27,6 +27,27 @@ top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
 Studio and SDK callers see the same contract; if absent, `inputVariables` are
 inferred from `input.foo` reads and authoring diagnostics ask for declarations.
 
+For executable Flow outputs, use `flow-output-schema({ project, qname })`.
+It combines explicit result contracts, static analysis of `result.*` writes and
+learned runtime result schemas. If a requestable schema is partial but
+`code-run` returns the right fields, rerun `code-run`, then inspect
+`flow-output-schema` before editing any block. Use `flow-schema-reset` only for
+stale learned schemas.
+Pass `detail:"full"` to compare declared/static/learned/effective sources and
+warnings. For a single producer, use
+`flow-node-output-schema({ project, qname, nodeId, detail:"full" })`, especially
+after HTTP/exec/parser blocks learn a runtime schema. If `nodeId` is ambiguous,
+pass the JSON Pointer `path` returned by `flow-search` as `nodePointer`.
+An explicit result contract is optional `_flow.outputs`. If it is absent,
+static and learned schemas infer the result. If a verified static or learned
+schema should become the contract, call
+`flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
+`source:"learned"`. To remove that contract and resume inference, call
+`flow-output-schema({ project, qname, action:"remove" })`.
+After editing shared Flow engine JavaScript (`Engine.js`, modules, blocks or
+hooks), call `flow-cache-clear({ project })` to force the next MCP/Studio call to
+use a fresh bridge runtime without restarting the whole Convertigo engine.
+
 For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`. Positional JavaScript-style calls such as `http.get(url)`, `list.sort(items, by)`, or `requestable.call(".GetFeed")` are invalid; diagnostics show the accepted object keys.
 
 For array projections, assign the mapping to a variable and then copy it to the response: `var rows = list.map({ items, select: { label: current.label } }); result.rows = rows`. Do not hard-code fixed indexes such as `rows[0]`, `rows[1]` for a dynamic list.

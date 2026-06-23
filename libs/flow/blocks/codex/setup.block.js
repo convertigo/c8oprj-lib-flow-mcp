@@ -32,7 +32,7 @@ const _meta = {
   },
   "outputs": {
     "out": {
-      "type": "unknown"
+      "type": "object"
     }
   },
   "private": true,

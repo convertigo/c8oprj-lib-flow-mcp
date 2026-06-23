@@ -77,8 +77,8 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var request = ctx.expr(props.request || "input.request");
 			var mcp = ctx.lib("mcp");
+			var request = mcp.requestValue(ctx, props.request);
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
 				var patch = args.properties || {};
 				patch = JSON.parse(JSON.stringify(patch));

@@ -1138,6 +1138,13 @@
 
 	function withNamedFlowSource(ctx, args) {
 		args = args || {};
+		if (!args.name && args.qname) {
+			var parts = String(args.qname).split(".");
+			args.name = parts[parts.length - 1];
+			if (!args.flowQName) {
+				args.flowQName = String(args.qname);
+			}
+		}
 		var hasDefinition = args.definition !== undefined && args.definition !== null;
 		if (!hasDefinition && (args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {
 			var flow = ctx.flowGet(args.name, args);
@@ -1167,6 +1174,16 @@
 
 	function copyJson(value) {
 		return value === undefined || value === null ? {} : JSON.parse(JSON.stringify(value));
+	}
+
+	function requestValue(ctx, value) {
+		if (value === undefined || value === null || value === "") {
+			value = "input.request";
+		}
+		if (typeof value === "string") {
+			return ctx.expr(value) || {};
+		}
+		return value;
 	}
 
 	function nodeFromArgs(args) {
@@ -2128,6 +2145,7 @@
 		jsonRpcError: jsonRpcError,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
+		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
 		withNamedFlowSource: withNamedFlowSource,

@@ -70,6 +70,11 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-resource-patch";
 }), "MCP Flow tools/list did not expose resource patching");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-output-schema";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-node-output-schema";
+}), "MCP Flow tools/list did not expose schema tools");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -530,6 +535,126 @@ var schemaTarget = callTool(11, "flow-output-schema", {
 });
 assertTrue(schemaTarget.result.result.structuredContent.schema.properties.target.type === "string",
 	"MCP Flow flow-output-schema did not expose the target result schema");
+var schemaTargetFull = callTool(110, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke",
+	detail: "full"
+});
+assertTrue(schemaTargetFull.result.result.structuredContent.sources.static.available === true &&
+	schemaTargetFull.result.result.structuredContent.sources.effective.schema.properties.target.type === "string",
+	"MCP Flow flow-output-schema did not expose full source details");
+
+var inlineTemplateSource = [
+	"version: 1",
+	"nodes:",
+	"  - id: sourcePerson",
+	"    block: set",
+	"    path: local.person",
+	"    value:",
+	"      name: Ada",
+	"      age: 36",
+	"  - id: buildCard",
+	"    block: json.object",
+	"    out: result.card",
+	"    fields:",
+	"      - id: fieldAge",
+	"        block: json.field",
+	"        key: age",
+	"        value: \"{{ local.person.age }}\"",
+	""
+].join("\n");
+var inlineTemplateRun = callTool(113, "flow-test", {
+	projectDir: targetProjectDir,
+	flowSource: inlineTemplateSource,
+	includeFullResult: true,
+	detail: "full"
+});
+assertTrue(inlineTemplateRun.result.result.structuredContent.result.card.age === 36,
+	"MCP Flow flow-test rendered nested flowSource templates before execution");
+var inlineTemplateSchema = callTool(114, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	flowSource: inlineTemplateSource,
+	detail: "full"
+});
+assertTrue(inlineTemplateSchema.result.result.structuredContent.schema.properties.card.properties.age.type === "integer",
+	"MCP Flow flow-output-schema rendered nested flowSource templates before analysis");
+
+var nodeSchemaSource = [
+	"version: 1",
+	"nodes:",
+	"  - id: sourceItems",
+	"    block: set",
+	"    path: local.items",
+	"    value:",
+	"      - city: Paris",
+	"        temperature: 36",
+	"  - id: copyItems",
+	"    block: set",
+	"    path: result.items",
+	"    value: \"{{ local.items }}\"",
+	""
+].join("\n");
+var nodeSchemaTarget = callTool(111, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	flowSource: nodeSchemaSource,
+	nodeId: "sourceItems",
+	detail: "full"
+});
+assertTrue(nodeSchemaTarget.result.result.structuredContent.target.property === "path" &&
+	nodeSchemaTarget.result.result.structuredContent.schema.type === "array" &&
+	nodeSchemaTarget.result.result.structuredContent.schema.items.properties.city.type === "string",
+	"MCP Flow flow-node-output-schema did not expose the node output schema");
+var nodePointerSchemaTarget = callTool(112, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	flowSource: nodeSchemaSource,
+	nodePointer: "/nodes/0",
+	detail: "full"
+});
+assertTrue(nodePointerSchemaTarget.result.result.structuredContent.target.nodePointer === "/nodes/0" &&
+	nodePointerSchemaTarget.result.result.structuredContent.schema.items.properties.temperature.type === "integer",
+	"MCP Flow flow-node-output-schema did not accept a node pointer");
+
+var adoptTargetSchema = callTool(101, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke",
+	action: "adopt",
+	source: "static"
+});
+print(JSON.stringify(adoptTargetSchema));
+assertTrue(adoptTargetSchema.result.result.structuredContent.action === "adopt" &&
+	adoptTargetSchema.result.result.structuredContent.written.file.indexOf("TargetSmoke.flow.js") !== -1,
+	"MCP Flow flow-output-schema did not adopt _flow.outputs");
+
+var adoptedTargetCode = callTool(102, "code-get", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke"
+});
+assertTrue(adoptedTargetCode.result.result.structuredContent.code.indexOf("outputs") !== -1 &&
+	adoptedTargetCode.result.result.structuredContent.code.indexOf("target") !== -1,
+	"MCP Flow flow-output-schema adopt did not write outputs in FlowScript metadata");
+
+var adoptedSchemaTarget = callTool(103, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke"
+});
+assertTrue(adoptedSchemaTarget.result.result.structuredContent.declared === true &&
+	adoptedSchemaTarget.result.result.structuredContent.source === "declared",
+	"MCP Flow flow-output-schema did not read the adopted _flow.outputs contract");
+
+var removeTargetSchema = callTool(104, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke",
+	action: "remove"
+});
+assertTrue(removeTargetSchema.result.result.structuredContent.action === "remove",
+	"MCP Flow flow-output-schema did not remove _flow.outputs");
+
+var removedTargetCode = callTool(105, "code-get", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke"
+});
+assertTrue(removedTargetCode.result.result.structuredContent.code.indexOf("outputs") === -1,
+	"MCP Flow flow-output-schema remove left outputs in FlowScript metadata");
 
 var customBlockCode = [
 	"const _meta = {",

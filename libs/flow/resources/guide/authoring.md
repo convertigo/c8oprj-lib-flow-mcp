@@ -22,6 +22,23 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   `items[0]`, `items[1]`, etc. for dynamic lists.
 - Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` for temporary scoped config. Root keys are config branches, `then` is the reserved child slot, and overrides are deep-merged only while the slot runs.
 - Use top-level `const _flow = { inputs: {...}, tests: {...} }` for request inputs, descriptions, defaults, and reusable test inputs. If omitted, `code-*` tools infer `inputVariables` from `input.foo` reads, but human-facing labels/comments are unavailable.
+- Use `flow-output-schema({ project, qname })` to verify executable Flow
+  outputs. It combines explicit contracts, static analysis of `result.*` writes
+  and learned runtime results. If a requestable schema is partial after a good
+  `code-run`, rerun `code-run`, then inspect `flow-output-schema`; use
+  `flow-schema-reset` only for stale learned schemas.
+- Use `flow-output-schema({ project, qname, detail:"full" })` before adopting
+  a contract when you need declared/static/learned/effective sources and
+  warnings. Use `flow-node-output-schema({ project, qname, nodeId,
+  detail:"full" })` for one producer node, especially HTTP/exec/parser blocks
+  with generic declared output and richer learned output. If `nodeId` is
+  ambiguous, pass the JSON Pointer `path` returned by `flow-search` as
+  `nodePointer`.
+- `_flow.outputs` is optional. If present, it is the explicit Flow result
+  contract used by requestable schemas and pickers; if absent, inference still
+  works. After a verified run, use `flow-output-schema({ project, qname,
+  action:"adopt", source:"static"|"learned" })` to write `_flow.outputs`, or
+  `flow-output-schema({ project, qname, action:"remove" })` to delete it.
 - Before writing a Rhino primitive, read `flow://guide/rhino-block-api`.
   It documents `ctx.props`, `ctx.template`, `ctx.expr`, `ctx.read`,
   `ctx.write`, `ctx.callBlock`, `ctx.throwFlow` and `ctx.lib` so agents do not
