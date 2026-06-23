@@ -208,6 +208,12 @@ rerun `code-run({ project, qname })`, then check `flow-output-schema` again.
 Use `flow-output-schema({ project, qname, detail:"full" })` when you need to
 compare `declared`, `static`, `learned` and `effective` sources or inspect
 warnings before adopting a contract.
+If `learned` contains fields no longer produced by the current Flow/block code,
+or `unknown` array items caused by an old runtime sample, treat it as stale.
+Use `flow-schema-reset({ project, flowName })` for a stale Flow-level learned
+schema; use `flow-node-output-schema action:"remove"` for one stale producer.
+Do not adopt a learned schema until `detail:"full"` shows it matches current
+behavior better than `static`.
 Optional `_flow.outputs` is the explicit result contract. If absent, output
 schemas are inferred. If present, it wins over static/learned inference for
 requestable schemas and value pickers. To record a verified schema, call
@@ -257,6 +263,12 @@ For a project-local FlowScript block:
    directly. There is no `code-promote` step for blocks.
 3. Declare `outputs` for stable shapes. Do not leave `unknown` when the result
    is knowable.
+   For `_meta.runtime = "flow"` composite blocks, internal `input`, `local` and
+   `result` scopes are private to the block. The caller sees only the returned
+   value projected to the caller's `out` path, so `_meta.outputs.out` is the
+   public contract. Field names such as `type` are normal business properties;
+   declare them under `properties`, for example
+   `{ type:"object", properties:{ type:{ type:"string" } } }`.
 4. If the output depends on an input path or expression, add `hooks.file` with
    an analyzer that uses helpers such as `ctx.addSameSchema`,
    `ctx.addArraySchema`, `ctx.schemaForExpression`, `ctx.schemaForPath`,

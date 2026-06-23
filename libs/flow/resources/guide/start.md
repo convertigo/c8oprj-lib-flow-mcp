@@ -48,6 +48,11 @@ schema should become the contract, call
 `flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
 `source:"learned"`. To remove that contract and resume inference, call
 `flow-output-schema({ project, qname, action:"remove" })`.
+If `detail:"full"` shows `learned` fields that no longer exist in current code,
+or `unknown` array items from old/empty runtime samples, reset that learned
+schema instead of adopting it. Prefer `flow-node-output-schema action:"remove"`
+for one producer; use `flow-schema-reset({ project, flowName })` for a stale
+Flow-level learned schema.
 After editing shared Flow engine JavaScript (`Engine.js`, modules, blocks or
 hooks), call `flow-cache-clear({ project })` to force the next MCP/Studio call to
 use a fresh bridge runtime without restarting the whole Convertigo engine.

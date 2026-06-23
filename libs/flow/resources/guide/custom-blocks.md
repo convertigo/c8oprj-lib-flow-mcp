@@ -59,6 +59,12 @@ run, or project block templates.
 
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
+For `_meta.runtime = "flow"` composite blocks, internal `input`, `local` and
+`result` scopes are private to the block. The caller sees only the returned
+value on the caller's `out` path, so `_meta.outputs.out` is the public contract.
+Business fields named `type` are valid; declare them under `properties` rather
+than treating them as schema keywords.
+
 Use `code-set` directly when the block should become available in the project palette. Treat it like writing code: register it, run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
 
 For edits, prefer `code-get` followed by `code-patch`

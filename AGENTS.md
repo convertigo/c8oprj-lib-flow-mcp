@@ -113,6 +113,11 @@ single node, use `flow-node-output-schema({ project, qname, nodeId })`; this is
 especially useful after an HTTP, exec or parser node learned a richer runtime
 schema than its generic block declaration. If `nodeId` is ambiguous, reuse the
 JSON Pointer `path` returned by `flow-search` as `nodePointer`.
+When `learned` contains fields no longer produced by current code, or `unknown`
+array items from old/empty runtime samples, treat it as stale instead of
+adopting it. Use `flow-schema-reset({ project, flowName })` for a stale
+Flow-level learned schema, and `flow-node-output-schema action:"remove"` for a
+single stale producer.
 
 When maintaining an existing FlowScript block, prefer
 `code-rg`, `code-get`, then `code-patch` with

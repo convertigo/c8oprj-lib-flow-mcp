@@ -36,6 +36,10 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   `nodePointer`. Use `action:"adopt"` with `source:"learned"`, `source:"static"`
   or `schema:{...}` to keep a verified node schema; use `action:"remove"` to
   resume inference for that node output.
+- If `learned` contains fields no longer produced by current code, or `unknown`
+  array items from old/empty runtime samples, treat it as stale. Use
+  `flow-schema-reset({ project, flowName })` for Flow-level stale learned
+  schemas; use `flow-node-output-schema action:"remove"` for one producer.
 - `_flow.outputs` is optional. If present, it is the explicit Flow result
   contract used by requestable schemas and pickers; if absent, inference still
   works. After a verified run, use `flow-output-schema({ project, qname,
