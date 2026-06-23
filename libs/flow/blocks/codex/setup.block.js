@@ -32,7 +32,54 @@ const _meta = {
   },
   "outputs": {
     "out": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "skillName": {
+          "type": "string"
+        },
+        "skillDirectoryName": {
+          "type": "string"
+        },
+        "skillStatus": {
+          "type": "string"
+        },
+        "configStatus": {
+          "type": "string"
+        },
+        "configServerName": {
+          "type": "string"
+        },
+        "resolvedCodexHome": {
+          "type": "string"
+        },
+        "resolvedMcpUrl": {
+          "type": "string"
+        },
+        "skillPath": {
+          "type": "string"
+        },
+        "configPath": {
+          "type": "string"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextSteps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "private": true,

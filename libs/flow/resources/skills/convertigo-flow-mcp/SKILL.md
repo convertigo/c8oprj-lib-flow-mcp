@@ -277,6 +277,9 @@ For a project-local FlowScript block:
    an analyzer that uses helpers such as `ctx.addSameSchema`,
    `ctx.addArraySchema`, `ctx.schemaForExpression`, `ctx.schemaForPath`,
    `ctx.itemSchema`/`ctx.itemSchemaFor`, and `ctx.addSchema`.
+   For blocks with child slots that must expose output paths in pickers without
+   recursively analyzing those children, add `analyzeShallow(ctx, node)` in the
+   hooks file and publish the direct `out` schema there.
 5. For item-scoped expression properties, set `current:"item"` and
    `sourceProperty:"items"` so `flow-context` and pickers expose typed
    `current.*` paths.
