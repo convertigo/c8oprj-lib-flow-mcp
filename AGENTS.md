@@ -57,6 +57,7 @@ flow-output-schema with detail:full when declared/static/learned sources or warn
 for read-only schema audits, judge the user-facing contract from sources.effective and top-level warnings; declared:false is not a problem when inference is clean
 flow-output-schema with action:adopt when a verified result schema should become the explicit _flow.outputs contract
 flow-output-schema with action:remove when an explicit _flow.outputs contract should be deleted so inference can resume
+flow-output-schema with action:reset when stale learned Flow result schemas should be deleted without touching _flow.outputs
 flow-node-output-schema for one HTTP/exec/parser/list node before changing block outputs or learned schemas
 flow-node-output-schema with action:adopt to keep a verified node schema, or action:remove to drop one stale node schema
 flow-cache-clear after editing lib_flow_engine JavaScript modules, blocks or hooks so the next MCP call uses a fresh Flow runtime

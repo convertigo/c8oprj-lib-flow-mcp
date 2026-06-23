@@ -698,6 +698,36 @@ var removedTargetCode = callTool(105, "code-get", {
 assertTrue(removedTargetCode.result.result.structuredContent.code.indexOf("outputs") === -1,
 	"MCP Flow flow-output-schema remove left outputs in FlowScript metadata");
 
+var targetSchemaDir = new java.io.File(targetDir, "libs/flow/schemas/TargetSmoke");
+targetSchemaDir.mkdirs();
+var targetLearnedResultFile = new java.io.File(targetSchemaDir, "result.out.schema.json");
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(targetLearnedResultFile, JSON.stringify({
+	type: "object",
+	properties: {
+		learnedOnly: { type: "string" }
+	}
+}, null, 2), "UTF-8");
+assertTrue(targetLearnedResultFile.isFile(),
+	"MCP Flow smoke did not create a learned result schema fixture");
+var learnedBeforeReset = callTool(106, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke",
+	source: "learned"
+});
+assertTrue(learnedBeforeReset.result.result.structuredContent.source === "learned" &&
+	learnedBeforeReset.result.result.structuredContent.schema.properties.learnedOnly.type === "string",
+	"MCP Flow flow-output-schema did not read the learned result schema fixture");
+var resetTargetSchema = callTool(107, "flow-output-schema", {
+	projectDir: targetProjectDir,
+	name: "TargetSmoke",
+	action: "reset"
+});
+assertTrue(resetTargetSchema.result.result.structuredContent.action === "reset" &&
+	resetTargetSchema.result.result.structuredContent.reset === "learned" &&
+	resetTargetSchema.result.result.structuredContent.deleted === true &&
+	!targetLearnedResultFile.isFile(),
+	"MCP Flow flow-output-schema reset did not delete learned result schemas");
+
 var customBlockCode = [
 	"const _meta = {",
 	"  \"version\": 1,",

@@ -248,8 +248,11 @@ schemas are inferred. If present, it wins over static/learned inference for
 requestable schemas and value pickers. To record a verified schema, call
 `flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
 `source:"learned"` after a successful run. To go back to inference, call
-`flow-output-schema({ project, qname, action:"remove" })`. You can also pass
-`schema:{...}` to adopt a hand-written contract.
+`flow-output-schema({ project, qname, action:"remove" })`. To delete stale
+learned result samples without touching `_flow.outputs`, call
+`flow-output-schema({ project, qname, action:"reset" })` or the older
+`flow-schema-reset({ project, flowName })`. You can also pass `schema:{...}` to
+adopt a hand-written contract.
 For one producer node, call `flow-node-output-schema({ project, qname, nodeId,
 detail:"full" })`. Use it for HTTP/exec/parser nodes whose declared block output
 is generic but whose learned runtime schema is richer. If the Flow contains
@@ -273,7 +276,10 @@ Minimal maintenance recipe for a fresh context:
    leaf paths, stop the schema audit.
 3. If a warning points to one producer, inspect it with
    `flow-node-output-schema` and a narrow `code-get`/`flow-search`.
-4. If code must change, use `code-get` with its `revision`, then
+4. If stale learned result data is the issue, call
+   `flow-output-schema({ project, qname, action:"reset" })`; if only one
+   producer is stale, call `flow-node-output-schema action:"remove"`.
+5. If code must change, use `code-get` with its `revision`, then
    `code-patch`, `code-check`, `code-run`, and `code-promote` for executable
    Flows. For project-local blocks, `code-set`/`code-patch` save directly.
 

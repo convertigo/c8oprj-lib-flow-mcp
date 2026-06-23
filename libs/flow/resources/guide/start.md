@@ -48,6 +48,8 @@ schema should become the contract, call
 `flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
 `source:"learned"`. To remove that contract and resume inference, call
 `flow-output-schema({ project, qname, action:"remove" })`.
+To delete stale learned result samples without touching `_flow.outputs`, call
+`flow-output-schema({ project, qname, action:"reset" })`.
 If `detail:"full"` shows `learned` fields that no longer exist in current code,
 or `unknown` array items from old/empty runtime samples, reset that learned
 schema instead of adopting it. Prefer `flow-node-output-schema action:"remove"`

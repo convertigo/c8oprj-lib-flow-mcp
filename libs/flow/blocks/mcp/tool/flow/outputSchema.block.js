@@ -43,6 +43,9 @@ const _meta = {
 		if (args.adopt === true) {
 			action = "adopt";
 		}
+		if (args.reset === true || args.resetLearned === true || args.clearLearned === true) {
+			action = "reset";
+		}
 		if (args.remove === true || args.delete === true) {
 			action = "remove";
 		}
@@ -93,6 +96,35 @@ const _meta = {
 		return out;
 	}
 
+	function compactResetResult(value, full) {
+		if (!value || typeof value !== "object") {
+			return {
+				ok: false,
+				action: "reset",
+				reset: "learned",
+				message: "Schema reset did not return a result."
+			};
+		}
+		if (full) {
+			value.action = "reset";
+			value.reset = "learned";
+			return value;
+		}
+		var out = {
+			ok: value.ok !== false,
+			action: "reset",
+			reset: "learned",
+			deleted: value.deleted === true
+		};
+		if (value.dir) {
+			out.dir = value.dir;
+		}
+		if (value.file) {
+			out.file = value.file;
+		}
+		return out;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -103,8 +135,8 @@ const _meta = {
 				if (action === "read" || action === "") {
 					return ctx.outputSchemaSource(mcp.withNamedFlowSource(ctx, args));
 				}
-				if (action !== "adopt" && action !== "remove") {
-					throw new Error("flow-output-schema action must be read, adopt or remove.");
+				if (action !== "adopt" && action !== "remove" && action !== "reset") {
+					throw new Error("flow-output-schema action must be read, adopt, remove or reset.");
 				}
 				var full = String(args.detail || args.mode || "").toLowerCase() === "full";
 				var mutationArgs = clone(args);
@@ -114,6 +146,9 @@ const _meta = {
 						{ op: "delete", path: "/flow/outputs" }
 					];
 					return compactMutationResult(mcp.applyNamedFlowMutation(ctx, mutationArgs), action, "", full);
+				}
+				if (action === "reset") {
+					return compactResetResult(ctx.schemaReset(mcp.withNamedFlowSource(ctx, mutationArgs)), full);
 				}
 				var schemaSource = String(args.source || args.schemaSource || "effective");
 				var schema = args.schema;

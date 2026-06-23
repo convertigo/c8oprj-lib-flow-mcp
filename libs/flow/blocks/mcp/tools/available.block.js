@@ -317,7 +317,7 @@ const _meta = {
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
 		} else if (name === "flow-output-schema") {
-			description = "Reads/adopts/removes a Flow result schema contract. Use before wiring downstream pickers.";
+			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-resource-search") {

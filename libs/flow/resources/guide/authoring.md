@@ -45,6 +45,8 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   works. After a verified run, use `flow-output-schema({ project, qname,
   action:"adopt", source:"static"|"learned" })` to write `_flow.outputs`, or
   `flow-output-schema({ project, qname, action:"remove" })` to delete it.
+  Use `flow-output-schema({ project, qname, action:"reset" })` to delete stale
+  learned result samples without touching `_flow.outputs`.
 - Before writing a Rhino primitive, read `flow://guide/rhino-block-api`.
   It documents `ctx.props`, `ctx.template`, `ctx.expr`, `ctx.read`,
   `ctx.write`, `ctx.callBlock`, `ctx.throwFlow` and `ctx.lib` so agents do not
