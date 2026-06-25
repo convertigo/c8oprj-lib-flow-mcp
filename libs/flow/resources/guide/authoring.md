@@ -24,9 +24,11 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Use top-level `const _flow = { inputs: {...}, tests: {...} }` for request inputs, descriptions, defaults, and reusable test inputs. If omitted, `code-*` tools infer `inputVariables` from `input.foo` reads, but human-facing labels/comments are unavailable.
 - Use `flow-output-schema({ project, qname })` to verify executable Flow
   outputs. It combines explicit contracts, static analysis of `result.*` writes
-  and learned runtime results. If a requestable schema is partial after a good
-  `code-run`, rerun `code-run`, then inspect `flow-output-schema`; use
-  `flow-schema-reset` only for stale learned schemas.
+  and optional learned result schemas. Ordinary `code-run` or requestable
+  execution does not learn the final Flow result unless an explicit record/learn
+  flag is used. If a requestable schema is partial after a good run, inspect
+  `detail:"full"` warnings and the producer nodes before changing block schemas;
+  use `flow-schema-reset` only for stale learned schemas.
 - Use `flow-output-schema({ project, qname, detail:"full" })` before adopting
   a contract when you need declared/static/learned/effective sources and
   warnings. Use `flow-node-output-schema({ project, qname, nodeId,
@@ -42,7 +44,8 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   schemas; use `flow-node-output-schema action:"remove"` for one producer.
 - `_flow.outputs` is optional. If present, it is the explicit Flow result
   contract used by requestable schemas and pickers; if absent, inference still
-  works. After a verified run, use `flow-output-schema({ project, qname,
+  works and remains dynamic as new `result.*` writes are added. After a verified
+  run and `detail:"full"` review, use `flow-output-schema({ project, qname,
   action:"adopt", source:"static"|"learned" })` to write `_flow.outputs`, or
   `flow-output-schema({ project, qname, action:"remove" })` to delete it.
   Use `flow-output-schema({ project, qname, action:"reset" })` to delete stale

@@ -29,10 +29,11 @@ inferred from `input.foo` reads and authoring diagnostics ask for declarations.
 
 For executable Flow outputs, use `flow-output-schema({ project, qname })`.
 It combines explicit result contracts, static analysis of `result.*` writes and
-learned runtime result schemas. If a requestable schema is partial but
-`code-run` returns the right fields, rerun `code-run`, then inspect
-`flow-output-schema` before editing any block. Use `flow-schema-reset` only for
-stale learned schemas.
+optional learned result schemas. Ordinary `code-run` or requestable execution
+does not learn the final Flow result unless an explicit record/learn flag is
+used. If a requestable schema is partial but runtime returns the right fields,
+inspect `detail:"full"` warnings and the producer nodes before editing any
+block. Use `flow-schema-reset` only for stale learned schemas.
 Pass `detail:"full"` to compare declared/static/learned/effective sources and
 warnings. For a single producer, use
 `flow-node-output-schema({ project, qname, nodeId, detail:"full" })`, especially
@@ -43,10 +44,12 @@ To keep a verified producer schema, call
 source:"learned" })`, `source:"static"`, or pass `schema:{...}`. Use
 `action:"remove"` to drop that node schema and resume inference.
 An explicit result contract is optional `_flow.outputs`. If it is absent,
-static and learned schemas infer the result. If a verified static or learned
-schema should become the contract, call
+static and learned schemas infer the result; keep it absent when static
+inference is correct, so future `result.*` writes keep updating the schema. If
+a verified static or learned schema should become a fixed contract, call
 `flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
-`source:"learned"`. To remove that contract and resume inference, call
+`source:"learned"` after `detail:"full"` review. To remove that contract and
+resume inference, call
 `flow-output-schema({ project, qname, action:"remove" })`.
 To delete stale learned result samples without touching `_flow.outputs`, call
 `flow-output-schema({ project, qname, action:"reset" })`.

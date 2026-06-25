@@ -222,11 +222,13 @@ types, defaults, or descriptions in Studio. Explicit inputs are synchronized to
 Convertigo request variables by `code-set`, `code-promote`, and Flow loading;
 missing declarations are reported as authoring diagnostics.
 
-Flow result schemas are inferred from `result.*` writes, explicit `return`
-values, and learned runtime results after a named `code-run` or requestable
-execution. For Flow maintenance, check `flow-output-schema({ project, qname })`
-before changing blocks. If runtime returns fields missing from the schema,
-rerun `code-run({ project, qname })`, then check `flow-output-schema` again.
+Flow result schemas are inferred static-first from `result.*` writes, explicit
+`return` values, propagated block output schemas, and optional learned result
+schemas. Ordinary `code-run` or requestable execution does not learn the final
+Flow result unless an explicit record/learn flag is used. For Flow maintenance,
+check `flow-output-schema({ project, qname })` before changing blocks. If
+runtime returns fields missing from the schema, inspect `detail:"full"` warnings
+and the producer nodes before editing any block or adopting a fixed contract.
 Use `flow-output-schema({ project, qname, detail:"full" })` when you need to
 compare `declared`, `static`, `learned` and `effective` sources or inspect
 warnings before adopting a contract.
@@ -243,11 +245,12 @@ Use `flow-schema-reset({ project, flowName })` for a stale Flow-level learned
 schema; use `flow-node-output-schema action:"remove"` for one stale producer.
 Do not adopt a learned schema until `detail:"full"` shows it matches current
 behavior better than `static`.
-Optional `_flow.outputs` is the explicit result contract. If absent, output
-schemas are inferred. If present, it wins over static/learned inference for
-requestable schemas and value pickers. To record a verified schema, call
-`flow-output-schema({ project, qname, action:"adopt", source:"static" })` or
-`source:"learned"` after a successful run. To go back to inference, call
+Optional `_flow.outputs` is the explicit result contract. Leave it absent when
+static inference is correct, so new `result.*` writes keep updating requestable
+schemas and value pickers. If present, it wins over static/learned inference.
+To record a verified fixed contract, call `flow-output-schema({ project, qname,
+action:"adopt", source:"static" })` or `source:"learned"` after a successful
+run and `detail:"full"` review. To go back to inference, call
 `flow-output-schema({ project, qname, action:"remove" })`. To delete stale
 learned result samples without touching `_flow.outputs`, call
 `flow-output-schema({ project, qname, action:"reset" })` or the older
@@ -276,7 +279,8 @@ Minimal maintenance recipe for a fresh context:
    leaf paths, stop the schema audit.
 3. If a warning points to one producer, inspect it with
    `flow-node-output-schema` and a narrow `code-get`/`flow-search`.
-4. If stale learned result data is the issue, call
+4. If static inference is correct, do not adopt `_flow.outputs`; keep the Flow
+   dynamic. If stale learned result data is the issue, call
    `flow-output-schema({ project, qname, action:"reset" })`; if only one
    producer is stale, call `flow-node-output-schema action:"remove"`.
 5. If code must change, use `code-get` with its `revision`, then

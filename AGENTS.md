@@ -110,10 +110,13 @@ inputs. `code-*` tools report this contract as `inputDefinitions`,
 `inputVariables`, and `testCases`.
 Executable Flows may also declare optional `_flow.outputs`. When present, it is
 the explicit result contract used by `flow-output-schema`, requestable schemas
-and value pickers. When absent, static analysis plus learned runtime schemas
-infer the result. Use `flow-output-schema({ project, qname, action:"adopt",
-source:"static"|"learned" })` after a verified run to write `_flow.outputs`, or
-`flow-output-schema({ project, qname, action:"remove" })` to delete it.
+and value pickers. When absent, static analysis plus optional learned schemas
+infer the result and remain dynamic as new `result.*` writes are added. Ordinary
+`code-run` or requestable execution does not learn the final Flow result unless
+an explicit record/learn flag is used. Use `flow-output-schema` with
+`action:"adopt"` and `source:"static"|"learned"` after a verified run and
+`detail:"full"` review to write `_flow.outputs`; use `action:"remove"` to
+delete it.
 Use `flow-output-schema({ project, qname, detail:"full" })` to compare
 declared/static/learned/effective sources and warnings before adopting. For a
 single node, use `flow-node-output-schema({ project, qname, nodeId })`; this is
