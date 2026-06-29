@@ -36,6 +36,8 @@ const _meta = {
 		"code-set": true,
 		"code-status": true,
 		"flow-block-get": true,
+		"flow-block-mock": true,
+		"flow-block-mock-list": true,
 		"flow-cache-clear": true,
 		"flow-cache-info": true,
 		"flow-catalog": true,
@@ -49,6 +51,7 @@ const _meta = {
 		"flow-resource-search": true,
 		"flow-schema-reset": true,
 		"flow-search": true,
+		"flow-sync-inputs": true,
 		"flow-test": true
 	};
 	var OMIT_SCHEMA_PROPERTIES = {
@@ -316,6 +319,10 @@ const _meta = {
 			description = "Focused search over one project. Requires project; max 10 results. Do not use as a broad block inventory.";
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
+		} else if (name === "flow-block-mock") {
+			description = "Creates an explicit project-local mock block with TODO, typed inputs/outputs and a visible mock marker.";
+		} else if (name === "flow-block-mock-list") {
+			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {
@@ -326,6 +333,8 @@ const _meta = {
 			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
 		} else if (name === "flow-cache-info") {
 			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
+		} else if (name === "flow-sync-inputs") {
+			description = "Synchronizes FlowScript _flow.inputs to Flow request variables and clears stale Flow dirty flags.";
 		} else if (name === "flow-requestable-list") {
 			description = "Lists requestables for one project. Requires project; use only when legacy requestables are needed.";
 		} else if (name === "flow-test") {

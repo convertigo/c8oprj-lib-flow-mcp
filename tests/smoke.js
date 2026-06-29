@@ -75,6 +75,12 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-node-output-schema";
 }), "MCP Flow tools/list did not expose schema tools");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-block-mock";
+}), "MCP Flow tools/list did not expose flow-block-mock");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-block-mock-list";
+}), "MCP Flow tools/list did not expose flow-block-mock-list");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -766,6 +772,53 @@ assertTrue(blockGet.result.result.structuredContent.code.indexOf("function smoke
 	(blockGet.result.result.structuredContent.format === "blockjs" ||
 		blockGet.result.result.structuredContent.format === "flowscript"),
 	"MCP Flow code-get did not read the project-local block");
+
+var mockSet = callTool(132, "flow-block-mock", {
+	projectDir: targetProjectDir,
+	name: "smoke.todoWeather",
+	properties: {
+		city: { kind: "template", type: "string", description: "City name." }
+	},
+	outputs: {
+		out: {
+			type: "object",
+			properties: {
+				city: { type: "string" },
+				temperature: { type: "number" },
+				unit: { type: "string" }
+			}
+		}
+	},
+	overwrite: true
+});
+print(JSON.stringify(mockSet));
+var mockStructured = mockSet.result.result.structuredContent;
+assertTrue(mockStructured.ok === true &&
+	mockStructured.mock === true &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/todoWeather.block.js").isFile(),
+	"MCP Flow flow-block-mock did not write a canonical project-local mock block");
+assertTrue((mockStructured.warnings || []).some(function (warning) {
+	return warning.code === "FLOW_BLOCK_MOCK_CREATED";
+}), "MCP Flow flow-block-mock did not return an explicit mock warning");
+
+var mockGet = callTool(133, "code-get", {
+	projectDir: targetProjectDir,
+	block: "smoke.todoWeather",
+	detail: "full"
+});
+var mockContent = JSON.stringify(mockGet.result.result.structuredContent);
+assertTrue(mockContent.indexOf("\"mock\":true") !== -1 &&
+	mockContent.indexOf("TODO: replace this explicit mock") !== -1,
+	"MCP Flow code-get did not expose mock metadata and TODO source");
+
+var mockList = callTool(134, "flow-block-mock-list", {
+	projectDir: targetProjectDir
+});
+assertTrue(mockList.result.result.structuredContent.count >= 1 &&
+	mockList.result.result.structuredContent.mocks.some(function (mock) {
+		return mock.block === "smoke.todoWeather";
+	}),
+	"MCP Flow flow-block-mock-list did not report generated mock blocks");
 
 var invalidBlockQName = callTool(131, "code-get", {
 	projectDir: targetProjectDir,

@@ -52,6 +52,21 @@ Prefer the compact code path:
    with one object argument. Do not browse the full catalog first. Let
    `code-set`, `code-check` and `code-run` diagnostics guide you with block
    candidates, accepted properties and signatures.
+   Put structural constants such as service base URLs, API paths, tokens,
+   namespaces and timeouts under project or Flow `config.*`; do not hide them
+   inside low-level blocks. If a high-level domain block is missing, keep the
+   parent FlowScript readable and create an explicit project-local mock with
+   `flow-block-mock`, typed `properties` and typed `outputs`. Mocks must remain
+   visible as unfinished work and must not be treated as completed behavior.
+   Use `flow-block-mock-list` before finalizing a task; any remaining mock means
+   the parent Flow is still incomplete.
+   When a task needs many similar rows or external calls, do not unroll them.
+   Repeated data belongs in project-level `config.*` or a small data block, and
+   the Flow should iterate with `list.map`. A fresh agent should prefer a shape
+   like `var rows = list.take({ items: config.timezones.representatives, count:
+   input.limit || 27 }); var items = list.map({ items: rows, select:
+   timezone.fetchWeatherItem({ zone: current, forecastUrl:
+   config.services.weather.forecastUrl }) })` over 27 copied `http.get` calls.
 4. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
@@ -296,6 +311,20 @@ Minimal maintenance recipe for a fresh context:
 - Use `{{ expression }}` mainly for mixed text templates or when diagnostics require canonical syntax.
 - Flow expressions are null-safe and support indexes such as `items[0]`.
 - For JSON HTTP APIs, `http.get({ url })` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods. All HTTP shortcuts share the `http.request` runtime stack for proxy, authentication, tracing and future platform configuration.
+- Do not hard-code structural service URLs, API roots, namespace names, tokens,
+  or environment constants inside reusable blocks. Store them under
+  project/Flow config, for example `config.services.weather.forecastUrl`, and
+  pass simple typed inputs such as `latitude`, `longitude`, `city`, `limit`, or
+  `apiKey` to domain blocks.
+- `_flow.config` is only for Flow-local defaults. If the project already
+  exposes high-level FlowEngine config such as `config.services.*`,
+  `config.timezones.*`, `config.namespaces.*` or another domain collection,
+  read it directly; do not copy it into `_flow.config`.
+- If you notice more than three calls with the same block and shape, stop and
+  refactor before promotion. Move repeated rows to `config.*` or a small data
+  block, then use `list.map`/`list.take`. Code with five or more copied
+  `http.get`, `http.request` or `requestable.call` calls is not a clean Flow
+  solution unless each call is genuinely a different operation.
 - Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` to run child nodes with temporary configuration overrides. Root keys are config branches, `then` is the reserved child slot, and nested objects are deep-merged then restored after the slot:
   `config.use({ http: { timeout: 30000, headers: { Authorization: config.github.token } }, then: function () { var page = http.get({ url: config.github.url }) } })`.
 - Prefer existing blocks from the current provider/namespace before creating new ones.
@@ -303,6 +332,16 @@ Minimal maintenance recipe for a fresh context:
 - Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
 - If only one operation is missing, create only that missing primitive. Example: use `http.get({ url })` in FlowScript, then a small custom `extractSomething({ html })` block if extraction cannot be expressed with existing blocks.
 - HTTP and Convertigo requestable calls are never valid reasons for a Rhino custom block. Use `http.get`/`http.request` and `requestable.call` so the graph remains inspectable.
+- Missing domain vocabulary is not a reason to collapse the feature into Rhino.
+  First write the high-level FlowScript, then create a project-local mock block
+  with `flow-block-mock({ project, name, properties, outputs })` when no
+  compatible block exists. The mock keeps the parent Flow executable, but it is
+  unfinished work until `mock:true` and the TODO are removed by a real
+  FlowScript implementation. Call `flow-block-mock-list` before reporting done.
+- Reusable per-item behavior belongs in a small FlowScript block. For example,
+  a parent Flow maps over `config.timezones.representatives`, while a
+  `timezone.fetchWeatherItem` block handles one zone. Do not duplicate the body
+  of that per-item operation in the parent Flow.
 
 ## Custom Blocks
 
@@ -313,6 +352,8 @@ For a project-local FlowScript block:
    directly. There is no `code-promote` step for blocks.
 3. Declare `outputs` for stable shapes. Do not leave `unknown` when the result
    is knowable.
+   For temporary generated blocks, `_meta.mock = true` is allowed only with an
+   obvious TODO and typed outputs; parent Flows using a mock are not complete.
    For `_meta.runtime = "flow"` composite blocks, internal `input`, `local` and
    `result` scopes are private to the block. The caller sees only the returned
    value projected to the caller's `out` path, so `_meta.outputs.out` is the

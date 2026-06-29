@@ -47,6 +47,7 @@ code-get sample_blocks_flow_and_rhino, sample_list_filter_sort_map, sample_json_
 tools/list
 write the first FlowScript draft with code-set before broad discovery; every block call must be block.name({ key: value }) with one object argument
 code-check / code-run to let compiler/runtime diagnostics guide the next edit
+if a high-level domain block is missing, create an explicit project-local mock with flow-block-mock and typed properties/outputs; do not hide the feature in Rhino
 if code-run returns unsaved:true or workingCopy:true, call code-promote before stopping
 flow-search only after the first draft when a block, pattern or schema is still unknown
 code-get with pattern, or code-rg, for existing FlowScript extracts only during maintenance
@@ -100,6 +101,16 @@ inlining provider details in the main executable Flow. The sub-block should
 expose simple `input.*` properties such as `city`, `latitude`, `longitude`,
 `apiKey` or `limit`, call `http.get` / `http.request`, and return a small typed
 object. The executable Flow should call that block and shape `result.*`.
+Store structural service constants such as base URLs, API paths, namespaces,
+tokens and timeouts in project or Flow `config.*`; do not hard-code them in
+low-level block code.
+
+When designing top-down, it is acceptable to call a missing domain block in the
+first FlowScript draft. Once diagnostics prove it is missing, create it with
+`flow-block-mock` so the parent Flow remains executable and the missing
+implementation is visible through `mock:true`, TODO source and MCP warnings.
+Do not consider a parent Flow complete while it still calls a mock block. Use
+`flow-block-mock-list` to audit remaining mocks before reporting completion.
 
 When FlowScript reads `input.foo`, treat `foo` as a request input that should be
 visible to users and tests. If Flow MCP tools report `inputVariables`, use it as

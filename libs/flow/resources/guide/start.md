@@ -6,6 +6,19 @@ Default route for Flow authoring:
    If the requested `project`, `qname`, or `block` is not accessible through Flow MCP, stop and report that blocker. Do not use legacy MCP project discovery, and do not create the Flow in another project.
 2. In a fresh context, read the MCP resource `flow://guide/samples` with `resources/read`, then call the exact `code-get` examples listed there. Use them only to learn syntax: one block call, one object of named parameters, local variables, and `result.*` output. Do not pass `flow://...` URIs to `code-get`.
 3. After that syntax warm-up, start coding directly with `code-set` in the strict DSL. Do not browse the full catalog first; let `code-set`, `code-check` and `code-run` diagnostics suggest block names, properties and signatures.
+   Keep structural constants in `config.*` or the project FlowEngine config:
+   service base URLs, API paths, tokens, namespaces and timeouts do not belong
+   in low-level block code.
+   If the project already exposes high-level config, use it directly; do not
+   copy that config into `_flow.config`. When the feature has many similar
+   rows or calls, use `list.map` over a config collection or small data block.
+   Do not unroll many copied `http.get`, `http.request` or `requestable.call`
+   calls in the parent Flow.
+   If a high-level domain block is missing, create an explicit project-local
+   mock with `flow-block-mock({ project, name, properties, outputs })` rather
+   than hiding the feature in Rhino. A mock keeps the parent Flow executable but
+   remains unfinished work until `mock:true` and the TODO are removed. Use
+   `flow-block-mock-list` before claiming the Flow is complete.
 4. Use `flow-requestable-list` and `flow-requestable-schema` only when a legacy sequence or transaction shape is needed.
 5. Write the working copy with `code-set`, patch it with `code-patch` if needed, then check/run it with `code-check` and `code-run`.
 6. Treat it like an editor buffer: use `code-status` to see dirty state, `code-discard` to cancel, and `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, call `code-promote` before stopping.
@@ -66,9 +79,21 @@ For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: 
 
 For array projections, assign the mapping to a variable and then copy it to the response: `var rows = list.map({ items, select: { label: current.label } }); result.rows = rows`. Do not hard-code fixed indexes such as `rows[0]`, `rows[1]` for a dynamic list.
 
+For repeated external work, write one per-item operation and iterate. A Flow
+that needs many similar API calls should read rows from `config.*` or a small
+data block, then call a reusable FlowScript block inside `list.map`. A source
+with five or more copied HTTP/requestable calls should be refactored before
+promotion unless those calls are genuinely different operations.
+
 Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` when a subtree needs temporary configuration such as an HTTP profile. Root keys are config branches, `then` is reserved for child nodes, and nested objects are deep-merged then restored. Example: `config.use({ http: { timeout: 30000, headers: { Authorization: config.github.token } }, then: function () { var page = http.get({ url: config.github.url }) } })`.
 
 Keep the visible algorithm in FlowScript. A custom Rhino block must not hide an entire backend feature such as fetch + parse + normalize + sort + response. If one primitive is missing, create only that primitive, for example `domain.extractState({ html })`, and keep HTTP, loops, list transforms and result mapping as Flow blocks. Project Rhino blocks are rejected if they perform HTTP or Convertigo requestable calls directly; use `http.get({ url })`/`http.request({ method, url })` and `requestable.call({ requestable })` instead.
+
+When drafting top-down, it is acceptable to call a domain block that does not
+exist yet. Let diagnostics prove it is missing, then use `flow-block-mock` with
+the expected input properties and output schema. Do not finish the task while
+the parent Flow still depends on a mock. Use `flow-block-mock-list` to audit
+remaining mocks.
 
 Prefer `code-get`, `code-set`, `code-patch`, `code-check`, `code-run`, `code-status`, `code-discard`, `code-promote`, and `code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
 

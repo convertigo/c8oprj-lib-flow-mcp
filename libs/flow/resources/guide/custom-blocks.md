@@ -31,6 +31,13 @@ Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors und
 
 Use `code-set` for project-local blocks with `block:"namespace.name"` or `kind:"block", name:"namespace.name"`. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. FlowScript code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `code-get`. Rhino code must be a complete `_meta` with `runtime: "rhino"` followed by an IIFE returning `{ run: function (ctx, node) { ... } }`. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
 
+For top-down authoring, prefer `flow-block-mock` over hidden procedural code
+when the intended domain block does not exist yet. Pass typed `properties` and
+typed `outputs`; the generated `_meta.mock = true` and TODO make the missing
+implementation visible to humans, Studio and agents. A parent Flow that calls a
+mock is executable for exploration but not complete. Use `flow-block-mock-list`
+to find remaining mocks before claiming completion.
+
 ## Output Schemas
 
 Do not leave block outputs as `unknown` when the result shape is stable or

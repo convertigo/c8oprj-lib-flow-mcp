@@ -506,25 +506,25 @@
 				result.message = "Refresh skipped: Project Explorer view not available";
 				return result;
 			}
-			ConvertigoPlugin.syncExec(new Runnable({ run: function () {
+			ConvertigoPlugin.asyncExec(new Runnable({ run: function () {
 				try {
 					var view = plugin.getProjectExplorerView();
 					if (view == null) {
-						result.status = "skipped";
-						result.message = "Refresh skipped: Project Explorer view not available";
 						return;
 					}
 					view.reloadDatabaseObject(target);
-					result.status = "refreshed";
-					result.message = "Project Explorer refreshed";
-					result.refreshed = true;
-					result.refreshedQName = String(target.getQName());
+					var treeObject = view.findTreeObjectByUserObject(target);
+					if (treeObject != null) {
+						view.refreshTreeObject(treeObject);
+					}
 				} catch (e) {
-					result.status = "error";
-					result.message = String(e);
-					result.error = String(e);
+					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP update", false);
 				}
 			}}));
+			result.status = "scheduled";
+			result.message = "Project Explorer refresh scheduled";
+			result.scheduled = true;
+			result.refreshedQName = String(target.getQName());
 		} catch (e) {
 			result.status = "error";
 			result.message = String(e);
@@ -546,8 +546,8 @@
 			return false;
 		}
 		try {
-			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
-			return Flow.class.isInstance(dbo);
+			var Flow = Packages.java.lang.Class.forName("com.twinsoft.convertigo.beans.flow.Flow");
+			return Flow.isInstance(dbo);
 		} catch (_ignoreFlowClass) {
 		}
 		try {
@@ -586,6 +586,11 @@
 		if (project == null) {
 			throw new Error("Unable to register Flow DBO: unknown project " + args.project);
 		}
+		var projectWasChanged = false;
+		try {
+			projectWasChanged = project.hasChanged === true;
+		} catch (_ignoreProjectChanged) {
+		}
 		var name = String(args.name || "");
 		var sequence = projectSequenceByName(project, name);
 		var flow = null;
@@ -610,6 +615,7 @@
 		} else if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
 			flow.setFlowSource(String(writeResult.source));
 		}
+		result.flagsBeforeFastSaveClean = flowDboFlags(project, flow);
 		result.registered = true;
 		result.qname = String(flow.getQName());
 		try {
@@ -629,30 +635,273 @@
 			result.flowScriptSidecarsRestored = restoreFlowScriptSidecars(project, writeResult, flowScriptSidecars, name);
 		} else {
 			result.saved = true;
-			result.flowDeclarationSaved = result.created ? saveFlowDeclaration(project, flow, name, args) : false;
+			result.flowDeclarationSaved = saveFlowDeclaration(project, flow, name, args, writeResult);
+			if (result.flowDeclarationSaved) {
+				markFastSavedClean(project, flow, projectWasChanged);
+			}
 		}
+		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
 		try {
 			Engine.theApp.schemaManager.clearCache(String(project.getName()));
 			result.schemaCacheCleared = true;
 		} catch (_ignoreSchemaCache) {
 		}
-		if (boolArg(args.refresh, false) === true) {
-			result.studioRefresh = studioRefreshQName(String(project.getName()));
-			result.refreshed = result.studioRefresh && result.studioRefresh.refreshed === true;
+		if (boolArg(args.refresh, true) === true) {
+			result.studioRefresh = studioRefreshQName(result.created ? String(project.getName()) : String(flow.getQName()));
+			result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
 		}
 		result.message = result.created ? "Flow DBO created" : "Flow DBO updated";
 		return result;
 	}
 
-	function saveFlowDeclaration(project, flow, name, args) {
+	function saveFlowDeclaration(project, flow, name, args, writeResult) {
 		args = args || {};
 		var projectDir = new File(String(project.getDirPath()));
 		var sequencesDir = new File(new File(projectDir, "_c8oProject"), "sequences");
 		var sequenceFile = new File(sequencesDir, String(name) + ".yaml");
+		var changed = false;
 		if (!sequenceFile.isFile()) {
 			writeUtf8(sequenceFile, "includeTrace: " + (boolArg(args.includeTrace, false) ? "true" : "false") + "\n");
+			changed = true;
 		}
-		return ensureProjectFlowDeclaration(projectDir, name);
+		if (syncFlowInputDeclarationYaml(sequenceFile, name, writeResult)) {
+			changed = true;
+		}
+		return ensureProjectFlowDeclaration(projectDir, name) || changed;
+	}
+
+	function syncFlowInputsDbo(args) {
+		args = args || {};
+		if (!args.project) {
+			throw new Error("flow-sync-inputs requires project.");
+		}
+		if (!args.name && args.qname) {
+			var parts = String(args.qname).split(".");
+			args.name = parts[parts.length - 1];
+		}
+		if (!args.name) {
+			throw new Error("flow-sync-inputs requires name or qname.");
+		}
+		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+		var project = Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project), false);
+		if (project == null) {
+			throw new Error("Unknown Convertigo project: " + args.project);
+		}
+		var flow = projectSequenceByName(project, args.name);
+		if (!isFlowDbo(flow)) {
+			throw new Error("Not a Flow DBO: " + args.project + "." + args.name);
+		}
+		var before = flowDboFlags(project, flow);
+		var FlowEngineBridge = Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge;
+		var response = new FlowEngineBridge().syncInputs(flow);
+		if (!response || response.optBoolean("ok", false) !== true) {
+			throw new Error("Unable to sync Flow inputs: " + String(response));
+		}
+		var inputDefinitions = response.optJSONObject("inputDefinitions");
+		var writeResult = {
+			format: "flowscript",
+			inputDefinitions: inputDefinitions == null ? {} : JSON.parse(String(inputDefinitions.toString()))
+		};
+		var saved = saveFlowDeclaration(project, flow, String(args.name), args, writeResult);
+		try {
+			if (flow.numberOfVariables) {
+				flow.numberOfVariables();
+			}
+		} catch (_ignoreVariableSync) {
+		}
+		markFastSavedClean(project, flow, boolArg(args.cleanProject, false) !== true && project.hasChanged === true);
+		var refresh = null;
+		if (boolArg(args.refresh, true) === true) {
+			refresh = studioRefreshQName(String(flow.getQName()));
+		}
+		return {
+			ok: true,
+			project: String(args.project),
+			name: String(args.name),
+			qname: String(flow.getQName()),
+			inputDefinitions: writeResult.inputDefinitions,
+			flowDeclarationSaved: saved,
+			flagsBefore: before,
+			flagsAfter: flowDboFlags(project, flow),
+			studioRefresh: refresh
+		};
+	}
+
+	function markFastSavedClean(project, flow, projectWasChanged) {
+		try {
+			var sourceDirty = flow.isFlowSourceDirty && flow.isFlowSourceDirty() === true;
+			if (!sourceDirty) {
+				flow.hasChanged = false;
+				flow.bNew = false;
+			}
+		} catch (_ignoreFlowClean) {
+		}
+		try {
+			project.hasChanged = projectWasChanged === true;
+		} catch (_ignoreProjectClean) {
+		}
+	}
+
+	function flowDboFlags(project, flow) {
+		var out = {};
+		try {
+			out.flowHasChanged = flow.hasChanged === true;
+			out.flowBNew = flow.bNew === true;
+		} catch (_ignoreFlowFlags) {
+		}
+		try {
+			out.flowSourceDirty = flow.isFlowSourceDirty && flow.isFlowSourceDirty() === true;
+		} catch (_ignoreSourceDirty) {
+		}
+		try {
+			out.variableCount = flow.numberOfVariables ? Number(flow.numberOfVariables()) : -1;
+		} catch (_ignoreVariables) {
+		}
+		try {
+			out.projectHasChanged = project && project.hasChanged === true;
+		} catch (_ignoreProjectFlags) {
+		}
+		return out;
+	}
+
+	function syncFlowInputDeclarationYaml(sequenceFile, flowName, writeResult) {
+		var inputDefinitions = writeResult && writeResult.inputDefinitions;
+		if (!inputDefinitions || typeof inputDefinitions !== "object") {
+			return false;
+		}
+		var keys = Object.keys(inputDefinitions).filter(function (key) {
+			return /^[A-Za-z_$][\w$]*$/.test(String(key || "")) && String(key).indexOf("__") !== 0;
+		}).sort();
+		if (keys.length === 0) {
+			return false;
+		}
+		var original = sequenceFile.isFile() ? readUtf8(sequenceFile) : "";
+		var content = original.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+		if (content.trim() === "") {
+			content = "includeTrace: false\n";
+		}
+		var ids = existingFlowInputVariableIds(content);
+		var filtered = removeFlowInputVariableBlocks(content, keys);
+		if (filtered.length && filtered.charAt(filtered.length - 1) !== "\n") {
+			filtered += "\n";
+		}
+		keys.forEach(function (key, index) {
+			var definition = inputDefinitions[key] || {};
+			var className = flowInputVariableClass(definition);
+			var id = ids[key] && ids[key].indexOf(className + "-") === 0
+				? ids[key]
+				: className + "-" + stableFlowInputPriority(flowName, key, index);
+			filtered += renderFlowInputVariableYaml(key, definition, id);
+		});
+		if (filtered !== content) {
+			writeUtf8(sequenceFile, filtered);
+			return true;
+		}
+		return false;
+	}
+
+	function existingFlowInputVariableIds(content) {
+		var ids = {};
+		var re = /^↓([A-Za-z_$][\w$]*) \[(variables\.Requestable(?:MultiValued)?Variable-\d+)\]:/gm;
+		var match;
+		while ((match = re.exec(content)) !== null) {
+			ids[match[1]] = match[2];
+		}
+		return ids;
+	}
+
+	function removeFlowInputVariableBlocks(content, names) {
+		var remove = {};
+		names.forEach(function (name) {
+			remove[String(name)] = true;
+		});
+		var lines = content.split("\n");
+		var kept = [];
+		var skipping = false;
+		for (var i = 0; i < lines.length; i++) {
+			var line = lines[i];
+			var match = /^↓([A-Za-z_$][\w$]*) \[variables\.Requestable(?:MultiValued)?Variable-\d+\]:/.exec(line);
+			if (match) {
+				skipping = remove[match[1]] === true;
+			} else if (skipping && /^↓/.test(line)) {
+				skipping = false;
+			}
+			if (!skipping) {
+				kept.push(line);
+			}
+		}
+		return kept.join("\n").replace(/\n+$/, "\n");
+	}
+
+	function renderFlowInputVariableYaml(name, definition, id) {
+		definition = definition && typeof definition === "object" ? definition : {};
+		var lines = ["↓" + name + " [" + id + "]: "];
+		var description = definition.description !== undefined && definition.description !== null && String(definition.description) !== ""
+			? definition.description
+			: "Flow input " + name;
+		lines.push("  description: " + yamlScalar(description));
+		var schemaType = flowInputSchemaType(definition.type || definition.kind || "string");
+		if (schemaType !== "xsd:string") {
+			lines.push("  schemaType: " + schemaType);
+		}
+		if (definition.required === true) {
+			lines.push("  required: true");
+		}
+		if (definition.default !== undefined) {
+			lines.push("  value: " + yamlScalar(definition.default));
+		}
+		return lines.join("\n") + "\n";
+	}
+
+	function flowInputVariableClass(definition) {
+		var type = String(definition && (definition.type || definition.kind) || "string").toLowerCase();
+		return type === "array" || definition && (definition.multi === true || definition.multiValued === true)
+			? "variables.RequestableMultiValuedVariable"
+			: "variables.RequestableVariable";
+	}
+
+	function flowInputSchemaType(type) {
+		switch (String(type || "").toLowerCase()) {
+		case "boolean":
+		case "bool":
+			return "xsd:boolean";
+		case "integer":
+		case "int":
+			return "xsd:integer";
+		case "number":
+		case "double":
+		case "float":
+			return "xsd:double";
+		default:
+			return "xsd:string";
+		}
+	}
+
+	function stableFlowInputPriority(flowName, key, index) {
+		var text = String(flowName || "") + ":" + String(key || "") + ":" + String(index || 0);
+		var hash = 2166136261;
+		for (var i = 0; i < text.length; i++) {
+			hash ^= text.charCodeAt(i);
+			hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+		}
+		return String(1780000000000 + (Math.abs(hash) % 900000000));
+	}
+
+	function yamlScalar(value) {
+		if (value === null || value === undefined) {
+			return "";
+		}
+		if (typeof value === "number" || typeof value === "boolean") {
+			return String(value);
+		}
+		var text = String(value);
+		if (text === "") {
+			return "";
+		}
+		if (/^[A-Za-z0-9_./@:+-]+(?: [A-Za-z0-9_./@:+-]+)*$/.test(text)) {
+			return text;
+		}
+		return JSON.stringify(text);
 	}
 
 	function ensureProjectFlowDeclaration(projectDir, name) {
@@ -1463,7 +1712,8 @@
 		}
 		var name = toolName(request);
 		var out = {};
-		["ok", "qname", "name", "block", "dry", "written", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared"].forEach(function (key) {
+		["ok", "qname", "name", "block", "dry", "written", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared",
+			"dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];
 			}
@@ -1548,7 +1798,7 @@
 		} else if (value.block) {
 			out.next = "Project-local block source is saved. Validate it through an executable Flow using code-run; do not call flow-test for FlowScript drafts.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
-			out.next = "Fast save done. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export and refresh:true only for Studio UI refresh.";
+			out.next = "Fast save done. Studio refresh is attempted by default; pass refresh:false only when UI refresh must be skipped. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export.";
 		} else {
 			out.next = "Saved. If code-run already proved the result, stop; otherwise use flow-test for one validation.";
 		}
@@ -1893,15 +2143,23 @@
 				out[key] = registration[key];
 			}
 		});
-		if (registration.studioRefresh) {
-			out.studioRefresh = {
-				status: registration.studioRefresh.status,
-				refreshed: registration.studioRefresh.refreshed,
-				message: registration.studioRefresh.message
-			};
+			if (registration.studioRefresh) {
+				out.studioRefresh = {
+					status: registration.studioRefresh.status,
+					scheduled: registration.studioRefresh.scheduled,
+					refreshed: registration.studioRefresh.refreshed,
+					refreshedQName: registration.studioRefresh.refreshedQName,
+					message: registration.studioRefresh.message
+				};
+			}
+			if (registration.flagsBeforeFastSaveClean) {
+				out.flagsBeforeFastSaveClean = registration.flagsBeforeFastSaveClean;
+			}
+			if (registration.flagsAfterFastSaveClean) {
+				out.flagsAfterFastSaveClean = registration.flagsAfterFastSaveClean;
+			}
+			return out;
 		}
-		return out;
-	}
 
 	function compactAnalysis(analysis) {
 		if (!analysis || typeof analysis !== "object") {
@@ -2151,6 +2409,7 @@
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,
 		registerFlowDbo: registerFlowDbo,
+		syncFlowInputsDbo: syncFlowInputsDbo,
 		applyNamedFlowMutation: applyNamedFlowMutation,
 		applyNodeMutation: applyNodeMutation,
 		toolResponse: toolResponse,
