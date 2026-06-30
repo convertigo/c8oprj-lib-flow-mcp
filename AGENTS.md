@@ -61,7 +61,7 @@ flow-output-schema with action:remove when an explicit _flow.outputs contract sh
 flow-output-schema with action:reset when stale learned Flow result schemas should be deleted without touching _flow.outputs
 flow-node-output-schema for one HTTP/exec/parser/list node before changing block outputs or learned schemas
 flow-node-output-schema with action:adopt to keep a verified node schema, or action:remove to drop one stale node schema
-flow-cache-clear after editing lib_flow_engine JavaScript modules, blocks or hooks so the next MCP call uses a fresh Flow runtime
+flow-cache-clear only for explicit cache debugging; normal MCP/Studio calls must pick up Flow engine/project source changes automatically
 flow-schema-reset only for broader stale learned-schema cleanup
 code-patch for revision-checked maintenance edits on that working copy
 code-promote once executable Flow behavior is clean; do not promote project-local blocks

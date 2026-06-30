@@ -20,6 +20,10 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - For array projections, prefer `var mapped = list.map({ items, select: {
   field: current.field } }); result.mapped = mapped`. Do not hard-code
   `items[0]`, `items[1]`, etc. for dynamic lists.
+- For JSON object maps whose keys are data, use `object.keys`, `object.get` and
+  `object.firstEntry` before inventing a custom block. For example, read a
+  rates map with `object.get({ source: local.rates, key: current.currency })`
+  instead of hiding `rates[current.currency]` in Rhino.
 - For repeated external work, model one item and iterate. If a Flow needs many
   similar HTTP/requestable calls, store the repeated rows in project-level
   `config.*` or a small data block, then call one per-item FlowScript block from
@@ -29,9 +33,13 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   namespaces and timeouts under project or Flow `config.*`. Reusable domain
   blocks should accept typed business inputs and read shared endpoints from
   config, not from hard-coded strings hidden in block code.
+  They should not expose transport plumbing as their public API either:
+  prefer `currency.countryRate({ country, rates })` or
+  `catalog.enrichProduct({ product })` over
+  `domain.fetch({ url })`.
 - Prefer existing high-level project config over `_flow.config`. Use
   `_flow.config` only for Flow-local defaults, not to duplicate project
-  collections such as `config.timezones.representatives`.
+  collections such as `config.countries.referenceList`.
 - Use top-level `const _flow = { inputs: {...}, tests: {...} }` for request inputs, descriptions, defaults, and reusable test inputs. If omitted, `code-*` tools infer `inputVariables` from `input.foo` reads, but human-facing labels/comments are unavailable.
 - Use `flow-output-schema({ project, qname })` to verify executable Flow
   outputs. It combines explicit contracts, static analysis of `result.*` writes
@@ -71,12 +79,24 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - Node mutation tools use `properties` for node properties. That is an MCP tool argument, not the Flow definition shape. Do not send `props`.
 - For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.
 - Custom Rhino blocks are for missing low-level primitives only. They must not do HTTP or Convertigo requestable calls directly; use visible `http.get`/`http.request` and `requestable.call` nodes.
+- Enumerating JSON object keys or reading a dynamic key is not a reason for a
+  project Rhino block; use the standard `object.keys`, `object.get` and
+  `object.firstEntry` blocks.
 - If a readable high-level FlowScript draft needs a block that does not exist,
-  create a project-local mock with `flow-block-mock({ project, name,
-  properties, outputs })`. The generated block is marked `mock:true`, contains
-  an obvious TODO, and is not completed behavior. Implement that sub-block with
-  real FlowScript before considering the parent Flow done. Use
-  `flow-block-mock-list` to audit remaining mocks before reporting completion.
+  keep the parent draft and let `UNKNOWN_BLOCK` diagnostics confirm the missing
+  contract. Then create a project-local mock with `flow-block-mock({ project,
+  name, properties, outputs })`, using the call arguments as the typed
+  `properties` and the expected return shape as typed `outputs`. Do not hide the
+  feature in a large Rhino block or duplicated low-level calls just to avoid the
+  mock. The generated block is marked `mock:true`, contains an obvious TODO, and
+  is not completed behavior. Implement that sub-block with real FlowScript
+  before considering the parent Flow done. Use `flow-block-mock-list` to audit
+  remaining mocks before reporting completion.
+- Treat `FLOW_BLOCK_PROPERTY_UNKNOWN`,
+  `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and
+  `FLOW_BLOCK_OUTPUT_UNKNOWN` as block contract feedback. Patch the
+  project-local block descriptor with native JSON types instead of leaving
+  knowable business values as `unknown`.
 - Use `flow-edit` for lower-level mutations; use `dryRun:true` when unsure.
 - Mutation tools and `flow-block-get` return compact responses by default. Use `detail:"full"` only when debugging the response or editing source; otherwise inspect with `flow-tree`.
 - With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.

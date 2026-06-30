@@ -7,7 +7,7 @@ const _meta = {
     "cache",
     "diagnostic"
   ],
-  "description": "Clears Flow Engine runtime descriptor caches.",
+  "description": "Debug only: clears Flow Engine runtime descriptor caches when automatic invalidation is suspected stale.",
   "properties": {
     "request": {
       "kind": "expression",

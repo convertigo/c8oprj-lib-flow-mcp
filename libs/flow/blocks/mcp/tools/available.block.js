@@ -320,7 +320,7 @@ const _meta = {
 		} else if (name === "flow-block-get") {
 			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
 		} else if (name === "flow-block-mock") {
-			description = "Creates an explicit project-local mock block with TODO, typed inputs/outputs and a visible mock marker.";
+			description = "Creates a typed project-local mock after UNKNOWN_BLOCK; keeps parent Flow executable while real block is built.";
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-output-schema") {
@@ -331,6 +331,8 @@ const _meta = {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-get") {
 			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
+		} else if (name === "flow-cache-clear") {
+			description = "Debug only: clears runtime caches when automatic invalidation is suspected stale. Do not use during normal authoring.";
 		} else if (name === "flow-cache-info") {
 			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
 		} else if (name === "flow-sync-inputs") {

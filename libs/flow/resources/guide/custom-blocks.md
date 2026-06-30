@@ -37,6 +37,18 @@ typed `outputs`; the generated `_meta.mock = true` and TODO make the missing
 implementation visible to humans, Studio and agents. A parent Flow that calls a
 mock is executable for exploration but not complete. Use `flow-block-mock-list`
 to find remaining mocks before claiming completion.
+Design project-local domain block APIs as low-code contracts. Pass domain
+objects or native business fields such as `zone`, `latitude`, `longitude`,
+`city`, `namespace`, `pod` or `limit`. Store structural endpoints and tokens in
+project/Flow config and let the block read that config; do not make callers pass
+prebuilt URLs, query strings or protocol-specific plumbing unless the block is a
+low-level HTTP helper.
+Before creating a project-local Rhino block for JSON object manipulation, check
+the standard object primitives. Use `object.keys` to enumerate keys,
+`object.get` to read a static or dynamic key/path, and `object.firstEntry` to
+convert one map entry into `{ key, value }`. A domain block may still wrap
+business logic, but it should not exist only to implement `Object.keys(map)` or
+`map[code]`.
 
 ## Output Schemas
 
@@ -63,6 +75,10 @@ property metadata to `current:"item"` and `sourceProperty:"items"` so
 `flow-context` exposes `current.name`, `current.age`, etc. Unknown is acceptable
 only for deliberately generic values, learned external payloads before the first
 run, or project block templates.
+If `code-set` or `code-check` reports `FLOW_BLOCK_PROPERTY_UNKNOWN`,
+`FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` or `FLOW_BLOCK_OUTPUT_UNKNOWN`,
+patch the block descriptor before finalizing. Use `type:"any"` with a clear
+description only for deliberately generic values.
 
 In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
 
@@ -86,7 +102,7 @@ Reusable blocks can be used as array mappers: `const labels = list.map({ items, 
 
 Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `code-set` and a canonical `.block.js` source. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
 
-Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO (`http.get`, `http.request`, `requestable.call`), transforms (`list.*`), JSON shaping (`json.*`), files/resources and sessions. If only parsing or a Java bridge is missing, create that one primitive and keep orchestration in FlowScript. Project Rhino blocks must not open URLs, sockets, or Convertigo requestables directly; the engine rejects those implementations so the graph stays inspectable.
+Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO (`http.get`, `http.request`, `requestable.call`), transforms (`list.*`), object/JSON shaping (`object.*`, `json.*`), files/resources and sessions. If only parsing or a Java bridge is missing, create that one primitive and keep orchestration in FlowScript. Project Rhino blocks must not open URLs, sockets, or Convertigo requestables directly; the engine rejects those implementations so the graph stays inspectable.
 
 When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
 

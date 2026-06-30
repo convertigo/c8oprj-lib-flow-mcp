@@ -54,12 +54,20 @@ Prefer the compact code path:
    candidates, accepted properties and signatures.
    Put structural constants such as service base URLs, API paths, tokens,
    namespaces and timeouts under project or Flow `config.*`; do not hide them
-   inside low-level blocks. If a high-level domain block is missing, keep the
-   parent FlowScript readable and create an explicit project-local mock with
-   `flow-block-mock`, typed `properties` and typed `outputs`. Mocks must remain
-   visible as unfinished work and must not be treated as completed behavior.
-   Use `flow-block-mock-list` before finalizing a task; any remaining mock means
-   the parent Flow is still incomplete.
+   inside low-level blocks. For top-down design, call the high-level domain
+   block you want even when it may not exist yet. If diagnostics report
+   `UNKNOWN_BLOCK` and no candidate clearly matches the intent, keep the parent
+   FlowScript readable and follow the diagnostic to create an explicit
+   project-local mock with `flow-block-mock`, typed `properties` and typed
+   `outputs`. Do not collapse the parent algorithm into low-level Rhino or
+   copied HTTP calls merely to avoid a mock. Mocks must remain visible as
+   unfinished work and must not be treated as completed behavior. Use
+   `flow-block-mock-list` before finalizing a task; any remaining mock means the
+   parent Flow is still incomplete.
+   For `UNKNOWN_BLOCK`, diagnostics expose `candidateDecision.bestScore` and
+   `candidateDecision.preferExistingScore`. Follow `create.tool`: below the
+   threshold, create the typed mock; at or above the threshold, inspect the
+   candidate with `flow-block-get` and use it only if it matches the intent.
    When the user provides external service URLs for a benchmark or integration
    task, those services are the source of truth. Do not satisfy the task by
    copying a domain dataset into a local block, project config or FlowScript
@@ -75,14 +83,25 @@ Prefer the compact code path:
    When a task needs many similar rows or external calls, do not unroll them.
    Repeated data belongs in project-level `config.*` or a small data block, and
    the Flow should iterate with `list.map`. A fresh agent should prefer a shape
-   like `var rows = list.take({ items: config.timezones.representatives, count:
-   input.limit || 27 }); var items = list.map({ items: rows, select:
-   timezone.fetchWeatherItem({ zone: current, forecastUrl:
-   config.services.weather.forecastUrl }) })` over 27 copied `http.get` calls.
+   like `var countries = list.take({ items: local.countries, count:
+   input.limit || 10 }); var items = list.map({ items: countries, select:
+   currency.countryRate({ country: current, rates: local.rates }) })` over
+   copied `http.get` calls. The per-item domain block should read shared config
+   or accept simple business values such as `country`, `currency`, `amount`,
+   `limit` or `rates`; do not expose transport details such as a prebuilt URL
+   or query string as the block API.
+   For object maps whose keys are data, use the standard object primitives:
+   `object.keys({ source: local.map })`, `object.get({ source: local.map, key:
+   current.code })`, and `object.firstEntry({ source: local.map })`. Do not
+   create a Rhino domain block just to enumerate object keys or read
+   `map[code]`.
    Treat `FLOWSCRIPT_PROPERTY_TYPE_MISMATCH` diagnostics as contract feedback:
    fix the Flow input declaration or the project-local block property type when
    the value should stay native, or explicitly convert the value before calling
    the block.
+   Treat `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and
+   `FLOW_BLOCK_PROPERTY_UNKNOWN` the same way: patch the project-local block
+   contract instead of leaving typed business values as `unknown`.
 4. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
@@ -209,6 +228,9 @@ Compiler rules:
 - Use `list.take({ items, count: 5 })` for top-N/first-N array selection.
   `list.take(items, 5)` and `items.slice(0, 5)` are invalid.
   Do not emulate this with hard-coded `mapped[0]..mapped[4]`.
+- Use `object.keys`, `object.get` and `object.firstEntry` for JSON object maps
+  before creating a custom primitive. Example: `var rate = object.get({ source:
+  local.rates, key: current.currency })`.
 - Use either `items.length` or `length(items)` for array counts. Do not use
   `count(items)`, `Count(items)`, `len(items)`, `list.count(...)`, or a
   `list.count` block; they do not exist.
@@ -297,9 +319,9 @@ source:"learned" })`, `source:"static"`, or pass `schema:{...}`. To go back to
 inference for that node output, call `action:"remove"`. Use
 `flow-schema-reset` only when a stale learned schema masks current output across
 broader scope.
-After editing shared Flow engine JavaScript (`Engine.js`, modules, blocks or
-hooks), call `flow-cache-clear({ project })`; the next MCP/Studio call uses a
-fresh bridge runtime without restarting the whole Convertigo engine.
+Flow runtime caches are invalidated automatically from Flow engine and project
+source fingerprints. `flow-cache-clear` is a debug tool only; do not include it
+in the normal authoring workflow.
 Do not loosen a block to `unknown` to fix a partial Flow result; only add block
 `outputs` or hooks when the node feeding `result.*` is truly under-typed.
 
@@ -329,12 +351,16 @@ Minimal maintenance recipe for a fresh context:
 - For JSON HTTP APIs, `http.get({ url })` exposes parsed JSON under `response.body`; use `response.text` and `json.parse` only when needed. Use `http.request({ method: "POST", url, body, headers, query })` for advanced methods. All HTTP shortcuts share the `http.request` runtime stack for proxy, authentication, tracing and future platform configuration.
 - Do not hard-code structural service URLs, API roots, namespace names, tokens,
   or environment constants inside reusable blocks. Store them under
-  project/Flow config, for example `config.services.weather.forecastUrl`, and
-  pass simple typed inputs such as `latitude`, `longitude`, `city`, `limit`, or
-  `apiKey` to domain blocks.
+  project/Flow config, for example `config.services.countries.regionUrl`, and
+  pass simple typed inputs such as `country`, `currency`, `amount`, `limit`, or
+  `apiKey` to domain blocks. A domain block API should express the low-code
+  business operation, not transport plumbing: prefer
+  `currency.countryRate({ country, rates })` or
+  `catalog.enrichProduct({ product })` over
+  `domain.fetch({ url })`.
 - `_flow.config` is only for Flow-local defaults. If the project already
   exposes high-level FlowEngine config such as `config.services.*`,
-  `config.timezones.*`, `config.namespaces.*` or another domain collection,
+  `config.countries.*`, `config.namespaces.*` or another domain collection,
   read it directly; do not copy it into `_flow.config`.
 - If you notice more than three calls with the same block and shape, stop and
   refactor before promotion. Move repeated rows to `config.*` or a small data
@@ -347,6 +373,7 @@ Minimal maintenance recipe for a fresh context:
 - Keep the visible algorithm in FlowScript. Do not hide a complete backend feature in one custom Rhino block.
 - Create custom blocks only when behavior is reusable or hides unavoidable low-level code.
 - If only one operation is missing, create only that missing primitive. Example: use `http.get({ url })` in FlowScript, then a small custom `extractSomething({ html })` block if extraction cannot be expressed with existing blocks.
+- Enumerating JSON object keys or reading a dynamic map key is not missing low-level code; use `object.keys`, `object.get` and `object.firstEntry`.
 - HTTP and Convertigo requestable calls are never valid reasons for a Rhino custom block. Use `http.get`/`http.request` and `requestable.call` so the graph remains inspectable.
 - Missing domain vocabulary is not a reason to collapse the feature into Rhino.
   First write the high-level FlowScript, then create a project-local mock block
@@ -355,9 +382,10 @@ Minimal maintenance recipe for a fresh context:
   unfinished work until `mock:true` and the TODO are removed by a real
   FlowScript implementation. Call `flow-block-mock-list` before reporting done.
 - Reusable per-item behavior belongs in a small FlowScript block. For example,
-  a parent Flow maps over `config.timezones.representatives`, while a
-  `timezone.fetchWeatherItem` block handles one zone. Do not duplicate the body
-  of that per-item operation in the parent Flow.
+  a parent Flow maps over `local.countries`, while a
+  `currency.countryRate({ country: current, rates: local.rates })` block handles
+  one item. Do not duplicate the body of that per-item operation in the parent
+  Flow, and do not pass prebuilt URLs between domain blocks.
 
 ## Custom Blocks
 
@@ -402,7 +430,7 @@ For a Rhino/Java primitive:
 2. Use `code-set` with canonical `.block.js` source: `_meta.runtime = "rhino"` followed by one IIFE returning `{ run: function (ctx, node) { ... } }`.
 3. Before creating it, search the catalog for standard blocks that cover IO, requestables, list transforms, JSON, sessions, files and resources.
 4. Keep Rhino code small and focused: one bridge/algorithm primitive, no end-to-end orchestration.
-5. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `json.*` for JSON shaping.
+5. Do not reimplement standard blocks in Rhino. Use `http.get({ url })`/`http.request({ method, url })` for HTTP, `requestable.call({ requestable })` for Convertigo calls, `list.*` for iteration transforms, and `object.*`/`json.*` for object and JSON shaping.
 6. Java classes are available through `Packages`; coerce Java values with `String(...)` or `Number(...)` before JavaScript operations.
 7. Start Rhino examples with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
 8. Keep orchestration in FlowScript.
@@ -421,7 +449,7 @@ function ReadExternalData({ input, config, result }) {
 The custom `domain.extract` block may parse text, but it must not open sockets, call URLs, call requestables, sort final results, or build the whole response.
 
 Do not wrap a FlowScript block return in `{ out: ... }`. The block returns one
-value; the caller's `var weather = weather.openMeteo(...)` or explicit `out`
+value; the caller's `var item = domain.enrichItem(...)` or explicit `out`
 property decides where that value is written. Prefer:
 
 ```javascript
@@ -452,6 +480,10 @@ return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
 - If `code-get` reports `UNKNOWN_BLOCK`, do not probe more invented
   names. Use a returned candidate only if it matches the intent, call
   `flow-catalog` once, or create a project block for the missing concept.
+- When `UNKNOWN_BLOCK` diagnostics include `candidateDecision`, compare
+  `bestScore` with `preferExistingScore` and follow `create.tool`. A candidate
+  below the threshold is weak evidence; prefer a typed mock for top-down domain
+  vocabulary.
 - Use `flow-search` to find existing Flows, samples, blocks, or resources.
 - Prefer visible library samples named `sample_*` before browsing the full catalog.
 - For sample-driven learning, read `flow://guide/samples`, then inspect

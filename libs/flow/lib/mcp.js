@@ -1621,7 +1621,7 @@
 	function compactDiagnosticCandidate(candidate) {
 		candidate = candidate || {};
 		var out = {};
-		["block", "property", "signature"].forEach(function (key) {
+		["block", "property", "score", "confidence", "signature"].forEach(function (key) {
 			if (candidate[key] !== undefined && candidate[key] !== null && candidate[key] !== "") {
 				out[key] = candidate[key];
 			}
@@ -1640,7 +1640,7 @@
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
@@ -1657,7 +1657,7 @@
 		if (diagnostic.candidates) {
 			out.candidates = (diagnostic.candidates || []).slice(0, 3).map(compactDiagnosticCandidate);
 		}
-		if (diagnostic.create && (!diagnostic.candidates || !diagnostic.candidates.length)) {
+		if (diagnostic.create) {
 			out.create = diagnostic.create;
 		}
 		return out;

@@ -183,7 +183,7 @@ assertTrue(typeResponsePayload.indexOf("/Users/") === -1 &&
 	"MCP Flow type response leaked absolute paths");
 assertTrue(typeResponsePayload.indexOf("\"mode\":\"\"") === -1,
 	"MCP Flow type response leaked empty mode metadata");
-assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "engine:types/editors/expression.html",
+assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "libs/flow/types/editors/expression.html",
 	"MCP Flow type response did not shorten type resource paths");
 var traceContent = String(Packages.org.apache.commons.io.FileUtils.readFileToString(traceFile, "UTF-8"));
 assertTrue(traceContent.indexOf("\"direction\":\"request\"") !== -1 &&
@@ -763,6 +763,37 @@ print(JSON.stringify(blockSet));
 assertTrue(blockSet.result.result.structuredContent.name === "smoke.echo" &&
 	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.block.js").isFile(),
 	"MCP Flow code-set did not write a canonical project-local block");
+
+var candidateDecisionSet = callTool(135, "code-set", {
+	projectDir: targetProjectDir,
+	name: "CandidateDecisionSmoke",
+	code: [
+		"function CandidateDecisionSmoke({ input, config, result }) {",
+		"  var item = domain.fetchWeatherItem({ zone: input.zone, forecastUrl: config.services.weather.forecastUrl })",
+		"  result.item = item",
+		"  return result",
+		"}",
+		""
+	].join("\n"),
+	maxDiagnostics: 5
+});
+var candidateDecisionStructured = candidateDecisionSet.result.result.structuredContent;
+var candidateDecisionDiagnostics = candidateDecisionStructured.diagnostics ||
+	candidateDecisionStructured.error && candidateDecisionStructured.error.diagnostics ||
+	[];
+assertTrue(candidateDecisionStructured.ok === false &&
+	candidateDecisionDiagnostics.some(function (diagnostic) {
+	return diagnostic.code === "UNKNOWN_BLOCK" &&
+		diagnostic.candidateDecision &&
+		diagnostic.candidateDecision.recommendation === "mock" &&
+		diagnostic.candidateDecision.bestScore < diagnostic.candidateDecision.preferExistingScore &&
+		diagnostic.candidates &&
+		diagnostic.candidates[0] &&
+		diagnostic.candidates[0].score > 0 &&
+		diagnostic.create &&
+		diagnostic.create.tool === "flow-block-mock" &&
+		diagnostic.create.candidateTool === "flow-block-get";
+}), "MCP Flow code-set did not expose scored UNKNOWN_BLOCK mock guidance");
 
 var blockGet = callTool(13, "code-get", {
 	projectDir: targetProjectDir,

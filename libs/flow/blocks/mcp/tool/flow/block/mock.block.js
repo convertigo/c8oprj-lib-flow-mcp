@@ -8,7 +8,7 @@ const _meta = {
     "block",
     "mock"
   ],
-  "description": "Creates an explicit project-local FlowScript mock block with typed inputs, typed output and a visible TODO.",
+  "description": "Creates a typed project-local FlowScript mock after UNKNOWN_BLOCK, with a visible TODO.",
   "properties": {
     "request": {
       "kind": "expression",
