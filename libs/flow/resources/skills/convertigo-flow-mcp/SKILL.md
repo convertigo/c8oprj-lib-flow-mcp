@@ -60,6 +60,18 @@ Prefer the compact code path:
    visible as unfinished work and must not be treated as completed behavior.
    Use `flow-block-mock-list` before finalizing a task; any remaining mock means
    the parent Flow is still incomplete.
+   When the user provides external service URLs for a benchmark or integration
+   task, those services are the source of truth. Do not satisfy the task by
+   copying a domain dataset into a local block, project config or FlowScript
+   fallback unless the user explicitly asks for an offline fixture. If an
+   allowed service returns a redirect loop, deprecation payload, invalid JSON,
+   rate-limit response or an incompatible schema, stop and report that blocker
+   instead of masking it with baked data.
+   For new project-level configuration, read `libs/flow/engine.yaml` with
+   `flow-resource-get`, then update it with `flow-resource-patch` and
+   `baseHash` before writing the Flow. If the MCP refuses that path, report the
+   MCP feature gap instead of hard-coding service URLs or repeated domain data
+   in FlowScript or reusable blocks.
    When a task needs many similar rows or external calls, do not unroll them.
    Repeated data belongs in project-level `config.*` or a small data block, and
    the Flow should iterate with `list.map`. A fresh agent should prefer a shape
@@ -67,6 +79,10 @@ Prefer the compact code path:
    input.limit || 27 }); var items = list.map({ items: rows, select:
    timezone.fetchWeatherItem({ zone: current, forecastUrl:
    config.services.weather.forecastUrl }) })` over 27 copied `http.get` calls.
+   Treat `FLOWSCRIPT_PROPERTY_TYPE_MISMATCH` diagnostics as contract feedback:
+   fix the Flow input declaration or the project-local block property type when
+   the value should stay native, or explicitly convert the value before calling
+   the block.
 4. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
