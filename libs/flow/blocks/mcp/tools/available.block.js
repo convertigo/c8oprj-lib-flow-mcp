@@ -24,7 +24,11 @@ const _meta = {
 (function () {
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
+	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
 	var PUBLIC_TOOLS = {
+		"authoring-mutate": true,
+		"authoring-palette": true,
+		"authoring-tree": true,
 		"code-analyze": true,
 		"code-check": true,
 		"code-discard": true,
@@ -96,6 +100,9 @@ const _meta = {
 		if (blockName.indexOf(CODE_TOOL_PREFIX) === 0) {
 			return "code-" + camelToKebab(blockName.substring(CODE_TOOL_PREFIX.length));
 		}
+		if (blockName.indexOf(AUTHORING_TOOL_PREFIX) === 0) {
+			return "authoring-" + camelToKebab(blockName.substring(AUTHORING_TOOL_PREFIX.length));
+		}
 		if (blockName.indexOf(TOOL_PREFIX) === 0) {
 			return "flow-" + camelToKebab(blockName.substring(TOOL_PREFIX.length));
 		}
@@ -135,6 +142,10 @@ const _meta = {
 			var codeSuffix = blockNameText.substring(CODE_TOOL_PREFIX.length);
 			var codeTarget = "flow.code." + codeSuffix;
 			return byName[codeTarget] ? codeTarget : "";
+		}
+		if (blockNameText.indexOf(AUTHORING_TOOL_PREFIX) === 0) {
+			var authoringSuffix = blockNameText.substring(AUTHORING_TOOL_PREFIX.length);
+			return "authoring." + authoringSuffix;
 		}
 		var suffix = blockNameText.substring(TOOL_PREFIX.length);
 		if (!suffix) {
@@ -313,6 +324,12 @@ const _meta = {
 			}
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
+		} else if (name === "authoring-tree") {
+			description = "Generic authoring tree for frontend/Flow surfaces. Requires project; used by Studio, MCP, and tests.";
+		} else if (name === "authoring-palette") {
+			description = "Generic authoring palette for one focusPath, including empty-palette diagnostics and fallback hints.";
+		} else if (name === "authoring-mutate") {
+			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {

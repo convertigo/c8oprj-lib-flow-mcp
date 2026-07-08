@@ -81,6 +81,13 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-block-mock-list";
 }), "MCP Flow tools/list did not expose flow-block-mock-list");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "authoring-tree";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "authoring-palette";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "authoring-mutate";
+}), "MCP Flow tools/list did not expose generic authoring tools");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -442,6 +449,17 @@ function callTool(id, name, args) {
 		}
 	})));
 }
+
+var authoringPalette = callTool(136, "authoring-palette", {
+	projectDir: targetProjectDir,
+	engineSource: "version: 1\n",
+	focusPath: "engine"
+});
+assertTrue(authoringPalette.result.result.structuredContent.ok === true &&
+	authoringPalette.result.result.structuredContent.items.some(function (item) {
+		return item.id === "frontbuilder.svelte.builder";
+	}),
+	"MCP authoring-palette did not dispatch to the generic engine authoring contract");
 
 var targetFlowCode = [
 	"const _flow = {",

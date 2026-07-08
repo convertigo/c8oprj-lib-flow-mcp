@@ -1284,6 +1284,9 @@
 			throw new Error(name + " expects project:\"<Convertigo project name>\". Use projectDir only for standalone tests with a filesystem path.");
 		}
 		var requiresProject = {
+			"authoring-mutate": true,
+			"authoring-palette": true,
+			"authoring-tree": true,
 			"flow-catalog": true,
 			"flow-list": true,
 			"flow-resource-get": true,
@@ -1327,6 +1330,36 @@
 			}
 			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
 				args.maxDepth = 4;
+			}
+		} else if (name === "authoring-tree") {
+			if (!args.surface) {
+				args.surface = "frontend";
+			}
+			if (!args.builder) {
+				args.builder = "svelte";
+			}
+			if (!args.detail && !args.mode) {
+				args.detail = "compact";
+			}
+			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
+				args.maxDepth = 6;
+			}
+		} else if (name === "authoring-palette") {
+			if (!args.surface) {
+				args.surface = "frontend";
+			}
+			if (!args.builder) {
+				args.builder = "svelte";
+			}
+			if (!args.position) {
+				args.position = "inside";
+			}
+		} else if (name === "authoring-mutate") {
+			if (!args.surface) {
+				args.surface = "frontend";
+			}
+			if (!args.builder) {
+				args.builder = "svelte";
 			}
 		} else if (name === "flow-block-get") {
 			var wantsSource = argBool(args.includeSource || args.includeCode || args.includeImplementation || args.includeHooks || args.allowSource, false);
