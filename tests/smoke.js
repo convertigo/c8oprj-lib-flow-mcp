@@ -88,6 +88,17 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-mutate";
 }), "MCP Flow tools/list did not expose generic authoring tools");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-tree";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-palette";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-mutate";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-actions";
+}) && list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-action";
+}), "MCP Flow tools/list did not expose Svelte frontend authoring tools");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -261,6 +272,9 @@ assertTrue(resources.result.result.resources.some(function (resource) {
 assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/samples";
 }), "MCP Flow resources/list did not expose the samples guide");
+assertTrue(resources.result.result.resources.some(function (resource) {
+	return resource.uri === "flow://guide/frontend-svelte";
+}), "MCP Flow resources/list did not expose the Svelte frontend guide");
 
 var methodNotFound = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -460,6 +474,85 @@ assertTrue(authoringPalette.result.result.structuredContent.ok === true &&
 		return item.id === "frontbuilder.svelte.builder";
 	}),
 	"MCP authoring-palette did not dispatch to the generic engine authoring contract");
+var frontendSveltePalette = callTool(137, "frontend-svelte-palette", {
+	projectDir: targetProjectDir,
+	engineSource: "version: 1\n",
+	focusPath: "engine"
+});
+assertTrue(frontendSveltePalette.result.result.structuredContent.ok === true &&
+	frontendSveltePalette.result.result.structuredContent.surface === "frontend" &&
+	frontendSveltePalette.result.result.structuredContent.builder === "svelte" &&
+	frontendSveltePalette.result.result.structuredContent.items.some(function (item) {
+		return item.id === "frontbuilder.svelte.builder";
+	}),
+	"MCP frontend-svelte-palette did not dispatch to the Svelte authoring contract");
+var frontendSvelteActions = callTool(138, "frontend-svelte-actions", {
+	projectDir: targetProjectDir,
+	engineSource: "version: 1\n"
+});
+assertTrue(frontendSvelteActions.result.result.structuredContent.ok === true &&
+	frontendSvelteActions.result.result.structuredContent.protocol === "flow.studio.menu.v1",
+	"MCP frontend-svelte-actions did not dispatch to the dynamic context menu contract");
+var frontendPageFile = new java.io.File(targetDir,
+	"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
+frontendPageFile.getParentFile().mkdirs();
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var frontendSvelteMutate = callTool(139, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "insert",
+		path: "frontAst.slots.structure.children",
+		index: "end",
+		value: {
+			id: "smokeText",
+			kind: "text",
+			tag: "Text",
+			text: "Smoke text"
+		}
+	}
+});
+assertTrue(frontendSvelteMutate.result.result.structuredContent.ok === true &&
+	frontendSvelteMutate.result.result.structuredContent.written === true &&
+	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text") !== -1,
+	"MCP frontend-svelte-mutate should persist source-backed mutations");
+var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",
+	mutation: {
+		op: "insert",
+		value: {
+			__frontendCreateSource: {
+				baseId: "project.smokeFlowUi",
+				directory: "components/${namespacePath}",
+				fileName: "${tag}.flow.svelte",
+				source: [
+					"<script module>",
+					"  export const _meta = {",
+					"    id: \"${id}\",",
+					"    tag: \"${tag}\",",
+					"    runtime: \"flow-svelte\",",
+					"    insert: { id: \"${localName}\", kind: \"${localName}\", tag: \"${tag}\" }",
+					"  };",
+					"</script>",
+					""
+				].join("\n")
+			}
+		}
+	}
+});
+var frontendCreatedFile = new java.io.File(targetDir,
+	"libs/flow/frontbuilder/svelte/components/project/SmokeFlowUi.flow.svelte");
+assertTrue(frontendSvelteCreate.result.result.structuredContent.created === true &&
+	frontendSvelteCreate.result.result.structuredContent.written === true &&
+	frontendCreatedFile.isFile(),
+	"MCP frontend-svelte-mutate should create source-backed frontend blocks from palette payloads");
 
 var targetFlowCode = [
 	"const _flow = {",

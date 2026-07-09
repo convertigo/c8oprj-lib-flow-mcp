@@ -533,6 +533,113 @@
 		return result;
 	}
 
+	function runtimeProjectFromArgs(args) {
+		args = args || {};
+		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+		var dbom = Engine.theApp.databaseObjectsManager;
+		var projectName = String(args.project || "").trim();
+		if (projectName) {
+			return dbom.getOriginalProjectByName(projectName, true);
+		}
+		if (!args.projectDir) {
+			return null;
+		}
+		var projectDir = canonicalPath(new File(String(args.projectDir)).getCanonicalFile());
+		var names = dbom.getAllProjectNamesList(true);
+		for (var i = 0; i < names.size(); i++) {
+			try {
+				var project = dbom.getOriginalProjectByName(String(names.get(i)), false);
+				if (project != null && canonicalPath(new File(String(project.getDirPath())).getCanonicalFile()) === projectDir) {
+					return project;
+				}
+			} catch (_ignoreProjectMatch) {
+			}
+		}
+		return null;
+	}
+
+	function studioRefreshFlowEngine(args, reason) {
+		var result = {
+			status: "pending",
+			message: "",
+			project: String(args && args.project || ""),
+			reason: String(reason || ""),
+			studioMode: false,
+			scheduled: false,
+			refreshed: false,
+			timestamp: Number(System.currentTimeMillis())
+		};
+		try {
+			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+			result.studioMode = Engine.isStudioMode() === true;
+			if (!result.studioMode) {
+				result.status = "skipped";
+				result.message = "Refresh skipped: Convertigo Studio required";
+				return result;
+			}
+			var project = runtimeProjectFromArgs(args);
+			if (project == null) {
+				result.status = "skipped";
+				result.message = "Refresh skipped: project not found";
+				return result;
+			}
+			result.project = String(project.getName());
+			var ConvertigoPlugin = Packages.com.twinsoft.convertigo.eclipse.ConvertigoPlugin;
+			var Runnable = Packages.java.lang.Runnable;
+			var plugin = ConvertigoPlugin.getDefault();
+			if (plugin == null) {
+				result.status = "skipped";
+				result.message = "Refresh skipped: Studio plugin not available";
+				return result;
+			}
+			ConvertigoPlugin.asyncExec(new Runnable({ run: function () {
+				try {
+					try {
+						var IResource = Packages.org.eclipse.core.resources.IResource;
+						var iProject = plugin.getProjectPluginResource(String(project.getName()));
+						if (iProject != null) {
+							iProject.refreshLocal(IResource.DEPTH_INFINITE, null);
+						}
+					} catch (resourceError) {
+						ConvertigoPlugin.logException(resourceError, "Unable to refresh Eclipse resources after Flow MCP frontend update", false);
+					}
+					try {
+						Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.clearCaches();
+					} catch (cacheError) {
+						ConvertigoPlugin.logException(cacheError, "Unable to clear Flow engine caches after Flow MCP frontend update", false);
+					}
+					try {
+						Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(project);
+					} catch (catalogError) {
+						ConvertigoPlugin.logException(catalogError, "Unable to clear Flow Studio catalog cache after Flow MCP frontend update", false);
+					}
+					var view = plugin.getProjectExplorerView();
+					if (view == null) {
+						return;
+					}
+					var flowEngine = project.getFlowEngine();
+					var treeObject = flowEngine == null ? null : view.findTreeObjectByUserObject(flowEngine);
+					if (treeObject != null) {
+						view.reloadTreeObject(treeObject);
+						view.refreshTreeObject(treeObject);
+					} else {
+						view.refreshTree();
+					}
+				} catch (e) {
+					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP frontend update", false);
+				}
+			}}));
+			result.status = "scheduled";
+			result.message = "FlowEngine Project Explorer refresh scheduled";
+			result.scheduled = true;
+		} catch (e) {
+			result.status = "error";
+			result.message = String(e);
+			result.error = String(e);
+		}
+		return result;
+	}
+
 	function projectSequenceByName(project, name) {
 		try {
 			return project.getSequenceByName(String(name || ""));
@@ -1287,8 +1394,14 @@
 			"authoring-mutate": true,
 			"authoring-palette": true,
 			"authoring-tree": true,
+			"frontend-svelte-action": true,
+			"frontend-svelte-actions": true,
+			"frontend-svelte-mutate": true,
+			"frontend-svelte-palette": true,
+			"frontend-svelte-tree": true,
 			"flow-catalog": true,
 			"flow-list": true,
+			"flow-resource-delete": true,
 			"flow-resource-get": true,
 			"flow-resource-patch": true,
 			"flow-resource-search": true,
@@ -1361,6 +1474,53 @@
 			if (!args.builder) {
 				args.builder = "svelte";
 			}
+		} else if (/^frontend-svelte-/.test(name)) {
+			args.surface = "frontend";
+			args.builder = "svelte";
+			if (name === "frontend-svelte-tree") {
+				if (!args.detail && !args.mode) {
+					args.detail = "compact";
+				}
+				if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
+					args.maxDepth = 8;
+				}
+			} else if (name === "frontend-svelte-palette") {
+				if (!args.position) {
+					args.position = "inside";
+				}
+			} else if (name === "frontend-svelte-action" || name === "frontend-svelte-actions") {
+				if (!args.targetObject) {
+					args.targetObject = {
+						kind: "frontendBuilder",
+						type: "svelte",
+						path: "frontends.svelte",
+						summary: "Svelte builder"
+					};
+				}
+				if (name === "frontend-svelte-action") {
+					var actionAliases = {
+						generate: "frontbuilder.svelte.generate",
+						build: "frontbuilder.svelte.build",
+						openBuilt: "frontbuilder.svelte.openBuilt",
+						"open-built": "frontbuilder.svelte.openBuilt",
+						dev: "frontbuilder.svelte.dev.start",
+						"dev.start": "frontbuilder.svelte.dev.start",
+						"dev-start": "frontbuilder.svelte.dev.start",
+						"dev.stop": "frontbuilder.svelte.dev.stop",
+						"dev-stop": "frontbuilder.svelte.dev.stop",
+						"dev.open": "frontbuilder.svelte.dev.open",
+						"dev-open": "frontbuilder.svelte.dev.open",
+						"dev.sync": "frontbuilder.svelte.dev.sync",
+						"dev-sync": "frontbuilder.svelte.dev.sync"
+					};
+					var rawActionId = String(args.actionId || args.command || args.action && args.action.id || "").trim();
+					if (rawActionId) {
+						args.action = args.action && typeof args.action === "object" ? args.action : {};
+						args.action.id = actionAliases[rawActionId] || rawActionId;
+						args.actionId = args.action.id;
+					}
+				}
+			}
 		} else if (name === "flow-block-get") {
 			var wantsSource = argBool(args.includeSource || args.includeCode || args.includeImplementation || args.includeHooks || args.allowSource, false);
 			if (!wantsSource && (String(args.detail || args.mode || "").toLowerCase() === "full" ||
@@ -1412,10 +1572,194 @@
 
 	function runToolBlock(ctx, request, options, handler) {
 		try {
-			return toolResponse(request, handler(prepareToolArguments(ctx, request, options || {})), ctx);
+			var args = prepareToolArguments(ctx, request, options || {});
+			return toolResponse(request, persistSourceMutationResult(request, args, handler(args)), ctx);
 		} catch (e) {
 			return toolError(request, e, ctx);
 		}
+	}
+
+	function persistSourceMutationResult(request, args, result) {
+		var name = toolName(request || {});
+		var frontendMutate = name === "frontend-svelte-mutate"
+			|| (name === "authoring-mutate" && String(args && args.surface || "") === "frontend"
+				&& String(args && args.builder || "") === "svelte");
+		if (!frontendMutate || !result || result.ok !== true || typeof result.source !== "string" || !result.sourceFile) {
+			return result;
+		}
+		if (args && (boolArg(args.dryRun, false) === true || boolArg(args.persist, true) === false || boolArg(args.write, true) === false)) {
+			result.written = false;
+			return result;
+		}
+		var projectRoot = args && args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
+		var sourceFile = new File(String(result.sourceFile));
+		if (!sourceFile.isAbsolute() && projectRoot) {
+			sourceFile = new File(projectRoot, String(result.sourceFile));
+		}
+		sourceFile = sourceFile.getCanonicalFile();
+		if (projectRoot) {
+			var rootPath = String(projectRoot.getCanonicalPath());
+			var filePath = String(sourceFile.getCanonicalPath());
+			if (filePath !== rootPath && filePath.indexOf(rootPath + String(File.separator)) !== 0) {
+				throw new Error("Refusing to write frontend source outside projectDir: " + filePath);
+			}
+		}
+		writeUtf8(sourceFile, result.source);
+		result.sourceFile = String(sourceFile.getAbsolutePath());
+		result.written = true;
+		result.writtenFile = projectRoot ? relativeProjectPath(projectRoot, sourceFile) : String(sourceFile.getAbsolutePath());
+		result.writtenBytes = String(result.source).length;
+		result.studioRefresh = studioRefreshFlowEngine(args, "frontend-source-mutation");
+		result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
+		return result;
+	}
+
+	function relativeProjectPath(projectRoot, file) {
+		try {
+			var rootPath = String(projectRoot.getCanonicalPath());
+			var filePath = String(file.getCanonicalPath());
+			if (filePath === rootPath) {
+				return "";
+			}
+			if (filePath.indexOf(rootPath + String(File.separator)) === 0) {
+				return filePath.substring(rootPath.length + 1).replace(/\\/g, "/");
+			}
+		} catch (_ignoreRelativeProjectPath) {
+		}
+		return String(file.getAbsolutePath());
+	}
+
+	function frontendCreateSourceSpec(args) {
+		args = args || {};
+		var mutation = args.mutation || {};
+		var value = mutation.value || args.insert || args.value || {};
+		return args.createSource || args.creation || mutation.__frontendCreateSource || value.__frontendCreateSource || null;
+	}
+
+	function isFrontendSourceCreation(args) {
+		return frontendCreateSourceSpec(args) !== null;
+	}
+
+	function safeFileName(value) {
+		var safe = String(value || "").replace(/[^A-Za-z0-9_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
+		return safe || "project";
+	}
+
+	function frontendComponentTag(value) {
+		var parts = String(value || "").split(/[^A-Za-z0-9]+/);
+		var out = "";
+		parts.forEach(function (part) {
+			if (part) {
+				out += part.substring(0, 1).toUpperCase() + part.substring(1);
+			}
+		});
+		return out || "Component";
+	}
+
+	function lowerFirst(value) {
+		value = String(value || "");
+		return value ? value.substring(0, 1).toLowerCase() + value.substring(1) : "component";
+	}
+
+	function frontendSourceLocalName(blockId) {
+		blockId = String(blockId || "item");
+		var dot = blockId.lastIndexOf(".");
+		return dot < 0 ? blockId : blockId.substring(dot + 1);
+	}
+
+	function frontendNamespaceFromFocus(args) {
+		var focusPath = String(args && (args.focusPath || args.targetPath || args.target || "") || "");
+		var parts = focusPath.split(".");
+		for (var i = 0; i < parts.length; i++) {
+			if (parts[i] === "catalog" && i + 2 < parts.length) {
+				return parts[i + 2];
+			}
+		}
+		return "";
+	}
+
+	function frontendSourceTemplateValues(builderName, blockId) {
+		var dot = String(blockId || "").lastIndexOf(".");
+		var namespace = dot < 0 ? "" : String(blockId).substring(0, dot);
+		var localName = dot < 0 ? String(blockId || "") : String(blockId).substring(dot + 1);
+		var tag = frontendComponentTag(localName);
+		return {
+			builder: builderName,
+			id: blockId,
+			namespace: namespace,
+			namespacePath: namespace.replace(/\./g, "/"),
+			localName: localName,
+			LocalName: tag,
+			tag: tag,
+			actionName: lowerFirst(tag)
+		};
+	}
+
+	function applyTemplate(template, values) {
+		var out = String(template || "");
+		Object.keys(values || {}).forEach(function (key) {
+			out = out.split("${" + key + "}").join(String(values[key]));
+		});
+		return out;
+	}
+
+	function createFrontendSource(args) {
+		args = args || {};
+		var create = frontendCreateSourceSpec(args);
+		if (!create || typeof create !== "object") {
+			throw new Error("frontend source creation requires a __frontendCreateSource payload from the palette.");
+		}
+		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
+		if (!projectRoot) {
+			throw new Error("frontend source creation requires project or projectDir.");
+		}
+		var builderName = String(create.builder || args.builder || "svelte");
+		var baseId = String(create.baseId || "project.item");
+		var targetNamespace = String(args.namespace || args.targetNamespace || create.__targetNamespace || frontendNamespaceFromFocus(args) || "");
+		if (targetNamespace) {
+			baseId = targetNamespace + "." + frontendSourceLocalName(baseId);
+		}
+		var rootDir = new File(projectRoot, "libs/flow/frontbuilder/" + safeFileName(builderName)).getCanonicalFile();
+		var rootPath = String(rootDir.getCanonicalPath());
+		var file = null;
+		var blockId = baseId;
+		var source = "";
+		for (var attempt = 0; attempt < 100; attempt++) {
+			var candidateId = attempt === 0 ? baseId : baseId + (attempt + 1);
+			var values = frontendSourceTemplateValues(builderName, candidateId);
+			var directory = applyTemplate(create.directory, values);
+			var fileName = applyTemplate(create.fileName, values);
+			values.fileName = fileName;
+			source = applyTemplate(create.source, values);
+			var candidate = new File(new File(rootDir, directory), fileName).getCanonicalFile();
+			var candidatePath = String(candidate.getCanonicalPath());
+			if (candidatePath.indexOf(rootPath + String(File.separator)) !== 0) {
+				throw new Error("Frontend source path escapes builder root: " + candidatePath);
+			}
+			if (!candidate.isFile()) {
+				file = candidate;
+				blockId = candidateId;
+				break;
+			}
+		}
+		if (!file) {
+			throw new Error("Unable to allocate a unique frontend source for " + baseId);
+		}
+		writeUtf8(file, source);
+		var result = {
+			ok: true,
+			target: "frontendSource",
+			created: true,
+			written: true,
+			builder: builderName,
+			sourceId: blockId,
+			sourceFile: String(file.getAbsolutePath()),
+			writtenFile: relativeProjectPath(projectRoot, file),
+			writtenBytes: String(source).length
+		};
+		result.studioRefresh = studioRefreshFlowEngine(args, "frontend-source-create");
+		result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
+		return result;
 	}
 
 	function withNamedFlowSource(ctx, args) {
@@ -2448,6 +2792,10 @@
 		toolResponse: toolResponse,
 		toolError: toolError,
 		toolResult: toolResult,
+		persistSourceMutationResult: persistSourceMutationResult,
+		isFrontendSourceCreation: isFrontendSourceCreation,
+		createFrontendSource: createFrontendSource,
+		studioRefreshFlowEngine: studioRefreshFlowEngine,
 		finalizeResponse: finalizeResponse,
 		sanitizeForMcp: sanitizeForMcp,
 		traceJsonl: traceJsonl,

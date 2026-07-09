@@ -99,7 +99,15 @@ const _meta = {
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
-				response = mcp.toolResponse(request, ctx.callBlock(target, args, { trace: false }), ctx);
+				var result;
+				if (target === "authoring.mutate") {
+					result = mcp.isFrontendSourceCreation(args)
+						? mcp.createFrontendSource(args)
+						: ctx.authoringMutateSource(args);
+				} else {
+					result = ctx.callBlock(target, args, { trace: false });
+				}
+				response = mcp.toolResponse(request, mcp.persistSourceMutationResult(request, args, result), ctx);
 			} catch (e) {
 				response = mcp.toolError(request, e, ctx);
 			}

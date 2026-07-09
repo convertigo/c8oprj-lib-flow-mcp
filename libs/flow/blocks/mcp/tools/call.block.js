@@ -31,6 +31,7 @@ const _meta = {
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
+	var FRONTEND_TOOL_PREFIX = "mcp.tool.frontend.";
 
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
@@ -50,6 +51,9 @@ const _meta = {
 		}
 		if (blockName.indexOf(AUTHORING_TOOL_PREFIX) === 0) {
 			return "authoring-" + camelToKebab(blockName.substring(AUTHORING_TOOL_PREFIX.length));
+		}
+		if (blockName.indexOf(FRONTEND_TOOL_PREFIX) === 0) {
+			return "frontend-" + camelToKebab(blockName.substring(FRONTEND_TOOL_PREFIX.length));
 		}
 		if (blockName.indexOf(TOOL_PREFIX) === 0) {
 			var flowName = "flow-" + camelToKebab(blockName.substring(TOOL_PREFIX.length));

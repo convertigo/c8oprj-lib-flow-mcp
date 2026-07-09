@@ -25,6 +25,7 @@ const _meta = {
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
+	var FRONTEND_TOOL_PREFIX = "mcp.tool.frontend.";
 	var PUBLIC_TOOLS = {
 		"authoring-mutate": true,
 		"authoring-palette": true,
@@ -50,13 +51,19 @@ const _meta = {
 		"flow-output-schema": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
+		"flow-resource-delete": true,
 		"flow-resource-get": true,
 		"flow-resource-patch": true,
 		"flow-resource-search": true,
 		"flow-schema-reset": true,
 		"flow-search": true,
 		"flow-sync-inputs": true,
-		"flow-test": true
+		"flow-test": true,
+		"frontend-svelte-action": true,
+		"frontend-svelte-actions": true,
+		"frontend-svelte-mutate": true,
+		"frontend-svelte-palette": true,
+		"frontend-svelte-tree": true
 	};
 	var OMIT_SCHEMA_PROPERTIES = {
 		allowHugeResult: true,
@@ -103,6 +110,9 @@ const _meta = {
 		if (blockName.indexOf(AUTHORING_TOOL_PREFIX) === 0) {
 			return "authoring-" + camelToKebab(blockName.substring(AUTHORING_TOOL_PREFIX.length));
 		}
+		if (blockName.indexOf(FRONTEND_TOOL_PREFIX) === 0) {
+			return "frontend-" + camelToKebab(blockName.substring(FRONTEND_TOOL_PREFIX.length));
+		}
 		if (blockName.indexOf(TOOL_PREFIX) === 0) {
 			return "flow-" + camelToKebab(blockName.substring(TOOL_PREFIX.length));
 		}
@@ -146,6 +156,25 @@ const _meta = {
 		if (blockNameText.indexOf(AUTHORING_TOOL_PREFIX) === 0) {
 			var authoringSuffix = blockNameText.substring(AUTHORING_TOOL_PREFIX.length);
 			return "authoring." + authoringSuffix;
+		}
+		if (blockNameText.indexOf(FRONTEND_TOOL_PREFIX) === 0) {
+			var frontendSuffix = blockNameText.substring(FRONTEND_TOOL_PREFIX.length);
+			if (frontendSuffix === "svelte.tree") {
+				return "authoring.tree";
+			}
+			if (frontendSuffix === "svelte.palette") {
+				return "authoring.palette";
+			}
+			if (frontendSuffix === "svelte.mutate") {
+				return "authoring.mutate";
+			}
+			if (frontendSuffix === "svelte.actions") {
+				return "authoring.menu";
+			}
+			if (frontendSuffix === "svelte.action") {
+				return "authoring.action";
+			}
+			return "";
 		}
 		var suffix = blockNameText.substring(TOOL_PREFIX.length);
 		if (!suffix) {
@@ -330,6 +359,16 @@ const _meta = {
 			description = "Generic authoring palette for one focusPath, including empty-palette diagnostics and fallback hints.";
 		} else if (name === "authoring-mutate") {
 			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
+		} else if (name === "frontend-svelte-tree") {
+			description = "Svelte frontend authoring tree. Use before editing; paths come from this response, not filesystem guesses.";
+		} else if (name === "frontend-svelte-palette") {
+			description = "Svelte frontend palette for a tree focusPath. Use items[].insert as the source of valid create payloads.";
+		} else if (name === "frontend-svelte-mutate") {
+			description = "Applies Svelte frontend tree mutations through the same contract as Studio drag/drop and property edits.";
+		} else if (name === "frontend-svelte-actions") {
+			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
+		} else if (name === "frontend-svelte-action") {
+			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
@@ -346,6 +385,8 @@ const _meta = {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
+		} else if (name === "flow-resource-delete") {
+			description = "Deletes one project-local Flow resource. Requires project, path and optionally baseHash.";
 		} else if (name === "flow-resource-get") {
 			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
 		} else if (name === "flow-cache-clear") {

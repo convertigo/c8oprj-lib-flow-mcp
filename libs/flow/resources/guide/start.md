@@ -141,3 +141,12 @@ Do not call `flow-schema-reset` during normal authoring. Prefer
 picker/output-schema work across broader scope.
 
 For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is enabled with the Convertigo symbol `flow.mcp.traceJsonl` (`true` for the default project `_private/flow-mcp-trace.jsonl`, or a file path). See `flow://guide/tracing`.
+
+For Svelte frontend work, read `flow://guide/frontend-svelte` and use
+`frontend-svelte-tree`, `frontend-svelte-palette`,
+`frontend-svelte-mutate`, `frontend-svelte-actions` and
+`frontend-svelte-action`. These tools reuse the same authoring contract as the
+Studio tree and palette; do not edit generated Svelte output directly. Flow
+Svelte source follows SvelteKit routes under
+`libs/flow/frontbuilder/svelte/model/<App>/src/routes`, and generated output
+must stay under `_private/svelte/src/routes`.

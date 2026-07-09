@@ -122,6 +122,51 @@ Prefer the compact code path:
    immediately; do not resend code or rewrite for cosmetic changes.
 12. Stop when `code-run` proves the requested result and the promotion succeeds.
 
+## Svelte Frontend Workflow
+
+For FlowEngine Svelte frontend authoring, read the MCP resource
+`flow://guide/frontend-svelte` first. Use the frontend-specific tools instead
+of raw files or generated Svelte output:
+
+1. `frontend-svelte-tree({ project })` to inspect the current page/component
+   tree and get stable `path`, `sourcePath`, `sourceMutationPath` and slot
+   metadata.
+2. `frontend-svelte-palette({ project, focusPath })` to discover what can be
+   inserted at a focus node. Use the returned `items[].insert` and
+   `items[].targetSlot` payloads; do not invent component/directive JSON.
+3. `frontend-svelte-mutate({ project, sourceFile, mutation })` to insert, move,
+   delete or edit frontend nodes through the same contract as Studio drag/drop.
+   Source-backed mutations write the updated source by default; use
+   `dryRun:true` or `persist:false` only for explicit previews. For new pages,
+   Flow UI blocks, Svelte UI blocks or client actions, pass the palette
+   `items[].insert` payload containing `__frontendCreateSource` directly to
+   `frontend-svelte-mutate`; do not create frontend files by hand.
+4. Re-read `frontend-svelte-tree` to verify the tree.
+5. `frontend-svelte-action({ project, actionId:"generate" })` to update
+   generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
+   Use `frontend-svelte-actions` to inspect enabled build/dev actions.
+
+Frontend blocks, directives, events and actions must appear in the logical tree:
+`Button -> Events -> On Click -> Actions -> CallSequence`,
+`If -> Then -> Text`, `ForEach -> Each -> ...`. Create new pages, UI blocks or
+client actions from palette items only. Do not edit `_private/svelte` directly,
+do not hard-code generated component behavior, and do not mutate library blocks
+when the tree says the source is read-only. Use `LinkButton` for route
+navigation styled as a button; reserve `Button` for explicit event/action
+commands. Do not assume an implicit page
+layout: insert explicit layout/surface blocks from the palette (`PageShell`,
+`RowLayout`, `ColumnLayout`, `GridLayout`, `Card`) whenever the UI needs
+spacing, responsive structure or a rounded card. For Svelte snippets, use the
+simple tree rule: no snippet means leaf; one `children` snippet means direct
+children under the block; multiple snippets must appear as explicit slot nodes.
+Flow Svelte source follows the SvelteKit filesystem convention:
+`model/<App>/src/routes/+layout.flow.svelte`,
+`model/<App>/src/routes/+page.flow.svelte`,
+`model/<App>/src/routes/detail/+page.flow.svelte` and reusable UI sources under
+`model/<App>/src/lib/...`. Generated output must remain a SvelteKit app under
+`_private/svelte/src/routes`; do not introduce `src/App.svelte`, `src/main.ts`
+or a hand-rolled SPA shell.
+
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`,
 `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow.
 If the prompt gives `project` and `qname`, trust them; do not inspect workspace
