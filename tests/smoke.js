@@ -24,6 +24,14 @@ var normalizedProjectYaml = mcpLib._normalizeConvertigoYamlObjectHeaders([
 assertTrue(normalizedProjectYaml.indexOf("↓Smoke [core.Project]: \n") !== -1 &&
 	normalizedProjectYaml.indexOf("  ↓project [references.ProjectSchemaReference]: \n") !== -1,
 	"MCP should normalize empty Convertigo YAML object headers before rewriting c8oProject.yaml");
+var normalizedFlowVersionYaml = mcpLib._normalizeConvertigoFlowProjectVersion([
+	"↑convertigo: 8.0.0.m006",
+	"↓Smoke [core.Project]: ",
+	"  ↓GetFeed [flow.Flow]: 🗏 sequences/GetFeed.yaml",
+	""
+].join("\n"));
+assertTrue(normalizedFlowVersionYaml.indexOf("↑convertigo: 8.5.0.m006\n") === 0,
+	"MCP should bump Convertigo project version when Flow DBOs are declared");
 
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));

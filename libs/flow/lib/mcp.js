@@ -1019,6 +1019,7 @@
 		var flowLine = "  ↓" + String(name) + " [flow.Flow]: 🗏 sequences/" + String(name) + ".yaml";
 		var originalContent = readUtf8(projectFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 		var content = normalizeConvertigoYamlObjectHeaders(originalContent);
+		content = normalizeConvertigoFlowProjectVersion(content);
 		var lines = content.split("\n");
 		var changed = content !== originalContent;
 		for (var i = 0; i < lines.length; i++) {
@@ -1056,6 +1057,18 @@
 
 	function normalizeConvertigoYamlObjectHeaders(content) {
 		return String(content || "").replace(/^(\s*↓.+ \[[^\]\r\n]+\]):$/gm, "$1: ");
+	}
+
+	function normalizeConvertigoFlowProjectVersion(content) {
+		var text = String(content || "");
+		if (text.indexOf("[flow.Flow") === -1) {
+			return text;
+		}
+		return text.replace(/^↑convertigo:\s*([0-9]+)\.([0-9]+)\.([0-9]+)[^\r\n]*/m, function (match, major, minor) {
+			var majorNumber = Number(major);
+			var minorNumber = Number(minor);
+			return majorNumber < 8 || majorNumber === 8 && minorNumber < 5 ? "↑convertigo: 8.5.0.m006" : match;
+		});
 	}
 
 	function isFlowScriptWrite(writeResult) {
@@ -3138,6 +3151,7 @@
 		traceJsonl: traceJsonl,
 		runToolBlock: runToolBlock,
 		notification: notification,
-		_normalizeConvertigoYamlObjectHeaders: normalizeConvertigoYamlObjectHeaders
+		_normalizeConvertigoYamlObjectHeaders: normalizeConvertigoYamlObjectHeaders,
+		_normalizeConvertigoFlowProjectVersion: normalizeConvertigoFlowProjectVersion
 	};
 }())
