@@ -88,7 +88,7 @@ const _meta = {
 		return name;
 	}
 
-	function engineSource(ui, resourceRoot) {
+	function engineSource(ui, resourceRoot, modelPath) {
 		if (!ui) {
 			return [
 				"version: 1",
@@ -108,10 +108,89 @@ const _meta = {
 			"      target: svelte5",
 			"      resourceRoot: " + resourceRoot,
 			"      privateDir: _private/svelte",
-			"      modelPath: libs/flow/frontbuilder/svelte/model/SvelteFrontend/src/routes/+page.flow.svelte",
+			"      modelPath: " + modelPath,
 			"      buildOutput: DisplayObjects/mobile",
 			""
 		].join("\n");
+	}
+
+	function jsString(value) {
+		return JSON.stringify(String(value || ""));
+	}
+
+	function svelteModelPath(name) {
+		return "libs/flow/frontbuilder/svelte/model/" + name + "/src/routes/+page.flow.svelte";
+	}
+
+	function ensureParent(file) {
+		Packages.java.nio.file.Files.createDirectories(file.getParentFile().toPath());
+	}
+
+	function writeUtf8(file, content) {
+		var Files = Packages.java.nio.file.Files;
+		var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
+		Files.write(file.toPath(), new Packages.java.lang.String(String(content)).getBytes(StandardCharsets.UTF_8));
+	}
+
+	function initialSveltePage(name) {
+		return [
+			"<script module>",
+			"  export const _flow = {",
+			"    page: {",
+			"      id: \"home\",",
+			"      route: \"/\",",
+			"      title: " + jsString(name),
+			"    }",
+			"  };",
+			"</script>",
+			"",
+			"<FlowComponent id=\"home\" label=" + jsString(name) + ">",
+			"  <Structure>",
+			"    <PageShell id=\"pageShell\" maxWidth=\"960px\" padding=\"24px\" gap=\"16px\" align=\"stretch\">",
+			"      <Children>",
+			"        <Card id=\"welcomeCard\" padding=\"20px\" radius=\"8px\" variant=\"surface\">",
+			"          <Children>",
+			"            <Text id=\"welcomeTitle\" text=" + jsString(name) + " />",
+			"            <Text id=\"welcomeText\" text=\"Flow Svelte frontend is ready.\" />",
+			"          </Children>",
+			"        </Card>",
+			"      </Children>",
+			"    </PageShell>",
+			"  </Structure>",
+			"</FlowComponent>",
+			""
+		].join("\n");
+	}
+
+	function ensureSvelteModel(project, name) {
+		var File = Packages.java.io.File;
+		var relative = svelteModelPath(name);
+		var file = new File(String(project.getDirPath()), relative);
+		var created = false;
+		if (!file.isFile()) {
+			ensureParent(file);
+			writeUtf8(file, initialSveltePage(name));
+			created = true;
+		}
+		return {
+			path: relative,
+			file: String(file.getAbsolutePath()),
+			created: created,
+			exists: file.isFile()
+		};
+	}
+
+	function currentModelPath(source) {
+		var match = String(source || "").match(/^\s*modelPath:\s*(.*?)\s*$/m);
+		return match ? match[1] : "";
+	}
+
+	function projectFileExists(project, path) {
+		if (!path) {
+			return false;
+		}
+		var File = Packages.java.io.File;
+		return new File(String(project.getDirPath()), String(path)).isFile();
 	}
 
 	function loadedProject(engine, name) {
@@ -153,7 +232,7 @@ const _meta = {
 		return project;
 	}
 
-	function ensureFlowEngine(project, ui, resourceRoot) {
+	function ensureFlowEngine(project, ui, resourceRoot, modelPath) {
 		var FlowEngine = Packages.com.twinsoft.convertigo.beans.flow.FlowEngine;
 		var flowEngine = project.getFlowEngine();
 		var created = false;
@@ -166,8 +245,11 @@ const _meta = {
 		}
 		flowEngine.setEngineQName(ENGINE_QNAME);
 		var source = String(flowEngine.getEngineSource() || "");
-		if (created || source.trim() === "" || ui && source.indexOf("frontbuilder:") === -1) {
-			flowEngine.setEngineSource(engineSource(ui, resourceRoot));
+		var hasFrontend = source.indexOf("frontbuilder:") !== -1;
+		var sourceModelPath = currentModelPath(source);
+		var sourceModelExists = projectFileExists(project, sourceModelPath);
+		if (created || source.trim() === "" || ui && (!hasFrontend || !sourceModelExists)) {
+			flowEngine.setEngineSource(engineSource(ui, resourceRoot, modelPath));
 		}
 		project.hasChanged = true;
 		return {
@@ -222,13 +304,17 @@ const _meta = {
 			var project = shouldImport ? importTemplate(engine, name, templateUrl) : existing;
 			result.imported = shouldImport;
 			var resourceRoot = svelteResourceRoot(engine);
-			var flow = ensureFlowEngine(project, ui, resourceRoot);
+			var model = ui ? ensureSvelteModel(project, name) : { path: "", file: "", created: false, exists: false };
+			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
 			result.createdFlowEngine = flow.created;
 			result.configuredSvelte = flow.configuredSvelte;
 			result.engineQName = String(flow.flowEngine.getEngineQName());
 			if (ui) {
 				result.frontbuilderReference = ensureFrontbuilderReference(engine, project);
 				result.frontbuilderResourceRoot = resourceRoot;
+				result.frontbuilderModelPath = model.path;
+				result.frontbuilderModelFile = model.file;
+				result.createdSvelteModel = model.created;
 			}
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
