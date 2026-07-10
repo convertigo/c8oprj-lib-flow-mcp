@@ -103,6 +103,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-block-mock-list";
 }), "MCP Flow tools/list did not expose flow-block-mock-list");
 assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-project-bootstrap";
+}), "MCP Flow tools/list did not expose flow-project-bootstrap");
+assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-tree";
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-palette";

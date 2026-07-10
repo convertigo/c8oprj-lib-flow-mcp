@@ -49,6 +49,7 @@ const _meta = {
 		"flow-list": true,
 		"flow-node-output-schema": true,
 		"flow-output-schema": true,
+		"flow-project-bootstrap": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
 		"flow-resource-delete": true,
@@ -194,7 +195,8 @@ const _meta = {
 		} else if (suffix.indexOf("code.") === 0 || suffix.indexOf("source.") === 0) {
 			target = "flow." + suffix;
 		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 ||
-				suffix.indexOf("requestable.") === 0 || suffix.indexOf("type.") === 0) {
+				suffix.indexOf("requestable.") === 0 || suffix.indexOf("type.") === 0 ||
+				suffix.indexOf("project.") === 0) {
 			target = suffix;
 		}
 		var candidates = target ? [target] : [];
@@ -383,6 +385,8 @@ const _meta = {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
+		} else if (name === "flow-project-bootstrap") {
+			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-delete") {
