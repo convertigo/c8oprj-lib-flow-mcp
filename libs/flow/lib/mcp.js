@@ -1017,11 +1017,16 @@
 			return false;
 		}
 		var flowLine = "  ↓" + String(name) + " [flow.Flow]: 🗏 sequences/" + String(name) + ".yaml";
-		var content = readUtf8(projectFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+		var originalContent = readUtf8(projectFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+		var content = normalizeConvertigoYamlObjectHeaders(originalContent);
 		var lines = content.split("\n");
+		var changed = content !== originalContent;
 		for (var i = 0; i < lines.length; i++) {
 			if (String(lines[i]).indexOf("↓" + String(name) + " [flow.Flow]:") !== -1) {
-				return false;
+				if (changed) {
+					writeUtf8(projectFile, lines.join("\n").replace(/\n+$/g, "") + "\n");
+				}
+				return changed;
 			}
 		}
 		var insertAt = -1;
@@ -1047,6 +1052,10 @@
 		lines.splice(insertAt, 0, flowLine);
 		writeUtf8(projectFile, lines.join("\n").replace(/\n+$/g, "") + "\n");
 		return true;
+	}
+
+	function normalizeConvertigoYamlObjectHeaders(content) {
+		return String(content || "").replace(/^(\s*↓.+ \[[^\]\r\n]+\]):$/gm, "$1: ");
 	}
 
 	function isFlowScriptWrite(writeResult) {
@@ -1369,8 +1378,139 @@
 
 	function toolResponse(request, value, ctx) {
 		request = request || {};
+		value = enrichSvelteBootstrapPalette(request, value);
 		value = compactToolValue(request, value);
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
+	}
+
+	function isSveltePaletteRequest(request) {
+		var name = toolName(request);
+		var args = toolArguments(request);
+		return name === "frontend-svelte-palette"
+			|| (name === "authoring-palette"
+				&& String(args && args.surface || "") === "frontend"
+				&& String(args && args.builder || "") === "svelte");
+	}
+
+	function bootstrapFrontendDescriptor(kind) {
+		var page = kind === "page";
+		var label = page ? "Page" : "Layout";
+		var fileName = page ? "+page.flow.svelte" : "+layout.flow.svelte";
+		var baseId = page ? "page" : "layout";
+		var source = page
+			? [
+				"<script module>",
+				"  export const _meta = {",
+				"    version: 1,",
+				"    id: \"project.${localName}\",",
+				"    name: \"${LocalName}\",",
+				"    label: \"${LocalName}\",",
+				"    kind: \"page\",",
+				"    tag: \"FlowComponent\",",
+				"    runtime: \"flow-svelte\"",
+				"  };",
+				"</script>",
+				"",
+				"<FlowComponent id=\"${localName}\" title=\"${LocalName}\">",
+				"  <Structure />",
+				"</FlowComponent>",
+				""
+			].join("\n")
+			: [
+				"<script module>",
+				"  export const _meta = {",
+				"    version: 1,",
+				"    id: \"project.${localName}Layout\",",
+				"    name: \"${LocalName}Layout\",",
+				"    label: \"${LocalName} layout\",",
+				"    kind: \"layout\",",
+				"    tag: \"FlowComponent\",",
+				"    runtime: \"flow-svelte\"",
+				"  };",
+				"</script>",
+				"",
+				"<FlowComponent id=\"${localName}Layout\" title=\"${LocalName} layout\">",
+				"  <Structure>",
+				"    <PageShell id=\"pageShell\" maxWidth=\"1120px\" padding=\"24px\" gap=\"16px\" align=\"stretch\">",
+				"      <Children>",
+				"        <PageContent id=\"pageContent\" />",
+				"      </Children>",
+				"    </PageShell>",
+				"  </Structure>",
+				"</FlowComponent>",
+				""
+			].join("\n");
+		return {
+			id: "frontbuilder.svelte.bootstrap." + kind,
+			name: label,
+			localName: baseId,
+			label: label,
+			category: "Frontend route definitions",
+			kind: page ? "frontendPageDefinition" : "frontendRouteLayoutDefinition",
+			icon: page ? "mdi:file-outline" : "mdi:page-layout-outline",
+			description: "Creates the initial Flow Svelte " + label.toLowerCase() + " model and wires config.frontbuilder.svelte.modelPath.",
+			provider: "frontbuilder.svelte",
+			namespace: "frontbuilder.svelte",
+			sourceBacked: true,
+			descriptorKind: "create",
+			sourceWritable: true,
+			traits: [page ? "definition.routePage" : "definition.routeLayout"],
+			slots: {},
+			targetKinds: ["frontendBuilder"],
+			acceptedPositions: ["inside"],
+			targetSlot: {
+				id: "catalog",
+				label: "Catalog",
+				accepts: ["definition.routePage", "definition.routeLayout", "definition.routeFolder", "definition.uiBlock"],
+				sourceMutationPath: "",
+				sourcePath: "",
+				sourceWritable: true,
+				position: "inside",
+				mode: "inside"
+			},
+			insert: {
+				__frontendCreateSource: {
+					builder: "svelte",
+					baseId: baseId,
+					directory: "model/svelte/src/routes",
+					fileName: fileName,
+					source: source,
+					__setAsModelPath: true
+				}
+			}
+		};
+	}
+
+	function enrichSvelteBootstrapPalette(request, value) {
+		if (!value || typeof value !== "object" || !isSveltePaletteRequest(request)) {
+			return value;
+		}
+		var args = toolArguments(request);
+		var focus = value.focus || {};
+		var focusPath = String(args.focusPath || args.targetPath || args.target || focus.path || "");
+		var isBuilder = focusPath === "frontends.svelte" || (focus.kind === "frontendBuilder" && String(focus.type || "") === "svelte");
+		if (!isBuilder || focus.sourceWritable !== false || focus.sourcePath) {
+			return value;
+		}
+		var query = String(args.query || args.q || "").toLowerCase();
+		var additions = [];
+		if (!query || "page".indexOf(query) !== -1 || query.indexOf("page") !== -1) {
+			additions.push(bootstrapFrontendDescriptor("page"));
+		}
+		if (!query || "layout".indexOf(query) !== -1 || query.indexOf("layout") !== -1) {
+			additions.push(bootstrapFrontendDescriptor("layout"));
+		}
+		if (!additions.length) {
+			return value;
+		}
+		value.items = (value.items || []).concat(additions);
+		value.eligibleCount = Number(value.eligibleCount || 0) + additions.length;
+		value.candidateCount = Number(value.candidateCount || 0) + additions.length;
+		value.bootstrap = {
+			modelPathMissing: true,
+			next: "Insert Page or Layout to create the initial Flow Svelte model; the MCP will set config.frontbuilder.svelte.modelPath automatically."
+		};
+		return value;
 	}
 
 	function toolError(request, error, ctx) {
@@ -1567,6 +1707,7 @@
 		if (!workspaceSearch && options.resolveProject !== false) {
 			args = resolveProjectDir(args);
 		}
+		args = inferFrontendMutationSourceFile(name, args);
 		return args;
 	}
 
@@ -1640,6 +1781,101 @@
 		return frontendCreateSourceSpec(args) !== null;
 	}
 
+	function yamlPlainScalar(value) {
+		var text = String(value || "").trim();
+		if ((text.charAt(0) === "\"" && text.charAt(text.length - 1) === "\"") ||
+				(text.charAt(0) === "'" && text.charAt(text.length - 1) === "'")) {
+			if (text.charAt(0) === "\"") {
+				try {
+					return String(JSON.parse(text));
+				} catch (_ignoreJsonScalar) {
+				}
+			}
+			return text.substring(1, text.length - 1).replace(/''/g, "'");
+		}
+		return text;
+	}
+
+	function frontendBuilderModelPath(projectRoot, builderName) {
+		if (!projectRoot) {
+			return "";
+		}
+		var engineFile = new File(projectRoot, "libs/flow/engine.yaml");
+		if (!engineFile.isFile()) {
+			return "";
+		}
+		var builderSafe = safeFileName(builderName || "svelte");
+		var lines = readUtf8(engineFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+		var builderLine = -1;
+		var builderPattern = new RegExp("^    " + builderSafe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ":\\s*$");
+		for (var i = 0; i < lines.length; i++) {
+			if (builderPattern.test(lines[i])) {
+				builderLine = i;
+				break;
+			}
+		}
+		if (builderLine < 0) {
+			return "";
+		}
+		var end = lines.length;
+		for (var j = builderLine + 1; j < lines.length; j++) {
+			if (/^    \S/.test(lines[j]) || /^  \S/.test(lines[j]) || /^\S/.test(lines[j])) {
+				end = j;
+				break;
+			}
+		}
+		for (var k = builderLine + 1; k < end; k++) {
+			var match = /^      modelPath:\s*(.*)$/.exec(lines[k]);
+			if (match) {
+				return yamlPlainScalar(match[1]);
+			}
+		}
+		return "";
+	}
+
+	function frontendMutationUsesFrontAst(mutation) {
+		mutation = mutation || {};
+		if (mutation.op === "batch" && mutation.mutations) {
+			for (var i = 0; i < mutation.mutations.length; i++) {
+				if (frontendMutationUsesFrontAst(mutation.mutations[i])) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return String(mutation.path || mutation.from || mutation.source || "").indexOf("frontAst") === 0;
+	}
+
+	function inferFrontendMutationSourceFile(name, args) {
+		args = args || {};
+		if (args.sourceFile || args.sourcePath || isFrontendSourceCreation(args)) {
+			return args;
+		}
+		var isFrontendMutate = name === "frontend-svelte-mutate" ||
+			(name === "authoring-mutate" && String(args.surface || "") === "frontend" && String(args.builder || "") === "svelte");
+		if (!isFrontendMutate) {
+			return args;
+		}
+		var mutations = args.mutations || (args.mutation ? [args.mutation] : []);
+		var needsFrontAstSource = false;
+		for (var i = 0; i < mutations.length; i++) {
+			if (frontendMutationUsesFrontAst(mutations[i])) {
+				needsFrontAstSource = true;
+				break;
+			}
+		}
+		if (!needsFrontAstSource) {
+			return args;
+		}
+		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
+		var modelPath = frontendBuilderModelPath(projectRoot, args.builder || "svelte");
+		if (!modelPath) {
+			throw new Error(name + " mutates frontAst but no sourceFile was provided and config.frontbuilder.svelte.modelPath is missing.");
+		}
+		args.sourceFile = modelPath;
+		return args;
+	}
+
 	function safeFileName(value) {
 		var safe = String(value || "").replace(/[^A-Za-z0-9_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
 		return safe || "project";
@@ -1703,6 +1939,90 @@
 		return out;
 	}
 
+	function frontendSourceTargetDirectory(projectRoot, rootDir, create) {
+		create = create || {};
+		var targetSourcePath = String(create.targetSourcePath || create.__targetSourcePath || create.focusSourcePath || "");
+		if (!targetSourcePath) {
+			return String(create.fallbackDirectory || "");
+		}
+		var target = new File(targetSourcePath);
+		if (!target.isAbsolute()) {
+			target = new File(projectRoot, targetSourcePath);
+		}
+		target = target.getCanonicalFile();
+		if (target.isFile() || String(target.getName()).indexOf("+") === 0) {
+			target = target.getParentFile().getCanonicalFile();
+		}
+		var rootPath = String(rootDir.getCanonicalPath());
+		var targetPath = String(target.getCanonicalPath());
+		if (targetPath !== rootPath && targetPath.indexOf(rootPath + String(File.separator)) !== 0) {
+			throw new Error("Frontend source target escapes builder root: " + targetPath);
+		}
+		if (targetPath === rootPath) {
+			return "";
+		}
+		return targetPath.substring(rootPath.length + 1).replace(/\\/g, "/");
+	}
+
+	function ensureFrontendBuilderModelPath(projectRoot, builderName, file) {
+		var fileName = String(file && file.getName ? file.getName() : "");
+		if (!/^\+(?:page|layout)\.flow\.svelte$/.test(fileName)) {
+			return null;
+		}
+		var relative = relativeProjectPath(projectRoot, file);
+		var builderSafe = safeFileName(builderName);
+		if (relative.indexOf("libs/flow/frontbuilder/" + builderSafe + "/model/") !== 0) {
+			return null;
+		}
+		var engineFile = new File(projectRoot, "libs/flow/engine.yaml");
+		if (!engineFile.isFile()) {
+			return null;
+		}
+		var original = readUtf8(engineFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+		var lines = original.split("\n");
+		var builderLine = -1;
+		var builderPattern = new RegExp("^    " + builderSafe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ":\\s*$");
+		for (var i = 0; i < lines.length; i++) {
+			if (builderPattern.test(lines[i])) {
+				builderLine = i;
+				break;
+			}
+		}
+		if (builderLine < 0) {
+			return null;
+		}
+		var end = lines.length;
+		for (var j = builderLine + 1; j < lines.length; j++) {
+			if (/^    \S/.test(lines[j]) || /^  \S/.test(lines[j]) || /^\S/.test(lines[j])) {
+				end = j;
+				break;
+			}
+		}
+		for (var k = builderLine + 1; k < end; k++) {
+			if (/^      modelPath:/.test(lines[k])) {
+				return {
+					changed: false,
+					modelPath: relative,
+					file: relativeProjectPath(projectRoot, engineFile)
+				};
+			}
+		}
+		var insertAt = builderLine + 1;
+		for (var l = builderLine + 1; l < end; l++) {
+			if (/^      target:/.test(lines[l])) {
+				insertAt = l + 1;
+				break;
+			}
+		}
+		lines.splice(insertAt, 0, "      modelPath: " + yamlScalar(relative));
+		writeUtf8(engineFile, lines.join("\n").replace(/\n+$/g, "") + "\n");
+		return {
+			changed: true,
+			modelPath: relative,
+			file: relativeProjectPath(projectRoot, engineFile)
+		};
+	}
+
 	function createFrontendSource(args) {
 		args = args || {};
 		var create = frontendCreateSourceSpec(args);
@@ -1724,19 +2044,24 @@
 		var file = null;
 		var blockId = baseId;
 		var source = "";
+		var targetRouteDirectory = frontendSourceTargetDirectory(projectRoot, rootDir, create);
+		var directoryOnly = create.directoryOnly === true || String(create.directoryOnly) === "true";
 		for (var attempt = 0; attempt < 100; attempt++) {
 			var candidateId = attempt === 0 ? baseId : baseId + (attempt + 1);
 			var values = frontendSourceTemplateValues(builderName, candidateId);
+			values.targetRouteDirectory = targetRouteDirectory;
 			var directory = applyTemplate(create.directory, values);
-			var fileName = applyTemplate(create.fileName, values);
+			var fileName = applyTemplate(create.fileName || "", values);
 			values.fileName = fileName;
 			source = applyTemplate(create.source, values);
-			var candidate = new File(new File(rootDir, directory), fileName).getCanonicalFile();
+			var candidate = directoryOnly
+				? new File(rootDir, directory).getCanonicalFile()
+				: new File(new File(rootDir, directory), fileName).getCanonicalFile();
 			var candidatePath = String(candidate.getCanonicalPath());
-			if (candidatePath.indexOf(rootPath + String(File.separator)) !== 0) {
+			if (candidatePath !== rootPath && candidatePath.indexOf(rootPath + String(File.separator)) !== 0) {
 				throw new Error("Frontend source path escapes builder root: " + candidatePath);
 			}
-			if (!candidate.isFile()) {
+			if (directoryOnly ? !candidate.exists() : !candidate.isFile()) {
 				file = candidate;
 				blockId = candidateId;
 				break;
@@ -1745,7 +2070,18 @@
 		if (!file) {
 			throw new Error("Unable to allocate a unique frontend source for " + baseId);
 		}
-		writeUtf8(file, source);
+		if (directoryOnly) {
+			file.mkdirs();
+			var markerName = String(create.markerFile || "");
+			if (markerName) {
+				var marker = new File(file, markerName).getCanonicalFile();
+				writeUtf8(marker, applyTemplate(create.markerSource || "", frontendSourceTemplateValues(builderName, blockId)));
+				file = marker;
+				source = String(create.markerSource || "");
+			}
+		} else {
+			writeUtf8(file, source);
+		}
 		var result = {
 			ok: true,
 			target: "frontendSource",
@@ -1757,6 +2093,7 @@
 			writtenFile: relativeProjectPath(projectRoot, file),
 			writtenBytes: String(source).length
 		};
+		result.modelPath = ensureFrontendBuilderModelPath(projectRoot, builderName, file);
 		result.studioRefresh = studioRefreshFlowEngine(args, "frontend-source-create");
 		result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
 		return result;
@@ -2800,6 +3137,7 @@
 		sanitizeForMcp: sanitizeForMcp,
 		traceJsonl: traceJsonl,
 		runToolBlock: runToolBlock,
-		notification: notification
+		notification: notification,
+		_normalizeConvertigoYamlObjectHeaders: normalizeConvertigoYamlObjectHeaders
 	};
 }())

@@ -16,7 +16,9 @@ edit generated Svelte output directly.
    `items[].targetSlot.index` tell you what can be inserted and where.
 3. Apply changes with `frontend-svelte-mutate`.
    For source-backed Flow Svelte files, pass `sourceFile` from the focused node
-   or palette target and a `mutation` using the palette-provided payload.
+   or palette target and a `mutation` using the palette-provided payload. For
+   the main builder model, `frontAst...` mutations can also omit `sourceFile`:
+   the MCP resolves it from `config.frontbuilder.svelte.modelPath`.
    Source-backed mutations persist the updated source by default. Use
    `dryRun:true` or `persist:false` only when you explicitly want a preview.
 4. Re-read with `frontend-svelte-tree` to verify the tree changed.
@@ -45,6 +47,12 @@ _private/svelte/src/lib/...
 
 - Do not create or edit a synthetic `src/App.svelte`, `src/main.ts` or root
   `index.html` app shell. SvelteKit routes are the application shell.
+- Read the route tree as SvelteKit route directories. A route directory can
+  contain one `Layout`, one `Page`, later `Error`/`Server`, and child route
+  directories. The tree should look like `Routes -> ROOT / -> Page -> Structure`
+  and `Routes -> ROOT / -> Children -> detail -> Page`, not like duplicate page
+  nodes or raw `+page.svelte` filenames. Technical files and generated paths are
+  implicit read-only projection details.
 - Treat frontend blocks like backend Flow blocks: they come from the palette,
   have a small editable property facade, and are arranged in the same tree as
   pages, components, events and actions.
@@ -52,12 +60,22 @@ _private/svelte/src/lib/...
   the palette with clear properties, for example
   `<CountryPanel title={...} source={...}>`. Avoid hidden hard-coded behavior in
   the generator when a reusable block or action belongs in the tree.
+- Generated route files should be readable SvelteKit files composed from real
+  component imports, for example `<PageShell><Card><Text /></Card></PageShell>`.
+  Do not create opaque route trampolines to synthetic `Home.svelte` files unless
+  the low-code tree explicitly contains a reusable component.
 - Layout is explicit low-code vocabulary, not a generator default. If a page
   needs spacing, columns, a responsive grid or a constrained shell, insert
   palette blocks such as `PageShell`, `RowLayout`, `ColumnLayout` or
   `GridLayout`. If content needs a rounded bordered surface, insert a `Card`
   block. Do not rely on hidden page wrappers, generated panels or CSS classes
   that are absent from the tree.
+- Visual styling should normally be expressed through visible block properties
+  and variants, for example `Card variant="dark"`, `Card variant="sky"` or
+  `Button fullWidth="true"`. Do not rely on a page-local `<style>` block as the
+  main authoring mechanism: if the palette lacks the styling vocabulary needed
+  for a task, report the tooling gap or create an explicit project-local UI
+  block instead of hiding behavior in CSS.
 - Svelte snippets are the child contract. No snippet means the block is a leaf.
   A single snippet named `children` means children are edited directly under
   the block. Multiple snippets are shown as explicit slot nodes such as
@@ -65,6 +83,9 @@ _private/svelte/src/lib/...
 - Directives are palette blocks too. Put them in the logical structure:
   `If -> Then -> Text`, `ForEach -> Each -> Row`, `Await -> Pending/Then/Catch`.
   Do not model directives as detached metadata folders.
+- Use directive property names from the palette: `If` uses `test`, `ForEach`
+  uses `source` and `context`. If the tree shows an older alias such as
+  `condition`, prefer patching it to `test` before generation.
 - Events and actions live under the owning block. A button click should look
   like `Button -> Events -> On Click -> Actions -> CallSequence`, not like a
   global action magically referenced by a string.
@@ -112,6 +133,11 @@ For property edits, mutate the node's `sourceMutationPath`:
   }
 }
 ```
+
+Do not use `flow-resource-patch` to edit Flow Svelte page/component structure
+or properties. If `frontend-svelte-mutate` cannot apply a tree/property edit,
+report the exact focused node, `sourceMutationPath`, payload and error as a
+tooling gap.
 
 For new source-backed pages, Flow UI blocks, Svelte UI blocks or client
 actions, pass the palette item's `insert` payload directly. It contains

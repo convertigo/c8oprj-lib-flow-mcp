@@ -12,6 +12,19 @@ function assertTrue(condition, message) {
 	}
 }
 
+var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
+var mcpLib = eval(mcpLibSource);
+var normalizedProjectYaml = mcpLib._normalizeConvertigoYamlObjectHeaders([
+	"↓Smoke [core.Project]:",
+	"  ↓project [references.ProjectSchemaReference]:",
+	"    projectName: lib_flow_engine",
+	""
+].join("\n"));
+assertTrue(normalizedProjectYaml.indexOf("↓Smoke [core.Project]: \n") !== -1 &&
+	normalizedProjectYaml.indexOf("  ↓project [references.ProjectSchemaReference]: \n") !== -1,
+	"MCP should normalize empty Convertigo YAML object headers before rewriting c8oProject.yaml");
+
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
 var batchBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
@@ -553,6 +566,62 @@ assertTrue(frontendSvelteCreate.result.result.structuredContent.created === true
 	frontendSvelteCreate.result.result.structuredContent.written === true &&
 	frontendCreatedFile.isFile(),
 	"MCP frontend-svelte-mutate should create source-backed frontend blocks from palette payloads");
+var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svelte/model/Smoke/src/routes");
+var frontendRouteSegment = mcpLib.createFrontendSource({
+	projectDir: targetProjectDir,
+	mutation: {
+		value: {
+			__frontendCreateSource: {
+				baseId: "detail",
+				directory: "${targetRouteDirectory}/${localName}",
+				directoryOnly: true,
+				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
+				markerFile: ".flow-route.json",
+				markerSource: "{\n  \"kind\": \"segment\"\n}\n"
+			}
+		}
+	}
+});
+var frontendDetailDir = new java.io.File(frontendRouteRoot, "detail");
+assertTrue(frontendRouteSegment.created === true &&
+	frontendRouteSegment.written === true &&
+	new java.io.File(frontendDetailDir, ".flow-route.json").isFile(),
+	"MCP frontend source creation should create route segment folders from targetSourcePath");
+var frontendRoutePage = mcpLib.createFrontendSource({
+	projectDir: targetProjectDir,
+	mutation: {
+		value: {
+			__frontendCreateSource: {
+				baseId: "detailPage",
+				directory: "${targetRouteDirectory}",
+				fileName: "+page.flow.svelte",
+				targetSourcePath: String(frontendDetailDir.getAbsolutePath()),
+				source: [
+					"<script module>",
+					"  export const _flow = {",
+					"    page: {",
+					"      id: \"${localName}\",",
+					"      title: \"${LocalName}\"",
+					"    }",
+					"  };",
+					"</script>",
+					"",
+					"<FlowComponent id=\"${localName}\" label=\"${LocalName}\">",
+					"  <Structure />",
+					"</FlowComponent>",
+					""
+				].join("\n")
+			}
+		}
+	}
+});
+var frontendDetailPageFile = new java.io.File(frontendDetailDir, "+page.flow.svelte");
+var frontendDetailPageSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendDetailPageFile, "UTF-8"));
+assertTrue(frontendRoutePage.created === true &&
+	frontendRoutePage.written === true &&
+	frontendDetailPageFile.isFile() &&
+	frontendDetailPageSource.indexOf("route:") === -1,
+	"MCP frontend source creation should create route pages in the selected route folder without hard-coded route metadata");
 
 var targetFlowCode = [
 	"const _flow = {",

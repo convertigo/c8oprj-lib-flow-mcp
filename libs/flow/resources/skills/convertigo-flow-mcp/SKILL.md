@@ -136,11 +136,16 @@ of raw files or generated Svelte output:
    `items[].targetSlot` payloads; do not invent component/directive JSON.
 3. `frontend-svelte-mutate({ project, sourceFile, mutation })` to insert, move,
    delete or edit frontend nodes through the same contract as Studio drag/drop.
-   Source-backed mutations write the updated source by default; use
-   `dryRun:true` or `persist:false` only for explicit previews. For new pages,
-   Flow UI blocks, Svelte UI blocks or client actions, pass the palette
-   `items[].insert` payload containing `__frontendCreateSource` directly to
-   `frontend-svelte-mutate`; do not create frontend files by hand.
+   Pass `sourceFile` from the focused tree node or palette target when it is
+   available; for main-model `frontAst...` mutations, the MCP can infer it from
+   `config.frontbuilder.svelte.modelPath`. Source-backed mutations write the
+   updated source by default; use `dryRun:true` or `persist:false` only for
+   explicit previews. For new pages, Flow UI blocks, Svelte UI blocks or client
+   actions, pass the palette `items[].insert` payload containing
+   `__frontendCreateSource` directly to `frontend-svelte-mutate`; do not create
+   frontend files by hand. Do not use `flow-resource-patch` for Flow Svelte
+   page/component tree or property edits; report the mutate error as a tooling
+   gap instead.
 4. Re-read `frontend-svelte-tree` to verify the tree.
 5. `frontend-svelte-action({ project, actionId:"generate" })` to update
    generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
@@ -156,9 +161,20 @@ navigation styled as a button; reserve `Button` for explicit event/action
 commands. Do not assume an implicit page
 layout: insert explicit layout/surface blocks from the palette (`PageShell`,
 `RowLayout`, `ColumnLayout`, `GridLayout`, `Card`) whenever the UI needs
-spacing, responsive structure or a rounded card. For Svelte snippets, use the
-simple tree rule: no snippet means leaf; one `children` snippet means direct
-children under the block; multiple snippets must appear as explicit slot nodes.
+spacing, responsive structure or a rounded card. Prefer visible block
+properties and variants over page-local `<style>` blocks; if the palette lacks
+the needed styling vocabulary, report that tooling gap instead of hiding the UI
+in CSS. For directives, use the palette property names: `If` uses `test`,
+`ForEach` uses `source` and `context`. For Svelte snippets, use the simple tree
+rule: no snippet means leaf; one `children` snippet means direct children under
+the block; multiple snippets must appear as explicit slot nodes.
+Read SvelteKit routes as route directories: `Routes -> ROOT / -> Page ->
+Structure`, with optional `Layout` beside `Page` and child route directories
+under `Children`. Do not expose duplicate page nodes or raw `+page.svelte`
+filenames as the main low-code object. Generated route files should compose real
+palette components with imports and tags such as `<PageShell><Card><Text
+/></Card></PageShell>`; do not hide a page behind a synthetic `Home.svelte`
+trampoline unless the tree explicitly uses a reusable component.
 Flow Svelte source follows the SvelteKit filesystem convention:
 `model/<App>/src/routes/+layout.flow.svelte`,
 `model/<App>/src/routes/+page.flow.svelte`,
