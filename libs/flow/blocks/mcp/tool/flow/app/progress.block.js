@@ -79,6 +79,34 @@ const _meta = {
 		return String(flow && (flow.qname || flow.flowQName || flow.name || flow.id) || "");
 	}
 
+	function flowLocalName(value, project) {
+		value = String(value || "").replace(/^\.+/, "");
+		project = String(project || "");
+		if (project && value.indexOf(project + ".") === 0) {
+			return value.substring(project.length + 1);
+		}
+		var parts = value.split(".").filter(function (part) {
+			return !!part;
+		});
+		return parts.length ? parts[parts.length - 1] : value;
+	}
+
+	function flowMatchesQName(flow, wanted, project) {
+		wanted = String(wanted || "").trim();
+		if (!wanted) {
+			return true;
+		}
+		var qname = String(flow && flow.qname || "");
+		var name = String(flow && flow.name || "");
+		var wantedLocal = flowLocalName(wanted, project);
+		var qnameLocal = flowLocalName(qname, project);
+		return qname === wanted
+			|| name === wanted
+			|| (project && qname === String(project) + "." + wantedLocal)
+			|| name === wantedLocal
+			|| qnameLocal === wantedLocal;
+	}
+
 	function compactFlows(flows) {
 		return flows.map(function (flow) {
 			return {
@@ -483,7 +511,7 @@ const _meta = {
 					return flow.sample !== true;
 				});
 				var hasWantedFlow = !wantedQName || compact.some(function (flow) {
-					return flow.qname === wantedQName || flow.name === wantedQName || flow.qname === args.project + "." + wantedQName;
+					return flowMatchesQName(flow, wantedQName, args.project);
 				});
 				var catalog = ctx.blockList({
 					projectDir: args.projectDir,

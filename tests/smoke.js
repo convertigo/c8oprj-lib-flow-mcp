@@ -557,6 +557,17 @@ assertTrue(appProgressEmpty.result.result.structuredContent.ok === true &&
 		return call.tool === "flow-block-mock-list";
 	}),
 	"MCP flow-app-progress did not return a useful paperboard checklist");
+var appProgressFullQName = callTool(13912, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	qname: "target.TargetSmoke",
+	includeFrontend: false
+});
+assertTrue(appProgressFullQName.result.result.structuredContent.ok === true &&
+	appProgressFullQName.result.result.structuredContent.tasks.some(function (task) {
+		return task.id === "backendFlow" && task.done === true;
+	}),
+	"MCP flow-app-progress should normalize full executable Flow qnames");
 var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
 	project: "FlowBootstrapSmoke",
 	dryRun: true,
