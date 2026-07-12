@@ -43,6 +43,7 @@ const _meta = {
 		"flow-block-get": true,
 		"flow-block-mock": true,
 		"flow-block-mock-list": true,
+		"flow-app-progress": true,
 		"flow-cache-clear": true,
 		"flow-cache-info": true,
 		"flow-catalog": true,
@@ -362,7 +363,7 @@ const _meta = {
 		} else if (name === "authoring-mutate") {
 			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
 		} else if (name === "frontend-svelte-tree") {
-			description = "Svelte frontend authoring tree. Use before editing; paths come from this response, not filesystem guesses.";
+			description = "Svelte frontend authoring tree. Use detail:'inspect' plus focusPath/rootPath to inspect one route, page, component or slot; paths come from this response.";
 		} else if (name === "frontend-svelte-palette") {
 			description = "Svelte frontend palette for a tree focusPath. Use items[].insert as the source of valid create payloads.";
 		} else if (name === "frontend-svelte-mutate") {
@@ -381,6 +382,8 @@ const _meta = {
 			description = "Creates a typed project-local mock after UNKNOWN_BLOCK; keeps parent Flow executable while real block is built.";
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
+		} else if (name === "flow-app-progress") {
+			description = "Reports backend/frontend paperboard progress, remaining mocks and recommended MCP calls for one Flow project.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {

@@ -35,7 +35,7 @@ const _meta = {
     "out": {
       "kind": "path",
       "mode": "write",
-      "default": "result",
+      "default": "local.projectBootstrap",
       "description": "Scope path receiving the bootstrap result."
     }
   },
@@ -110,6 +110,8 @@ const _meta = {
 			"      privateDir: _private/svelte",
 			"      modelPath: " + modelPath,
 			"      buildOutput: DisplayObjects/mobile",
+			"configVisibility:",
+			"  frontbuilder: private",
 			""
 		].join("\n");
 	}
@@ -259,14 +261,39 @@ const _meta = {
 		};
 	}
 
-	function refreshStudio(engine, projectName) {
+	function refreshStudio(engine, project) {
+		var projectName = String(project.getName());
 		try {
-			engine.theApp.schemaManager.clearCache(String(projectName));
+			engine.theApp.schemaManager.clearCache(projectName);
 		} catch (_ignoreSchemaCache) {
 		}
 		try {
-			Packages.com.twinsoft.convertigo.engine.sync.SharedWorkspaceSyncManager.markProjectReload(String(projectName));
-		} catch (_ignoreSync) {
+			if (engine.isStudioMode() !== true) {
+				return;
+			}
+			var ConvertigoPlugin = Packages.com.twinsoft.convertigo.eclipse.ConvertigoPlugin;
+			var Runnable = Packages.java.lang.Runnable;
+			var plugin = ConvertigoPlugin.getDefault();
+			if (plugin == null) {
+				return;
+			}
+			ConvertigoPlugin.asyncExec(new Runnable({ run: function () {
+				try {
+					var view = plugin.getProjectExplorerView();
+					if (view == null) {
+						return;
+					}
+					var treeObject = view.findTreeObjectByUserObject(project);
+					if (treeObject != null) {
+						view.reloadTreeObject(treeObject);
+					} else {
+						view.refreshProjects();
+					}
+				} catch (e) {
+					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow bootstrap", false);
+				}
+			}}));
+		} catch (_ignoreStudioRefresh) {
 		}
 	}
 
@@ -298,7 +325,7 @@ const _meta = {
 			if (dryRun) {
 				result.wouldImport = shouldImport;
 				result.wouldCustomize = true;
-				ctx.write(prop(props, "out") || "result", result);
+				ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 				return result;
 			}
 			var project = shouldImport ? importTemplate(engine, name, templateUrl) : existing;
@@ -319,8 +346,8 @@ const _meta = {
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());
-			refreshStudio(engine, name);
-			ctx.write(prop(props, "out") || "result", result);
+			refreshStudio(engine, project);
+			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
 		}
 	};

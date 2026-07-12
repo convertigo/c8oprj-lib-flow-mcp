@@ -1,0 +1,610 @@
+const _meta = {
+  "version": 1,
+  "private": true,
+  "icon": "mdi:progress-check",
+  "tags": [
+    "mcp",
+    "app",
+    "progress",
+    "paperboard"
+  ],
+  "description": "Summarizes Flow full-stack paperboard progress from stable MCP-visible signals.",
+  "properties": {
+    "request": {
+      "kind": "expression",
+      "type": "object",
+      "default": "input.request",
+      "description": "MCP JSON-RPC tools/call request object."
+    },
+    "project": {
+      "kind": "text",
+      "type": "string",
+      "description": "Target Convertigo project name."
+    },
+    "qname": {
+      "kind": "text",
+      "type": "string",
+      "description": "Optional executable Flow qname that should exist."
+    },
+    "engineSource": {
+      "kind": "text",
+      "type": "string",
+      "description": "Optional FlowEngine source override for standalone tests or draft inspection."
+    },
+    "includeFrontend": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": true,
+      "description": "Inspect the Svelte frontend builder and route tree."
+    },
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "default": "local.response",
+      "description": "Scope path receiving the MCP response."
+    }
+  },
+  "outputs": {
+    "out": {
+      "type": "object"
+    }
+  },
+  "runtime": "rhino",
+  "display": "tool flow-app-progress -> {{ input.out }}"
+}
+
+(function () {
+	function prop(node, key) {
+		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
+	}
+
+	function boolValue(value, fallback) {
+		if (value === undefined || value === null || value === "") {
+			return fallback;
+		}
+		if (typeof value === "boolean") {
+			return value;
+		}
+		return String(value) === "true";
+	}
+
+	function arrayValue(value) {
+		if (!value) {
+			return [];
+		}
+		return Object.prototype.toString.call(value) === "[object Array]" ? value : [];
+	}
+
+	function flowName(flow) {
+		return String(flow && (flow.qname || flow.flowQName || flow.name || flow.id) || "");
+	}
+
+	function compactFlows(flows) {
+		return flows.map(function (flow) {
+			return {
+				qname: flowName(flow),
+				name: flow.name || flow.id || "",
+				private: flow["private"] === true,
+				sample: /^sample_/.test(String(flow.name || flow.id || flowName(flow)))
+			};
+		}).filter(function (flow) {
+			return flow.qname || flow.name;
+		});
+	}
+
+	function isMock(block) {
+		if (!block) {
+			return false;
+		}
+		if (block.mock === true) {
+			return true;
+		}
+		var tags = block.tags || [];
+		for (var i = 0; i < tags.length; i++) {
+			if (String(tags[i]).toLowerCase() === "mock") {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function compactMock(block) {
+		return {
+			block: block.blockId || block.block || block.name || "",
+			description: block.description || block.desc || "",
+			outputs: block.outputs || {},
+			properties: block.properties || block.props || {}
+		};
+	}
+
+	function walk(node, visitor) {
+		if (!node) {
+			return;
+		}
+		visitor(node);
+		var children = (node.children || []).concat(node.items || []);
+		for (var i = 0; i < children.length; i++) {
+			walk(children[i], visitor);
+		}
+	}
+
+	function nodeDefinition(node) {
+		var value = node && node.definition;
+		if (!value) {
+			return {};
+		}
+		if (typeof value === "object") {
+			return value;
+		}
+		try {
+			return JSON.parse(String(value));
+		} catch (e) {
+			return {};
+		}
+	}
+
+	function addLimited(list, item, limit) {
+		if (!item || list.length >= limit) {
+			return;
+		}
+		list.push(item);
+	}
+
+	function visibleLabel(node, definition) {
+		return String(definition.label || definition.title || definition.text || node.summary || definition.id || node.name || "");
+	}
+
+	function lowerFirst(value) {
+		value = String(value || "");
+		return value ? value.charAt(0).toLowerCase() + value.substring(1) : "";
+	}
+
+	function requestableFlowName(requestable) {
+		var parts = String(requestable || "").split(".").filter(function (part) {
+			return !!part;
+		});
+		return parts.length ? parts[parts.length - 1] : "";
+	}
+
+	function actionResultId(action) {
+		return String(action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
+	}
+
+	function schemaPaths(schema) {
+		var paths = [];
+		var arrayPaths = [];
+		var leafPaths = [];
+		function add(list, value) {
+			if (value && list.indexOf(value) === -1) {
+				list.push(value);
+			}
+		}
+		function walkSchema(value, path) {
+			value = value || {};
+			if (path) {
+				add(paths, path);
+			}
+			if (value.type === "array" || value.items) {
+				add(arrayPaths, path);
+				walkSchema(value.items || {}, path ? path + "[0]" : "[0]");
+				return;
+			}
+			var properties = value.properties || {};
+			var keys = Object.keys(properties);
+			if (keys.length) {
+				keys.sort().forEach(function (key) {
+					walkSchema(properties[key], path ? path + "." + key : key);
+				});
+				return;
+			}
+			if (path) {
+				add(leafPaths, path);
+			}
+		}
+		walkSchema(schema || {}, "");
+		return { paths: paths, arrayPaths: arrayPaths, leafPaths: leafPaths };
+	}
+
+	function firstNodePath(tree, predicate) {
+		var path = "";
+		walk(tree, function (node) {
+			if (!path && predicate(node)) {
+				path = String(node.path || "");
+			}
+		});
+		return path;
+	}
+
+	function paperboardSummary(tree) {
+		var summary = {
+			routeCount: 0,
+			pageCount: 0,
+			blocks: [],
+			actions: [],
+			dataSources: []
+		};
+		walk(tree, function (node) {
+			var kind = String(node.kind || "");
+			var type = String(node.type || "");
+			var definition = nodeDefinition(node);
+			if (kind === "frontendRoutes" || kind === "frontendRouteRoot" || kind === "frontendRouteSegment") {
+				summary.routeCount++;
+			}
+			if (kind === "frontendPage" || kind === "frontendRouteLayout" || kind === "frontendComponent") {
+				summary.pageCount++;
+			}
+			if (kind === "frontendWidget" || kind === "frontendDirectiveBlock" || kind === "frontendDataBlock") {
+				addLimited(summary.blocks, {
+					path: node.path || "",
+					kind: kind,
+					type: type,
+					label: visibleLabel(node, definition),
+					source: definition.source || definition.value || definition.path || "",
+					test: definition.test || definition.condition || ""
+				}, 30);
+			}
+			if (kind === "frontendActionBlock" || definition.requestable || definition.backendCall) {
+				addLimited(summary.actions, {
+					path: node.path || "",
+					id: definition.id || "",
+					type: type,
+					label: visibleLabel(node, definition),
+					requestable: definition.requestable || "",
+					clientAction: definition.clientAction || "",
+					backendCall: definition.backendCall || ""
+				}, 20);
+			}
+			if (definition.source || definition.path || definition.value) {
+				addLimited(summary.dataSources, {
+					path: node.path || "",
+					type: type,
+					sourceFile: definition.sourcePath || definition.sourceFile || "",
+					sourceMutationPath: definition.sourceMutationPath || "",
+					source: definition.source || "",
+					value: definition.value || "",
+					dataPath: definition.path || "",
+					context: definition.context || ""
+				}, 20);
+			}
+		});
+		return summary;
+	}
+
+	function enrichFrontendBindings(ctx, args, frontend) {
+		frontend.bindingSuggestions = [];
+		frontend.bindingWarnings = [];
+		var paperboard = frontend.paperboard || {};
+		arrayValue(paperboard.actions).forEach(function (action) {
+			var flow = requestableFlowName(action.requestable);
+			var actionId = actionResultId(action);
+			if (!flow || !actionId) {
+				return;
+			}
+			try {
+				var loaded = ctx.flowGet(flow, {
+					projectDir: args.projectDir,
+					project: args.project
+				});
+				var schemaResult = ctx.outputSchemaSource({
+					projectDir: args.projectDir,
+					project: args.project,
+					name: flow,
+					flowName: flow,
+					flowQName: args.project ? args.project + "." + flow : flow,
+					flowSource: loaded && loaded.source || ""
+				}) || {};
+				var summary = schemaPaths(schemaResult.schema || {});
+				frontend.bindingSuggestions.push({
+					actionId: actionId,
+					requestable: action.requestable,
+					root: "backendResults." + actionId,
+					sourcePaths: summary.paths.slice(0, 40),
+					arrayPaths: summary.arrayPaths.slice(0, 12),
+					leafPaths: summary.leafPaths.slice(0, 30),
+					example: summary.arrayPaths.length
+						? { forEachSource: summary.arrayPaths[0], itemSource: "item.<field>", statusActionId: actionId }
+						: { source: summary.leafPaths[0] || "<result path>", statusActionId: actionId },
+					note: "Frontend source properties are relative to this CallSequence result. Do not prefix them with the action id or result."
+				});
+			} catch (e) {
+				frontend.bindingSuggestions.push({
+					actionId: actionId,
+					requestable: action.requestable,
+					error: String(e.message || e)
+				});
+			}
+		});
+		arrayValue(paperboard.dataSources).forEach(function (binding) {
+			var source = String(binding.source || binding.value || binding.dataPath || "");
+			frontend.bindingSuggestions.forEach(function (suggestion) {
+				var actionId = String(suggestion.actionId || "");
+				var prefixes = [actionId + ".", "actions." + actionId + ".", "backendResults." + actionId + "."];
+				var prefix = "";
+				for (var i = 0; actionId && i < prefixes.length; i++) {
+					if (source.indexOf(prefixes[i]) === 0) {
+						prefix = prefixes[i];
+						break;
+					}
+				}
+				if (!prefix) {
+					return;
+				}
+				var relative = source.substring(prefix.length).replace(/^result\./, "");
+				var warning = {
+					code: "FRONTEND_RESULT_SOURCE_PREFIX_REDUNDANT",
+					path: binding.path,
+					source: source,
+					suggestedSource: relative,
+					message: "Use a result-relative source path. The nearest CallSequence already selects action " + actionId + "."
+				};
+				if (binding.sourceFile && binding.sourceMutationPath) {
+					warning.fix = {
+						tool: "frontend-svelte-mutate",
+						arguments: {
+							project: args.project,
+							sourceFile: binding.sourceFile,
+							mutation: {
+								op: "merge",
+								path: binding.sourceMutationPath,
+								value: { source: relative }
+							}
+						}
+					};
+				}
+				frontend.bindingWarnings.push(warning);
+			});
+		});
+		return frontend;
+	}
+
+	function frontendSummary(ctx, args) {
+		var summary = {
+			checked: true,
+			readable: false,
+			hasBuilder: false,
+			hasRoutes: false,
+			hasPage: false,
+			hasStructure: false,
+			routesPath: "",
+			structurePath: "",
+			actionIds: [],
+			error: ""
+		};
+		try {
+			var tree = ctx.authoringTreeSource({
+				projectDir: args.projectDir,
+				engineSource: args.engineSource,
+				surface: "frontend",
+				builder: "svelte",
+				detail: "compact",
+				maxDepth: 7
+			});
+			summary.readable = tree && tree.ok !== false;
+			var paperboardTree = tree;
+			var routesPath = firstNodePath(tree, function (node) {
+				return String(node.kind || "") === "frontendRoutes" || String(node.type || "") === "routes";
+			});
+			summary.routesPath = routesPath;
+			if (routesPath) {
+				try {
+					var routeTree = ctx.authoringTreeSource({
+						projectDir: args.projectDir,
+						engineSource: args.engineSource,
+						surface: "frontend",
+						builder: "svelte",
+						focusPath: routesPath,
+						detail: "compact",
+						maxDepth: 10,
+						includeDefinition: true
+					});
+					if (routeTree && routeTree.ok !== false) {
+						paperboardTree = routeTree;
+					}
+				} catch (ignored) {
+				}
+			}
+			summary.paperboard = paperboardSummary(paperboardTree);
+			summary.structurePath = firstNodePath(paperboardTree, function (node) {
+				return String(node.kind || "") === "frontendStructure" || String(node.type || "") === "structure";
+			});
+			walk(tree, function (node) {
+				var kind = String(node.kind || "");
+				var type = String(node.type || "");
+				if (kind === "frontendBuilder" && type === "svelte") {
+					summary.hasBuilder = true;
+				}
+				if (kind === "frontendRoutes" || type === "routes") {
+					summary.hasRoutes = true;
+				}
+				if (kind === "frontendPage" || type === "page") {
+					summary.hasPage = true;
+				}
+				if (kind === "frontendStructure" || type === "structure") {
+					summary.hasStructure = true;
+				}
+			});
+			var menu = ctx.callBlock("authoring.menu", {
+				projectDir: args.projectDir,
+				builder: "svelte",
+				targetObject: {
+					kind: "frontendBuilder",
+					type: "svelte",
+					path: "frontends.svelte",
+					summary: "Svelte builder"
+				}
+			}, { trace: false });
+			walk(menu, function (node) {
+				var id = String(node.id || node.actionId || "");
+				if (id && summary.actionIds.indexOf(id) === -1) {
+					summary.actionIds.push(id);
+				}
+			});
+		} catch (e) {
+			summary.error = String(e.message || e);
+		}
+		return summary;
+	}
+
+	function addRecommendedCall(calls, tool, args, reason) {
+		calls.push({
+			tool: tool,
+			arguments: args,
+			reason: reason
+		});
+	}
+
+	function addTask(tasks, id, label, done, next) {
+		tasks.push({
+			id: id,
+			label: label,
+			done: done === true,
+			next: done === true ? "" : next
+		});
+	}
+
+	return {
+		run: function (ctx, node) {
+			var props = ctx.props(node);
+			var mcp = ctx.lib("mcp");
+			var request = mcp.requestValue(ctx, prop(node, "request"));
+			var out = props.out || "local.response";
+			var response;
+			try {
+				var args = mcp.prepareToolArguments(ctx, request, { resolveProject: true });
+				if (!args.projectDir) {
+					throw new Error("flow-app-progress requires project:\"<target project>\" or projectDir for standalone tests with a filesystem path.");
+				}
+				var includeFrontend = boolValue(args.includeFrontend, boolValue(prop(node, "includeFrontend"), true));
+				var wantedQName = String(args.qname || args.name || "").trim();
+				var flowList = ctx.flowList({ projectDir: args.projectDir }) || {};
+				var flows = arrayValue(flowList.flows || flowList.items || flowList);
+				var compact = compactFlows(flows);
+				var appFlows = compact.filter(function (flow) {
+					return flow.sample !== true;
+				});
+				var hasWantedFlow = !wantedQName || compact.some(function (flow) {
+					return flow.qname === wantedQName || flow.name === wantedQName || flow.qname === args.project + "." + wantedQName;
+				});
+				var catalog = ctx.blockList({
+					projectDir: args.projectDir,
+					includePrivate: true,
+					includeInternal: true,
+					detail: "compact",
+					limit: 1000,
+					doc: false,
+					hints: false
+				});
+				var mocks = [];
+				(catalog.blocks || []).forEach(function (block) {
+					if (isMock(block)) {
+						mocks.push(compactMock(block));
+					}
+				});
+				mocks.sort(function (a, b) {
+					return String(a.block).localeCompare(String(b.block));
+				});
+				var frontend = includeFrontend ? enrichFrontendBindings(ctx, args, frontendSummary(ctx, args)) : { checked: false };
+				var tasks = [];
+				addTask(tasks, "flowEngine", "FlowEngine readable", true, "");
+				addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
+					wantedQName ? hasWantedFlow : appFlows.length > 0,
+					wantedQName ? "Create or register " + wantedQName + " with code-set/code-promote." : "Create the main backend Flow with code-set.");
+				addTask(tasks, "mockDebt", "No explicit project-local mocks remain", mocks.length === 0,
+					"Implement or remove " + mocks.length + " mock block(s) before claiming completion.");
+				if (includeFrontend) {
+					addTask(tasks, "frontendBuilder", "Svelte frontend builder is readable", frontend.hasBuilder === true,
+						"Bootstrap UI with flow-project-bootstrap({ project, ui:true }).");
+					addTask(tasks, "frontendPaperboard", "Frontend route/page structure exists",
+						frontend.hasRoutes === true && frontend.hasPage === true && frontend.hasStructure === true,
+						"Create a first paperboard page from palette blocks, then generate.");
+					addTask(tasks, "frontendVisibleBlocks", "Frontend paperboard has visible blocks",
+						frontend.paperboard && frontend.paperboard.blocks && frontend.paperboard.blocks.length > 0,
+						"Insert visible intent blocks such as PageShell, Card, Text, Button, Status or Table.");
+					addTask(tasks, "frontendActionWiring", "Frontend action wiring exists",
+						frontend.paperboard && frontend.paperboard.actions && frontend.paperboard.actions.length > 0,
+						"Wire the primary button/event to a backend Flow or typed mock.");
+					addTask(tasks, "frontendBindings", "Frontend result bindings are relative to CallSequence output",
+						frontend.bindingWarnings.length === 0,
+						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message + " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "");
+					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
+						frontend.actionIds.length > 0,
+						"Inspect frontend-svelte-actions and fix the builder setup if no action is available.");
+				}
+				var completed = tasks.filter(function (task) {
+					return task.done === true;
+				}).length;
+				var nextActions = tasks.filter(function (task) {
+					return task.done !== true && task.next;
+				}).map(function (task) {
+					return task.next;
+				});
+				var recommendedCalls = [];
+				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
+				addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
+					"Confirm no explicit project-local mock remains before claiming completion.");
+				if (auditQName) {
+					addRecommendedCall(recommendedCalls, "flow-output-schema", {
+						project: args.project || "",
+						qname: auditQName,
+						detail: "full"
+					}, "Review the backend result contract used by pickers and frontend bindings.");
+					addRecommendedCall(recommendedCalls, "code-run", {
+						project: args.project || "",
+						qname: auditQName
+					}, "Prove the backend runtime result without resending code.");
+				}
+				if (includeFrontend && frontend.routesPath) {
+					addRecommendedCall(recommendedCalls, "frontend-svelte-tree", {
+						project: args.project || "",
+						detail: "inspect",
+						focusPath: frontend.routesPath,
+						maxDepth: 8
+					}, "Inspect the paperboard tree with visible props, actions and bindings.");
+				}
+				if (includeFrontend && frontend.structurePath) {
+					addRecommendedCall(recommendedCalls, "frontend-svelte-palette", {
+						project: args.project || "",
+						focusPath: frontend.structurePath,
+						query: "PageShell Card Text Button Status Table"
+					}, "Find compatible visible paperboard blocks at the first page structure.");
+				}
+				if (includeFrontend && frontend.actionIds.indexOf("frontbuilder.svelte.generate") !== -1) {
+					addRecommendedCall(recommendedCalls, "frontend-svelte-action", {
+						project: args.project || "",
+						actionId: "generate"
+					}, "Regenerate Svelte sources after frontend tree mutations.");
+				}
+				response = mcp.toolResponse(request, {
+					ok: true,
+					project: args.project || "",
+					qname: wantedQName,
+					progress: {
+						completed: completed,
+						total: tasks.length,
+						percent: tasks.length ? Math.round((completed * 100) / tasks.length) : 100
+					},
+					tasks: tasks,
+					backend: {
+						flowCount: compact.length,
+						appFlowCount: appFlows.length,
+						flows: compact.slice(0, 20)
+					},
+					mocks: {
+						count: mocks.length,
+						items: mocks
+					},
+					frontend: frontend,
+					recommendedCalls: recommendedCalls,
+					nextActions: nextActions,
+					next: nextActions.length
+						? nextActions[0]
+						: "Paperboard checks are green. Continue with runtime proof, schema review and visual refinement."
+				}, ctx);
+			} catch (e) {
+				response = mcp.toolError(request, e, ctx);
+			}
+			ctx.write(out, response);
+			return response;
+		}
+	};
+}())

@@ -1552,6 +1552,7 @@
 			"frontend-svelte-mutate": true,
 			"frontend-svelte-palette": true,
 			"frontend-svelte-tree": true,
+			"flow-app-progress": true,
 			"flow-catalog": true,
 			"flow-list": true,
 			"flow-resource-delete": true,
@@ -2117,9 +2118,16 @@
 		if (!args.name && args.qname) {
 			var parts = String(args.qname).split(".");
 			args.name = parts[parts.length - 1];
-			if (!args.flowQName) {
-				args.flowQName = String(args.qname);
+		}
+		if (args.name) {
+			var rawQName = String(args.qname || args.flowQName || args.name);
+			var projectName = String(args.project || "");
+			if (rawQName.charAt(0) === "." && projectName) {
+				rawQName = projectName + rawQName;
+			} else if (rawQName.indexOf(".") < 0 && projectName) {
+				rawQName = projectName + "." + rawQName;
 			}
+			args.flowQName = rawQName;
 		}
 		var hasDefinition = args.definition !== undefined && args.definition !== null;
 		if (!hasDefinition && (args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {

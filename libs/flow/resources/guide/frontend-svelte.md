@@ -5,24 +5,36 @@ FlowEngine. The mental model is the same as FlowScript backend authoring: a
 human-readable tree, a context palette, then small mutations through MCP. Do not
 edit generated Svelte output directly.
 
+If the task includes both backend Flow and frontend Svelte work, read
+`flow://guide/fullstack-paperboard` first. This guide remains the reference for
+tree, palette and mutation details, but the full-stack guide defines the
+paperboard-first order, mock debt checks and progress reporting.
+
 ## Default Loop
 
-1. Read the current UI model with `frontend-svelte-tree`.
+1. Read the current UI model with `frontend-svelte-tree({ project,
+   detail:"compact", maxDepth:2 })`.
    Pass the target Convertigo `project` name, not a filesystem path. The paths
    returned by the tree are the stable addresses for future edits.
-2. Pick a focus node and call `frontend-svelte-palette`.
+2. Re-read only the relevant branch with `frontend-svelte-tree({ project,
+   detail:"inspect", focusPath:"<path returned above>", maxDepth:8 })` before
+   inspecting a page, component, slot or action subtree. `detail:"inspect"`
+   keeps visible block props and slot names, without generated-source or
+   mutation metadata. Do not use `flow-resource-get` just to understand normal
+   page structure.
+3. Pick a focus node and call `frontend-svelte-palette`.
    Use the palette item returned by the tool as the source of truth:
    `items[].id`, `items[].insert`, `items[].targetSlot.sourceMutationPath` and
    `items[].targetSlot.index` tell you what can be inserted and where.
-3. Apply changes with `frontend-svelte-mutate`.
+4. Apply changes with `frontend-svelte-mutate`.
    For source-backed Flow Svelte files, pass `sourceFile` from the focused node
    or palette target and a `mutation` using the palette-provided payload. For
    the main builder model, `frontAst...` mutations can also omit `sourceFile`:
    the MCP resolves it from `config.frontbuilder.svelte.modelPath`.
    Source-backed mutations persist the updated source by default. Use
    `dryRun:true` or `persist:false` only when you explicitly want a preview.
-4. Re-read with `frontend-svelte-tree` to verify the tree changed.
-5. Run `frontend-svelte-action` with `actionId:"generate"` to update generated
+5. Re-read with `frontend-svelte-tree` to verify the tree changed.
+6. Run `frontend-svelte-action` with `actionId:"generate"` to update generated
    Svelte sources. If dev mode is running, use `actionId:"dev.sync"` after a
    mutation so Vite/HMR sees the new source. Use `frontend-svelte-actions` to
    inspect enabled dev/build actions.
@@ -89,6 +101,14 @@ _private/svelte/src/lib/...
 - Events and actions live under the owning block. A button click should look
   like `Button -> Events -> On Click -> Actions -> CallSequence`, not like a
   global action magically referenced by a string.
+- Data sources produced by a `CallSequence` are relative to that action result.
+  If action `readFeed` returns `items[].title`, use `ForEach source="items"`
+  and child bindings such as `Text source="item.title"`. Do not use
+  `readFeed.items`, `readFeed.result.items`, `actions.readFeed.items` or
+  `backendResults.readFeed.items`; the generated runtime already resolves the
+  nearest action. `flow-app-progress` exposes `frontend.bindingSuggestions`
+  and reports redundant prefixes in `frontend.bindingWarnings`. When source
+  metadata is available, execute the warning's `fix` call directly.
 - SvelteKit navigation is a native link. Use the `LinkButton` palette block
   when a route link should look like a button; do not create a `Button` with an
   empty click event for navigation.
@@ -133,6 +153,10 @@ For property edits, mutate the node's `sourceMutationPath`:
   }
 }
 ```
+
+The engine also accepts the node path without the final `.props` when a
+`merge`/`replace` payload contains only properties. Prefer the explicit path
+returned by the tree, but an omitted `.props` must not become a silent no-op.
 
 Do not use `flow-resource-patch` to edit Flow Svelte page/component structure
 or properties. If `frontend-svelte-mutate` cannot apply a tree/property edit,
@@ -184,6 +208,12 @@ Use `frontend-svelte-action` for build/dev operations:
 - `actionId:"dev.stop"`: stop the Vite dev server.
 - `actionId:"dev.open"`: open the running dev server.
 - `actionId:"dev.sync"`: regenerate sources while dev mode is running.
+
+`frontend-svelte-actions` returns full menu action ids such as
+`frontbuilder.svelte.generate` and `frontbuilder.svelte.dev.sync`. The action
+tool accepts both those full ids and the shortcuts listed above. Prefer the
+shortcut in examples, but reuse the full id when it comes directly from an
+actions response.
 
 Do not start or stop npm directly from Codex. The action tool uses the same
 engine state and Studio browser integration as the right-click menu.

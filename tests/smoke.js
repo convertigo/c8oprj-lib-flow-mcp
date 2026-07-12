@@ -106,6 +106,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-project-bootstrap";
 }), "MCP Flow tools/list did not expose flow-project-bootstrap");
 assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-app-progress";
+}), "MCP Flow tools/list did not expose flow-app-progress");
+assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-tree";
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-palette";
@@ -299,6 +302,9 @@ assertTrue(resources.result.result.resources.some(function (resource) {
 assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/frontend-svelte";
 }), "MCP Flow resources/list did not expose the Svelte frontend guide");
+assertTrue(resources.result.result.resources.some(function (resource) {
+	return resource.uri === "flow://guide/fullstack-paperboard";
+}), "MCP Flow resources/list did not expose the full-stack paperboard guide");
 
 var methodNotFound = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -470,6 +476,30 @@ var targetDir = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
 	"lib_flow_mcp_target_" + java.lang.System.currentTimeMillis());
 targetDir.mkdirs();
 var targetProjectDir = String(targetDir.getAbsolutePath());
+var targetFlowCode = [
+	"const _flow = {",
+	"  inputs: {",
+	"    target: { type: \"string\", description: \"Target value.\", default: \"ok\" }",
+	"  },",
+	"  tests: {",
+	"    smoke: { input: { target: \"ok\" } }",
+	"  }",
+	"}",
+	"",
+	"function TargetSmoke({ input, config, result }) {",
+	"  // Only call Flow blocks with one object containing named parameters.",
+	"  var items = [\"b\", \"a\"]",
+	"  var sorted = list.sort({ items: items, by: current, direction: \"asc\" })",
+	"  result.target = input.target",
+	"  result.first = sorted[0]",
+	"  return result",
+	"}",
+	""
+].join("\n");
+var targetFlowsDir = new java.io.File(targetDir, "libs/flows");
+targetFlowsDir.mkdirs();
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(
+	new java.io.File(targetFlowsDir, "TargetSmoke.flow.js"), targetFlowCode, "UTF-8");
 function callTool(id, name, args) {
 	return JSON.parse(engine.run(JSON.stringify({
 		flowSource: mcpFlowSource,
@@ -517,6 +547,27 @@ var frontendSvelteActions = callTool(138, "frontend-svelte-actions", {
 assertTrue(frontendSvelteActions.result.result.structuredContent.ok === true &&
 	frontendSvelteActions.result.result.structuredContent.protocol === "flow.studio.menu.v1",
 	"MCP frontend-svelte-actions did not dispatch to the dynamic context menu contract");
+var appProgressEmpty = callTool(1391, "flow-app-progress", {
+	projectDir: targetProjectDir
+});
+assertTrue(appProgressEmpty.result.result.structuredContent.ok === true &&
+	appProgressEmpty.result.result.structuredContent.progress.total >= 5 &&
+	appProgressEmpty.result.result.structuredContent.nextActions.length > 0 &&
+	appProgressEmpty.result.result.structuredContent.recommendedCalls.some(function (call) {
+		return call.tool === "flow-block-mock-list";
+	}),
+	"MCP flow-app-progress did not return a useful paperboard checklist");
+var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
+	project: "FlowBootstrapSmoke",
+	dryRun: true,
+	ui: true
+});
+assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
+	bootstrapDryRun.result.id === 13911 &&
+	bootstrapDryRun.result.result.structuredContent.ok === true &&
+	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
+	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke",
+	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
 var frontendPageFile = new java.io.File(targetDir,
 	"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
 frontendPageFile.getParentFile().mkdirs();
@@ -546,6 +597,135 @@ assertTrue(frontendSvelteMutate.result.result.structuredContent.ok === true &&
 	frontendSvelteMutate.result.result.structuredContent.written === true &&
 	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text") !== -1,
 	"MCP frontend-svelte-mutate should persist source-backed mutations");
+var frontendSvelteImplicitProps = callTool(13901, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "merge",
+		path: "frontAst.slots.structure.children[0]",
+		value: { text: "Smoke text edited" }
+	}
+});
+assertTrue(frontendSvelteImplicitProps.result.result.structuredContent.ok === true &&
+	frontendSvelteImplicitProps.result.result.structuredContent.debug.propertyPathNormalized === true &&
+	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text edited") !== -1,
+	"MCP frontend-svelte-mutate should normalize property payloads when .props is omitted");
+function frontendSvelteResourceRoot() {
+	var root = new java.io.File(projectDir).getParentFile();
+	var candidates = [
+		new java.io.File(root, "c8oprj-lib-flow-frontbuilder-svelte/libs/flow/frontbuilder/svelte"),
+		new java.io.File(root, "lib_flow_frontbuilder_svelte/libs/flow/frontbuilder/svelte"),
+		new java.io.File(projectDir, "libs/flow/frontbuilder/svelte")
+	];
+	for (var i = 0; i < candidates.length; i++) {
+		if (new java.io.File(candidates[i], "src-builder/frontDocumentCli.ts").isFile()) {
+			return String(candidates[i].getAbsolutePath());
+		}
+	}
+	return "libs/flow/frontbuilder/svelte";
+}
+function findCompactNode(node, predicate) {
+	if (!node) {
+		return null;
+	}
+	if (predicate(node)) {
+		return node;
+	}
+	var children = node.children || [];
+	for (var i = 0; i < children.length; i++) {
+		var found = findCompactNode(children[i], predicate);
+		if (found) {
+			return found;
+		}
+	}
+	return null;
+}
+var frontendEngineSource = [
+	"version: 1",
+	"config:",
+	"  frontbuilder:",
+	"    svelte:",
+	"      target: svelte5",
+	"      resourceRoot: " + frontendSvelteResourceRoot(),
+	"      modelPath: libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	""
+].join("\n");
+var frontendSvelteInspect = callTool(1392, "frontend-svelte-tree", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	detail: "inspect",
+	maxDepth: 6
+});
+var frontendSvelteInspectTree = frontendSvelteInspect.result.result.structuredContent;
+var frontendSvelteInspectText = findCompactNode(frontendSvelteInspectTree, function (node) {
+	return node.type === "Text" && node.props && node.props.text === "Smoke text edited";
+});
+assertTrue(frontendSvelteInspectTree.ok === true && frontendSvelteInspectText !== null,
+	"MCP frontend-svelte-tree detail=inspect should expose visible frontend props without full metadata");
+var frontendSvelteInspectStructure = findCompactNode(frontendSvelteInspectTree, function (node) {
+	return node.kind === "frontendStructure";
+});
+assertTrue(frontendSvelteInspectStructure !== null && frontendSvelteInspectStructure.path,
+	"MCP frontend-svelte-tree detail=inspect should expose a frontend structure focus path");
+var frontendSvelteMultiQueryPalette = callTool(1393, "frontend-svelte-palette", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	focusPath: frontendSvelteInspectStructure.path,
+	query: "PageShell Card Text"
+});
+assertTrue(frontendSvelteMultiQueryPalette.result.result.structuredContent.ok === true &&
+	frontendSvelteMultiQueryPalette.result.result.structuredContent.items.some(function (item) {
+		return item.id === "svelte.text";
+	}) &&
+	frontendSvelteMultiQueryPalette.result.result.structuredContent.items.some(function (item) {
+		return item.id === "svelte.card";
+	}),
+	"MCP frontend-svelte-palette should return useful token matches for multi-intent frontend queries");
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <Text id=\"smokeText\" text=\"Smoke text\" />",
+	"    <Button id=\"loadFeed\" label=\"Load feed\">",
+	"      <Events>",
+	"        <OnClick id=\"loadFeedClick\">",
+	"          <Actions>",
+	"            <CallSequence id=\"readTarget\" requestable=\".TargetSmoke\">",
+	"              <Variables />",
+	"            </CallSequence>",
+	"          </Actions>",
+	"        </OnClick>",
+	"      </Events>",
+	"    </Button>",
+	"    <Text id=\"targetValue\" source=\"actions.readTarget.result.target\" />",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressFrontend = callTool(1394, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
+	appProgressFrontend.result.result.structuredContent.frontend.structurePath &&
+	appProgressFrontend.result.result.structuredContent.frontend.bindingSuggestions.some(function (suggestion) {
+		return suggestion.actionId === "readTarget" && suggestion.leafPaths && suggestion.leafPaths.indexOf("target") !== -1;
+	}) &&
+	appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
+		return warning.source === "actions.readTarget.result.target" && warning.suggestedSource === "target" &&
+			warning.fix && warning.fix.tool === "frontend-svelte-mutate" &&
+			warning.fix.arguments.mutation.value.source === "target";
+	}) &&
+	appProgressFrontend.result.result.structuredContent.tasks.some(function (task) {
+		return task.id === "frontendBindings" && task.done === false;
+	}) &&
+	appProgressFrontend.result.result.structuredContent.recommendedCalls.some(function (call) {
+		return call.tool === "frontend-svelte-palette" &&
+			String(call.arguments.query || "").indexOf("PageShell") !== -1;
+	}),
+	"MCP flow-app-progress should recommend frontend paperboard calls and result-relative bindings: " +
+		JSON.stringify(appProgressFrontend.result.result.structuredContent.frontend));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",
@@ -634,26 +814,6 @@ assertTrue(frontendRoutePage.created === true &&
 	frontendDetailPageSource.indexOf("route:") === -1,
 	"MCP frontend source creation should create route pages in the selected route folder without hard-coded route metadata");
 
-var targetFlowCode = [
-	"const _flow = {",
-	"  inputs: {",
-	"    target: { type: \"string\", description: \"Target value.\", default: \"ok\" }",
-	"  },",
-	"  tests: {",
-	"    smoke: { input: { target: \"ok\" } }",
-	"  }",
-	"}",
-	"",
-	"function TargetSmoke({ input, config, result }) {",
-	"  // Only call Flow blocks with one object containing named parameters.",
-	"  var items = [\"b\", \"a\"]",
-	"  var sorted = list.sort({ items: items, by: current, direction: \"asc\" })",
-	"  result.target = input.target",
-	"  result.first = sorted[0]",
-	"  return result",
-	"}",
-	""
-].join("\n");
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke",
@@ -740,6 +900,15 @@ var schemaTargetFull = callTool(110, "flow-output-schema", {
 assertTrue(schemaTargetFull.result.result.structuredContent.sources.static.available === true &&
 	schemaTargetFull.result.result.structuredContent.sources.effective.schema.properties.target.type === "string",
 	"MCP Flow flow-output-schema did not expose full source details");
+var schemaTargetQName = callTool(1101, "flow-output-schema", {
+	project: "target",
+	projectDir: targetProjectDir,
+	qname: "target.TargetSmoke",
+	detail: "full"
+});
+assertTrue(schemaTargetQName.result.result.structuredContent.ok === true &&
+	schemaTargetQName.result.result.structuredContent.sources.effective.schema.properties.target.type === "string",
+	"MCP Flow flow-output-schema did not accept a full executable Flow qname");
 
 var inlineTemplateSource = [
 	"version: 1",

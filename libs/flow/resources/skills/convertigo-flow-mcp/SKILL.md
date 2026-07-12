@@ -9,6 +9,15 @@ Use this skill when working with the experimental Convertigo Flow engine, FlowEn
 
 Do not use the legacy `convertigo` MCP server for Flow authoring unless the user explicitly asks to compare with legacy Convertigo MCP. If the user provides a target `project`, `qname`, or `block` and Flow MCP cannot access it, stop and report that exact blocker. Never substitute another project, never create in a "similar" project, and never use legacy MCP project discovery to work around a missing Flow MCP target.
 
+Never edit Convertigo DBO YAML directly. `c8oProject.yaml` and
+`_c8oProject/**/*.yaml` are owned by the Convertigo model save/import path, not
+by Flow resource tools. If a project needs to become Flow-enabled, use
+`flow-project-bootstrap({ project, ui? })`. It imports the official sequence
+template when needed and adds `FlowEngine` through DBO APIs. Use `ui:true` when
+the project also needs the experimental Svelte frontbuilder. If
+`flow-project-bootstrap` cannot perform the setup, report the tool error; do
+not patch project YAML by hand.
+
 ## MCP Server
 
 - MCP server: `convertigo-flow`
@@ -47,7 +56,13 @@ Prefer the compact code path:
    named there with `code-get`. Use them to learn FlowScript shape, not to find
    or copy a near-identical application Flow. Never pass `flow://...` resource
    URIs to `code-get`.
-3. After the syntax warm-up, write the FlowScript algorithm directly, but stay
+3. If the target project is missing from Flow MCP or does not expose
+   `FlowEngine`, call `flow-project-bootstrap({ project })` first; call
+   `flow-project-bootstrap({ project, ui:true })` for backend + Svelte frontend
+   work. This is the only supported bootstrap path until Flow has a marketplace
+   template. Do not create FlowEngine by editing `c8oProject.yaml`,
+   `_c8oProject/flowEngine.yaml`, or other Convertigo YAML files.
+4. After the syntax warm-up, write the FlowScript algorithm directly, but stay
    inside the strict Flow DSL. Every block call is `block.name({ key: value })`
    with one object argument. Do not browse the full catalog first. Let
    `code-set`, `code-check` and `code-run` diagnostics guide you with block
@@ -102,35 +117,50 @@ Prefer the compact code path:
    Treat `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and
    `FLOW_BLOCK_PROPERTY_UNKNOWN` the same way: patch the project-local block
    contract instead of leaving typed business values as `unknown`.
-4. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
+5. Do not call broad `flow-list`, `flow-search`, `code-rg`, `flow-catalog`,
    `flow-block-get`, `flow-resource-search`, `flow-resource-get`, or
    `flow-cache-info` before the first `code-set` unless the requested feature
    needs an unknown legacy requestable schema or the compiler diagnostics ask
    for one focused lookup. `flow-resource-*` is for project-local resource files,
    not for executable FlowScript.
-5. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
+6. Use `flow-requestable-list` and `flow-requestable-schema` when a legacy
    requestable shape is needed.
-6. Write the editable working copy with `code-set({ project, qname, code })`.
-7. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
-8. Run/test with `code-run({ project, qname })` without sending code again.
-9. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
-10. Save executable Flows with `code-promote({ project, qname })` only after
+7. Write the editable working copy with `code-set({ project, qname, code })`.
+8. Patch the working copy with `code-patch({ project, qname, revision, codepatch })` until diagnostics are clean.
+9. Run/test with `code-run({ project, qname })` without sending code again.
+10. Use `code-status({ project, qname })` only when dirty/revision state is unclear, or `code-discard({ project, qname })` to cancel the working copy.
+11. Save executable Flows with `code-promote({ project, qname })` only after
    they work. Do not call `code-promote` for project-local blocks:
    `code-set`/`code-patch` save their `.block.js` directly.
-11. If `code-run` returns `unsaved:true` or `workingCopy:true`, it proved the
+12. If `code-run` returns `unsaved:true` or `workingCopy:true`, it proved the
    draft. If the runtime result matches the request, call `code-promote`
    immediately; do not resend code or rewrite for cosmetic changes.
-12. Stop when `code-run` proves the requested result and the promotion succeeds.
+13. Stop when `code-run` proves the requested result and the promotion succeeds.
 
 ## Svelte Frontend Workflow
 
 For FlowEngine Svelte frontend authoring, read the MCP resource
-`flow://guide/frontend-svelte` first. Use the frontend-specific tools instead
-of raw files or generated Svelte output:
+`flow://guide/frontend-svelte` first. If the task includes backend and frontend
+work, read `flow://guide/fullstack-paperboard` before coding. Use the
+frontend-specific tools instead of raw files or generated Svelte output:
 
-1. `frontend-svelte-tree({ project })` to inspect the current page/component
-   tree and get stable `path`, `sourcePath`, `sourceMutationPath` and slot
-   metadata.
+For backend + frontend work, call `flow-app-progress({ project })` after the
+first paperboard and after each major refinement. Use its `progress.percent`,
+remaining mocks, `nextActions` and `recommendedCalls` to avoid broad
+rediscovery and to keep the user out of an invisible tunnel.
+Use `frontend.bindingSuggestions` to wire `CallSequence` results. Frontend
+`source` values are relative to the selected action result: use `items`, then
+`item.title` inside a loop, never `actionId.items`, `actionId.result.items`,
+`actions.actionId.items` or `backendResults.actionId.items`. Resolve every `frontend.bindingWarnings`
+entry before reporting completion; execute its `fix` call directly when present.
+
+1. `frontend-svelte-tree({ project, detail:"compact", maxDepth:2 })` to inspect
+   the current page/component tree and get stable `path`, `sourcePath`,
+   `sourceMutationPath` and slot metadata. Re-read only the relevant branch with
+   `frontend-svelte-tree({ project, detail:"inspect", focusPath:"<returned path>", maxDepth:8 })`
+   before inspecting or editing a page/component subtree. `detail:"inspect"`
+   shows visible props and slots without generated-source or mutation metadata;
+   do not use `flow-resource-get` just to understand normal page structure.
 2. `frontend-svelte-palette({ project, focusPath })` to discover what can be
    inserted at a focus node. Use the returned `items[].insert` and
    `items[].targetSlot` payloads; do not invent component/directive JSON.
@@ -149,7 +179,10 @@ of raw files or generated Svelte output:
 4. Re-read `frontend-svelte-tree` to verify the tree.
 5. `frontend-svelte-action({ project, actionId:"generate" })` to update
    generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
-   Use `frontend-svelte-actions` to inspect enabled build/dev actions.
+   Use `frontend-svelte-actions` to inspect enabled build/dev actions. It
+   returns full menu ids such as `frontbuilder.svelte.generate`; the action
+   tool accepts both those full ids and the shorter aliases documented in the
+   guide.
 
 Frontend blocks, directives, events and actions must appear in the logical tree:
 `Button -> Events -> On Click -> Actions -> CallSequence`,
