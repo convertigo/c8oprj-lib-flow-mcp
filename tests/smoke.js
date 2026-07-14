@@ -621,6 +621,34 @@ assertTrue(frontendSvelteImplicitProps.result.result.structuredContent.ok === tr
 	frontendSvelteImplicitProps.result.result.structuredContent.debug.propertyPathNormalized === true &&
 	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text edited") !== -1,
 	"MCP frontend-svelte-mutate should normalize property payloads when .props is omitted");
+var frontendSvelteLegacyBinding = callTool(13902, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "replace",
+		path: "frontAst.slots.structure.children[0].props.source",
+		value: "target"
+	}
+});
+assertTrue(frontendSvelteLegacyBinding.result.error &&
+	frontendSvelteLegacyBinding.result.error.data.code === "FRONTEND_BINDING_REQUIRED",
+	"MCP frontend-svelte-mutate should reject new string bindings with a structured diagnostic");
+var frontendSvelteStructuredBinding = callTool(13903, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "replace",
+		path: "frontAst.slots.structure.children[0].props.source",
+		value: {
+			mode: "source",
+			source: { category: "requestable", actionId: "readTarget" },
+			path: [{ kind: "property", name: "target" }]
+		}
+	}
+});
+assertTrue(frontendSvelteStructuredBinding.result.result.structuredContent.ok === true &&
+	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("readTarget") !== -1,
+	"MCP frontend-svelte-mutate should persist a structured picker binding: " + JSON.stringify(frontendSvelteStructuredBinding));
 function frontendSvelteResourceRoot() {
 	var root = new java.io.File(projectDir).getParentFile();
 	var candidates = [
@@ -721,12 +749,17 @@ var appProgressFrontend = callTool(1394, "flow-app-progress", {
 assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	appProgressFrontend.result.result.structuredContent.frontend.structurePath &&
 	appProgressFrontend.result.result.structuredContent.frontend.bindingSuggestions.some(function (suggestion) {
-		return suggestion.actionId === "readTarget" && suggestion.leafPaths && suggestion.leafPaths.indexOf("target") !== -1;
+		return suggestion.actionId === "readTarget" && suggestion.leafPaths && suggestion.leafPaths.indexOf("target") !== -1 &&
+			suggestion.bindings.some(function (candidate) {
+				return candidate.path === "target" && candidate.binding && candidate.binding.mode === "source";
+			});
 	}) &&
 	appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
 		return warning.source === "actions.readTarget.result.target" && warning.suggestedSource === "target" &&
+			warning.suggestedBinding && warning.suggestedBinding.mode === "source" &&
 			warning.fix && warning.fix.tool === "frontend-svelte-mutate" &&
-			warning.fix.arguments.mutation.value.source === "target";
+			warning.fix.arguments.mutation.value.mode === "source" &&
+			warning.fix.arguments.mutation.value.source.actionId === "readTarget";
 	}) &&
 	appProgressFrontend.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === false;
@@ -737,6 +770,37 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	}),
 	"MCP flow-app-progress should recommend frontend paperboard calls and result-relative bindings: " +
 		JSON.stringify(appProgressFrontend.result.result.structuredContent.frontend));
+var bindingFix = appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
+	return warning.fix && warning.source === "actions.readTarget.result.target";
+})[0].fix;
+bindingFix.arguments.projectDir = targetProjectDir;
+var frontendBindingFix = callTool(1395, bindingFix.tool, bindingFix.arguments);
+assertTrue(frontendBindingFix.result.result && frontendBindingFix.result.result.structuredContent.ok === true,
+	"MCP flow-app-progress binding fix should be directly executable: " + JSON.stringify({ fix: bindingFix, response: frontendBindingFix }));
+var appProgressStructured = callTool(1396, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(appProgressStructured.result.result.structuredContent.frontend.bindingWarnings.length === 0 &&
+	appProgressStructured.result.result.structuredContent.tasks.some(function (task) {
+		return task.id === "frontendBindings" && task.done === true;
+	}),
+	"MCP flow-app-progress should accept the structured binding produced by its fix");
+var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	detail: "inspect",
+	focusPath: appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings[0].path,
+	maxDepth: 1
+});
+var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.source;
+assertTrue(inspectedBinding && inspectedBinding.sources.some(function (source) {
+	return source.binding && source.binding.mode === "source" && source.mutation && source.mutation.value.mode === "source";
+	}), "MCP frontend-svelte-tree detail=inspect should expose executable schema-backed binding candidates: " +
+		JSON.stringify(frontendBindingInspect));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",

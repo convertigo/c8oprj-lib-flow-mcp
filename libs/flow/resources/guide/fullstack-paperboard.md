@@ -32,13 +32,12 @@ is mocked. Then iterate:
 4. output schema reviewed so frontend pickers see real fields;
 5. visual/layout refinement using explicit layout and style properties.
 
-When wiring a backend action, keep frontend sources relative to its result:
-`items` for the collection and `item.title` inside its `ForEach`. Call
-`flow-app-progress` immediately after wiring; its binding suggestions are the
-source-path contract, and every binding warning must be fixed before progress
-can reach 100%. Do not use `readFeed.items`, `readFeed.result.items`,
-`actions.readFeed.items` or `backendResults.readFeed.items` below action
-`readFeed`. Execute `frontend.bindingWarnings[].fix` directly when present.
+When wiring a backend action, use the schema-backed `binding` or `mutation`
+returned by the picker or by `flow-app-progress`; pass it unchanged. Do not
+invent relative paths, action-prefixed paths or descriptor JSON. Call
+`flow-app-progress` immediately after wiring. Every legacy, invalid, unknown
+action or unknown schema-path warning must be fixed before progress can reach
+100%. Execute `frontend.bindingWarnings[].fix` directly when present.
 
 After each loop, call `flow-app-progress({ project })` and report its
 `progress.percent`, remaining mocks, first `nextAction` and `recommendedCalls`.

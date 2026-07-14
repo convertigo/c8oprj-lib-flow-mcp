@@ -367,7 +367,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-palette") {
 			description = "Svelte frontend palette for a tree focusPath. Use items[].insert as the source of valid create payloads.";
 		} else if (name === "frontend-svelte-mutate") {
-			description = "Applies Svelte frontend tree mutations through the same contract as Studio drag/drop and property edits.";
+			description = "Applies Svelte frontend tree mutations. For bindable properties, pass the structured mutation returned by the picker unchanged; new string paths are rejected.";
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
@@ -383,7 +383,7 @@ const _meta = {
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-app-progress") {
-			description = "Reports backend/frontend paperboard progress, remaining mocks and recommended MCP calls for one Flow project.";
+			description = "Reports paperboard progress, mocks, schema-backed binding diagnostics, directly executable fixes and recommended MCP calls.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {

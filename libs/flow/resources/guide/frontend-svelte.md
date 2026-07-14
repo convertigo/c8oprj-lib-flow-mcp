@@ -18,10 +18,11 @@ paperboard-first order, mock debt checks and progress reporting.
    returned by the tree are the stable addresses for future edits.
 2. Re-read only the relevant branch with `frontend-svelte-tree({ project,
    detail:"inspect", focusPath:"<path returned above>", maxDepth:8 })` before
-   inspecting a page, component, slot or action subtree. `detail:"inspect"`
-   keeps visible block props and slot names, without generated-source or
-   mutation metadata. Do not use `flow-resource-get` just to understand normal
-   page structure.
+   inspecting a page, component, slot or action subtree. For a binding
+   property, choose from `bindings.<property>.sources[].bindings[]` and pass
+   its `mutation` unchanged to `frontend-svelte-mutate`. `detail:"inspect"`
+   keeps visible block props, slot names and focused binding metadata. Do not
+   use `flow-resource-get` just to understand normal page structure.
 3. Pick a focus node and call `frontend-svelte-palette`.
    Use the palette item returned by the tool as the source of truth:
    `items[].id`, `items[].insert`, `items[].targetSlot.sourceMutationPath` and
@@ -101,14 +102,14 @@ _private/svelte/src/lib/...
 - Events and actions live under the owning block. A button click should look
   like `Button -> Events -> On Click -> Actions -> CallSequence`, not like a
   global action magically referenced by a string.
-- Data sources produced by a `CallSequence` are relative to that action result.
-  If action `readFeed` returns `items[].title`, use `ForEach source="items"`
-  and child bindings such as `Text source="item.title"`. Do not use
-  `readFeed.items`, `readFeed.result.items`, `actions.readFeed.items` or
-  `backendResults.readFeed.items`; the generated runtime already resolves the
-  nearest action. `flow-app-progress` exposes `frontend.bindingSuggestions`
-  and reports redundant prefixes in `frontend.bindingWarnings`. When source
-  metadata is available, execute the warning's `fix` call directly.
+- Data sources produced by a `CallSequence` use structured
+  `FlowValueBinding` descriptors. Select the schema path from
+  `propertyDefinitions.<name>.bindingSources[].bindings` or
+  `flow-app-progress.frontend.bindingSuggestions[].bindings`, then pass its
+  `binding` or `mutation` unchanged. Do not translate the candidate into
+  `items`, `item.title`, action-prefixed paths or hand-built JSON. String paths
+  are accepted only as migration input and are reported in
+  `frontend.bindingWarnings`; execute the returned `fix` directly.
 - SvelteKit navigation is a native link. Use the `LinkButton` palette block
   when a route link should look like a button; do not create a `Button` with an
   empty click event for navigation.

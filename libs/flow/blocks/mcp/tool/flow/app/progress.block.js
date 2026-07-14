@@ -75,6 +75,10 @@ const _meta = {
 		return Object.prototype.toString.call(value) === "[object Array]" ? value : [];
 	}
 
+	function objectValue(value) {
+		return value && typeof value === "object" && Object.prototype.toString.call(value) !== "[object Array]" ? value : null;
+	}
+
 	function flowName(flow) {
 		return String(flow && (flow.qname || flow.flowQName || flow.name || flow.id) || "");
 	}
@@ -233,6 +237,62 @@ const _meta = {
 		return { paths: paths, arrayPaths: arrayPaths, leafPaths: leafPaths };
 	}
 
+	function bindingPathSegments(path) {
+		var segments = [];
+		var matcher = /([^.[\]]+)|\[(\d+)\]/g;
+		var match;
+		while ((match = matcher.exec(String(path || ""))) !== null) {
+			segments.push(match[1] !== undefined
+				? { kind: "property", name: match[1] }
+				: { kind: "index", index: Number(match[2]) });
+		}
+		return segments;
+	}
+
+	function bindingPathText(path) {
+		var text = "";
+		arrayValue(path).forEach(function (segment) {
+			if (segment && segment.kind === "index") {
+				text += "[" + Number(segment.index) + "]";
+			} else if (segment && segment.kind === "property" && segment.name) {
+				text += (text ? "." : "") + String(segment.name);
+			}
+		});
+		return text;
+	}
+
+	function sourceBinding(source, path) {
+		return {
+			mode: "source",
+			source: source,
+			path: bindingPathSegments(path)
+		};
+	}
+
+	function validBinding(value) {
+		value = objectValue(value);
+		if (!value) {
+			return false;
+		}
+		if (value.mode === "literal") {
+			return Object.prototype.hasOwnProperty.call(value, "value");
+		}
+		if (value.mode === "expression") {
+			return typeof value.expression === "string";
+		}
+		var source = objectValue(value.source);
+		if (value.mode !== "source" || !source) {
+			return false;
+		}
+		var path = value.path;
+		var validPath = path === undefined || (Object.prototype.toString.call(path) === "[object Array]" && path.every(function (segment) {
+			return objectValue(segment) && ((segment.kind === "property" && typeof segment.name === "string")
+				|| (segment.kind === "index" && typeof segment.index === "number"));
+		}));
+		return validPath && (((source.category === "requestable" || source.category === "action") && !!source.actionId)
+			|| (source.category === "iteration" && !!source.scopeId && (source.value === "item" || source.value === "index")));
+	}
+
 	function firstNodePath(tree, predicate) {
 		var path = "";
 		walk(tree, function (node) {
@@ -266,9 +326,11 @@ const _meta = {
 					path: node.path || "",
 					kind: kind,
 					type: type,
+					id: definition.id || node.id || "",
 					label: visibleLabel(node, definition),
 					source: definition.source || definition.value || definition.path || "",
-					test: definition.test || definition.condition || ""
+					test: definition.test || definition.condition || "",
+					context: definition.context || ""
 				}, 30);
 			}
 			if (kind === "frontendActionBlock" || definition.requestable || definition.backendCall) {
@@ -288,6 +350,7 @@ const _meta = {
 					type: type,
 					sourceFile: definition.sourcePath || definition.sourceFile || "",
 					sourceMutationPath: definition.sourceMutationPath || "",
+					sourcePropertyMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.source || "",
 					source: definition.source || "",
 					value: definition.value || "",
 					dataPath: definition.path || "",
@@ -322,6 +385,7 @@ const _meta = {
 					flowSource: loaded && loaded.source || ""
 				}) || {};
 				var summary = schemaPaths(schemaResult.schema || {});
+				var source = { category: "requestable", actionId: actionId };
 				frontend.bindingSuggestions.push({
 					actionId: actionId,
 					requestable: action.requestable,
@@ -329,10 +393,13 @@ const _meta = {
 					sourcePaths: summary.paths.slice(0, 40),
 					arrayPaths: summary.arrayPaths.slice(0, 12),
 					leafPaths: summary.leafPaths.slice(0, 30),
+					bindings: summary.paths.slice(0, 40).map(function (path) {
+						return { path: path, binding: sourceBinding(source, path) };
+					}),
 					example: summary.arrayPaths.length
-						? { forEachSource: summary.arrayPaths[0], itemSource: "item.<field>", statusActionId: actionId }
-						: { source: summary.leafPaths[0] || "<result path>", statusActionId: actionId },
-					note: "Frontend source properties are relative to this CallSequence result. Do not prefix them with the action id or result."
+						? { forEachBinding: sourceBinding(source, summary.arrayPaths[0]), statusActionId: actionId }
+						: { binding: sourceBinding(source, summary.leafPaths[0] || ""), statusActionId: actionId },
+					note: "Pass one returned binding or mutation unchanged. String paths are migration input only."
 				});
 			} catch (e) {
 				frontend.bindingSuggestions.push({
@@ -343,7 +410,64 @@ const _meta = {
 			}
 		});
 		arrayValue(paperboard.dataSources).forEach(function (binding) {
-			var source = String(binding.source || binding.value || binding.dataPath || "");
+			var rawSource = binding.source || binding.value || binding.dataPath || "";
+			if (objectValue(rawSource) && !validBinding(rawSource)) {
+				frontend.bindingWarnings.push({
+					code: "FRONTEND_BINDING_INVALID",
+					path: binding.path,
+					binding: rawSource,
+					message: "Binding does not match the FlowValueBinding contract; select a picker candidate instead of constructing it manually."
+				});
+				return;
+			}
+			if (validBinding(rawSource)) {
+				var structuredSource = rawSource.source || {};
+				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action")) {
+					var knownSuggestion = null;
+					frontend.bindingSuggestions.some(function (suggestion) {
+						if (String(suggestion.actionId || "") === String(structuredSource.actionId || "")) {
+							knownSuggestion = suggestion;
+							return true;
+						}
+						return false;
+					});
+					if (!knownSuggestion) {
+						frontend.bindingWarnings.push({
+							code: "FRONTEND_BINDING_UNKNOWN_ACTION",
+							path: binding.path,
+							binding: rawSource,
+							message: "Binding references an unknown client action: " + String(structuredSource.actionId || "")
+						});
+					} else {
+						var selectedPath = bindingPathText(rawSource.path || []);
+						var knownPath = !selectedPath || arrayValue(knownSuggestion.sourcePaths).indexOf(selectedPath) !== -1;
+						if (!knownPath) {
+							frontend.bindingWarnings.push({
+								code: "FRONTEND_BINDING_UNKNOWN_SCHEMA_PATH",
+								path: binding.path,
+								binding: rawSource,
+								message: "Binding path is not present in the effective schema for action " + String(structuredSource.actionId || "") + ": " + selectedPath
+							});
+						}
+					}
+				}
+				return;
+			}
+			var source = String(rawSource || "");
+			if (!source) {
+				return;
+			}
+			var iteration = null;
+			arrayValue(paperboard.blocks).forEach(function (block) {
+				var context = String(block.context || "item");
+				if ((block.type === "ForEach" || block.type === "each") && source.indexOf(context + ".") === 0
+					&& String(binding.path || "").indexOf(String(block.path || "")) === 0
+					&& (!iteration || String(block.path || "").length > String(iteration.path || "").length)) {
+					iteration = block;
+				}
+			});
+			var selectedSuggestion = null;
+			var relative = source;
 			frontend.bindingSuggestions.forEach(function (suggestion) {
 				var actionId = String(suggestion.actionId || "");
 				var prefixes = [actionId + ".", "actions." + actionId + ".", "backendResults." + actionId + "."];
@@ -357,30 +481,44 @@ const _meta = {
 				if (!prefix) {
 					return;
 				}
-				var relative = source.substring(prefix.length).replace(/^result\./, "");
-				var warning = {
-					code: "FRONTEND_RESULT_SOURCE_PREFIX_REDUNDANT",
+				selectedSuggestion = suggestion;
+				relative = source.substring(prefix.length).replace(/^result\./, "");
+			});
+			if (!selectedSuggestion && !iteration && frontend.bindingSuggestions.length === 1) {
+				selectedSuggestion = frontend.bindingSuggestions[0];
+			}
+			var descriptor = iteration
+				? sourceBinding({ category: "iteration", scopeId: String(iteration.id || "forEach"), value: "item" },
+					source.substring(String(iteration.context || "item").length + 1))
+				: selectedSuggestion
+					? sourceBinding({ category: "requestable", actionId: String(selectedSuggestion.actionId || "") }, relative)
+					: null;
+			var warning = {
+					code: "FRONTEND_BINDING_LEGACY_STRING",
 					path: binding.path,
 					source: source,
 					suggestedSource: relative,
-					message: "Use a result-relative source path. The nearest CallSequence already selects action " + actionId + "."
-				};
-				if (binding.sourceFile && binding.sourceMutationPath) {
+					suggestedBinding: descriptor,
+					message: descriptor
+						? "Replace this legacy string path with the schema-backed binding descriptor."
+						: "This bindable property still uses a legacy string path; select a picker candidate."
+			};
+			if (descriptor && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
+				var direct = String(binding.sourcePropertyMutationPath || "");
 					warning.fix = {
 						tool: "frontend-svelte-mutate",
 						arguments: {
 							project: args.project,
 							sourceFile: binding.sourceFile,
 							mutation: {
-								op: "merge",
-								path: binding.sourceMutationPath,
-								value: { source: relative }
+								op: direct ? "replace" : "merge",
+								path: direct || binding.sourceMutationPath,
+								value: direct ? descriptor : { source: descriptor }
 							}
 						}
 					};
-				}
-				frontend.bindingWarnings.push(warning);
-			});
+			}
+			frontend.bindingWarnings.push(warning);
 		});
 		return frontend;
 	}
@@ -551,7 +689,7 @@ const _meta = {
 					addTask(tasks, "frontendActionWiring", "Frontend action wiring exists",
 						frontend.paperboard && frontend.paperboard.actions && frontend.paperboard.actions.length > 0,
 						"Wire the primary button/event to a backend Flow or typed mock.");
-					addTask(tasks, "frontendBindings", "Frontend result bindings are relative to CallSequence output",
+				addTask(tasks, "frontendBindings", "Frontend bindings are structured and schema-backed",
 						frontend.bindingWarnings.length === 0,
 						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message + " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "");
 					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
