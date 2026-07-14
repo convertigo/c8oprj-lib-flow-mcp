@@ -154,7 +154,8 @@ unchanged; do not translate it into `items`, `item.title` or another string
 path and do not construct a `FlowValueBinding` manually. String paths remain
 migration input for older projects only. Resolve every
 `frontend.bindingWarnings` entry before reporting completion by executing its
-`fix` call directly when present.
+`fix` call directly when present, or its `inspect` call to select the missing
+schema-backed candidate.
 
 1. `frontend-svelte-tree({ project, detail:"compact", maxDepth:2 })` to inspect
    the current page/component tree and get stable `path`, `sourcePath`,
@@ -206,7 +207,10 @@ in CSS. For directives, use the palette property names: `If` uses `test`,
 `ForEach` uses `source` and `context`. Bindable properties such as
 `ForEach.source`, `Text.source`, `Image.source`, `Table.source` and
 `Json.source` require the structured descriptor returned by the picker. A
-string-path mutation is a tooling error, not a shortcut. For Svelte snippets, use the simple tree
+bindable descendant of a data-bound `ForEach` must set `source` explicitly;
+use a picker iteration candidate for dynamic content or a structured literal
+binding for intentionally static content. A string-path mutation is a tooling
+error, not a shortcut. For Svelte snippets, use the simple tree
 rule: no snippet means leaf; one `children` snippet means direct children under
 the block; multiple snippets must appear as explicit slot nodes.
 Read SvelteKit routes as route directories: `Routes -> ROOT / -> Page ->

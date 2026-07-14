@@ -801,6 +801,40 @@ assertTrue(inspectedBinding && inspectedBinding.sources.some(function (source) {
 	return source.binding && source.binding.mode === "source" && source.mutation && source.mutation.value.mode === "source";
 	}), "MCP frontend-svelte-tree detail=inspect should expose executable schema-backed binding candidates: " +
 		JSON.stringify(frontendBindingInspect));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <Text id=\"staticTitle\" text=\"Static title\" />",
+	"    <Button id=\"loadFeed\" label=\"Load feed\">",
+	"      <Events><OnClick id=\"loadFeedClick\"><Actions>",
+	"        <CallSequence id=\"readTarget\" requestable=\".TargetSmoke\"><Variables /></CallSequence>",
+	"      </Actions></OnClick></Events>",
+	"    </Button>",
+	"    <ForEach id=\"targetItems\" source={{\"mode\":\"source\",\"source\":{\"category\":\"requestable\",\"actionId\":\"readTarget\"},\"path\":[{\"kind\":\"property\",\"name\":\"target\"}]}} context=\"item\">",
+	"      <Children>",
+	"        <Image id=\"missingImage\" alt=\"Missing source\" />",
+	"        <Text id=\"missingTitle\" text=\"Placeholder\" />",
+	"      </Children>",
+	"      <Else />",
+	"    </ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressMissingBindings = callTool(13961, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(appProgressMissingBindings.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_BINDING_MISSING";
+}).length === 2 &&
+	appProgressMissingBindings.result.result.structuredContent.tasks.some(function (task) {
+		return task.id === "frontendBindings" && task.done === false;
+	}),
+	"MCP flow-app-progress should require explicit Image/Text bindings inside a backend-bound iterator: " +
+		JSON.stringify(appProgressMissingBindings.result.result.structuredContent.frontend));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",

@@ -37,7 +37,10 @@ returned by the picker or by `flow-app-progress`; pass it unchanged. Do not
 invent relative paths, action-prefixed paths or descriptor JSON. Call
 `flow-app-progress` immediately after wiring. Every legacy, invalid, unknown
 action or unknown schema-path warning must be fixed before progress can reach
-100%. Execute `frontend.bindingWarnings[].fix` directly when present.
+100%. Execute `frontend.bindingWarnings[].fix` directly when present; for a
+missing binding, execute its `inspect` call and select a returned schema-backed
+candidate. Bindable descendants of a data-bound `ForEach` require an explicit
+source, including a structured literal for intentionally static content.
 
 After each loop, call `flow-app-progress({ project })` and report its
 `progress.percent`, remaining mocks, first `nextAction` and `recommendedCalls`.

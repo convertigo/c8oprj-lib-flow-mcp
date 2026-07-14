@@ -303,6 +303,11 @@ const _meta = {
 		return path;
 	}
 
+	function requiresExplicitSource(type) {
+		type = String(type || "").toLowerCase();
+		return type === "image" || type === "text" || type === "table" || type === "json";
+	}
+
 	function paperboardSummary(tree) {
 		var summary = {
 			routeCount: 0,
@@ -344,7 +349,7 @@ const _meta = {
 					backendCall: definition.backendCall || ""
 				}, 20);
 			}
-			if (definition.source || definition.path || definition.value) {
+			if (definition.source || definition.path || definition.value || requiresExplicitSource(type)) {
 				addLimited(summary.dataSources, {
 					path: node.path || "",
 					type: type,
@@ -455,6 +460,33 @@ const _meta = {
 			}
 			var source = String(rawSource || "");
 			if (!source) {
+				var boundIteration = null;
+				arrayValue(paperboard.blocks).forEach(function (block) {
+					if ((block.type === "ForEach" || block.type === "each") && validBinding(block.source)
+						&& String(binding.path || "").indexOf(String(block.path || "") + ".") === 0
+						&& (!boundIteration || String(block.path || "").length > String(boundIteration.path || "").length)) {
+						boundIteration = block;
+					}
+				});
+				if (boundIteration && requiresExplicitSource(binding.type)) {
+					frontend.bindingWarnings.push({
+						code: "FRONTEND_BINDING_MISSING",
+						path: binding.path,
+						type: binding.type,
+						iteratorPath: boundIteration.path,
+						iteratorBinding: boundIteration.source,
+						message: String(binding.type || "Block") + " inside a data-bound ForEach requires an explicit structured source. Select a schema-backed iteration candidate, or use a literal binding for intentional static content.",
+						inspect: {
+							tool: "frontend-svelte-tree",
+							arguments: {
+								project: args.project,
+								detail: "inspect",
+								focusPath: binding.path,
+								maxDepth: 1
+							}
+						}
+					});
+				}
 				return;
 			}
 			var iteration = null;
@@ -689,9 +721,10 @@ const _meta = {
 					addTask(tasks, "frontendActionWiring", "Frontend action wiring exists",
 						frontend.paperboard && frontend.paperboard.actions && frontend.paperboard.actions.length > 0,
 						"Wire the primary button/event to a backend Flow or typed mock.");
-				addTask(tasks, "frontendBindings", "Frontend bindings are structured and schema-backed",
+					addTask(tasks, "frontendBindings", "Frontend bindings are structured and schema-backed",
 						frontend.bindingWarnings.length === 0,
-						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message + " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "");
+						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message +
+							(frontend.bindingWarnings[0].suggestedSource ? " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "") : "");
 					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
 						frontend.actionIds.length > 0,
 						"Inspect frontend-svelte-actions and fix the builder setup if no action is available.");

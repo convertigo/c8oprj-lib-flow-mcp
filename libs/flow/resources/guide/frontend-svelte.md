@@ -109,7 +109,11 @@ _private/svelte/src/lib/...
   `binding` or `mutation` unchanged. Do not translate the candidate into
   `items`, `item.title`, action-prefixed paths or hand-built JSON. String paths
   are accepted only as migration input and are reported in
-  `frontend.bindingWarnings`; execute the returned `fix` directly.
+  `frontend.bindingWarnings`; execute the returned `fix` directly, or inspect
+  the reported block to select a missing candidate. Under a data-bound
+  `ForEach`, every bindable descendant must set `source`: choose an iteration
+  candidate for dynamic content or a structured literal binding for
+  intentionally static content.
 - SvelteKit navigation is a native link. Use the `LinkButton` palette block
   when a route link should look like a button; do not create a `Button` with an
   empty click event for navigation.
