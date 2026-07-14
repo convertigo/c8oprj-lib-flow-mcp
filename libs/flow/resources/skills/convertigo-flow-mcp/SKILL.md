@@ -18,6 +18,17 @@ the project also needs the experimental Svelte frontbuilder. If
 `flow-project-bootstrap` cannot perform the setup, report the tool error; do
 not patch project YAML by hand.
 
+For FullSync provisioning, use only
+`flow-fullsync-scaffold({ project, connector, designDocuments, transactions,
+dryRun:true })`, inspect its plan, then repeat the same structured request with
+`dryRun:false`. It creates or updates the connector, design documents, views
+and supported standard transactions through Convertigo DBO APIs. Do not edit
+their YAML, call CouchDB directly, or fall back to the legacy Convertigo MCP.
+After scaffolding, use `flow-requestable-schema({ project, requestable,
+learn:true })` on safe read transactions when runtime data is available so
+bindings use the learned response schema. Keep database seeding and external
+replication out of the scaffold request.
+
 ## MCP Server
 
 - MCP server: `convertigo-flow`
@@ -62,6 +73,9 @@ Prefer the compact code path:
    work. This is the only supported bootstrap path until Flow has a marketplace
    template. Do not create FlowEngine by editing `c8oProject.yaml`,
    `_c8oProject/flowEngine.yaml`, or other Convertigo YAML files.
+   When the task also needs FullSync DBOs, call `flow-fullsync-scaffold` with
+   `dryRun:true` immediately after bootstrap, review the returned plan, then
+   apply the identical request with `dryRun:false`.
 4. After the syntax warm-up, write the FlowScript algorithm directly, but stay
    inside the strict Flow DSL. Every block call is `block.name({ key: value })`
    with one object argument. Do not browse the full catalog first. Let

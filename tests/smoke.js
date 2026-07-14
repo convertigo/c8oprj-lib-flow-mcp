@@ -105,6 +105,14 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-project-bootstrap";
 }), "MCP Flow tools/list did not expose flow-project-bootstrap");
+var fullSyncScaffoldTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "flow-fullsync-scaffold";
+})[0];
+assertTrue(fullSyncScaffoldTool &&
+	fullSyncScaffoldTool.inputSchema.properties.connector.type === "object" &&
+	fullSyncScaffoldTool.inputSchema.properties.connector.properties.name.type === "string" &&
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("getView") !== -1,
+	"MCP Flow tools/list did not expose the structured flow-fullsync-scaffold schema");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-app-progress";
 }), "MCP Flow tools/list did not expose flow-app-progress");
@@ -579,6 +587,32 @@ assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
 	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
 	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke",
 	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
+var fullSyncScaffoldDryRun = callTool(139111, "flow-fullsync-scaffold", {
+	project: "FlowFullSyncSmoke",
+	connector: { name: "retaildb", anonymousReplication: "deny" },
+	designDocuments: [{
+		name: "design",
+		views: {
+			children_byFather: {
+				map: "function (doc) { if (doc.father) emit(doc.father, doc); }"
+			}
+		}
+	}],
+	transactions: [{
+		name: "GetChildren",
+		type: "getView",
+		view: "design/children_byFather",
+		accessibility: "Public",
+		variables: [{ name: "key", description: "View key" }]
+	}],
+	dryRun: true
+});
+assertTrue(fullSyncScaffoldDryRun.result.result.structuredContent.ok === true &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.dryRun === true &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.connector === "FlowFullSyncSmoke.retaildb" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.designDocuments[0] === "FlowFullSyncSmoke.retaildb.design" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[0] === "FlowFullSyncSmoke.retaildb.GetChildren",
+	"MCP flow-fullsync-scaffold dry-run did not return the expected plan");
 var frontendPageFile = new java.io.File(targetDir,
 	"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
 frontendPageFile.getParentFile().mkdirs();

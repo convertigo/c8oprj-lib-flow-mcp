@@ -50,6 +50,7 @@ const _meta = {
 		"flow-list": true,
 		"flow-node-output-schema": true,
 		"flow-output-schema": true,
+		"flow-fullsync-scaffold": true,
 		"flow-project-bootstrap": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
@@ -188,6 +189,9 @@ const _meta = {
 		if (suffix === "block.test") {
 			return "flow.run";
 		}
+		if (suffix === "fullsync.scaffold") {
+			return "project.fullsync.scaffold";
+		}
 		var target = "";
 		if (["cache.clear", "cache.info"].indexOf(suffix) !== -1) {
 			target = suffix;
@@ -231,7 +235,7 @@ const _meta = {
 		if (type === "unknown") {
 			delete out.type;
 		}
-		["enum", "items"].forEach(function (key) {
+		["description", "default", "enum", "items", "properties", "required", "additionalProperties", "oneOf", "anyOf"].forEach(function (key) {
 			if (prop && prop[key] !== undefined && prop[key] !== null && prop[key] !== "") {
 				out[key] = prop[key];
 			}
@@ -390,6 +394,8 @@ const _meta = {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
 			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
+		} else if (name === "flow-fullsync-scaffold") {
+			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-delete") {
