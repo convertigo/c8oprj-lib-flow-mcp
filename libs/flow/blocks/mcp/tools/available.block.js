@@ -64,6 +64,7 @@ const _meta = {
 		"flow-test": true,
 		"frontend-svelte-action": true,
 		"frontend-svelte-actions": true,
+		"frontend-svelte-fullsync-schema": true,
 		"frontend-svelte-mutate": true,
 		"frontend-svelte-palette": true,
 		"frontend-svelte-tree": true
@@ -176,6 +177,9 @@ const _meta = {
 			}
 			if (frontendSuffix === "svelte.action") {
 				return "authoring.action";
+			}
+			if (frontendSuffix === "svelte.fullsync.schema") {
+				return "frontend.fullsync.schema.attach";
 			}
 			return "";
 		}
@@ -372,6 +376,8 @@ const _meta = {
 			description = "Svelte frontend palette for a tree focusPath. Use items[].insert as the source of valid create payloads.";
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. For bindable properties, pass the structured mutation returned by the picker unchanged; new string paths are rejected.";
+		} else if (name === "frontend-svelte-fullsync-schema") {
+			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {

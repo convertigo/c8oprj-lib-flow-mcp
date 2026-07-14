@@ -202,6 +202,19 @@ const _meta = {
 		return String(action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
 	}
 
+	function fullSyncOperation(type, mode) {
+		if (type === "FullSyncGet") {
+			return "get";
+		}
+		if (type === "FullSyncView") {
+			return "view";
+		}
+		if (type !== "FullSyncSync") {
+			return "";
+		}
+		return mode === "pull" ? "replicate_pull" : mode === "push" ? "replicate_push" : "sync";
+	}
+
 	function schemaPaths(schema) {
 		var paths = [];
 		var arrayPaths = [];
@@ -269,6 +282,44 @@ const _meta = {
 		};
 	}
 
+	function fullSyncSchema(operation) {
+		if (operation === "view") {
+			return {
+				type: "object",
+				properties: {
+					total_rows: { type: "number" },
+					offset: { type: "number" },
+					rows: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								id: { type: "string" },
+								key: {},
+								value: { type: "object" },
+								doc: { type: "object" }
+							}
+						}
+					}
+				}
+			};
+		}
+		if (operation === "sync" || operation === "replicate_pull" || operation === "replicate_push") {
+			return { type: "object", properties: { ok: { type: "boolean" }, status: { type: "string" } } };
+		}
+		return { type: "object" };
+	}
+
+	function unwrapRequestableSchema(schema) {
+		var current = schema || {};
+		["document", "couchdb_output"].forEach(function (name) {
+			if (current.properties && current.properties[name]) {
+				current = current.properties[name];
+			}
+		});
+		return current;
+	}
+
 	function validBinding(value) {
 		value = objectValue(value);
 		if (!value) {
@@ -290,6 +341,7 @@ const _meta = {
 				|| (segment.kind === "index" && typeof segment.index === "number"));
 		}));
 		return validPath && (((source.category === "requestable" || source.category === "action") && !!source.actionId)
+			|| (source.category === "fullsync" && !!source.actionId && !!source.operation)
 			|| (source.category === "iteration" && !!source.scopeId && (source.value === "item" || source.value === "index")));
 	}
 
@@ -345,8 +397,14 @@ const _meta = {
 					type: type,
 					label: visibleLabel(node, definition),
 					requestable: definition.requestable || "",
+					fullSyncOperation: definition.fullSyncOperation || fullSyncOperation(type, definition.mode),
+					schemaRequestable: definition.schemaRequestable || "",
+					outputSchema: definition.outputSchema || null,
 					clientAction: definition.clientAction || "",
-					backendCall: definition.backendCall || ""
+					backendCall: definition.backendCall || "",
+					sourceFile: definition.sourcePath || definition.sourceFile || "",
+					outputSchemaMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.outputSchema
+						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : "")
 				}, 20);
 			}
 			if (definition.source || definition.path || definition.value || requiresExplicitSource(type)) {
@@ -371,29 +429,58 @@ const _meta = {
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
 		arrayValue(paperboard.actions).forEach(function (action) {
-			var flow = requestableFlowName(action.requestable);
 			var actionId = actionResultId(action);
-			if (!flow || !actionId) {
+			var operation = String(action.fullSyncOperation || "");
+			var schemaRequestable = String(action.schemaRequestable || "");
+			var requestable = String(action.requestable || "");
+			if (!actionId || (!requestable && !operation)) {
 				return;
 			}
 			try {
-				var loaded = ctx.flowGet(flow, {
-					projectDir: args.projectDir,
-					project: args.project
-				});
-				var schemaResult = ctx.outputSchemaSource({
-					projectDir: args.projectDir,
-					project: args.project,
-					name: flow,
-					flowName: flow,
-					flowQName: args.project ? args.project + "." + flow : flow,
-					flowSource: loaded && loaded.source || ""
-				}) || {};
-				var summary = schemaPaths(schemaResult.schema || {});
-				var source = { category: "requestable", actionId: actionId };
+				var schema = action.outputSchema || null;
+				var schemaSource = "generic";
+				if (schema) {
+					schema = unwrapRequestableSchema(schema);
+					schemaSource = schemaRequestable ? "learned requestable" : "declared";
+				}
+				if (!schema && !operation && requestable) {
+					var schemaResult = ctx.callBlock("requestable.schema", {
+						requestable: requestable,
+						project: args.project,
+						projectDir: args.projectDir,
+						learn: false
+					}, { trace: false }) || {};
+					if (schemaResult.ok === false) {
+						throw new Error(schemaResult.error && schemaResult.error.message || "Schema unavailable for " + requestable);
+					}
+					schema = unwrapRequestableSchema(schemaResult.schema || {});
+					schemaSource = "requestable";
+				}
+				if (!schema && operation) {
+					schema = fullSyncSchema(operation);
+				}
+				var summary = schemaPaths(schema || {});
+				var source = operation
+					? { category: "fullsync", actionId: actionId, operation: operation }
+					: { category: "requestable", actionId: actionId };
 				frontend.bindingSuggestions.push({
 					actionId: actionId,
-					requestable: action.requestable,
+					requestable: requestable,
+					operation: operation,
+					schemaRequestable: schemaRequestable,
+					schemaSource: schemaSource,
+					schemaPending: operation && schemaRequestable && !action.outputSchema ? {
+						tool: "frontend-svelte-fullsync-schema",
+						arguments: {
+							project: args.project,
+							sourceFile: action.sourceFile,
+							path: action.outputSchemaMutationPath,
+							requestable: schemaRequestable,
+							learn: true
+						},
+						note: "Execute this mutation unchanged after confirming that learning the read requestable is safe."
+					} : null,
+					source: source,
 					root: "backendResults." + actionId,
 					sourcePaths: summary.paths.slice(0, 40),
 					arrayPaths: summary.arrayPaths.slice(0, 12),
@@ -409,7 +496,9 @@ const _meta = {
 			} catch (e) {
 				frontend.bindingSuggestions.push({
 					actionId: actionId,
-					requestable: action.requestable,
+					requestable: requestable,
+					operation: operation,
+					schemaRequestable: schemaRequestable,
 					error: String(e.message || e)
 				});
 			}
@@ -427,7 +516,7 @@ const _meta = {
 			}
 			if (validBinding(rawSource)) {
 				var structuredSource = rawSource.source || {};
-				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action")) {
+				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action" || structuredSource.category === "fullsync")) {
 					var knownSuggestion = null;
 					frontend.bindingSuggestions.some(function (suggestion) {
 						if (String(suggestion.actionId || "") === String(structuredSource.actionId || "")) {
@@ -523,7 +612,7 @@ const _meta = {
 				? sourceBinding({ category: "iteration", scopeId: String(iteration.id || "forEach"), value: "item" },
 					source.substring(String(iteration.context || "item").length + 1))
 				: selectedSuggestion
-					? sourceBinding({ category: "requestable", actionId: String(selectedSuggestion.actionId || "") }, relative)
+					? sourceBinding(selectedSuggestion.source || { category: "requestable", actionId: String(selectedSuggestion.actionId || "") }, relative)
 					: null;
 			var warning = {
 					code: "FRONTEND_BINDING_LEGACY_STRING",

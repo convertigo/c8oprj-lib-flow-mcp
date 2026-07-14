@@ -102,6 +102,11 @@ _private/svelte/src/lib/...
 - Events and actions live under the owning block. A button click should look
   like `Button -> Events -> On Click -> Actions -> CallSequence`, not like a
   global action magically referenced by a string.
+- For client-local FullSync, read `flow://guide/fullsync`. Use the palette
+  `FullSyncGet`, `FullSyncView` and `FullSyncSync` blocks; never write `fs://`
+  SDK strings or PouchDB calls by hand. Their outputs are structured
+  `category: fullsync` binding sources and their Variable children use
+  `FlowValueBinding` values.
 - Data sources produced by a `CallSequence` use structured
   `FlowValueBinding` descriptors. Select the schema path from
   `propertyDefinitions.<name>.bindingSources[].bindings` or
@@ -117,7 +122,8 @@ _private/svelte/src/lib/...
 - SvelteKit navigation is a native link. Use the `LinkButton` palette block
   when a route link should look like a button; do not create a `Button` with an
   empty click event for navigation.
-- Local action variables belong under the action that owns them. Shared actions
+- Local action variables belong under the action that owns them and their
+  values must be picker-provided structured bindings or literal bindings. Shared actions
   are for reusable behavior only.
 - Do not create frontend source files by filesystem guessing. Use the palette
   creation items, especially for pages, Flow UI blocks, Svelte UI blocks and

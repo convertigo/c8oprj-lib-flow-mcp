@@ -29,6 +29,17 @@ learn:true })` on safe read transactions when runtime data is available so
 bindings use the learned response schema. Keep database seeding and external
 replication out of the scaffold request.
 
+For a Svelte FullSync client, read `flow://guide/fullsync`, then insert the
+operation-aware `FullSyncGet`, `FullSyncView` and `FullSyncSync` palette blocks.
+Do not handwrite `fs://` request strings or PouchDB code. Bind their results
+through picker-provided `category:fullsync` descriptors. Associate
+`schemaRequestable` with a safe learned server read transaction when domain
+fields are needed, then apply the returned `schema` unchanged to the action's
+`outputSchema` property. Prefer executing the exact `schemaPending`
+`frontend-svelte-fullsync-schema` request returned by `flow-app-progress`; it
+performs both steps without copied schema JSON. These metadata properties do
+not execute the transaction from the client or from routine progress checks.
+
 ## MCP Server
 
 - MCP server: `convertigo-flow`

@@ -1737,6 +1737,7 @@
 	function persistSourceMutationResult(request, args, result) {
 		var name = toolName(request || {});
 		var frontendMutate = name === "frontend-svelte-mutate"
+			|| name === "frontend-svelte-fullsync-schema"
 			|| (name === "authoring-mutate" && String(args && args.surface || "") === "frontend"
 				&& String(args && args.builder || "") === "svelte");
 		if (!frontendMutate || !result || result.ok !== true || typeof result.source !== "string" || !result.sourceFile) {
