@@ -239,9 +239,14 @@ Frontend blocks, directives, events and actions must appear in the logical tree:
 `If -> Then -> Text`, `ForEach -> Each -> ...`. Create new pages, UI blocks or
 client actions from palette items only. Do not edit `_private/svelte` directly,
 do not hard-code generated component behavior, and do not mutate library blocks
-when the tree says the source is read-only. Use `LinkButton` for route
-navigation styled as a button; reserve `Button` for explicit event/action
-commands. Do not assume an implicit page
+when the tree says the source is read-only. Use `LinkButton` for a static route
+link that has no preceding action. When navigation must follow a client action,
+insert `Navigate` after that action in the same event. Use `GoBack` for a visible
+back command with a fallback route. Insert `OnMount` in page structure only for
+automatic lifecycle work such as initialization, local synchronization or the
+first local query; never hide external I/O in it unless the application contract
+explicitly requires that I/O. Create all three from palette payloads. Do not
+assume an implicit page
 layout: insert explicit layout/surface blocks from the palette (`PageShell`,
 `RowLayout`, `ColumnLayout`, `GridLayout`, `Card`) whenever the UI needs
 spacing, responsive structure or a rounded card. Prefer visible block

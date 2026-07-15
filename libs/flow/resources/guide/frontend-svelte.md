@@ -119,9 +119,14 @@ _private/svelte/src/lib/...
   `ForEach`, every bindable descendant must set `source`: choose an iteration
   candidate for dynamic content or a structured literal binding for
   intentionally static content.
-- SvelteKit navigation is a native link. Use the `LinkButton` palette block
-  when a route link should look like a button; do not create a `Button` with an
-  empty click event for navigation.
+- Use `LinkButton` when a static route link should look like a button. When a
+  route transition must happen after `SetValue`, `FullSyncGet`,
+  `FullSyncView`, `FullSyncSync` or `CallSequence`, put a palette-provided
+  `Navigate` action after it in the same event. Use `GoBack` for a visible back
+  command and set its fallback route for direct page entry.
+- Use a palette-provided `OnMount` event under page structure for automatic
+  lifecycle actions. Keep initialization, synchronization and the first local
+  query as separate actions so their progress and errors remain observable.
 - Local action variables belong under the action that owns them and their
   values must be picker-provided structured bindings or literal bindings. Shared actions
   are for reusable behavior only.

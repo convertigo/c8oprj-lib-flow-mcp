@@ -80,6 +80,8 @@ silent tunnel.
    - `Text`, `Image`, `Button`, `LinkButton`, `Status`, `Table`, `JSON` for
      visible intent;
    - `ForEach`, `If`, `Await` for data-driven structure.
+   - `OnMount`, `Navigate` and `GoBack` for explicit lifecycle and route
+     transitions when the workflow cannot be expressed by a static link.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a
    placeholder result before detailed refinement begins.
