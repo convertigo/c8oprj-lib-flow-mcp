@@ -248,13 +248,34 @@ const _meta = {
 		if (type === "getDocument") {
 			return [{ name: "_use_docid", description: "Document ID" }];
 		}
-		if (type === "getView" && !spec.view) {
-			return [
-				{ name: "_use_ddoc", description: "Design document" },
-				{ name: "_use_view", description: "View" }
+		if (type === "postBulkDocuments") {
+			return [{
+				name: "_use_json_base",
+				description: "JSON array of complete documents to write in one bulk request"
+			}];
+		}
+		if (type === "getView") {
+			var variables = [
+				{ name: "_use_include_docs", description: "Include source documents in view rows" },
+				{ name: "_use_limit", description: "Optional maximum number of view rows" }
 			];
+			if (!spec.view) {
+				variables.unshift(
+					{ name: "_use_ddoc", description: "Design document" },
+					{ name: "_use_view", description: "View" }
+				);
+			}
+			return variables;
 		}
 		return [];
+	}
+
+	function canonicalVariableName(type, name) {
+		name = String(name || "");
+		if ((type === "getView" || type === "getDocument") && name.indexOf("_use_") !== 0) {
+			return "_use_" + name;
+		}
+		return name;
 	}
 
 	function mergedVariables(type, spec) {
@@ -262,7 +283,8 @@ const _meta = {
 		var indexes = {};
 		defaultVariables(type, spec).concat(arrayValue(spec.variables, "transactions[].variables")).forEach(function (variable) {
 			variable = objectValue(variable, "transactions[].variables[]");
-			var name = requiredName(variable.name, "transaction variable name", /^[A-Za-z_][A-Za-z0-9_.-]*$/);
+			var name = requiredName(canonicalVariableName(type, variable.name), "transaction variable name", /^[A-Za-z_][A-Za-z0-9_.-]*$/);
+			variable = Object.assign({}, variable, { name: name });
 			if (indexes[name] === undefined) {
 				indexes[name] = ordered.length;
 				ordered.push(variable);
@@ -381,6 +403,8 @@ const _meta = {
 	}
 
 	return {
+		canonicalVariableName: canonicalVariableName,
+
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var name = projectName(prop(props, "project"));
@@ -407,7 +431,10 @@ const _meta = {
 				created: [],
 				updated: [],
 				reused: [],
-				saved: false
+				saved: false,
+				usage: {
+					postBulkDocuments: "Pass the document array as input._use_json_base. Do not invent a docs variable."
+				}
 			};
 			var connectorQName = name + "." + fsName;
 

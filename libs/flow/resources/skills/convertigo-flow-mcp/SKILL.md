@@ -28,6 +28,24 @@ After scaffolding, use `flow-requestable-schema({ project, requestable,
 learn:true })` on safe read transactions when runtime data is available so
 bindings use the learned response schema. Keep database seeding and external
 replication out of the scaffold request.
+In scaffold transaction specs, use CouchDB option names such as `startkey`,
+`endkey`, `include_docs`, `group` and `limit`; the scaffold canonicalizes server
+read variables to Convertigo `_use_*` names. Svelte FullSync action variables
+keep the plain CouchDB names expected by the client SDK.
+
+For a scaffolded `postBulkDocuments` transaction, pass the complete document
+array as `input._use_json_base` in `requestable.call`. The scaffold creates this
+standard transaction parameter automatically. Do not invent a `docs` variable
+or expand every document field into parallel transaction variables.
+
+When a project owns a fixture-backed FullSync database, scaffold a
+`resetDatabase` transaction and guard it with a stable seed-marker document read
+through `getDocument`. Run reset, bulk writes and marker creation only when the
+marker is absent. ResetDatabase creates the database and synchronizes the DBO
+design documents; do not use a design-document view as the pre-seed guard.
+Use `return result` inside the marker-present `if` branch: nested returns compile
+to the core early-return block, while the final top-level `return result` stays
+the normal implicit Flow result.
 
 For a Svelte FullSync client, read `flow://guide/fullsync`, then insert the
 operation-aware `FullSyncGet`, `FullSyncView` and `FullSyncSync` palette blocks.

@@ -12,6 +12,42 @@ function assertTrue(condition, message) {
 	}
 }
 
+var fullSyncSchemaAttachSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/frontend/fullsync/schema.attach.block.js"), "UTF-8"));
+var isolatedFullSyncSchemaAttach = eval(fullSyncSchemaAttachSource.substring(fullSyncSchemaAttachSource.indexOf("(function")));
+var normalizedFullSyncSchema = isolatedFullSyncSchemaAttach.normalizeFullSyncSchema({
+	type: "object",
+	properties: {
+		couchdb_output: {
+			type: "object",
+			properties: {
+				rows: {
+					type: "object",
+					properties: {
+						item: {
+							type: "array",
+							items: { type: "object", properties: { doc: { type: "object", properties: { name: { type: "object", properties: { text: { type: "string" }, attr: { type: "object" } } } } } } }
+						},
+						attr: { type: "object" }
+					}
+				},
+				_c8oMeta: { type: "object" }
+			}
+		}
+	}
+});
+assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
+	normalizedFullSyncSchema.properties.rows.items.properties.doc.properties.name.type === "string" &&
+	normalizedFullSyncSchema.properties._c8oMeta === undefined,
+	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
+var fullSyncScaffoldSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/project/fullsync/scaffold.block.js"), "UTF-8"));
+var isolatedFullSyncScaffold = eval(fullSyncScaffoldSource.substring(fullSyncScaffoldSource.indexOf("(function")));
+assertTrue(isolatedFullSyncScaffold.canonicalVariableName("getView", "include_docs") === "_use_include_docs" &&
+	isolatedFullSyncScaffold.canonicalVariableName("getView", "_use_startkey") === "_use_startkey" &&
+	isolatedFullSyncScaffold.canonicalVariableName("postBulkDocuments", "documents") === "documents",
+	"FullSync scaffold did not normalize CouchDB read query variables to Convertigo _use_ names");
+
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
 var mcpLib = eval(mcpLibSource);
@@ -869,6 +905,41 @@ assertTrue(appProgressMissingBindings.result.result.structuredContent.frontend.b
 	}),
 	"MCP flow-app-progress should require explicit Image/Text bindings inside a backend-bound iterator: " +
 		JSON.stringify(appProgressMissingBindings.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
+	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" schemaRequestable=\".retailstore.ReadCategories\"><Variables /></FullSyncView>",
+	"    </Actions></OnClick></Events></Button>",
+	"    <ForEach id=\"categories\" source={{\"mode\":\"literal\",\"value\":[]}} context=\"item\"><Children /></ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressPendingFullSync = callTool(13962, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var pendingFullSyncWarnings = appProgressPendingFullSync.result.result.structuredContent.frontend.bindingWarnings;
+assertTrue(pendingFullSyncWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
+		warning.fix.tool === "frontend-svelte-fullsync-schema" &&
+		warning.fix.arguments.input && warning.fix.arguments.input._use_include_docs === true;
+}) && pendingFullSyncWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_ITERATOR_EMPTY_SOURCE" && warning.fix &&
+		warning.fix.tool === "frontend-svelte-mutate" && warning.suggestedBinding &&
+		warning.suggestedBinding.source.category === "fullsync";
+}) && appProgressPendingFullSync.result.result.structuredContent.tasks.some(function (task) {
+	return task.id === "frontendBindings" && task.done === false;
+}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
+	return call.tool === "frontend-svelte-fullsync-schema";
+}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
+	return call.tool === "frontend-svelte-mutate" && call.arguments.mutation &&
+		call.arguments.mutation.value.source.category === "fullsync";
+}), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
+	JSON.stringify(appProgressPendingFullSync.result.result.structuredContent.frontend));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",

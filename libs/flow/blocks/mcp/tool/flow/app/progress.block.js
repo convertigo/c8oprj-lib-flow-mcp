@@ -360,6 +360,18 @@ const _meta = {
 		return type === "image" || type === "text" || type === "table" || type === "json";
 	}
 
+	function visibleDescendantCount(node) {
+		var count = 0;
+		arrayValue(node && node.children).forEach(function (child) {
+			var kind = String(child && child.kind || "");
+			if (kind === "frontendWidget" || kind === "frontendDirectiveBlock" || kind === "frontendDataBlock") {
+				count++;
+			}
+			count += visibleDescendantCount(child);
+		});
+		return count;
+	}
+
 	function paperboardSummary(tree) {
 		var summary = {
 			routeCount: 0,
@@ -387,7 +399,8 @@ const _meta = {
 					label: visibleLabel(node, definition),
 					source: definition.source || definition.value || definition.path || "",
 					test: definition.test || definition.condition || "",
-					context: definition.context || ""
+					context: definition.context || "",
+					contentCount: visibleDescendantCount(node)
 				}, 30);
 			}
 			if (kind === "frontendActionBlock" || definition.requestable || definition.backendCall) {
@@ -428,6 +441,41 @@ const _meta = {
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
+		function pickerMutation(path, actionId, sourcePath) {
+			try {
+				var tree = ctx.authoringTreeSource({
+					projectDir: args.projectDir,
+					engineSource: args.engineSource,
+					surface: "frontend",
+					builder: "svelte",
+					focusPath: path,
+					detail: "inspect",
+					maxDepth: 1
+				});
+				var mutation = null;
+				walk(tree, function (node) {
+					if (mutation || String(node.path || "") !== String(path || "")) {
+						return;
+					}
+					var sourceInfo = node.bindings && node.bindings.source;
+					arrayValue(sourceInfo && sourceInfo.sources).some(function (source) {
+						if (String(source.id || "") !== String(actionId || "")) {
+							return false;
+						}
+						return arrayValue(source.bindings).some(function (candidate) {
+							if (String(candidate.path || "") === String(sourcePath || "") && candidate.mutation) {
+								mutation = candidate.mutation;
+								return true;
+							}
+							return false;
+						});
+					});
+				});
+				return mutation;
+			} catch (_ignored) {
+				return null;
+			}
+		}
 		arrayValue(paperboard.actions).forEach(function (action) {
 			var actionId = actionResultId(action);
 			var operation = String(action.fullSyncOperation || "");
@@ -439,6 +487,7 @@ const _meta = {
 			try {
 				var schema = action.outputSchema || null;
 				var schemaSource = "generic";
+				var schemaInput = operation === "view" ? { _use_include_docs: true, _use_limit: 1 } : {};
 				if (schema) {
 					schema = unwrapRequestableSchema(schema);
 					schemaSource = schemaRequestable ? "learned requestable" : "declared";
@@ -476,6 +525,7 @@ const _meta = {
 							sourceFile: action.sourceFile,
 							path: action.outputSchemaMutationPath,
 							requestable: schemaRequestable,
+							input: schemaInput,
 							learn: true
 						},
 						note: "Execute this mutation unchanged after confirming that learning the read requestable is safe."
@@ -503,8 +553,56 @@ const _meta = {
 				});
 			}
 		});
+		frontend.bindingSuggestions.forEach(function (suggestion) {
+			if (!suggestion.schemaPending) {
+				return;
+			}
+			frontend.bindingWarnings.push({
+				code: "FRONTEND_FULLSYNC_SCHEMA_PENDING",
+				actionId: suggestion.actionId,
+				message: "FullSync action " + suggestion.actionId + " still uses the generic envelope schema; execute the returned schema learning mutation before binding domain fields.",
+				fix: suggestion.schemaPending
+			});
+		});
 		arrayValue(paperboard.dataSources).forEach(function (binding) {
 			var rawSource = binding.source || binding.value || binding.dataPath || "";
+			if ((binding.type === "ForEach" || binding.type === "each") && rawSource && rawSource.mode === "literal" &&
+				Object.prototype.toString.call(rawSource.value) === "[object Array]" && rawSource.value.length === 0) {
+				var arraySuggestion = null;
+				frontend.bindingSuggestions.some(function (suggestion) {
+					if (suggestion.operation === "view" && arrayValue(suggestion.arrayPaths).length > 0) {
+						arraySuggestion = suggestion;
+						return true;
+					}
+					return false;
+				});
+				var iteratorBinding = arraySuggestion
+					? sourceBinding(arraySuggestion.source, arraySuggestion.arrayPaths[0])
+					: null;
+				var iteratorWarning = {
+					code: "FRONTEND_ITERATOR_EMPTY_SOURCE",
+					path: binding.path,
+					message: iteratorBinding
+						? "ForEach still uses an empty placeholder. Bind it to the schema-backed FullSync view result."
+						: "ForEach still uses an empty placeholder and cannot render application data.",
+					suggestedBinding: iteratorBinding
+				};
+				if (iteratorBinding && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
+					var exactMutation = pickerMutation(binding.path, arraySuggestion.actionId, arraySuggestion.arrayPaths[0]);
+					if (exactMutation) {
+						iteratorWarning.fix = {
+						tool: "frontend-svelte-mutate",
+						arguments: {
+							project: args.project,
+							sourceFile: binding.sourceFile,
+							mutation: exactMutation
+						}
+						};
+					}
+				}
+				frontend.bindingWarnings.push(iteratorWarning);
+				return;
+			}
 			if (objectValue(rawSource) && !validBinding(rawSource)) {
 				frontend.bindingWarnings.push({
 					code: "FRONTEND_BINDING_INVALID",
@@ -543,6 +641,27 @@ const _meta = {
 								message: "Binding path is not present in the effective schema for action " + String(structuredSource.actionId || "") + ": " + selectedPath
 							});
 						}
+					}
+				}
+				if ((binding.type === "ForEach" || binding.type === "each")) {
+					var boundBlock = null;
+					arrayValue(paperboard.blocks).some(function (block) {
+						if (String(block.path || "") === String(binding.path || "")) {
+							boundBlock = block;
+							return true;
+						}
+						return false;
+					});
+					if (boundBlock && Number(boundBlock.contentCount || 0) === 0) {
+						frontend.bindingWarnings.push({
+							code: "FRONTEND_ITERATOR_EMPTY_BODY",
+							path: binding.path,
+							message: "Data-bound ForEach has no visible child and cannot render its rows.",
+							inspect: {
+								tool: "frontend-svelte-palette",
+								arguments: { project: args.project, focusPath: binding.path, query: "Card Text Image Button" }
+							}
+						});
 					}
 				}
 				return;
@@ -827,6 +946,14 @@ const _meta = {
 					return task.next;
 				});
 				var recommendedCalls = [];
+				if (includeFrontend) {
+					arrayValue(frontend.bindingWarnings).forEach(function (warning) {
+						if (warning.fix && warning.fix.tool && warning.fix.arguments) {
+							addRecommendedCall(recommendedCalls, warning.fix.tool, warning.fix.arguments,
+								warning.message || "Resolve the frontend binding warning.");
+						}
+					});
+				}
 				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
 				addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
 					"Confirm no explicit project-local mock remains before claiming completion.");

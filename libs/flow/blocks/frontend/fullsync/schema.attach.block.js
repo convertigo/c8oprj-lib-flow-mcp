@@ -52,7 +52,66 @@ const _meta = {
 }
 
 (function () {
+	function cloneSchema(schema) {
+		return schema && typeof schema === "object" ? JSON.parse(JSON.stringify(schema)) : {};
+	}
+
+	function normalizeXmlSchema(schema) {
+		schema = cloneSchema(schema);
+		var properties = schema.properties || {};
+		var keys = Object.keys(properties).filter(function (key) {
+			return key !== "attr" && key !== "_c8oMeta";
+		});
+		if (properties.text && keys.length === 1 && keys[0] === "text") {
+			return normalizeXmlSchema(properties.text);
+		}
+		if (properties.item && keys.length === 1 && keys[0] === "item") {
+			var item = properties.item;
+			return item.type === "array"
+				? { type: "array", items: normalizeXmlSchema(item.items || {}) }
+				: { type: "array", items: normalizeXmlSchema(item) };
+		}
+		if (schema.type === "array") {
+			schema.items = normalizeXmlSchema(schema.items || {});
+			return schema;
+		}
+		if (schema.type === "object" || Object.keys(properties).length) {
+			var normalized = { type: "object", properties: {} };
+			keys.forEach(function (key) {
+				normalized.properties[key] = normalizeXmlSchema(properties[key]);
+			});
+			return normalized;
+		}
+		return schema;
+	}
+
+	function normalizeFullSyncSchema(schema) {
+		var current = cloneSchema(schema);
+		["document", "couchdb_output"].forEach(function (name) {
+			if (current.properties && current.properties[name]) {
+				current = current.properties[name];
+			}
+		});
+		current = normalizeXmlSchema(current);
+		var properties = current.properties || (current.properties = {});
+		properties.total_rows = { type: "number" };
+		properties.offset = { type: "number" };
+		if (!properties.rows || properties.rows.type !== "array") {
+			properties.rows = { type: "array", items: { type: "object", properties: {} } };
+		}
+		var row = properties.rows.items || (properties.rows.items = { type: "object", properties: {} });
+		row.type = "object";
+		row.properties = row.properties || {};
+		row.properties.id = { type: "string" };
+		row.properties.key = row.properties.key || {};
+		row.properties.value = row.properties.value || {};
+		row.properties.doc = row.properties.doc || { type: "object" };
+		return current;
+	}
+
 	return {
+		normalizeFullSyncSchema: normalizeFullSyncSchema,
+
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var path = String(props.path || "");
@@ -74,14 +133,15 @@ const _meta = {
 			if (schemaResult.ok !== true || !schemaResult.schema) {
 				throw new Error(schemaResult.error && schemaResult.error.message || "Schema unavailable for " + requestable);
 			}
+			var schema = normalizeFullSyncSchema(schemaResult.schema);
 			var attached = ctx.authoringMutateSource({
 				projectDir: props.projectDir,
 				sourceFile: props.sourceFile,
-				mutation: { op: "replace", path: path, value: schemaResult.schema }
+				mutation: { op: "replace", path: path, value: schema }
 			});
 			attached.schemaRequestable = requestable;
 			attached.schemaLearned = schemaResult.learned === true;
-			attached.schema = schemaResult.schema;
+			attached.schema = schema;
 			ctx.write(props.out || "local.schemaAttachment", attached);
 			return attached;
 		}
