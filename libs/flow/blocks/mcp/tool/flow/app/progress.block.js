@@ -412,12 +412,16 @@ const _meta = {
 					requestable: definition.requestable || "",
 					fullSyncOperation: definition.fullSyncOperation || fullSyncOperation(type, definition.mode),
 					schemaRequestable: definition.schemaRequestable || "",
+					schemaInput: definition.schemaInput || null,
+					docid: definition.docid || null,
 					outputSchema: definition.outputSchema || null,
 					clientAction: definition.clientAction || "",
 					backendCall: definition.backendCall || "",
 					sourceFile: definition.sourcePath || definition.sourceFile || "",
 					outputSchemaMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.outputSchema
-						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : "")
+						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : ""),
+					schemaInputMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.schemaInput
+						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.schemaInput" : "")
 				}, 20);
 			}
 			if (definition.source || definition.path || definition.value || requiresExplicitSource(type)) {
@@ -511,7 +515,16 @@ const _meta = {
 			try {
 				var schema = action.outputSchema || null;
 				var schemaSource = "generic";
-				var schemaInput = operation === "view" ? { _use_include_docs: true, _use_limit: 1 } : {};
+				var schemaInput = objectValue(action.schemaInput);
+				if (!schemaInput && operation === "get") {
+					var literalDocid = objectValue(action.docid) && action.docid.mode === "literal"
+						? action.docid.value : typeof action.docid === "string" ? action.docid : "";
+					schemaInput = literalDocid ? { _use_docid: literalDocid } : {};
+				}
+				if (!schemaInput) {
+					schemaInput = operation === "view" ? { _use_include_docs: true, _use_limit: 1 } : {};
+				}
+				var schemaInputRequired = operation === "get" && schemaRequestable && !action.outputSchema && Object.keys(schemaInput).length === 0;
 				if (schema) {
 					schema = unwrapRequestableSchema(schema);
 					schemaSource = schemaRequestable ? "learned requestable" : "declared";
@@ -541,8 +554,15 @@ const _meta = {
 					requestable: requestable,
 					operation: operation,
 					schemaRequestable: schemaRequestable,
+					schemaInput: schemaInput,
+					schemaInputMutationPath: action.schemaInputMutationPath || "",
 					schemaSource: schemaSource,
-					schemaPending: operation && schemaRequestable && !action.outputSchema ? {
+					schemaInputPending: schemaInputRequired ? {
+						sourceFile: action.sourceFile,
+						path: action.schemaInputMutationPath || "",
+						note: "Set safe sample variables for the schema requestable, then rerun flow-app-progress. These variables are never sent by the client action."
+					} : null,
+					schemaPending: operation && schemaRequestable && !action.outputSchema && !schemaInputRequired ? {
 						tool: "frontend-svelte-fullsync-schema",
 						arguments: {
 							project: args.project,
@@ -578,6 +598,14 @@ const _meta = {
 			}
 		});
 		frontend.bindingSuggestions.forEach(function (suggestion) {
+			if (suggestion.schemaInputPending) {
+				frontend.bindingWarnings.push({
+					code: "FRONTEND_FULLSYNC_SCHEMA_INPUT_REQUIRED",
+					actionId: suggestion.actionId,
+					message: "FullSync Get " + suggestion.actionId + " needs safe sample variables before its schema requestable can be learned.",
+					configure: suggestion.schemaInputPending
+				});
+			}
 			if (!suggestion.schemaPending) {
 				return;
 			}
