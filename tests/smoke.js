@@ -940,6 +940,33 @@ assertTrue(pendingFullSyncWarnings.some(function (warning) {
 		call.arguments.mutation.value.source.category === "fullsync";
 }), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
 	JSON.stringify(appProgressPendingFullSync.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
+	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}}><Variables /></FullSyncView>",
+	"    </Actions></OnClick></Events></Button>",
+	"    <ForEach id=\"categories\" source={{\"mode\":\"source\",\"source\":{\"category\":\"fullsync\",\"actionId\":\"rootCategories\",\"operation\":\"view\"},\"path\":[{\"kind\":\"property\",\"name\":\"rows\"}]}} context=\"item\"><Children>",
+	"      <Text id=\"categoryName\" text=\"Category\" source={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"categories\",\"value\":\"item\"},\"path\":[]}} />",
+	"    </Children></ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressWholeIteration = callTool(13963, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var wholeIterationWarning = appProgressWholeIteration.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_ITERATION_OBJECT_SOURCE";
+})[0];
+assertTrue(wholeIterationWarning && wholeIterationWarning.fix &&
+	wholeIterationWarning.fix.arguments.mutation.value.path[0].name === "doc" &&
+	wholeIterationWarning.fix.arguments.mutation.value.path[1].name === "name",
+	"MCP flow-app-progress should replace whole iterator object bindings with an exact schema-backed scalar mutation: " +
+		JSON.stringify(appProgressWholeIteration.result.result.structuredContent.frontend));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",

@@ -150,7 +150,8 @@ Prefer the compact code path:
    or query string as the block API.
    For object maps whose keys are data, use the standard object primitives:
    `object.keys({ source: local.map })`, `object.get({ source: local.map, key:
-   current.code })`, and `object.firstEntry({ source: local.map })`. Do not
+   current.code })`, `object.values({ source: local.map })`, and
+   `object.firstEntry({ source: local.map })`. Do not
    create a Rhino domain block just to enumerate object keys or read
    `map[code]`.
    Treat `FLOWSCRIPT_PROPERTY_TYPE_MISMATCH` diagnostics as contract feedback:

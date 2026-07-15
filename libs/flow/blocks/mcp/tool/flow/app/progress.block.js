@@ -441,7 +441,7 @@ const _meta = {
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
-		function pickerMutation(path, actionId, sourcePath) {
+		function pickerSource(path, sourceId) {
 			try {
 				var tree = ctx.authoringTreeSource({
 					projectDir: args.projectDir,
@@ -452,29 +452,53 @@ const _meta = {
 					detail: "inspect",
 					maxDepth: 1
 				});
-				var mutation = null;
+				var selected = null;
 				walk(tree, function (node) {
-					if (mutation || String(node.path || "") !== String(path || "")) {
+					if (selected || String(node.path || "") !== String(path || "")) {
 						return;
 					}
 					var sourceInfo = node.bindings && node.bindings.source;
 					arrayValue(sourceInfo && sourceInfo.sources).some(function (source) {
-						if (String(source.id || "") !== String(actionId || "")) {
-							return false;
+						if (String(source.id || "") === String(sourceId || "")) {
+							selected = source;
+							return true;
 						}
-						return arrayValue(source.bindings).some(function (candidate) {
-							if (String(candidate.path || "") === String(sourcePath || "") && candidate.mutation) {
-								mutation = candidate.mutation;
-								return true;
-							}
-							return false;
-						});
+						return false;
 					});
 				});
-				return mutation;
+				return selected;
 			} catch (_ignored) {
 				return null;
 			}
+		}
+		function pickerMutation(path, sourceId, sourcePath) {
+			var source = pickerSource(path, sourceId);
+			var candidate = null;
+			arrayValue(source && source.bindings).some(function (entry) {
+				if (String(entry.path || "") === String(sourcePath || "") && entry.mutation) {
+					candidate = entry;
+					return true;
+				}
+				return false;
+			});
+			return candidate && candidate.mutation || null;
+		}
+		function preferredIterationCandidate(source, type) {
+			var candidates = arrayValue(source && source.bindings).filter(function (candidate) {
+				return candidate && candidate.mutation && String(candidate.type || "") !== "object" && String(candidate.type || "") !== "array";
+			});
+			var priorities = String(type || "").toLowerCase() === "image"
+				? ["imageurl", "image", "src", "url"]
+				: ["name", "title", "label", "text"];
+			for (var i = 0; i < priorities.length; i++) {
+				for (var j = 0; j < candidates.length; j++) {
+					var leaf = String(candidates[j].path || "").split(".").pop().toLowerCase();
+					if (leaf === priorities[i]) {
+						return candidates[j];
+					}
+				}
+			}
+			return candidates[0] || null;
 		}
 		arrayValue(paperboard.actions).forEach(function (action) {
 			var actionId = actionResultId(action);
@@ -614,6 +638,28 @@ const _meta = {
 			}
 			if (validBinding(rawSource)) {
 				var structuredSource = rawSource.source || {};
+				if (rawSource.mode === "source" && structuredSource.category === "iteration" &&
+					arrayValue(rawSource.path).length === 0 && (String(binding.type) === "Text" || String(binding.type) === "Image")) {
+					var iterationSource = pickerSource(binding.path, structuredSource.scopeId);
+					var iterationCandidate = preferredIterationCandidate(iterationSource, binding.type);
+					if (iterationCandidate) {
+						frontend.bindingWarnings.push({
+							code: "FRONTEND_ITERATION_OBJECT_SOURCE",
+							path: binding.path,
+							type: binding.type,
+							message: String(binding.type) + " is bound to the complete iterator object. Select a schema-backed field so it renders a scalar value.",
+							suggestedBinding: iterationCandidate.binding,
+							fix: {
+								tool: "frontend-svelte-mutate",
+								arguments: {
+									project: args.project,
+									sourceFile: binding.sourceFile,
+									mutation: iterationCandidate.mutation
+								}
+							}
+						});
+					}
+				}
 				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action" || structuredSource.category === "fullsync")) {
 					var knownSuggestion = null;
 					frontend.bindingSuggestions.some(function (suggestion) {
