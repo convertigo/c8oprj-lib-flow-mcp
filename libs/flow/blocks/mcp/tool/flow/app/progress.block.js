@@ -859,7 +859,7 @@ const _meta = {
 						builder: "svelte",
 						focusPath: routesPath,
 						detail: "compact",
-						maxDepth: 10,
+						maxDepth: 24,
 						includeDefinition: true
 					});
 					if (routeTree && routeTree.ok !== false) {

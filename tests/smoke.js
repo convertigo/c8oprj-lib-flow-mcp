@@ -943,6 +943,31 @@ assertTrue(pendingFullSyncWarnings.some(function (warning) {
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <ForEach id=\"catalog\" source={{\"mode\":\"literal\",\"value\":[]}} context=\"item\"><Children>",
+	"      <Card id=\"productCard\"><Children><If id=\"isProduct\" test={{\"mode\":\"literal\",\"value\":true}}><Then>",
+	"        <Button id=\"openProduct\" label=\"Open\"><Events><OnClick id=\"openProductClick\"><Actions>",
+	"          <FullSyncGet id=\"selectedProduct\" database=\"retailstore\" docid={{\"mode\":\"literal\",\"value\":\"p1\"}} schemaRequestable=\".retailstore.ReadProduct\" />",
+	"        </Actions></OnClick></Events></Button>",
+	"      </Then><Else /></If></Children></Card>",
+	"    </Children></ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressDeepFullSync = callTool(139621, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(appProgressDeepFullSync.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.actionId === "selectedProduct" &&
+		warning.fix && warning.fix.tool === "frontend-svelte-fullsync-schema";
+}), "MCP flow-app-progress should discover deeply nested FullSync actions: " +
+	JSON.stringify(appProgressDeepFullSync.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}}><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
