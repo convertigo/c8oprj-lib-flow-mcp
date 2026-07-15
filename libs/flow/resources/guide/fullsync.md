@@ -52,6 +52,9 @@ The Svelte palette exposes operation-aware action blocks under an event:
   blocks whose values are `FlowValueBinding` values.
 - `FullSyncSync`: `mode` is `sync`, `pull` or `push`; progress is retained in
   runtime state under the action id.
+- `FullSyncReset`: resets the local database. Set a stable migration `marker`
+  so the reset runs once per browser and marker value; changing the marker
+  explicitly schedules a new one-time reset.
 
 The `database` property selects the project FullSync connector. `marker` is an
 optional stable SDK marker. `schemaRequestable` records the safe server read
@@ -101,10 +104,12 @@ is needed.
 For a read-only offline application, keep this order visible:
 
 1. idempotently initialize or verify server data;
-2. run `FullSyncSync` in pull or sync mode and show progress/errors;
-3. query local lists through `FullSyncView`;
-4. read selected local documents through `FullSyncGet`;
-5. validate the same view/get after browser network is disabled.
+2. when a server migration invalidates local checkpoints or document shape,
+   run `FullSyncReset` with a new marker;
+3. run `FullSyncSync` in pull or sync mode and show progress/errors;
+4. query local lists through `FullSyncView`;
+5. read selected local documents through `FullSyncGet`;
+6. validate the same view/get after browser network is disabled.
 
 Offline reload of the whole application shell is a separate service-worker or
 browser-cache concern. Local FullSync data availability alone does not imply

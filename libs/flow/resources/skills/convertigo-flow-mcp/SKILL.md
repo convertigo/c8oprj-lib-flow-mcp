@@ -48,7 +48,8 @@ to the core early-return block, while the final top-level `return result` stays
 the normal implicit Flow result.
 
 For a Svelte FullSync client, read `flow://guide/fullsync`, then insert the
-operation-aware `FullSyncGet`, `FullSyncView` and `FullSyncSync` palette blocks.
+operation-aware `FullSyncGet`, `FullSyncView`, `FullSyncReset` and
+`FullSyncSync` palette blocks.
 Do not handwrite `fs://` request strings or PouchDB code. Bind their results
 through picker-provided `category:fullsync` descriptors. Associate
 `schemaRequestable` with a safe learned server read transaction when domain
@@ -57,6 +58,9 @@ fields are needed, then apply the returned `schema` unchanged to the action's
 `frontend-svelte-fullsync-schema` request returned by `flow-app-progress`; it
 performs both steps without copied schema JSON. These metadata properties do
 not execute the transaction from the client or from routine progress checks.
+Use `FullSyncReset` only for an explicit local migration. Give it a stable
+marker so each browser resets once; change that marker only when server data or
+replication checkpoints become incompatible. Place it before `FullSyncSync`.
 Give every client action a unique `id`, including actions that query the same
 requestable with different variables. When several actions intentionally update
 the same reactive result, set their common `target` and bind widgets to that

@@ -103,7 +103,7 @@ _private/svelte/src/lib/...
   like `Button -> Events -> On Click -> Actions -> CallSequence`, not like a
   global action magically referenced by a string.
 - For client-local FullSync, read `flow://guide/fullsync`. Use the palette
-  `FullSyncGet`, `FullSyncView` and `FullSyncSync` blocks; never write `fs://`
+  `FullSyncGet`, `FullSyncView`, `FullSyncReset` and `FullSyncSync` blocks; never write `fs://`
   SDK strings or PouchDB calls by hand. Their outputs are structured
   `category: fullsync` binding sources and their Variable children use
   `FlowValueBinding` values.
