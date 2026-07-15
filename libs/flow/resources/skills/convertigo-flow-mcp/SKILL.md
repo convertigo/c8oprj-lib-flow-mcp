@@ -57,6 +57,11 @@ fields are needed, then apply the returned `schema` unchanged to the action's
 `frontend-svelte-fullsync-schema` request returned by `flow-app-progress`; it
 performs both steps without copied schema JSON. These metadata properties do
 not execute the transaction from the client or from routine progress checks.
+Give every client action a unique `id`, including actions that query the same
+requestable with different variables. When several actions intentionally update
+the same reactive result, set their common `target` and bind widgets to that
+target. Never reuse one action `id` to create a shared result channel: action ids
+identify execution and parameter sets, while `target` identifies result state.
 
 ## MCP Server
 

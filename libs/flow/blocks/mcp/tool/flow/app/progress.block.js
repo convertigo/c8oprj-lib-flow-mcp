@@ -199,7 +199,7 @@ const _meta = {
 	}
 
 	function actionResultId(action) {
-		return String(action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
+		return String(action.target || action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
 	}
 
 	function fullSyncOperation(type, mode) {
@@ -407,6 +407,7 @@ const _meta = {
 				addLimited(summary.actions, {
 					path: node.path || "",
 					id: definition.id || "",
+					target: definition.target || "",
 					type: type,
 					label: visibleLabel(node, definition),
 					requestable: definition.requestable || "",
@@ -551,6 +552,7 @@ const _meta = {
 					: { category: "requestable", actionId: actionId };
 				frontend.bindingSuggestions.push({
 					actionId: actionId,
+					executionId: String(action.id || actionId),
 					requestable: requestable,
 					operation: operation,
 					schemaRequestable: schemaRequestable,
