@@ -670,6 +670,19 @@ const _meta = {
 						return false;
 					});
 					if (!knownSuggestion) {
+						var pickerKnown = pickerSource(binding.path, structuredSource.actionId);
+						if (pickerKnown) {
+							knownSuggestion = {
+								actionId: structuredSource.actionId,
+								sourcePaths: arrayValue(pickerKnown.bindings).map(function (candidate) {
+									return String(candidate && candidate.path || "");
+								}).filter(function (path) {
+									return !!path;
+								})
+							};
+						}
+					}
+					if (!knownSuggestion) {
 						frontend.bindingWarnings.push({
 							code: "FRONTEND_BINDING_UNKNOWN_ACTION",
 							path: binding.path,
