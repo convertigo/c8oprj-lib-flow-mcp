@@ -1058,13 +1058,14 @@ assertTrue(frontendRouteSegment.created === true &&
 	"MCP frontend source creation should apply the requested localName to route segment folders");
 var frontendRoutePage = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
+	sourcePath: String(new java.io.File(frontendDetailDir, ".flow-route.json").getAbsolutePath()),
 	mutation: {
 		value: {
 			__frontendCreateSource: {
 				baseId: "detailPage",
 				directory: "${targetRouteDirectory}",
 				fileName: "+page.flow.svelte",
-				targetSourcePath: String(frontendDetailDir.getAbsolutePath()),
+				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
 				source: [
 					"<script module>",
 					"  export const _flow = {",

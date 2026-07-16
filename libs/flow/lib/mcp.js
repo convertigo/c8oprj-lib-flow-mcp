@@ -1954,9 +1954,11 @@
 		return out;
 	}
 
-	function frontendSourceTargetDirectory(projectRoot, rootDir, create) {
+	function frontendSourceTargetDirectory(projectRoot, rootDir, create, args) {
 		create = create || {};
-		var targetSourcePath = String(create.targetSourcePath || create.__targetSourcePath || create.focusSourcePath || "");
+		args = args || {};
+		var targetSourcePath = String(args.sourcePath || args.sourceFile || args.focusSourcePath ||
+			create.targetSourcePath || create.__targetSourcePath || create.focusSourcePath || "");
 		if (!targetSourcePath) {
 			return String(create.fallbackDirectory || "");
 		}
@@ -2060,7 +2062,7 @@
 		var file = null;
 		var blockId = baseId;
 		var source = "";
-		var targetRouteDirectory = frontendSourceTargetDirectory(projectRoot, rootDir, create);
+		var targetRouteDirectory = frontendSourceTargetDirectory(projectRoot, rootDir, create, args);
 		var directoryOnly = create.directoryOnly === true || String(create.directoryOnly) === "true";
 		for (var attempt = 0; attempt < 100; attempt++) {
 			var candidateId = attempt === 0 ? baseId : baseId + (attempt + 1);
