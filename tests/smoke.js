@@ -1038,9 +1038,10 @@ var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svel
 var frontendRouteSegment = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
 	mutation: {
+		localName: "store",
 		value: {
 			__frontendCreateSource: {
-				baseId: "detail",
+				baseId: "segment",
 				directory: "${targetRouteDirectory}/${localName}",
 				directoryOnly: true,
 				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
@@ -1050,11 +1051,11 @@ var frontendRouteSegment = mcpLib.createFrontendSource({
 		}
 	}
 });
-var frontendDetailDir = new java.io.File(frontendRouteRoot, "detail");
+var frontendDetailDir = new java.io.File(frontendRouteRoot, "store");
 assertTrue(frontendRouteSegment.created === true &&
 	frontendRouteSegment.written === true &&
 	new java.io.File(frontendDetailDir, ".flow-route.json").isFile(),
-	"MCP frontend source creation should create route segment folders from targetSourcePath");
+	"MCP frontend source creation should apply the requested localName to route segment folders");
 var frontendRoutePage = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
 	mutation: {

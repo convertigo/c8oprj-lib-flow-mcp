@@ -2049,7 +2049,8 @@
 			throw new Error("frontend source creation requires project or projectDir.");
 		}
 		var builderName = String(create.builder || args.builder || "svelte");
-		var baseId = String(create.baseId || "project.item");
+		var mutation = args.mutation || {};
+		var baseId = String(args.localName || mutation.localName || create.localName || create.baseId || "project.item");
 		var targetNamespace = String(args.namespace || args.targetNamespace || create.__targetNamespace || frontendNamespaceFromFocus(args) || "");
 		if (targetNamespace) {
 			baseId = targetNamespace + "." + frontendSourceLocalName(baseId);
