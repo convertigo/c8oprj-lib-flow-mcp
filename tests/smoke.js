@@ -47,6 +47,16 @@ assertTrue(isolatedFullSyncScaffold.canonicalVariableName("getView", "include_do
 	isolatedFullSyncScaffold.canonicalVariableName("getView", "_use_startkey") === "_use_startkey" &&
 	isolatedFullSyncScaffold.canonicalVariableName("postBulkDocuments", "documents") === "documents",
 	"FullSync scaffold did not normalize CouchDB read query variables to Convertigo _use_ names");
+var fullSyncViewWarnings = isolatedFullSyncScaffold.designWarnings([{
+	name: "catalog",
+	views: {
+		itemsByParent: { map: "function (doc) { emit(String(doc.parents), doc); }" }
+	}
+}]);
+assertTrue(fullSyncViewWarnings.length === 1 &&
+	fullSyncViewWarnings[0].code === "FULLSYNC_VIEW_KEY_COERCION" &&
+	fullSyncViewWarnings[0].field === "parents",
+	"FullSync scaffold did not flag view keys that collapse multi-valued relations");
 
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));

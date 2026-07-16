@@ -33,6 +33,10 @@ In scaffold transaction specs, use CouchDB option names such as `startkey`,
 read variables to Convertigo `_use_*` names. Svelte FullSync action variables
 keep the plain CouchDB names expected by the client SDK.
 
+Treat `flow-fullsync-scaffold.warnings` as blocking. A view over a
+multi-valued relation must emit one row per relation value; never use
+`String(doc.field)` to turn an array into a comma-joined key.
+
 For a scaffolded `postBulkDocuments` transaction, pass the complete document
 array as `input._use_json_base` in `requestable.call`. The scaffold creates this
 standard transaction parameter automatically. Do not invent a `docs` variable
@@ -66,6 +70,10 @@ requestable with different variables. When several actions intentionally update
 the same reactive result, set their common `target` and bind widgets to that
 target. Never reuse one action `id` to create a shared result channel: action ids
 identify execution and parameter sets, while `target` identifies result state.
+Use `Status.actionId` for observable lifecycle progress, `UpdateList` for
+breadcrumb-like client state, and `UpdateNumber` for bounded quantities. Bind
+dynamic Button labels and formatted Text values through picker-provided
+sources; do not replace these blocks with hand-written Svelte expressions.
 
 ## MCP Server
 

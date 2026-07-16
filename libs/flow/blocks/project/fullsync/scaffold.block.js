@@ -103,6 +103,7 @@ const _meta = {
         "created": { "type": "array", "items": { "type": "string" } },
         "updated": { "type": "array", "items": { "type": "string" } },
         "reused": { "type": "array", "items": { "type": "string" } },
+        "warnings": { "type": "array", "items": { "type": "object" } },
         "saved": { "type": "boolean" }
       }
     }
@@ -210,6 +211,29 @@ const _meta = {
 			json.put("validate_doc_update", String(spec.validateDocumentUpdate));
 		}
 		return json;
+	}
+
+	function designWarnings(designDocuments) {
+		var warnings = [];
+		designDocuments.forEach(function (rawSpec) {
+			var spec = objectValue(rawSpec, "designDocuments[]");
+			var views = objectValue(spec.views, "designDocuments[].views");
+			Object.keys(views).forEach(function (viewName) {
+				var view = objectValue(views[viewName], "designDocuments[].views." + viewName);
+				var map = String(view.map || "");
+				var match = /emit\s*\(\s*String\s*\(\s*doc\.([A-Za-z_$][\w$]*)\s*\)/.exec(map);
+				if (match) {
+					warnings.push({
+						code: "FULLSYNC_VIEW_KEY_COERCION",
+						designDocument: String(spec.name || ""),
+						view: viewName,
+						field: match[1],
+						message: "String(doc." + match[1] + ") collapses an array-valued relation into one comma-joined key. Emit the native scalar key, and when the field can be an array, emit one row per element."
+					});
+				}
+			});
+		});
+		return warnings;
 	}
 
 	function transactionClass(type) {
@@ -404,6 +428,7 @@ const _meta = {
 
 	return {
 		canonicalVariableName: canonicalVariableName,
+		designWarnings: designWarnings,
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -431,6 +456,7 @@ const _meta = {
 				created: [],
 				updated: [],
 				reused: [],
+				warnings: designWarnings(designDocuments),
 				saved: false,
 				usage: {
 					postBulkDocuments: "Pass the document array as input._use_json_base. Do not invent a docs variable."

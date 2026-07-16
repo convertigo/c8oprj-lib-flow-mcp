@@ -16,6 +16,12 @@ transactions and variables supplied by the request. It does not seed data,
 replicate external databases or infer domain design documents. Applying an
 unchanged request is idempotent.
 
+Treat every scaffold `warnings` entry as blocking during authoring. In
+particular, never coerce a potentially multi-valued relation with
+`String(doc.field)` as a view key: that creates one comma-joined key. Emit one
+row per relation value so a document remains visible from every parent. Use a
+native scalar key when the relation is scalar.
+
 Keep seed initialization in ordinary Flow composition. Safe read transactions
 can learn their output contract with:
 

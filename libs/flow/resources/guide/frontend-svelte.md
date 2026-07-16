@@ -127,6 +127,16 @@ _private/svelte/src/lib/...
 - Use a palette-provided `OnMount` event under page structure for automatic
   lifecycle actions. Keep initialization, synchronization and the first local
   query as separate actions so their progress and errors remain observable.
+- Give `Status.actionId` the exact stable id of the action it represents. Set
+  action-specific loading/success labels; FullSync replication progress is
+  rendered from the same action state.
+- Use `UpdateList` (`set`, `append`, `truncate`, `clear`) for navigation trails
+  and other small client lists. Use `UpdateNumber` (`set`, `increment`,
+  `decrement`) for bounded numeric state. Both expose their `target` as an
+  ordinary structured `category: action` binding source.
+- Button labels can use a structured `source`. Text can apply `number`,
+  `decimal` or `currency` formatting and an optional numeric `multiplier`;
+  select both values from picker bindings instead of writing expressions.
 - Local action variables belong under the action that owns them and their
   values must be picker-provided structured bindings or literal bindings. Shared actions
   are for reusable behavior only.
