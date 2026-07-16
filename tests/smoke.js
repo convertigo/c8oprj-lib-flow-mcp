@@ -800,6 +800,16 @@ assertTrue(frontendSvelteMultiQueryPalette.result.result.structuredContent.ok ==
 		return item.id === "svelte.card";
 	}),
 	"MCP frontend-svelte-palette should return useful token matches for multi-intent frontend queries");
+var frontendSvelteTextPaletteItem = frontendSvelteMultiQueryPalette.result.result.structuredContent.items.filter(function (item) {
+	return item.id === "svelte.text";
+})[0];
+assertTrue(frontendSvelteTextPaletteItem.apply &&
+	frontendSvelteTextPaletteItem.apply.tool === "frontend-svelte-mutate" &&
+	/frontbuilder\/svelte\/model\/Smoke\/src\/routes\/\+page\.flow\.svelte$/.test(frontendSvelteTextPaletteItem.apply.arguments.sourceFile) &&
+	frontendSvelteTextPaletteItem.apply.arguments.mutation.op === "append" &&
+	frontendSvelteTextPaletteItem.apply.arguments.mutation.path.indexOf("frontAst") === 0 &&
+	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteTextPaletteItem.insert),
+	"MCP frontend-svelte-palette should return an executable source-backed mutation");
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
@@ -1092,6 +1102,16 @@ assertTrue(frontendRoutePage.created === true &&
 	frontendDetailPageFile.isFile() &&
 	frontendDetailPageSource.indexOf("route:") === -1,
 	"MCP frontend source creation should create route pages in the selected route folder without hard-coded route metadata");
+var frontendTreeAfterRouteCreation = callTool(13931, "frontend-svelte-tree", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	detail: "compact",
+	maxDepth: 10
+});
+assertTrue(findCompactNode(frontendTreeAfterRouteCreation.result.result.structuredContent, function (node) {
+	return node.kind === "frontendRouteSegment" && node.type === "store";
+}) !== null,
+	"MCP frontend document cache should invalidate when a sibling route is created");
 
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,

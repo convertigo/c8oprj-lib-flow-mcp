@@ -373,7 +373,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-tree") {
 			description = "Svelte frontend authoring tree. Use detail:'inspect' plus focusPath/rootPath to inspect one route, page, component or slot; paths come from this response.";
 		} else if (name === "frontend-svelte-palette") {
-			description = "Svelte frontend palette for a tree focusPath. Use items[].insert as the source of valid create payloads.";
+			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. For bindable properties, pass the structured mutation returned by the picker unchanged; new string paths are rejected.";
 		} else if (name === "frontend-svelte-fullsync-schema") {

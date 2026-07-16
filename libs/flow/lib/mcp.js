@@ -1392,6 +1392,7 @@
 	function toolResponse(request, value, ctx) {
 		request = request || {};
 		value = enrichSvelteBootstrapPalette(request, value);
+		value = enrichSveltePaletteMutations(request, value);
 		value = compactToolValue(request, value);
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
 	}
@@ -1403,6 +1404,39 @@
 			|| (name === "authoring-palette"
 				&& String(args && args.surface || "") === "frontend"
 				&& String(args && args.builder || "") === "svelte");
+	}
+
+	function enrichSveltePaletteMutations(request, value) {
+		if (!value || typeof value !== "object" || !isSveltePaletteRequest(request) || !Array.isArray(value.items)) {
+			return value;
+		}
+		var args = toolArguments(request) || {};
+		var focus = value.focus || {};
+		value.items.forEach(function (item) {
+			if (!item || typeof item !== "object" || !item.insert || item.mutation || item.apply) {
+				return;
+			}
+			var slot = item.targetSlot || {};
+			var path = String(slot.sourceMutationPath || focus.insertMutationPath || focus.sourceMutationPath || "");
+			var sourceFile = String(slot.sourcePath || focus.insertSourcePath || focus.sourcePath || "");
+			if (!path || path.indexOf("frontAst") !== 0 || !sourceFile) {
+				return;
+			}
+			item.mutation = {
+				op: "append",
+				path: path,
+				value: item.insert
+			};
+			item.apply = {
+				tool: "frontend-svelte-mutate",
+				arguments: {
+					project: String(args.project || ""),
+					sourceFile: sourceFile,
+					mutation: item.mutation
+				}
+			};
+		});
+		return value;
 	}
 
 	function bootstrapFrontendDescriptor(kind) {
