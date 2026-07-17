@@ -746,7 +746,8 @@ var frontendSvelteLegacyBinding = callTool(13902, "frontend-svelte-mutate", {
 });
 assertTrue(frontendSvelteLegacyBinding.result.error &&
 	frontendSvelteLegacyBinding.result.error.data.code === "FRONTEND_BINDING_REQUIRED",
-	"MCP frontend-svelte-mutate should reject new string bindings with a structured diagnostic");
+	"MCP frontend-svelte-mutate should reject new string bindings with a structured diagnostic: " +
+		JSON.stringify(frontendSvelteLegacyBinding));
 var frontendSvelteStructuredBinding = callTool(13903, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	sourceFile: String(frontendPageFile.getAbsolutePath()),
@@ -953,6 +954,58 @@ assertTrue(appProgressMissingBindings.result.result.structuredContent.frontend.b
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <Button id=\"loadNews\" label=\"Load news\"><Events><OnClick id=\"loadNewsClick\"><Actions>",
+	"      <CallSequence id=\"readNews\" requestable=\".TargetSmoke\" outputSchema={{\"type\":\"object\",\"properties\":{\"news\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}><Variables /></CallSequence>",
+	"    </Actions></OnClick></Events></Button>",
+	"    <ForEach id=\"newsList\" context=\"newsItem\"><Each>",
+	"      <Card id=\"newsCard\"><Children>",
+	"        <Image id=\"newsImage\" alt=\"News image\" />",
+	"        <Text id=\"newsTitle\" />",
+	"        <Text id=\"newsDescription\" />",
+	"      </Children></Card>",
+	"    </Each></ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressBindingPlan = callTool(139611, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var composedBindingPlan = appProgressBindingPlan.result.result.structuredContent.frontend.bindingPlan;
+assertTrue(composedBindingPlan && composedBindingPlan.fixCount === 4 && composedBindingPlan.callCount === 1 &&
+	composedBindingPlan.calls[0].tool === "frontend-svelte-mutate" &&
+	composedBindingPlan.calls[0].arguments.mutations.length === 4 &&
+	composedBindingPlan.calls[0].arguments.mutations[0].value.source.actionId === "readNews" &&
+	composedBindingPlan.calls[0].arguments.mutations[1].value.source.scopeId === "newsList" &&
+	composedBindingPlan.calls[0].arguments.mutations[1].value.path[0].name === "imageUrl" &&
+	composedBindingPlan.calls[0].arguments.mutations[2].value.path[0].name === "title" &&
+	composedBindingPlan.calls[0].arguments.mutations[3].value.path[0].name === "description" &&
+	appProgressBindingPlan.result.result.structuredContent.recommendedCalls.filter(function (call) {
+		return call.tool === "frontend-svelte-mutate";
+	}).length === 1,
+	"MCP flow-app-progress should compose one ordered schema-backed binding batch: " +
+		JSON.stringify(appProgressBindingPlan.result.result.structuredContent.frontend));
+var appliedBindingPlan = composedBindingPlan.calls[0];
+appliedBindingPlan.arguments.projectDir = targetProjectDir;
+var appliedBindingPlanResult = callTool(139612, appliedBindingPlan.tool, appliedBindingPlan.arguments);
+assertTrue(appliedBindingPlanResult.result.result.structuredContent.ok === true &&
+	appliedBindingPlanResult.result.result.structuredContent.mutationCount === 4,
+	"MCP composed binding plan should be directly executable: " + JSON.stringify(appliedBindingPlanResult));
+var appProgressAfterBindingPlan = callTool(139613, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(appProgressAfterBindingPlan.result.result.structuredContent.frontend.bindingWarnings.length === 0,
+	"MCP composed binding plan should resolve all unambiguous iterator bindings: " +
+		JSON.stringify(appProgressAfterBindingPlan.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" schemaRequestable=\".retailstore.ReadCategories\"><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
@@ -980,9 +1033,9 @@ assertTrue(pendingFullSyncWarnings.some(function (warning) {
 	return task.id === "frontendBindings" && task.done === false;
 }) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
 	return call.tool === "frontend-svelte-fullsync-schema";
-}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
-	return call.tool === "frontend-svelte-mutate" && call.arguments.mutation &&
-		call.arguments.mutation.value.source.category === "fullsync";
+	}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
+		return call.tool === "frontend-svelte-mutate" && call.arguments.mutations &&
+			call.arguments.mutations[0].value.source.category === "fullsync";
 }), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
 	JSON.stringify(appProgressPendingFullSync.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
@@ -1015,7 +1068,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
-	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}}><Variables /></FullSyncView>",
+	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
 	"    <ForEach id=\"categories\" source={{\"mode\":\"source\",\"source\":{\"category\":\"fullsync\",\"actionId\":\"rootCategories\",\"operation\":\"view\"},\"path\":[{\"kind\":\"property\",\"name\":\"rows\"}]}} context=\"item\"><Children>",
 	"      <Text id=\"categoryName\" text=\"Category\" source={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"categories\",\"value\":\"item\"},\"path\":[]}} />",
@@ -1134,9 +1187,10 @@ var frontendTreeAfterRouteCreation = callTool(13931, "frontend-svelte-tree", {
 	maxDepth: 10
 });
 assertTrue(findCompactNode(frontendTreeAfterRouteCreation.result.result.structuredContent, function (node) {
-	return node.kind === "frontendRouteSegment" && node.type === "store";
+		return node.kind === "frontendRouteSegment" && node.summary === "store";
 }) !== null,
-	"MCP frontend document cache should invalidate when a sibling route is created");
+	"MCP frontend document cache should invalidate when a sibling route is created: " +
+		JSON.stringify(frontendTreeAfterRouteCreation.result.result.structuredContent));
 var targetEngineFile = new java.io.File(targetDir, "libs/flow/engine.yaml");
 targetEngineFile.getParentFile().mkdirs();
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(targetEngineFile, frontendEngineSource, "UTF-8");
@@ -1164,6 +1218,25 @@ assertTrue(frontendSourceInvalid.result.result.structuredContent.ok === false &&
 	frontendSourceInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_DUPLICATE_ID";
 	}), "MCP frontend-svelte-code-check should diagnose duplicate low-code ids");
+var frontendSourceUnknownProperty = callTool(13820, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure>",
+		"    <Status id=\"status\" actionId=\"load\" loadingLabel=\"Loading\" successLabel=\"Done\" />",
+		"  </Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendSourceUnknownProperty.result.result.structuredContent.ok === false &&
+	frontendSourceUnknownProperty.result.result.structuredContent.diagnostics.filter(function (diagnostic) {
+		return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" &&
+			(diagnostic.property === "loadingLabel" || diagnostic.property === "successLabel") &&
+			diagnostic.acceptedProperties.indexOf("loadingText") !== -1 &&
+			diagnostic.acceptedProperties.indexOf("successText") !== -1;
+	}).length === 2,
+	"MCP frontend-svelte-code-check should reject unknown catalog properties with accepted alternatives: " +
+		JSON.stringify(frontendSourceUnknownProperty.result.result.structuredContent));
 var frontendPersistedSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"broken\" label=\"Broken\">",

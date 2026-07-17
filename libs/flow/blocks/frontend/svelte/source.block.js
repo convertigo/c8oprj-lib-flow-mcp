@@ -99,6 +99,75 @@ const _meta = {
 		return null;
 	}
 
+	function projectedPropertyDiagnostics(tree, source) {
+		var diagnostics = [];
+		function regexpEscape(value) {
+			return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		}
+		function authoredProperties(node, projected) {
+			var tag = String(projected.tag || node.type || "");
+			if (!tag) return {};
+			var id = String(projected.id || node.nodeId || "");
+			var matcher = new RegExp("<" + regexpEscape(tag) + "\\b([^>]*)>", "g");
+			var match;
+			var fallback = "";
+			while ((match = matcher.exec(source)) !== null) {
+				var attributes = String(match[1] || "");
+				if (!fallback) fallback = attributes;
+				if (!id || (new RegExp("\\bid\\s*=\\s*([\\\"'])" + regexpEscape(id) + "\\1")).test(attributes)) {
+					fallback = attributes;
+					break;
+				}
+			}
+			var out = {};
+			var attributeMatcher = /([A-Za-z_$][A-Za-z0-9_$:-]*)\s*=/g;
+			while ((match = attributeMatcher.exec(fallback)) !== null) out[match[1]] = true;
+			return out;
+		}
+		function visit(node) {
+			if (!node || typeof node !== "object") return;
+			var projected = node.definition && typeof node.definition === "object" ? node.definition : node;
+			if (typeof node.definition === "string") {
+				try {
+					projected = JSON.parse(node.definition);
+				} catch (e) {
+					projected = node;
+				}
+			}
+			var props = authoredProperties(node, projected);
+			var definitions = node.propertyDefinitions && typeof node.propertyDefinitions === "object"
+				? node.propertyDefinitions
+				: projected.propertyDefinitions && typeof projected.propertyDefinitions === "object"
+					? projected.propertyDefinitions : {};
+			var hasCatalog = Object.keys(definitions).some(function (name) {
+				return definitions[name] && definitions[name].catalogProperty === true;
+			});
+			var accepted = Object.keys(definitions).filter(function (name) {
+				var definition = definitions[name] || {};
+				return name === "id" || name === "kind" || definition.catalogProperty === true;
+			});
+			if (hasCatalog && accepted.length > 0) {
+				Object.keys(props).forEach(function (name) {
+					if (name === "kind" || name.indexOf("__") === 0 || Object.prototype.hasOwnProperty.call(definitions, name)) {
+						if (accepted.indexOf(name) !== -1) return;
+					}
+					diagnostics.push({
+						severity: "error",
+						code: "FRONTEND_PROPERTY_UNKNOWN",
+						message: "Unknown property '" + name + "' on <" + String(projected.type || projected.tag || node.type || "Flow block") + ">.",
+						path: String(node.path || projected.sourceMutationPath || ""),
+						property: name,
+						acceptedProperties: accepted,
+						hint: "Use one of the catalog properties: " + accepted.join(", ") + "."
+					});
+				});
+			}
+			(node.children || []).forEach(visit);
+		}
+		visit(tree);
+		return diagnostics;
+	}
+
 	function validate(ctx, props, path, source) {
 		var diagnostics = sourceDiagnostics(source);
 		if (!diagnostics.some(function (item) { return item.severity === "error"; })) {
@@ -110,8 +179,9 @@ const _meta = {
 					surface: "frontend",
 					builder: "svelte",
 					frontendSourceDrafts: drafts,
-					detail: "compact",
-					maxDepth: 3
+					detail: "inspect",
+					maxDepth: 64,
+					includeDefinition: true
 				});
 				var treeError = projectedError(tree);
 				if (!tree || tree.ok !== true || treeError) {
@@ -121,6 +191,8 @@ const _meta = {
 						message: tree && tree.error && tree.error.message || treeError &&
 							(treeError.label || treeError.summary || treeError.message) || "Flow Svelte source could not be projected."
 					});
+				} else {
+					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source));
 				}
 			} catch (error) {
 				diagnostics.push({

@@ -213,9 +213,12 @@ Use `frontend.bindingSuggestions[].bindings` and picker candidates to wire
 `CallSequence` results. Pass the returned structured `binding` or `mutation`
 unchanged; do not translate it into `items`, `item.title` or another string
 path and do not construct a `FlowValueBinding` manually. String paths remain
-migration input for older projects only. Resolve every
-`frontend.bindingWarnings` entry before reporting completion by executing its
-`fix` call directly when present, or its `inspect` call to select the missing
+migration input for older projects only. When
+`frontend.bindingPlan.calls` is non-empty, execute every call unchanged before
+processing individual warnings: each call applies all unambiguous bindings for
+one source in a single ordered mutation batch. Rerun `flow-app-progress`, then
+resolve only the remaining `frontend.bindingWarnings` by executing its `fix`
+call directly when present, or its `inspect` call to select an ambiguous
 schema-backed candidate.
 
 1. `frontend-svelte-code-get({ project })` to read the complete intuitive
@@ -225,6 +228,8 @@ schema-backed candidate.
 2. Write the paperboard or complete refinement pass as Flow Svelte source with
    known canonical block tags. Call `frontend-svelte-code-check({ project,
    code })`, then `frontend-svelte-code-set({ project, code, revision })`.
+   Treat `FRONTEND_PROPERTY_UNKNOWN` as a catalog mismatch and use its
+   `acceptedProperties`; do not guess a synonym.
    Use `frontend-svelte-code-patch({ project, revision, codepatch })` for small
    later refinements. Re-read after a stale-revision error.
 3. Use `frontend-svelte-tree({ project, detail:"inspect", focusPath, maxDepth:8 })`

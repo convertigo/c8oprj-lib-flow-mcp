@@ -417,6 +417,13 @@ const _meta = {
 	}
 
 	function unwrapRequestableSchema(schema) {
+		if (typeof schema === "string") {
+			try {
+				schema = JSON.parse(schema);
+			} catch (e) {
+				schema = {};
+			}
+		}
 		var current = schema || {};
 		["document", "couchdb_output"].forEach(function (name) {
 			if (current.properties && current.properties[name]) {
@@ -531,7 +538,8 @@ const _meta = {
 						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.schemaInput" : "")
 				}, 20);
 			}
-			if (definition.source || definition.path || definition.value || requiresExplicitSource(type)) {
+			if (definition.source || definition.path || definition.value || requiresExplicitSource(type) ||
+				type === "ForEach" || type === "each") {
 				addLimited(summary.dataSources, {
 					path: node.path || "",
 					type: type,
@@ -594,13 +602,20 @@ const _meta = {
 			});
 			return candidate && candidate.mutation || null;
 		}
-		function preferredIterationCandidate(source, type) {
+		function preferredIterationCandidate(source, type, targetPath) {
 			var candidates = arrayValue(source && source.bindings).filter(function (candidate) {
 				return candidate && candidate.mutation && String(candidate.type || "") !== "object" && String(candidate.type || "") !== "array";
 			});
+			var target = String(targetPath || "").toLowerCase();
+			for (var matched = 0; matched < candidates.length; matched++) {
+				var matchedLeaf = String(candidates[matched].path || "").split(".").pop().toLowerCase();
+				if (matchedLeaf && target.indexOf(matchedLeaf) !== -1) {
+					return candidates[matched];
+				}
+			}
 			var priorities = String(type || "").toLowerCase() === "image"
 				? ["imageurl", "image", "src", "url"]
-				: ["name", "title", "label", "text"];
+				: ["name", "title", "description", "label", "text"];
 			for (var i = 0; i < priorities.length; i++) {
 				for (var j = 0; j < candidates.length; j++) {
 					var leaf = String(candidates[j].path || "").split(".").pop().toLowerCase();
@@ -611,6 +626,44 @@ const _meta = {
 			}
 			return candidates[0] || null;
 		}
+		function iteratorSuggestion() {
+			var candidates = frontend.bindingSuggestions.filter(function (suggestion) {
+				return !suggestion.error && arrayValue(suggestion.arrayPaths).length > 0;
+			});
+			return candidates.length === 1 ? candidates[0] : null;
+		}
+		function preferredIterationPath(suggestion, arrayPath, type, targetPath) {
+			var prefix = String(arrayPath || "") + "[0].";
+			var paths = arrayValue(suggestion && suggestion.leafPaths).filter(function (path) {
+				return String(path).indexOf(prefix) === 0;
+			}).map(function (path) {
+				return String(path).substring(prefix.length);
+			});
+			var target = String(targetPath || "").toLowerCase();
+			for (var matched = 0; matched < paths.length; matched++) {
+				var matchedLeaf = paths[matched].split(".").pop().toLowerCase();
+				if (matchedLeaf && target.indexOf(matchedLeaf) !== -1) return paths[matched];
+			}
+			var priorities = String(type || "").toLowerCase() === "image"
+				? ["imageurl", "image", "src", "url"]
+				: ["name", "title", "description", "label", "text"];
+			for (var i = 0; i < priorities.length; i++) {
+				for (var j = 0; j < paths.length; j++) {
+					if (paths[j].split(".").pop().toLowerCase() === priorities[i]) return paths[j];
+				}
+			}
+			return paths[0] || "";
+		}
+		function sourceMutation(binding, value) {
+			var direct = String(binding.sourcePropertyMutationPath || "");
+			if (!binding.sourceFile || (!direct && !binding.sourceMutationPath)) return null;
+			return {
+				op: direct ? "replace" : "merge",
+				path: direct || binding.sourceMutationPath,
+				value: direct ? value : { source: value }
+			};
+		}
+		var plannedIterators = {};
 		arrayValue(paperboard.actions).forEach(function (action) {
 			var actionId = actionResultId(action);
 			var operation = String(action.fullSyncOperation || "");
@@ -748,7 +801,8 @@ const _meta = {
 					suggestedBinding: iteratorBinding
 				};
 				if (iteratorBinding && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
-					var exactMutation = pickerMutation(binding.path, arraySuggestion.actionId, arraySuggestion.arrayPaths[0]);
+					var exactMutation = pickerMutation(binding.path, arraySuggestion.actionId, arraySuggestion.arrayPaths[0]) ||
+						sourceMutation(binding, iteratorBinding);
 					if (exactMutation) {
 						iteratorWarning.fix = {
 						tool: "frontend-svelte-mutate",
@@ -777,7 +831,7 @@ const _meta = {
 				if (rawSource.mode === "source" && structuredSource.category === "iteration" &&
 					arrayValue(rawSource.path).length === 0 && (String(binding.type) === "Text" || String(binding.type) === "Image")) {
 					var iterationSource = pickerSource(binding.path, structuredSource.scopeId);
-					var iterationCandidate = preferredIterationCandidate(iterationSource, binding.type);
+					var iterationCandidate = preferredIterationCandidate(iterationSource, binding.type, binding.path);
 					if (iterationCandidate) {
 						frontend.bindingWarnings.push({
 							code: "FRONTEND_ITERATION_OBJECT_SOURCE",
@@ -865,14 +919,40 @@ const _meta = {
 			if (!source) {
 				var boundIteration = null;
 				arrayValue(paperboard.blocks).forEach(function (block) {
-					if ((block.type === "ForEach" || block.type === "each") && validBinding(block.source)
+					if ((block.type === "ForEach" || block.type === "each")
 						&& String(binding.path || "").indexOf(String(block.path || "") + ".") === 0
 						&& (!boundIteration || String(block.path || "").length > String(boundIteration.path || "").length)) {
 						boundIteration = block;
 					}
 				});
-				if (boundIteration && requiresExplicitSource(binding.type)) {
+				if ((binding.type === "ForEach" || binding.type === "each")) {
+					var suggestedIterator = iteratorSuggestion();
+					var suggestedArrayPath = suggestedIterator && suggestedIterator.arrayPaths[0];
+					var suggestedIteratorBinding = suggestedIterator
+						? sourceBinding(suggestedIterator.source, suggestedArrayPath) : null;
+					var suggestedIteratorMutation = suggestedIteratorBinding && sourceMutation(binding, suggestedIteratorBinding);
+					if (suggestedIteratorMutation) {
+						plannedIterators[binding.path] = {
+							suggestion: suggestedIterator,
+							arrayPath: suggestedArrayPath,
+							binding: suggestedIteratorBinding
+						};
+					}
 					frontend.bindingWarnings.push({
+						code: "FRONTEND_ITERATOR_MISSING_SOURCE",
+						path: binding.path,
+						type: binding.type,
+						message: suggestedIteratorBinding
+							? "ForEach has one unambiguous schema-backed array source. Apply the returned binding mutation."
+							: "ForEach has no source. Select a schema-backed array result.",
+						suggestedBinding: suggestedIteratorBinding,
+						fix: suggestedIteratorMutation ? {
+							tool: "frontend-svelte-mutate",
+							arguments: { project: args.project, sourceFile: binding.sourceFile, mutation: suggestedIteratorMutation }
+						} : null
+					});
+				} else if (boundIteration && requiresExplicitSource(binding.type)) {
+					var missingWarning = {
 						code: "FRONTEND_BINDING_MISSING",
 						path: binding.path,
 						type: binding.type,
@@ -888,7 +968,26 @@ const _meta = {
 								maxDepth: 1
 							}
 						}
-					});
+					};
+					var directCandidate = validBinding(boundIteration.source)
+						? preferredIterationCandidate(pickerSource(binding.path, boundIteration.id), binding.type, binding.path)
+						: null;
+					var planned = plannedIterators[boundIteration.path];
+					var relativePath = !directCandidate && planned
+						? preferredIterationPath(planned.suggestion, planned.arrayPath, binding.type, binding.path) : "";
+					var suggested = directCandidate && directCandidate.binding || (relativePath
+						? sourceBinding({ category: "iteration", scopeId: String(boundIteration.id || "forEach"), value: "item" }, relativePath)
+						: null);
+					var mutation = directCandidate && directCandidate.mutation || (suggested ? sourceMutation(binding, suggested) : null);
+					if (suggested && mutation) {
+						missingWarning.suggestedBinding = suggested;
+						missingWarning.fix = {
+							tool: "frontend-svelte-mutate",
+							arguments: { project: args.project, sourceFile: binding.sourceFile, mutation: mutation }
+						};
+						delete missingWarning.inspect;
+					}
+					frontend.bindingWarnings.push(missingWarning);
 				}
 				return;
 			}
@@ -955,6 +1054,31 @@ const _meta = {
 			}
 			frontend.bindingWarnings.push(warning);
 		});
+		var fixesByFile = {};
+		arrayValue(frontend.bindingWarnings).forEach(function (warning) {
+			var fix = warning.fix;
+			if (!fix || fix.tool !== "frontend-svelte-mutate" || !fix.arguments || !fix.arguments.mutation || !fix.arguments.sourceFile) return;
+			var file = String(fix.arguments.sourceFile);
+			if (!fixesByFile[file]) fixesByFile[file] = [];
+			fixesByFile[file].push(fix.arguments.mutation);
+		});
+		var bindingPlanCalls = Object.keys(fixesByFile).map(function (sourceFile) {
+			return {
+				tool: "frontend-svelte-mutate",
+				arguments: {
+					project: args.project,
+					sourceFile: sourceFile,
+					mutations: fixesByFile[sourceFile]
+				},
+				reason: "Apply all unambiguous schema-backed bindings for this Flow Svelte source in one ordered mutation batch."
+			};
+		});
+		frontend.bindingPlan = {
+			fixCount: bindingPlanCalls.reduce(function (count, call) { return count + call.arguments.mutations.length; }, 0),
+			callCount: bindingPlanCalls.length,
+			calls: bindingPlanCalls,
+			note: "Execute each call unchanged, then rerun flow-app-progress. Individual warning fixes remain available for targeted Studio edits."
+		};
 		return frontend;
 	}
 
@@ -1147,8 +1271,14 @@ const _meta = {
 				});
 				var recommendedCalls = [];
 				if (includeFrontend) {
+					arrayValue(frontend.bindingPlan && frontend.bindingPlan.calls).forEach(function (call) {
+						addRecommendedCall(recommendedCalls, call.tool, call.arguments, call.reason);
+					});
 					arrayValue(frontend.bindingWarnings).forEach(function (warning) {
 						if (warning.fix && warning.fix.tool && warning.fix.arguments) {
+							if (warning.fix.tool === "frontend-svelte-mutate" && frontend.bindingPlan && frontend.bindingPlan.fixCount > 0) {
+								return;
+							}
 							addRecommendedCall(recommendedCalls, warning.fix.tool, warning.fix.arguments,
 								warning.message || "Resolve the frontend binding warning.");
 						}
