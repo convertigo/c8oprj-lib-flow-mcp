@@ -260,7 +260,9 @@ environment when it differs from that internal URL, while preserving the
 `/convertigo/projects/<project>/DisplayObjects/mobile/` path. If one Playwright
 navigation stalls, do not fan out snapshot/tabs/close calls against the same
 stuck transport; report the transport failure and use the established browser
-runner for the environment.
+runner for the environment. Autonomous and CI campaigns should configure the
+Playwright MCP in headless mode without `--extension`; extension mode requires
+an active browser relay and can leave navigation calls pending indefinitely.
 
 Frontend blocks, directives, events and actions must appear in the logical tree:
 `Button -> Events -> On Click -> Actions -> CallSequence`,

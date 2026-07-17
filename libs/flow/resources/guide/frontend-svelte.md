@@ -239,7 +239,9 @@ Use `frontend-svelte-action` for build/dev operations:
 The `openBuilt` URL is runtime-declared and can contain an internal host or
 port. Browser tests must retain its project path but use the public runtime
 origin provided by the local, CI or deployed environment. Do not start several
-Playwright calls after one navigation has already stalled.
+Playwright calls after one navigation has already stalled. For autonomous or CI
+validation, run the Playwright MCP headless without `--extension`. Use extension
+mode only when an interactive browser relay is known to be attached.
 
 Each `ForEach` publishes schema-backed `item` and integer `index` picker
 sources. Use `item` for domain fields and `index` for position-aware behavior.
