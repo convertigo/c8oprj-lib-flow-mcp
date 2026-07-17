@@ -218,32 +218,26 @@ migration input for older projects only. Resolve every
 `fix` call directly when present, or its `inspect` call to select the missing
 schema-backed candidate.
 
-1. `frontend-svelte-tree({ project, detail:"compact", maxDepth:2 })` to inspect
-   the current page/component tree and get stable `path`, `sourcePath`,
-   `sourceMutationPath` and slot metadata. Re-read only the relevant branch with
-   `frontend-svelte-tree({ project, detail:"inspect", focusPath:"<returned path>", maxDepth:8 })`
-   before inspecting or editing a page/component subtree. For a binding
-   property, select a schema-backed candidate from
-   `bindings.<property>.sources[].bindings[]` and pass its `mutation` unchanged
-   to `frontend-svelte-mutate`; do not reconstruct its path or descriptor.
-   `detail:"inspect"` shows visible props, slots and focused binding metadata;
-   do not use `flow-resource-get` just to understand normal page structure.
-2. `frontend-svelte-palette({ project, focusPath })` to discover what can be
-   inserted at a focus node. Use the returned `items[].insert` and
-   `items[].targetSlot` payloads; do not invent component/directive JSON.
-3. `frontend-svelte-mutate({ project, sourceFile, mutation })` to insert, move,
-   delete or edit frontend nodes through the same contract as Studio drag/drop.
-   Pass `sourceFile` from the focused tree node or palette target when it is
-   available; for main-model `frontAst...` mutations, the MCP can infer it from
-   `config.frontbuilder.svelte.modelPath`. Source-backed mutations write the
-   updated source by default; use `dryRun:true` or `persist:false` only for
-   explicit previews. For new pages, Flow UI blocks, Svelte UI blocks or client
-   actions, pass the palette `items[].insert` payload containing
-   `__frontendCreateSource` directly to `frontend-svelte-mutate`; do not create
-   frontend files by hand. Do not use `flow-resource-patch` for Flow Svelte
-   page/component tree or property edits; report the mutate error as a tooling
-   gap instead.
-4. Re-read `frontend-svelte-tree` to verify the tree.
+1. `frontend-svelte-code-get({ project })` to read the complete intuitive
+   `.flow.svelte` model and its `revision`. This is the default starting point
+   for substantial frontend work; do not reconstruct an application through
+   hundreds of unit tree mutations.
+2. Write the paperboard or complete refinement pass as Flow Svelte source with
+   known canonical block tags. Call `frontend-svelte-code-check({ project,
+   code })`, then `frontend-svelte-code-set({ project, code, revision })`.
+   Use `frontend-svelte-code-patch({ project, revision, codepatch })` for small
+   later refinements. Re-read after a stale-revision error.
+3. Use `frontend-svelte-tree({ project, detail:"inspect", focusPath, maxDepth:8 })`
+   and `frontend-svelte-palette({ project, focusPath })` only to discover an
+   unknown block/slot/property or to obtain a picker-backed binding. Execute
+   `items[].apply` and binding `mutation` payloads unchanged through
+   `frontend-svelte-mutate`; never invent component JSON or binding paths.
+   For new route/component source files, use the palette creation payload once,
+   then continue with the source tools.
+4. Call `flow-app-progress({ project })` after each complete pass. Resolve its
+   structural, duplicate-id and schema-backed binding diagnostics before the
+   next pass. The parser and MCP correct syntax and canonical structure; the
+   agent should not compensate with generated Svelte or hidden imperative code.
 5. `frontend-svelte-action({ project, actionId:"generate" })` to update
    generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
    Use `frontend-svelte-actions` to inspect enabled build/dev actions. It
@@ -253,8 +247,9 @@ schema-backed candidate.
 
 Frontend blocks, directives, events and actions must appear in the logical tree:
 `Button -> Events -> On Click -> Actions -> CallSequence`,
-`If -> Then -> Text`, `ForEach -> Each -> ...`. Create new pages, UI blocks or
-client actions from palette items only. Do not edit `_private/svelte` directly,
+`If -> Then -> Text`, `ForEach -> Each -> ...`. Use known canonical tags
+directly in Flow Svelte source; obtain unknown pages, UI blocks or client
+actions from one focused palette response. Do not edit `_private/svelte` directly,
 do not hard-code generated component behavior, and do not mutate library blocks
 when the tree says the source is read-only. Use `LinkButton` for a static route
 link that has no preceding action. When navigation must follow a client action,
@@ -262,7 +257,8 @@ insert `Navigate` after that action in the same event. Use `GoBack` for a visibl
 back command with a fallback route. Insert `OnMount` in page structure only for
 automatic lifecycle work such as initialization, local synchronization or the
 first local query; never hide external I/O in it unless the application contract
-explicitly requires that I/O. Create all three from palette payloads. Do not
+explicitly requires that I/O. Discover any unknown action contract from the
+palette before using its canonical tag. Do not
 assume an implicit page
 layout: insert explicit layout/surface blocks from the palette (`PageShell`,
 `RowLayout`, `ColumnLayout`, `GridLayout`, `Card`) whenever the UI needs

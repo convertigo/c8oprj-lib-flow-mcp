@@ -64,6 +64,10 @@ const _meta = {
 		"flow-test": true,
 		"frontend-svelte-action": true,
 		"frontend-svelte-actions": true,
+		"frontend-svelte-code-check": true,
+		"frontend-svelte-code-get": true,
+		"frontend-svelte-code-patch": true,
+		"frontend-svelte-code-set": true,
 		"frontend-svelte-fullsync-schema": true,
 		"frontend-svelte-mutate": true,
 		"frontend-svelte-palette": true,
@@ -91,6 +95,7 @@ const _meta = {
 		maxFileBytes: true,
 		maxResultChars: true,
 		maxTraceChars: true,
+		request: true,
 		mode: true,
 		draft: true
 	};
@@ -336,6 +341,11 @@ const _meta = {
 				description: "Maximum diagnostics to return. Default 8, max 25."
 			};
 		}
+		if (toolName === "frontend-svelte-code-set") {
+			schema.required = ["code"];
+		} else if (toolName === "frontend-svelte-code-patch") {
+			schema.required = ["revision", "codepatch"];
+		}
 		return schema;
 	}
 
@@ -376,6 +386,14 @@ const _meta = {
 			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. For bindable properties, pass the structured mutation returned by the picker unchanged; new string paths are rejected.";
+		} else if (name === "frontend-svelte-code-get") {
+			description = "Reads the complete intuitive .flow.svelte model and its revision. Default starting point for substantial frontend work.";
+		} else if (name === "frontend-svelte-code-check") {
+			description = "Parses and validates a complete .flow.svelte draft without writing it; returns structured source diagnostics.";
+		} else if (name === "frontend-svelte-code-set") {
+			description = "Validates and writes one complete .flow.svelte model, optionally guarded by the revision returned by code-get.";
+		} else if (name === "frontend-svelte-code-patch") {
+			description = "Validates and applies a revision-checked unified diff to one .flow.svelte model for compact refinements.";
 		} else if (name === "frontend-svelte-fullsync-schema") {
 			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {

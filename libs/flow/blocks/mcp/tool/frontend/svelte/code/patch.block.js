@@ -1,0 +1,19 @@
+const _meta = {
+  "version": 1,
+  "description": "Applies a revision-checked unified patch to one Flow Svelte source.",
+  "icon": "mdi:source-branch-sync",
+  "properties": {
+    "request": { "kind": "expression", "type": "object", "default": "input.request" },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative .flow.svelte path; defaults to the configured modelPath." },
+    "revision": { "kind": "text", "type": "string", "description": "Revision from code-get; rejects stale patches." },
+    "codepatch": { "kind": "text", "type": "string", "description": "Unified diff against the retrieved source." },
+    "out": { "kind": "path", "mode": "write", "default": "local.response" }
+  },
+  "outputs": { "out": { "type": "object" } },
+  "private": true,
+  "tags": ["mcp", "frontend", "code"]
+}
+
+function mcp_tool_frontend_svelte_code_patch({ input, config, result }) {
+  mcp.tool.run({ id: "frontendSvelteCodePatch", request: input.request, target: "frontend.svelte.source", args: { operation: "patch" } })
+}

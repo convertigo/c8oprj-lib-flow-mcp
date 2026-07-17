@@ -1,9 +1,11 @@
 # Flow Svelte Frontend Authoring
 
 Use this guide when the task targets the experimental Svelte frontbuilder under
-FlowEngine. The mental model is the same as FlowScript backend authoring: a
-human-readable tree, a context palette, then small mutations through MCP. Do not
-edit generated Svelte output directly.
+FlowEngine. The mental model is the same as FlowScript backend authoring: edit
+one intuitive, human-readable source in a few complete passes, then let the MCP
+parser validate and project it. Tree, palette and unit mutations remain the
+discovery and repair path, not the default way to assemble a whole application.
+Do not edit generated Svelte output directly.
 
 If the task includes both backend Flow and frontend Svelte work, read
 `flow://guide/fullstack-paperboard` first. This guide remains the reference for
@@ -12,33 +14,33 @@ paperboard-first order, mock debt checks and progress reporting.
 
 ## Default Loop
 
-1. Read the current UI model with `frontend-svelte-tree({ project,
-   detail:"compact", maxDepth:2 })`.
-   Pass the target Convertigo `project` name, not a filesystem path. The paths
-   returned by the tree are the stable addresses for future edits.
-2. Re-read only the relevant branch with `frontend-svelte-tree({ project,
-   detail:"inspect", focusPath:"<path returned above>", maxDepth:8 })` before
-   inspecting a page, component, slot or action subtree. For a binding
-   property, choose from `bindings.<property>.sources[].bindings[]` and pass
-   its `mutation` unchanged to `frontend-svelte-mutate`. `detail:"inspect"`
-   keeps visible block props, slot names and focused binding metadata. Do not
-   use `flow-resource-get` just to understand normal page structure.
-3. Pick a focus node and call `frontend-svelte-palette`.
-   Use the palette item returned by the tool as the source of truth:
-   `items[].id`, `items[].insert`, `items[].targetSlot.sourceMutationPath` and
-   `items[].targetSlot.index` tell you what can be inserted and where.
-4. Apply changes with `frontend-svelte-mutate`.
-   For source-backed Flow Svelte files, pass `sourceFile` from the focused node
-   or palette target and a `mutation` using the palette-provided payload. For
-   the main builder model, `frontAst...` mutations can also omit `sourceFile`:
-   the MCP resolves it from `config.frontbuilder.svelte.modelPath`.
-   Source-backed mutations persist the updated source by default. Use
-   `dryRun:true` or `persist:false` only when you explicitly want a preview.
-5. Re-read with `frontend-svelte-tree` to verify the tree changed.
+1. Read the complete authoring model with `frontend-svelte-code-get({ project })`.
+   It returns the configured `.flow.svelte` source and a `revision`. Pass the
+   target Convertigo project name, not a filesystem path. For a new route or
+   component, obtain its canonical source path from one focused palette call.
+2. Compose the screen or workflow directly in Flow Svelte source using known
+   canonical block tags and visible properties. Validate the complete draft
+   with `frontend-svelte-code-check({ project, code })`; this catches parser
+   errors and duplicate low-code ids without writing.
+3. Persist a complete pass with `frontend-svelte-code-set({ project, code,
+   revision })`. Use `frontend-svelte-code-patch({ project, revision,
+   codepatch })` for subsequent compact unified diffs. A stale revision is
+   rejected; re-read instead of overwriting concurrent work.
+4. Use `frontend-svelte-tree({ project, detail:"inspect", focusPath, maxDepth:8 })`
+   and `frontend-svelte-palette({ project, focusPath })` only when a canonical
+   block, slot, property or schema-backed binding is unknown. Execute returned
+   picker mutations unchanged through `frontend-svelte-mutate`; do not invent
+   binding paths or descriptors.
+5. Call `flow-app-progress({ project })` after each substantial source pass.
+   Resolve structural and binding diagnostics before generating.
 6. Run `frontend-svelte-action` with `actionId:"generate"` to update generated
    Svelte sources. If dev mode is running, use `actionId:"dev.sync"` after a
    mutation so Vite/HMR sees the new source. Use `frontend-svelte-actions` to
    inspect enabled dev/build actions.
+
+This loop deliberately allows intuitive low-code source editing. The MCP owns
+parsing, canonical projection, id checks and revision safety. It does not allow
+arbitrary generated Svelte code or hand-built binding objects.
 
 ## Authoring Rules
 

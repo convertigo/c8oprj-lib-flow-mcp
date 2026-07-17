@@ -180,6 +180,19 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-action";
 }), "MCP Flow tools/list did not expose Svelte frontend authoring tools");
+assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch"].every(function (name) {
+	return list.result.result.tools.some(function (tool) { return tool.name === name; });
+}), "MCP Flow tools/list did not expose whole-source Svelte authoring tools");
+var frontendSourceSetTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "frontend-svelte-code-set";
+})[0];
+var frontendSourcePatchTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "frontend-svelte-code-patch";
+})[0];
+assertTrue(frontendSourceSetTool.inputSchema.required[0] === "code" &&
+	frontendSourcePatchTool.inputSchema.required.indexOf("revision") !== -1 &&
+	frontendSourcePatchTool.inputSchema.required.indexOf("codepatch") !== -1,
+	"MCP Flow tools/list should require complete source and revision-safe patches");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -659,6 +672,16 @@ assertTrue(fullSyncScaffoldDryRun.result.result.structuredContent.ok === true &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.designDocuments[0] === "FlowFullSyncSmoke.retaildb.design" &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[0] === "FlowFullSyncSmoke.retaildb.GetChildren",
 	"MCP flow-fullsync-scaffold dry-run did not return the expected plan");
+var frontendEngineSource = [
+	"version: 1",
+	"config:",
+	"  frontbuilder:",
+	"    svelte:",
+	"      target: svelte5",
+	"      resourceRoot: " + frontendSvelteResourceRoot(),
+	"      modelPath: libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	""
+].join("\n");
 var frontendPageFile = new java.io.File(targetDir,
 	"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
 frontendPageFile.getParentFile().mkdirs();
@@ -759,16 +782,6 @@ function findCompactNode(node, predicate) {
 	}
 	return null;
 }
-var frontendEngineSource = [
-	"version: 1",
-	"config:",
-	"  frontbuilder:",
-	"    svelte:",
-	"      target: svelte5",
-	"      resourceRoot: " + frontendSvelteResourceRoot(),
-	"      modelPath: libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
-	""
-].join("\n");
 var frontendSvelteInspect = callTool(1392, "frontend-svelte-tree", {
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,
@@ -1112,6 +1125,78 @@ assertTrue(findCompactNode(frontendTreeAfterRouteCreation.result.result.structur
 	return node.kind === "frontendRouteSegment" && node.type === "store";
 }) !== null,
 	"MCP frontend document cache should invalidate when a sibling route is created");
+var targetEngineFile = new java.io.File(targetDir, "libs/flow/engine.yaml");
+targetEngineFile.getParentFile().mkdirs();
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(targetEngineFile, frontendEngineSource, "UTF-8");
+var frontendSourceGet = callTool(1381, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte"
+});
+var frontendSourceRevision = frontendSourceGet.result.result.structuredContent.revision;
+assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
+	frontendSourceGet.result.result.structuredContent.code.indexOf("<FlowComponent") !== -1 &&
+	frontendSourceRevision,
+	"MCP frontend-svelte-code-get should return complete source and a revision");
+var frontendSourceInvalid = callTool(1382, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure>",
+		"    <Text id=\"duplicate\" text=\"One\" />",
+		"    <Text id=\"duplicate\" text=\"Two\" />",
+		"  </Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendSourceInvalid.result.result.structuredContent.ok === false &&
+	frontendSourceInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FRONTEND_DUPLICATE_ID";
+	}), "MCP frontend-svelte-code-check should diagnose duplicate low-code ids");
+var frontendSourceSet = callTool(1383, "frontend-svelte-code-set", {
+	projectDir: targetProjectDir,
+	revision: frontendSourceRevision,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home source\">",
+		"  <Structure>",
+		"  </Structure>",
+		"</FlowComponent>",
+		""
+	].join("\n")
+});
+var frontendSourceSetRevision = frontendSourceSet.result.result.structuredContent.revision;
+assertTrue(frontendSourceSet.result.result.structuredContent.written === true &&
+	frontendSourceSetRevision !== frontendSourceRevision,
+	"MCP frontend-svelte-code-set should validate and persist one complete source");
+var frontendSourcePatch = callTool(1384, "frontend-svelte-code-patch", {
+	projectDir: targetProjectDir,
+	revision: frontendSourceSetRevision,
+	codepatch: [
+		"--- a/+page.flow.svelte",
+		"+++ b/+page.flow.svelte",
+		"@@ -1,4 +1,4 @@",
+		"-<FlowComponent id=\"home\" label=\"Home source\">",
+		"+<FlowComponent id=\"home\" label=\"Home patched\">",
+		"   <Structure>",
+		"   </Structure>",
+		" </FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendSourcePatch.result.result.structuredContent.written === true &&
+	frontendSourcePatch.result.result.structuredContent.code.indexOf("Home patched") !== -1,
+	"MCP frontend-svelte-code-patch should validate and persist a unified patch");
+var frontendSourceStale = callTool(1385, "frontend-svelte-code-set", {
+	projectDir: targetProjectDir,
+	revision: frontendSourceRevision,
+	code: frontendSourceSet.result.result.structuredContent.code
+});
+assertTrue(frontendSourceStale.result.error,
+	"MCP frontend-svelte-code-set should reject a stale revision");
+var frontendSourceImplicit = callTool(1386, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir
+});
+assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
+	frontendSourceImplicit.result.result.structuredContent.sourceFile === "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	"MCP frontend-svelte-code-get should infer sourceFile from config.frontbuilder.svelte.modelPath");
 
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,

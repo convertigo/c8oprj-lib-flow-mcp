@@ -1583,6 +1583,10 @@
 			"authoring-tree": true,
 			"frontend-svelte-action": true,
 			"frontend-svelte-actions": true,
+			"frontend-svelte-code-check": true,
+			"frontend-svelte-code-get": true,
+			"frontend-svelte-code-patch": true,
+			"frontend-svelte-code-set": true,
 			"frontend-svelte-mutate": true,
 			"frontend-svelte-palette": true,
 			"frontend-svelte-tree": true,
@@ -1900,26 +1904,29 @@
 		if (args.sourceFile || args.sourcePath || isFrontendSourceCreation(args)) {
 			return args;
 		}
+		var isFrontendCode = /^frontend-svelte-code-(?:get|check|set|patch)$/.test(String(name || ""));
 		var isFrontendMutate = name === "frontend-svelte-mutate" ||
 			(name === "authoring-mutate" && String(args.surface || "") === "frontend" && String(args.builder || "") === "svelte");
-		if (!isFrontendMutate) {
+		if (!isFrontendMutate && !isFrontendCode) {
 			return args;
 		}
-		var mutations = args.mutations || (args.mutation ? [args.mutation] : []);
-		var needsFrontAstSource = false;
-		for (var i = 0; i < mutations.length; i++) {
-			if (frontendMutationUsesFrontAst(mutations[i])) {
-				needsFrontAstSource = true;
-				break;
+		if (!isFrontendCode) {
+			var mutations = args.mutations || (args.mutation ? [args.mutation] : []);
+			var needsFrontAstSource = false;
+			for (var i = 0; i < mutations.length; i++) {
+				if (frontendMutationUsesFrontAst(mutations[i])) {
+					needsFrontAstSource = true;
+					break;
+				}
 			}
-		}
-		if (!needsFrontAstSource) {
-			return args;
+			if (!needsFrontAstSource) {
+				return args;
+			}
 		}
 		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
 		var modelPath = frontendBuilderModelPath(projectRoot, args.builder || "svelte");
 		if (!modelPath) {
-			throw new Error(name + " mutates frontAst but no sourceFile was provided and config.frontbuilder.svelte.modelPath is missing.");
+			throw new Error(name + " requires sourceFile or config.frontbuilder.svelte.modelPath.");
 		}
 		args.sourceFile = modelPath;
 		return args;

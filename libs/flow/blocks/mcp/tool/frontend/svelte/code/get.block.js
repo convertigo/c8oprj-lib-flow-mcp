@@ -1,0 +1,17 @@
+const _meta = {
+  "version": 1,
+  "description": "Reads one intuitive Flow Svelte source and its revision.",
+  "icon": "mdi:file-code-outline",
+  "properties": {
+    "request": { "kind": "expression", "type": "object", "default": "input.request" },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative .flow.svelte path; defaults to the configured modelPath." },
+    "out": { "kind": "path", "mode": "write", "default": "local.response" }
+  },
+  "outputs": { "out": { "type": "object" } },
+  "private": true,
+  "tags": ["mcp", "frontend", "code"]
+}
+
+function mcp_tool_frontend_svelte_code_get({ input, config, result }) {
+  mcp.tool.run({ id: "frontendSvelteCodeGet", request: input.request, target: "frontend.svelte.source", args: { operation: "get" } })
+}
