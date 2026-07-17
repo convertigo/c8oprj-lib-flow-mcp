@@ -149,6 +149,112 @@ const _meta = {
 		};
 	}
 
+	function blockCallPattern(blockId) {
+		return new RegExp("(^|[^A-Za-z0-9_$])" + String(blockId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\(");
+	}
+
+	function projectBlockSources(projectDir) {
+		var File = Packages.java.io.File;
+		var FileUtils = Packages.org.apache.commons.io.FileUtils;
+		var root = new File(String(projectDir || ""), "libs/flow/blocks");
+		var sources = [];
+		function visit(directory, prefix) {
+			var files = directory && directory.listFiles();
+			if (!files) return;
+			for (var i = 0; i < files.length; i++) {
+				var file = files[i];
+				var relative = prefix ? prefix + "/" + file.getName() : String(file.getName());
+				if (file.isDirectory()) visit(file, relative);
+				else if (/\.block\.js$/.test(relative)) {
+					sources.push({
+						block: relative.replace(/\.block\.js$/, "").replace(/\//g, "."),
+						code: String(FileUtils.readFileToString(file, "UTF-8"))
+					});
+				}
+			}
+		}
+		visit(root, "");
+		return sources.sort(function (a, b) { return a.block.localeCompare(b.block); });
+	}
+
+	function backendSourceCorpus(ctx, args, flows, blocks) {
+		var sources = [];
+		arrayValue(flows).forEach(function (flow) {
+			try {
+				var source = ctx.flowCodeGet({
+					projectDir: args.projectDir,
+					qname: flow.qname || "",
+					name: flow.name || "",
+					draft: false
+				});
+				if (source && source.code) sources.push(String(source.code));
+			} catch (_ignoredFlow) {
+			}
+		});
+		arrayValue(blocks).forEach(function (block) {
+			if (block && block.code) sources.push(String(block.code));
+		});
+		return sources.join("\n");
+	}
+
+	function unusedProjectBlocks(ctx, args, flows) {
+		var blocks = projectBlockSources(args.projectDir);
+		var corpus = backendSourceCorpus(ctx, args, flows, blocks);
+		return blocks.filter(function (block) {
+			return !blockCallPattern(block.block).test(corpus);
+		}).map(function (block) { return block.block; });
+	}
+
+	function collectBindingOutputRoots(value, actionIds, roots) {
+		if (!value || typeof value !== "object") return;
+		if (Object.prototype.toString.call(value) === "[object Array]") {
+			value.forEach(function (item) { collectBindingOutputRoots(item, actionIds, roots); });
+			return;
+		}
+		if (value.mode === "source" && value.source && value.source.category === "requestable" &&
+			actionIds[String(value.source.actionId || "")]) {
+			var path = arrayValue(value.path);
+			if (!path.length) roots["*"] = true;
+			else if (path[0] && path[0].kind === "property") roots[String(path[0].name || "")] = true;
+		}
+		Object.keys(value).forEach(function (key) {
+			collectBindingOutputRoots(value[key], actionIds, roots);
+		});
+	}
+
+	function frontendOutputRoots(frontend, auditQName, project) {
+		var actionIds = {};
+		var paperboard = frontend && frontend.paperboard || {};
+		arrayValue(paperboard.actions).forEach(function (action) {
+			if (flowMatchesQName({ qname: action.requestable, name: action.requestable }, auditQName, project)) {
+				actionIds[String(actionResultId(action) || action.id || "")] = true;
+			}
+		});
+		var roots = {};
+		arrayValue(paperboard.dataSources).forEach(function (source) { collectBindingOutputRoots(source, actionIds, roots); });
+		arrayValue(paperboard.blocks).forEach(function (block) { collectBindingOutputRoots(block, actionIds, roots); });
+		return roots;
+	}
+
+	function unusedFrontendOutputs(ctx, mcp, args, frontend, auditQName) {
+		if (!auditQName || !frontend || frontend.checked !== true) return [];
+		try {
+			var output = ctx.outputSchemaSource(mcp.withNamedFlowSource(ctx, {
+				project: args.project,
+				projectDir: args.projectDir,
+				qname: auditQName,
+				detail: "full"
+			}));
+			var schema = output && (output.schema || output.effective || output.sources && output.sources.effective) || {};
+			var properties = schema.properties || {};
+			var used = frontendOutputRoots(frontend, auditQName, args.project);
+			if (used["*"]) return [];
+			return Object.keys(properties).filter(function (name) { return !used[name]; }).sort();
+		} catch (_ignored) {
+			return [];
+		}
+	}
+
 	function walk(node, visitor) {
 		if (!node) {
 			return;
@@ -999,6 +1105,11 @@ const _meta = {
 					return String(a.block).localeCompare(String(b.block));
 				});
 				var frontend = includeFrontend ? enrichFrontendBindings(ctx, args, frontendSummary(ctx, args)) : { checked: false };
+				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
+				var debt = {
+					unusedProjectBlocks: unusedProjectBlocks(ctx, args, compact),
+					unusedFrontendOutputs: unusedFrontendOutputs(ctx, mcp, args, frontend, auditQName)
+				};
 				var tasks = [];
 				addTask(tasks, "flowEngine", "FlowEngine readable", true, "");
 				addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
@@ -1043,7 +1154,6 @@ const _meta = {
 						}
 					});
 				}
-				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
 				addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
 					"Confirm no explicit project-local mock remains before claiming completion.");
 				if (auditQName) {
@@ -1091,7 +1201,8 @@ const _meta = {
 					backend: {
 						flowCount: compact.length,
 						appFlowCount: appFlows.length,
-						flows: compact.slice(0, 20)
+						flows: compact.slice(0, 20),
+						debt: debt
 					},
 					mocks: {
 						count: mocks.length,

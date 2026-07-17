@@ -236,7 +236,10 @@ schema-backed candidate.
    then continue with the source tools.
 4. Call `flow-app-progress({ project })` after each complete pass. Resolve its
    structural, duplicate-id and schema-backed binding diagnostics before the
-   next pass. The parser and MCP correct syntax and canonical structure; the
+   next pass. Review `backend.debt.unusedProjectBlocks` and
+   `backend.debt.unusedFrontendOutputs`; remove accidental leftovers before
+   completion, while keeping intentional public API outputs when the user
+   contract requires them. The parser and MCP correct syntax and canonical structure; the
    agent should not compensate with generated Svelte or hidden imperative code.
 5. `frontend-svelte-action({ project, actionId:"generate" })` to update
    generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
@@ -244,6 +247,20 @@ schema-backed candidate.
    returns full menu ids such as `frontbuilder.svelte.generate`; the action
    tool accepts both those full ids and the shorter aliases documented in the
    guide.
+
+Inside `ForEach`, the picker exposes two lexical sources for the same stable
+scope: the typed `item` and the integer `index`. Use the returned index binding
+for position-aware controls. For a purely visual odd/even branch, keep the
+behavior in Flow Svelte with an `If` expression such as `index % 2 === 0`;
+do not add a backend block that decorates domain data only for presentation.
+
+`openBuilt` reports the URL configured by the Convertigo runtime. For browser
+proof, use the externally reachable origin supplied by the execution
+environment when it differs from that internal URL, while preserving the
+`/convertigo/projects/<project>/DisplayObjects/mobile/` path. If one Playwright
+navigation stalls, do not fan out snapshot/tabs/close calls against the same
+stuck transport; report the transport failure and use the established browser
+runner for the environment.
 
 Frontend blocks, directives, events and actions must appear in the logical tree:
 `Button -> Events -> On Click -> Actions -> CallSequence`,

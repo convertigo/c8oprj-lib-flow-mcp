@@ -32,6 +32,9 @@ paperboard-first order, mock debt checks and progress reporting.
    picker mutations unchanged through `frontend-svelte-mutate`; do not invent
    binding paths or descriptors.
 5. Call `flow-app-progress({ project })` after each substantial source pass.
+   Its `backend.debt` section reports project-local blocks that no Flow calls
+   and backend output roots that the current frontend does not consume. Treat
+   these as cleanup diagnostics, not as proof that a public API field is wrong.
    Resolve structural and binding diagnostics before generating.
 6. Run `frontend-svelte-action` with `actionId:"generate"` to update generated
    Svelte sources. If dev mode is running, use `actionId:"dev.sync"` after a
@@ -232,6 +235,17 @@ Use `frontend-svelte-action` for build/dev operations:
 - `actionId:"generate"`: update generated Svelte source under the private app.
 - `actionId:"build"`: generate and build production assets.
 - `actionId:"openBuilt"`: open the production frontend.
+
+The `openBuilt` URL is runtime-declared and can contain an internal host or
+port. Browser tests must retain its project path but use the public runtime
+origin provided by the local, CI or deployed environment. Do not start several
+Playwright calls after one navigation has already stalled.
+
+Each `ForEach` publishes schema-backed `item` and integer `index` picker
+sources. Use `item` for domain fields and `index` for position-aware behavior.
+Visual alternation belongs in the frontend model, for example an `If` condition
+using `index % 2 === 0`; it must not require a backend block that mutates every
+domain item with a presentation-only flag.
 - `actionId:"dev.start"`: generate, install if needed, and start Vite.
 - `actionId:"dev.stop"`: stop the Vite dev server.
 - `actionId:"dev.open"`: open the running dev server.

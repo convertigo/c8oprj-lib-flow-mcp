@@ -584,6 +584,17 @@ function callTool(id, name, args) {
 		}
 	})));
 }
+var unusedBlockSet = callTool(135, "code-set", {
+	projectDir: targetProjectDir,
+	block: "smoke.unused",
+	code: [
+		"const _meta = { outputs: { out: { type: \"string\" } } }",
+		"function unused() { return \"unused\" }",
+		""
+	].join("\n")
+});
+assertTrue(unusedBlockSet.result.result.structuredContent.ok === true,
+	"MCP smoke setup should create the unused project block through the authoring API");
 
 var authoringPalette = callTool(136, "authoring-palette", {
 	projectDir: targetProjectDir,
@@ -633,7 +644,7 @@ var appProgressFullQName = callTool(13912, "flow-app-progress", {
 assertTrue(appProgressFullQName.result.result.structuredContent.ok === true &&
 	appProgressFullQName.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "backendFlow" && task.done === true;
-	}),
+	}) && appProgressFullQName.result.result.structuredContent.backend.debt.unusedProjectBlocks.indexOf("smoke.unused") !== -1,
 	"MCP flow-app-progress should normalize full executable Flow qnames");
 var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
 	project: "FlowBootstrapSmoke",
@@ -831,7 +842,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"      <Events>",
 	"        <OnClick id=\"loadFeedClick\">",
 	"          <Actions>",
-	"            <CallSequence id=\"readTarget\" requestable=\".TargetSmoke\">",
+	"            <CallSequence id=\"readTarget\" requestable=\".TargetSmoke\" outputSchema={{\"type\":\"object\",\"properties\":{\"target\":{\"type\":\"string\"},\"first\":{\"type\":\"number\"}}}}>",
 	"              <Variables />",
 	"            </CallSequence>",
 	"          </Actions>",
@@ -889,7 +900,8 @@ var appProgressStructured = callTool(1396, "flow-app-progress", {
 assertTrue(appProgressStructured.result.result.structuredContent.frontend.bindingWarnings.length === 0 &&
 	appProgressStructured.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === true;
-	}),
+	}) && appProgressStructured.result.result.structuredContent.backend.debt.unusedFrontendOutputs.indexOf("first") !== -1 &&
+	appProgressStructured.result.result.structuredContent.backend.debt.unusedFrontendOutputs.indexOf("target") === -1,
 	"MCP flow-app-progress should accept the structured binding produced by its fix");
 var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 	project: "target",
