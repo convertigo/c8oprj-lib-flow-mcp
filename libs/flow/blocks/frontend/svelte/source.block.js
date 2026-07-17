@@ -109,7 +109,7 @@ const _meta = {
 					projectDir: String(props.projectDir),
 					surface: "frontend",
 					builder: "svelte",
-					drafts: drafts,
+					frontendSourceDrafts: drafts,
 					detail: "compact",
 					maxDepth: 3
 				});

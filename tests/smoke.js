@@ -1152,6 +1152,26 @@ assertTrue(frontendSourceInvalid.result.result.structuredContent.ok === false &&
 	frontendSourceInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_DUPLICATE_ID";
 	}), "MCP frontend-svelte-code-check should diagnose duplicate low-code ids");
+var frontendPersistedSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"broken\" label=\"Broken\">",
+	"  <Structure>",
+	"    <If id=\"brokenIf\" test={{{\"mode\":\"source\"}}} />",
+	"  </Structure>",
+	"</FlowComponent>"
+].join("\n"), "UTF-8");
+var frontendSourceRecoveryCheck = callTool(13821, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Recovered\">",
+		"  <Structure />",
+		"</FlowComponent>",
+		""
+	].join("\n")
+});
+assertTrue(frontendSourceRecoveryCheck.result.result.structuredContent.ok === true,
+	"MCP frontend-svelte-code-check should validate the supplied draft instead of a persisted invalid source");
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, frontendPersistedSource, "UTF-8");
 var frontendSourceSet = callTool(1383, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceRevision,
