@@ -470,7 +470,7 @@ const _meta = {
 
 	function requiresExplicitSource(type) {
 		type = String(type || "").toLowerCase();
-		return type === "image" || type === "text" || type === "table" || type === "json";
+		return type === "image" || type === "text" || type === "button" || type === "table" || type === "json";
 	}
 
 	function visibleDescendantCount(node) {
@@ -514,7 +514,7 @@ const _meta = {
 					test: definition.test || definition.condition || "",
 					context: definition.context || "",
 					contentCount: visibleDescendantCount(node)
-				}, 30);
+				}, 40);
 			}
 			if (kind === "frontendActionBlock" || definition.requestable || definition.backendCall) {
 				addLimited(summary.actions, {
@@ -536,12 +536,13 @@ const _meta = {
 						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : ""),
 					schemaInputMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.schemaInput
 						|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.schemaInput" : "")
-				}, 20);
+				}, 100);
 			}
 			if (definition.source || definition.path || definition.value || requiresExplicitSource(type) ||
 				type === "ForEach" || type === "each") {
 				addLimited(summary.dataSources, {
 					path: node.path || "",
+					id: definition.id || node.id || "",
 					type: type,
 					sourceFile: definition.sourcePath || definition.sourceFile || "",
 					sourceMutationPath: definition.sourceMutationPath || "",
@@ -550,7 +551,7 @@ const _meta = {
 					value: definition.value || "",
 					dataPath: definition.path || "",
 					context: definition.context || ""
-				}, 20);
+				}, 100);
 			}
 		});
 		return summary;
@@ -569,7 +570,9 @@ const _meta = {
 					builder: "svelte",
 					focusPath: path,
 					detail: "inspect",
-					maxDepth: 1
+					property: "source",
+					sourceId: sourceId,
+					maxDepth: 0
 				});
 				var selected = null;
 				walk(tree, function (node) {
@@ -625,6 +628,27 @@ const _meta = {
 				}
 			}
 			return candidates[0] || null;
+		}
+		function semanticIterationCandidate(source, type, targetPath) {
+			var candidates = arrayValue(source && source.bindings).filter(function (candidate) {
+				return candidate && candidate.mutation && String(candidate.type || "") !== "object" && String(candidate.type || "") !== "array";
+			});
+			var target = String(targetPath || "").toLowerCase();
+			var aliases = String(type || "").toLowerCase() === "image"
+				? ["imageurl", "image", "src", "url"] : [];
+			for (var alias = 0; alias < aliases.length; alias++) {
+				for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
+					var candidateLeaf = String(candidates[candidateIndex].path || "").split(".").pop().toLowerCase();
+					if (candidateLeaf === aliases[alias]) return candidates[candidateIndex];
+				}
+			}
+			for (var i = 0; i < candidates.length; i++) {
+				var leaf = String(candidates[i].path || "").split(".").pop().toLowerCase();
+				if (leaf.length >= 3 && target.indexOf(leaf) !== -1) {
+					return candidates[i];
+				}
+			}
+			return null;
 		}
 		function iteratorSuggestion() {
 			var candidates = frontend.bindingSuggestions.filter(function (suggestion) {
@@ -758,6 +782,27 @@ const _meta = {
 				});
 			}
 		});
+		var localListTargets = {};
+		arrayValue(paperboard.actions).forEach(function (action) {
+			var target = String(action.target || "");
+			if (!target || String(action.type || "").toLowerCase() !== "updatelist" || localListTargets[target]) return;
+			localListTargets[target] = true;
+			var source = { category: "action", actionId: target };
+			frontend.bindingSuggestions.push({
+				actionId: target,
+				executionId: String(action.id || target),
+				operation: "state.list",
+				schemaSource: "client action state",
+				source: source,
+				root: "backendResults." + target,
+				sourcePaths: [""],
+				arrayPaths: [""],
+				leafPaths: [],
+				bindings: [{ path: "", binding: sourceBinding(source, "") }],
+				example: { forEachBinding: sourceBinding(source, "") },
+				note: "Client list state exposed by UpdateList target. Pass the returned root binding unchanged."
+			});
+		});
 		frontend.bindingSuggestions.forEach(function (suggestion) {
 			if (suggestion.schemaInputPending) {
 				frontend.bindingWarnings.push({
@@ -779,16 +824,36 @@ const _meta = {
 		});
 		arrayValue(paperboard.dataSources).forEach(function (binding) {
 			var rawSource = binding.source || binding.value || binding.dataPath || "";
+			var containingIteration = null;
+			arrayValue(paperboard.blocks).forEach(function (block) {
+				if ((block.type === "ForEach" || block.type === "each")
+					&& String(binding.path || "").indexOf(String(block.path || "") + ".") === 0
+					&& (!containingIteration || String(block.path || "").length > String(containingIteration.path || "").length)) {
+					containingIteration = block;
+				}
+			});
 			if ((binding.type === "ForEach" || binding.type === "each") && rawSource && rawSource.mode === "literal" &&
 				Object.prototype.toString.call(rawSource.value) === "[object Array]" && rawSource.value.length === 0) {
 				var arraySuggestion = null;
+				var semanticId = String(binding.id || "").toLowerCase().replace(/(items|list|rows)$/g, "");
 				frontend.bindingSuggestions.some(function (suggestion) {
-					if (suggestion.operation === "view" && arrayValue(suggestion.arrayPaths).length > 0) {
+					var suggestionId = String(suggestion.actionId || "").toLowerCase();
+					if (arrayValue(suggestion.arrayPaths).length > 0 && semanticId &&
+						(semanticId === suggestionId || semanticId.indexOf(suggestionId) !== -1)) {
 						arraySuggestion = suggestion;
 						return true;
 					}
 					return false;
 				});
+				if (!arraySuggestion) {
+					frontend.bindingSuggestions.some(function (suggestion) {
+						if (suggestion.operation === "view" && arrayValue(suggestion.arrayPaths).length > 0) {
+							arraySuggestion = suggestion;
+							return true;
+						}
+						return false;
+					});
+				}
 				var iteratorBinding = arraySuggestion
 					? sourceBinding(arraySuggestion.source, arraySuggestion.arrayPaths[0])
 					: null;
@@ -796,7 +861,8 @@ const _meta = {
 					code: "FRONTEND_ITERATOR_EMPTY_SOURCE",
 					path: binding.path,
 					message: iteratorBinding
-						? "ForEach still uses an empty placeholder. Bind it to the schema-backed FullSync view result."
+						? "ForEach still uses an empty placeholder. Bind it to the matched " +
+							(arraySuggestion.source && arraySuggestion.source.category === "action" ? "client list state." : "schema-backed FullSync view result.")
 						: "ForEach still uses an empty placeholder and cannot render application data.",
 					suggestedBinding: iteratorBinding
 				};
@@ -828,6 +894,29 @@ const _meta = {
 			}
 			if (validBinding(rawSource)) {
 				var structuredSource = rawSource.source || {};
+				if (rawSource.mode === "literal" && containingIteration && requiresExplicitSource(binding.type)
+					&& validBinding(containingIteration.source)) {
+					var semanticCandidate = semanticIterationCandidate(
+						pickerSource(binding.path, containingIteration.id), binding.type, binding.id || binding.path);
+					if (semanticCandidate) {
+						frontend.bindingWarnings.push({
+							code: "FRONTEND_ITERATION_LITERAL_PLACEHOLDER",
+							path: binding.path,
+							type: binding.type,
+							iteratorPath: containingIteration.path,
+							message: String(binding.type) + " inside a schema-backed iterator still uses a literal even though its id matches field " + String(semanticCandidate.path || "") + ". Apply the picker mutation or rename the block if the literal is intentional.",
+							suggestedBinding: semanticCandidate.binding,
+							fix: {
+								tool: "frontend-svelte-mutate",
+								arguments: {
+									project: args.project,
+									sourceFile: binding.sourceFile,
+									mutation: semanticCandidate.mutation
+								}
+							}
+						});
+					}
+				}
 				if (rawSource.mode === "source" && structuredSource.category === "iteration" &&
 					arrayValue(rawSource.path).length === 0 && (String(binding.type) === "Text" || String(binding.type) === "Image")) {
 					var iterationSource = pickerSource(binding.path, structuredSource.scopeId);
@@ -917,14 +1006,7 @@ const _meta = {
 			}
 			var source = String(rawSource || "");
 			if (!source) {
-				var boundIteration = null;
-				arrayValue(paperboard.blocks).forEach(function (block) {
-					if ((block.type === "ForEach" || block.type === "each")
-						&& String(binding.path || "").indexOf(String(block.path || "") + ".") === 0
-						&& (!boundIteration || String(block.path || "").length > String(boundIteration.path || "").length)) {
-						boundIteration = block;
-					}
-				});
+				var boundIteration = containingIteration;
 				if ((binding.type === "ForEach" || binding.type === "each")) {
 					var suggestedIterator = iteratorSuggestion();
 					var suggestedArrayPath = suggestedIterator && suggestedIterator.arrayPaths[0];
@@ -965,7 +1047,9 @@ const _meta = {
 								project: args.project,
 								detail: "inspect",
 								focusPath: binding.path,
-								maxDepth: 1
+								property: "source",
+								sourceId: String(boundIteration.id || ""),
+								maxDepth: 0
 							}
 						}
 					};
@@ -1300,10 +1384,10 @@ const _meta = {
 				if (includeFrontend && frontend.routesPath) {
 					addRecommendedCall(recommendedCalls, "frontend-svelte-tree", {
 						project: args.project || "",
-						detail: "inspect",
+						detail: "compact",
 						focusPath: frontend.routesPath,
-						maxDepth: 8
-					}, "Inspect the paperboard tree with visible props, actions and bindings.");
+						maxDepth: 2
+					}, "Inspect the compact paperboard structure. Use a property- and source-targeted inspect only for one unresolved binding.");
 				}
 				if (includeFrontend && frontend.structurePath) {
 					addRecommendedCall(recommendedCalls, "frontend-svelte-palette", {

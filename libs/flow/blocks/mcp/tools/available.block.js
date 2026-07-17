@@ -381,7 +381,7 @@ const _meta = {
 		} else if (name === "authoring-mutate") {
 			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
 		} else if (name === "frontend-svelte-tree") {
-			description = "Svelte frontend authoring tree. Use detail:'inspect' plus focusPath/rootPath to inspect one route, page, component or slot; paths come from this response.";
+			description = "Svelte frontend authoring tree. Use compact detail for structure. For one picker use detail:'inspect', an exact focusPath, maxDepth:0, property:'source' (or another exact bindable property) and sourceId when known; untargeted inspect only summarizes candidate counts.";
 		} else if (name === "frontend-svelte-palette") {
 			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {

@@ -910,7 +910,9 @@ var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 	engineSource: frontendEngineSource,
 	detail: "inspect",
 	focusPath: appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings[0].path,
-	maxDepth: 1
+	property: "source",
+	sourceId: "readTarget",
+	maxDepth: 0
 });
 var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.source;
 assertTrue(inspectedBinding && inspectedBinding.sources.some(function (source) {
@@ -930,6 +932,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"      <Children>",
 	"        <Image id=\"missingImage\" alt=\"Missing source\" />",
 	"        <Text id=\"missingTitle\" text=\"Placeholder\" />",
+	"        <Button id=\"missingButton\" label=\"Open item\" />",
 	"      </Children>",
 	"      <Else />",
 	"    </ForEach>",
@@ -945,11 +948,11 @@ var appProgressMissingBindings = callTool(13961, "flow-app-progress", {
 });
 assertTrue(appProgressMissingBindings.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
 	return warning.code === "FRONTEND_BINDING_MISSING";
-}).length === 2 &&
+}).length === 3 &&
 	appProgressMissingBindings.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === false;
 	}),
-	"MCP flow-app-progress should require explicit Image/Text bindings inside a backend-bound iterator: " +
+	"MCP flow-app-progress should require explicit Image/Text/Button bindings inside a backend-bound iterator: " +
 		JSON.stringify(appProgressMissingBindings.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
@@ -1003,6 +1006,30 @@ var appProgressAfterBindingPlan = callTool(139613, "flow-app-progress", {
 assertTrue(appProgressAfterBindingPlan.result.result.structuredContent.frontend.bindingWarnings.length === 0,
 	"MCP composed binding plan should resolve all unambiguous iterator bindings: " +
 		JSON.stringify(appProgressAfterBindingPlan.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <OnMount id=\"start\"><Actions><UpdateList id=\"clearCrumbs\" target=\"breadcrumb\" operation=\"clear\" value={{\"mode\":\"literal\",\"value\":null}} /></Actions></OnMount>",
+	"    <ForEach id=\"breadcrumbItems\" source={{\"mode\":\"literal\",\"value\":[]}}><Each><Text id=\"crumbLabel\" text=\"Crumb\" /></Each></ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressLocalList = callTool(139614, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var localListWarning = appProgressLocalList.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_ITERATOR_EMPTY_SOURCE";
+})[0];
+assertTrue(localListWarning && localListWarning.suggestedBinding &&
+	localListWarning.suggestedBinding.source.category === "action" &&
+	localListWarning.suggestedBinding.source.actionId === "breadcrumb" &&
+	localListWarning.fix && localListWarning.fix.arguments.mutation.value.path.length === 0,
+	"MCP flow-app-progress should prefer semantically matched UpdateList state over an unrelated backend array: " +
+		JSON.stringify(appProgressLocalList.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
@@ -1091,6 +1118,24 @@ assertTrue(wholeIterationWarning && wholeIterationWarning.fix &&
 	wholeIterationWarning.fix.arguments.mutation.value.path[1].name === "name",
 	"MCP flow-app-progress should replace whole iterator object bindings with an exact schema-backed scalar mutation: " +
 		JSON.stringify(appProgressWholeIteration.result.result.structuredContent.frontend));
+var wholeIterationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile,
+	wholeIterationSource.replace('source={{"mode":"source","source":{"category":"iteration","scopeId":"categories","value":"item"},"path":[]}}',
+		'source={{"mode":"literal","value":"Category"}}'), "UTF-8");
+var appProgressLiteralIteration = callTool(13964, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var literalIterationWarning = appProgressLiteralIteration.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_ITERATION_LITERAL_PLACEHOLDER";
+})[0];
+assertTrue(literalIterationWarning && literalIterationWarning.fix &&
+	literalIterationWarning.fix.arguments.mutation.value.path[0].name === "doc" &&
+	literalIterationWarning.fix.arguments.mutation.value.path[1].name === "name",
+	"MCP flow-app-progress should replace semantically matched literals inside schema-backed iterators: " +
+		JSON.stringify(appProgressLiteralIteration.result.result.structuredContent.frontend));
 var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	focusPath: "frontends.svelte.catalog.target.project.uiBlocks",

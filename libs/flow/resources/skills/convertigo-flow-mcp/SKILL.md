@@ -232,9 +232,15 @@ schema-backed candidate.
    `acceptedProperties`; do not guess a synonym.
    Use `frontend-svelte-code-patch({ project, revision, codepatch })` for small
    later refinements. Re-read after a stale-revision error.
-3. Use `frontend-svelte-tree({ project, detail:"inspect", focusPath, maxDepth:8 })`
-   and `frontend-svelte-palette({ project, focusPath })` only to discover an
-   unknown block/slot/property or to obtain a picker-backed binding. Execute
+3. Use `frontend-svelte-tree({ project, detail:"compact", focusPath,
+   maxDepth:2 })` and `frontend-svelte-palette({ project, focusPath })` only to
+   discover an unknown block or slot. To obtain one picker-backed binding, use
+   `frontend-svelte-tree({ project, detail:"inspect", focusPath,
+   property:"source", sourceId, maxDepth:0 })`, substituting the exact bindable
+   property name when needed and passing the action/FullSync/iterator id when
+   known. Never request deep `inspect` trees and never repeat an
+   unchanged tree call; inspect without `property` deliberately returns only
+   candidate counts. Execute
    `items[].apply` and binding `mutation` payloads unchanged through
    `frontend-svelte-mutate`; never invent component JSON or binding paths.
    For new route/component source files, use the palette creation payload once,
@@ -409,6 +415,13 @@ Compiler rules:
   `var cities = list.map({ items: topUsers, select: { name: current.name,
   city: current.address.city, company: current.company.name } })`. Do not
   hard-code `topUsers[0]`, `topUsers[1]`, etc. for dynamic lists.
+- Keep field normalization in that structured `select` whenever standard
+  expressions or one small standard block can express it. Do not create and
+  call a project FlowScript block once per item merely to rename fields,
+  coerce scalar values, or assemble an object. On large fixtures this expands
+  a linear projection into many nested Flow nodes and can exceed the request
+  timeout. A per-item project block is justified only by genuinely reusable
+  multi-step behavior or distinct I/O.
 - Block calls must use the canonical object form: `block.name({ key: value })`.
   Diagnostics for invalid signatures list accepted keys as `key`, optional
   `key?`, or optional with default `key??default`. Do not rely on positional
@@ -573,7 +586,7 @@ Minimal maintenance recipe for a fresh context:
   compatible block exists. The mock keeps the parent Flow executable, but it is
   unfinished work until `mock:true` and the TODO are removed by a real
   FlowScript implementation. Call `flow-block-mock-list` before reporting done.
-- Reusable per-item behavior belongs in a small FlowScript block. For example,
+- Genuinely reusable multi-step per-item behavior belongs in a small FlowScript block. For example,
   a parent Flow maps over `local.countries`, while a
   `currency.countryRate({ country: current, rates: local.rates })` block handles
   one item. Do not duplicate the body of that per-item operation in the parent
