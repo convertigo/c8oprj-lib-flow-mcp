@@ -74,6 +74,12 @@ Use `Status.actionId` for observable lifecycle progress, `UpdateList` for
 breadcrumb-like client state, and `UpdateNumber` for bounded quantities. Bind
 dynamic Button labels and formatted Text values through picker-provided
 sources; do not replace these blocks with hand-written Svelte expressions.
+For media shipped as Convertigo project resources, use portable paths beginning
+with `resources/`, for example `resources/catalog/sync.gif`; never embed the
+project name in `/convertigo/projects/<project>/...`. Set `Image.fallbackSrc`
+when a schema-backed dynamic URL may refer to an unavailable remote or legacy
+asset. Browser acceptance must check `naturalWidth > 0` for visible images;
+presence of an `img` element alone does not prove the asset loaded.
 
 ## MCP Server
 
