@@ -211,10 +211,12 @@ For FlowEngine Svelte frontend authoring, read the MCP resource
 work, read `flow://guide/fullstack-paperboard` before coding. Use the
 frontend-specific tools instead of raw files or generated Svelte output:
 
-For backend + frontend work, call `flow-app-progress({ project })` after the
-first paperboard and after each major refinement. Use its `progress.percent`,
-remaining mocks, `nextActions` and `recommendedCalls` to avoid broad
-rediscovery and to keep the user out of an invisible tunnel.
+For backend + frontend work, call `flow-app-progress({ project })` once after
+the first complete paperboard. Apply its composed binding plan and all
+unambiguous fixes as one refinement pass, then call it once more for final
+acceptance. Do not rerun it between individual binding mutations or cosmetic
+edits. Use its `progress.percent`, remaining mocks, `nextActions` and
+`recommendedCalls` to avoid broad rediscovery.
 Use `frontend.bindingSuggestions[].bindings` and picker candidates to wire
 `CallSequence` results. Pass the returned structured `binding` or `mutation`
 unchanged; do not translate it into `items`, `item.title` or another string
@@ -251,9 +253,11 @@ schema-backed candidate.
    `frontend-svelte-mutate`; never invent component JSON or binding paths.
    For new route/component source files, use the palette creation payload once,
    then continue with the source tools.
-4. Call `flow-app-progress({ project })` after each complete pass. Resolve its
-   structural, duplicate-id and schema-backed binding diagnostics before the
-   next pass. Review `backend.debt.unusedProjectBlocks` and
+4. Call `flow-app-progress({ project })` after the initial complete paperboard
+   and at final acceptance. Between those two calls, apply all returned
+   composed binding calls and directly executable fixes in one ordered pass.
+   Make an extra progress call only when a structural ambiguity prevents that
+   pass from completing. Review `backend.debt.unusedProjectBlocks` and
    `backend.debt.unusedFrontendOutputs`; remove accidental leftovers before
    completion, while keeping intentional public API outputs when the user
    contract requires them. The parser and MCP correct syntax and canonical structure; the
