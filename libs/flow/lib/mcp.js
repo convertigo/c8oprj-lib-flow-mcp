@@ -2241,8 +2241,18 @@
 		}
 		var hasDefinition = args.definition !== undefined && args.definition !== null;
 		if (!hasDefinition && (args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {
-			var flow = ctx.flowGet(args.name, args);
-			args.flowSource = flow.source;
+			var status = ctx.flowCodeStatus(args);
+			if (status && status.workingCopy === true) {
+				var draft = ctx.flowCodeGet(args);
+				var validation = ctx.flowSourceValidate(Object.assign({}, args, {
+					name: args.name,
+					code: draft.code
+				}));
+				args.flowSource = validation.source;
+			} else {
+				var flow = ctx.flowGet(args.name, args);
+				args.flowSource = flow.source;
+			}
 			if (!args.flowName) {
 				args.flowName = args.name;
 			}

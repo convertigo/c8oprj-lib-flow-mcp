@@ -1397,6 +1397,31 @@ assertTrue(codeRun.result.result.structuredContent.result.target === "ok" &&
 	codeRun.result.result.structuredContent.result.first === "a",
 	"MCP Flow code-run did not execute the working copy");
 
+var draftNodeSchemaSet = callTool(51, "code-set", {
+	projectDir: targetProjectDir,
+	name: "DraftNodeSchemaSmoke",
+	code: [
+		"function DraftNodeSchemaSmoke({ result }) {",
+		"  var sorted = list.sort({ items: [\"b\", \"a\"], by: current, direction: \"asc\" })",
+		"  result.sorted = sorted",
+		"  return result",
+		"}",
+		""
+	].join("\n")
+});
+assertTrue(draftNodeSchemaSet.result.result.structuredContent.ok === true,
+	"MCP Flow code-set did not create the node-schema working copy");
+var draftNodeSchema = callTool(52, "flow-node-output-schema", {
+	projectDir: targetProjectDir,
+	qname: "DraftNodeSchemaSmoke",
+	nodePointer: "/nodes/0",
+	detail: "full"
+});
+assertTrue(draftNodeSchema.result.result.structuredContent.schema.type === "array" &&
+	draftNodeSchema.result.result.structuredContent.target.nodeId === "sorted" &&
+	draftNodeSchema.result.result.structuredContent.target.block === "list.sort",
+	"MCP flow-node-output-schema did not inspect an unpromoted FlowScript working copy");
+
 var codePromote = callTool(6, "code-promote", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
