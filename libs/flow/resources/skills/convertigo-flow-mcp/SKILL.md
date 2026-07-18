@@ -116,9 +116,12 @@ Prefer the compact code path:
 2. Learn only the syntax from small real samples, then start coding. In a fresh
    context, especially with a smaller model, read the MCP resource
    `flow://guide/samples` with `resources/read`, then inspect the exact samples
-   named there with `code-get`. Use them to learn FlowScript shape, not to find
-   or copy a near-identical application Flow. Never pass `flow://...` resource
-   URIs to `code-get`.
+   needed for the requested primitives with `code-get`. Inspect at most two
+   relevant samples before the first draft; do not mechanically open every
+   sample named by the guide. Let compiler diagnostics request any additional
+   example. Use samples to learn FlowScript shape, not to find or copy a
+   near-identical application Flow. Never pass `flow://...` resource URIs to
+   `code-get`.
 3. If the target project is missing from Flow MCP or does not expose
    `FlowEngine`, call `flow-project-bootstrap({ project })` first; call
    `flow-project-bootstrap({ project, ui:true })` for backend + Svelte frontend
@@ -160,7 +163,9 @@ Prefer the compact code path:
    `flow-resource-get`, then update it with `flow-resource-patch` and
    `baseHash` before writing the Flow. If the MCP refuses that path, report the
    MCP feature gap instead of hard-coding service URLs or repeated domain data
-   in FlowScript or reusable blocks.
+   in FlowScript or reusable blocks. For a small configuration file, prefer
+   sending its complete updated source in `code`; use `patch` only with a real
+   unified diff containing file headers and numbered `@@ -a,b +c,d @@` hunks.
    When a task needs many similar rows or external calls, do not unroll them.
    Repeated data belongs in project-level `config.*` or a small data block, and
    the Flow should iterate with `list.map`. A fresh agent should prefer a shape
