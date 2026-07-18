@@ -181,7 +181,8 @@ const _meta = {
 					frontendSourceDrafts: drafts,
 					detail: "inspect",
 					maxDepth: 64,
-					includeDefinition: true
+					includeDefinition: true,
+					includeBindings: false
 				});
 				var treeError = projectedError(tree);
 				if (!tree || tree.ok !== true || treeError) {
