@@ -6,6 +6,7 @@
 	var Files = Packages.java.nio.file.Files;
 	var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
 	var System = Packages.java.lang.System;
+	var Base64 = Packages.java.util.Base64;
 
 	function jsonRpcResult(id, result) {
 		return {
@@ -23,6 +24,54 @@
 				code: code,
 				message: String(message || "MCP Flow error"),
 				data: data || null
+			}
+		};
+	}
+
+	function phaseBudget(args, key) {
+		args = args || {};
+		var startedAt = Number(System.currentTimeMillis());
+		var timeoutMs = argInt(args.timeoutMs, 3000, 50, 5000);
+		var deadline = startedAt + timeoutMs;
+		var prefix = "mp1.";
+		var state = { phase: 0 };
+		var cursor = String(args.cursor || "");
+		if (cursor.indexOf(prefix) === 0) {
+			try {
+				var decoded = String(new Packages.java.lang.String(
+					Base64.getUrlDecoder().decode(cursor.substring(prefix.length)), "UTF-8"));
+				var payload = JSON.parse(decoded);
+				if (!payload || payload.v !== 1 || String(payload.key || "") !== String(key || "")) {
+					throw new Error("This progress cursor belongs to another project or diagnostic target.");
+				}
+				state = payload.state || state;
+			} catch (e) {
+				throw new Error("Invalid flow-app-progress cursor: " + String(e.message || e));
+			}
+		}
+		function encode(nextState) {
+			var text = JSON.stringify({ v: 1, key: String(key || ""), state: nextState || {} });
+			return prefix + String(Base64.getUrlEncoder().withoutPadding().encodeToString(
+				new Packages.java.lang.String(text).getBytes("UTF-8")));
+		}
+		return {
+			phase: Math.max(0, Number(state.phase || 0)),
+			expired: function () { return Number(System.currentTimeMillis()) >= deadline; },
+			partial: function (value, nextPhase, phaseName) {
+				value.partial = true;
+				value.complete = false;
+				value.progressPhase = phaseName;
+				value.nextCursor = encode({ phase: nextPhase });
+				value.warnings = (value.warnings || []).concat([{
+					code: "PARTIAL_RESULT_TIME_BUDGET",
+					message: "Progress inspection stopped after the " + phaseName + " phase. Continue with nextCursor."
+				}]);
+				value.responseBudget = {
+					elapsedMs: Math.max(0, Number(System.currentTimeMillis()) - startedAt),
+					itemCount: 1,
+					stopReason: "time"
+				};
+				return value;
 			}
 		};
 	}
@@ -1575,7 +1624,9 @@
 		var name = toolName(request || {});
 		var responseBudgetPolicies = {
 			"flow-catalog": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
-			"flow-resource-search": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 }
+			"flow-resource-search": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
+			"flow-search": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
+			"flow-app-progress": { timeoutMs: 3000, maxResponseKB: 128, minItems: 1 }
 		};
 		var responseBudgetPolicy = responseBudgetPolicies[name];
 		if (responseBudgetPolicy) {
@@ -3200,6 +3251,7 @@
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
+		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,
 		registerFlowDbo: registerFlowDbo,

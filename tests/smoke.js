@@ -61,6 +61,16 @@ assertTrue(fullSyncViewWarnings.length === 1 &&
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
 var mcpLib = eval(mcpLibSource);
+var isolatedPhaseBudget = mcpLib.phaseBudget({ timeoutMs: 50 }, "smoke-progress");
+Packages.java.lang.Thread.sleep(60);
+assertTrue(isolatedPhaseBudget.expired() === true,
+	"MCP phase budget did not observe its response-generation deadline");
+var isolatedPartialProgress = isolatedPhaseBudget.partial({ ok: true }, 1, "backend");
+var resumedPhaseBudget = mcpLib.phaseBudget({ cursor: isolatedPartialProgress.nextCursor }, "smoke-progress");
+assertTrue(isolatedPartialProgress.partial === true &&
+	isolatedPartialProgress.warnings[0].code === "PARTIAL_RESULT_TIME_BUDGET" &&
+	resumedPhaseBudget.phase === 1,
+	"MCP phase budget did not produce a resumable progress checkpoint");
 var normalizedProjectYaml = mcpLib._normalizeConvertigoYamlObjectHeaders([
 	"↓Smoke [core.Project]:",
 	"  ↓project [references.ProjectSchemaReference]:",
@@ -637,6 +647,8 @@ var appProgressEmpty = callTool(1391, "flow-app-progress", {
 	projectDir: targetProjectDir
 });
 assertTrue(appProgressEmpty.result.result.structuredContent.ok === true &&
+	appProgressEmpty.result.result.structuredContent.complete === true &&
+	appProgressEmpty.result.result.structuredContent.partial === false &&
 	appProgressEmpty.result.result.structuredContent.progress.total >= 5 &&
 	appProgressEmpty.result.result.structuredContent.nextActions.length > 0 &&
 	appProgressEmpty.result.result.structuredContent.recommendedCalls.some(function (call) {

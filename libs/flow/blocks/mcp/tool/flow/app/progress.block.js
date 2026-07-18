@@ -1285,6 +1285,43 @@ const _meta = {
 				}
 				var includeFrontend = boolValue(args.includeFrontend, boolValue(prop(node, "includeFrontend"), true));
 				var wantedQName = String(args.qname || args.name || "").trim();
+				var progressBudget = mcp.phaseBudget(args, [
+					args.project || args.projectDir,
+					wantedQName,
+					includeFrontend ? "frontend" : "backend"
+				].join("|"));
+				if (progressBudget.phase > 0) {
+					var resumedFrontend = includeFrontend ? frontendSummary(ctx, args) : { checked: false };
+					if (includeFrontend && progressBudget.phase === 1 && progressBudget.expired()) {
+						response = mcp.toolResponse(request, progressBudget.partial({
+							ok: true,
+							project: args.project || "",
+							qname: wantedQName,
+							frontend: resumedFrontend,
+							next: "Continue with nextCursor for schema-backed frontend binding diagnostics."
+						}, 2, "frontend-structure"), ctx);
+						ctx.write(out, response);
+						return response;
+					}
+					if (includeFrontend) {
+						resumedFrontend = enrichFrontendBindings(ctx, args, resumedFrontend);
+					}
+					response = mcp.toolResponse(request, {
+						ok: true,
+						project: args.project || "",
+						qname: wantedQName,
+						complete: false,
+						partial: false,
+						progressPhase: "frontend",
+						frontend: resumedFrontend,
+						nextActions: includeFrontend ? arrayValue(resumedFrontend.bindingWarnings).map(function (warning) {
+							return warning.message || warning.code;
+						}) : [],
+						next: "This continuation covers the frontend phase only. Apply actionable fixes, then rerun flow-app-progress without cursor for a complete fresh assessment."
+					}, ctx);
+					ctx.write(out, response);
+					return response;
+				}
 				var flowList = ctx.flowList({ projectDir: args.projectDir }) || {};
 				var flows = arrayValue(flowList.flows || flowList.items || flowList);
 				var compact = compactFlows(flows);
@@ -1312,6 +1349,22 @@ const _meta = {
 				mocks.sort(function (a, b) {
 					return String(a.block).localeCompare(String(b.block));
 				});
+				if (includeFrontend && progressBudget.expired()) {
+					response = mcp.toolResponse(request, progressBudget.partial({
+						ok: true,
+						project: args.project || "",
+						qname: wantedQName,
+						backend: {
+							flowCount: compact.length,
+							appFlowCount: appFlows.length,
+							flows: compact.slice(0, 20)
+						},
+						mocks: { count: mocks.length, items: mocks },
+						next: "Continue with nextCursor for the frontend structure and binding phases."
+					}, 1, "backend"), ctx);
+					ctx.write(out, response);
+					return response;
+				}
 				var frontend = includeFrontend ? enrichFrontendBindings(ctx, args, frontendSummary(ctx, args)) : { checked: false };
 				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
 				var debt = {
@@ -1404,6 +1457,9 @@ const _meta = {
 				}
 				response = mcp.toolResponse(request, {
 					ok: true,
+					complete: true,
+					partial: false,
+					progressPhase: "complete",
 					project: args.project || "",
 					qname: wantedQName,
 					progress: {
