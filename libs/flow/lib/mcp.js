@@ -1573,6 +1573,20 @@
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
+		var responseBudgetPolicies = {
+			"flow-catalog": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
+			"flow-resource-search": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 }
+		};
+		var responseBudgetPolicy = responseBudgetPolicies[name];
+		if (responseBudgetPolicy) {
+			args.timeoutMs = argInt(args.timeoutMs, responseBudgetPolicy.timeoutMs, 50, 5000);
+			args.maxResponseKB = argInt(args.maxResponseKB, responseBudgetPolicy.maxResponseKB, 8, 256);
+			args.minItems = argInt(args.minItems, responseBudgetPolicy.minItems, 1, 10);
+			if (args.answerBefore !== undefined && args.answerBefore !== null && String(args.answerBefore) !== "") {
+				args.answerBefore = Math.min(Number(args.answerBefore) || 0,
+					Number(Packages.java.lang.System.currentTimeMillis()) + 5000);
+			}
+		}
 		var hasExplicitProject = args.project || args.projectDir;
 		if (args.project && (String(args.project).indexOf("/") !== -1 || String(args.project).indexOf("\\") !== -1)) {
 			throw new Error(name + " expects project:\"<Convertigo project name>\". Use projectDir only for standalone tests with a filesystem path.");

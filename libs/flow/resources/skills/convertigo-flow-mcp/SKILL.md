@@ -684,6 +684,11 @@ return { out: { temperature: response.body.current.temperature_2m, unit: "C" } }
 - Use `flow-resource-search/get` only for non-FlowScript resource files,
   editors, guides, or library assets. Do not use it to find executable Flows,
   blocks, or samples; use `code-get`, `code-rg`, `flow-search`, or diagnostics.
+- Expensive `flow-catalog` and `flow-resource-search` calls are budgeted
+  automatically; do not send timeout or response-size tuning parameters. When
+  `partial:true`, inspect the first results and continue with the opaque
+  `nextCursor` only if needed. A partial result cannot prove absence. The budget
+  interrupts compatible result loops, not project/runtime loading before them.
 - Do not use `code-get` to learn standard blocks such as
   `http.get`, `http.request`, `requestable.call`, `list.filter`, `list.sort`,
   `list.take`, `list.map`, `json.select`, `set`, or `return`; they are already

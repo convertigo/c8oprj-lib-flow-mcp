@@ -129,6 +129,14 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-search";
 }), "MCP Flow tools/list did not expose flow-search");
+var budgetedTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "flow-resource-search";
+})[0];
+assertTrue(budgetedTool && budgetedTool.inputSchema.properties.answerBefore === undefined &&
+	budgetedTool.inputSchema.properties.timeoutMs === undefined &&
+	budgetedTool.inputSchema.properties.maxResponseKB === undefined &&
+	budgetedTool.inputSchema.properties.minItems === undefined,
+	"MCP tools/list exposed internal response budget controls to LLM clients");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "code-get";
 }) && list.result.result.tools.some(function (tool) {

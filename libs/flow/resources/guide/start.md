@@ -129,6 +129,8 @@ When a live `project` is provided, `flow-set` and `flow-edit` register/save the 
 
 Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls. Discovery tools are paginated by default; keep using `limit` and `cursor` instead of asking for unbounded catalog/tree data.
 
+Potentially expensive discovery is budgeted automatically. `flow-catalog` and `flow-resource-search` stop cooperative result loops after a useful first response or before an abusive response size, then return `partial:true`, a `PARTIAL_RESULT_*` warning and an opaque `nextCursor`. Continue with that cursor only when the first results are insufficient. Never treat a partial result as proof that no more matches exist. The budget starts with the compatible result loop; it does not preempt project loading or other Convertigo work before that loop.
+
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`, `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow. If the prompt gives `project` and `qname`, trust them; do not inspect workspace YAML/XML to rediscover them. Use MCP tool results as the source of truth. Do not call `flow-test` after saving when `code-run` already proved the result.
 
 Mutation tools and `flow-block-get` return compact summaries by default. Call `flow-tree` or `flow-get` for focused inspection; pass `detail:"full"` only when debugging the tool response itself or editing block implementation source.
