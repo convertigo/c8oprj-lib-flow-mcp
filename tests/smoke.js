@@ -675,7 +675,8 @@ assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
 	bootstrapDryRun.result.id === 13911 &&
 	bootstrapDryRun.result.result.structuredContent.ok === true &&
 	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
-	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke",
+	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke" &&
+	bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
 	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
 var fullSyncScaffoldDryRun = callTool(139111, "flow-fullsync-scaffold", {
 	project: "FlowFullSyncSmoke",

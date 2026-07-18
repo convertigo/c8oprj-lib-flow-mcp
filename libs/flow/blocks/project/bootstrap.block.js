@@ -325,6 +325,7 @@ const _meta = {
 			if (dryRun) {
 				result.wouldImport = shouldImport;
 				result.wouldCustomize = true;
+				result.next = "Review this plan, then call flow-project-bootstrap once with dryRun:false.";
 				ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 				return result;
 			}
@@ -346,6 +347,7 @@ const _meta = {
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());
+			result.next = "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again.";
 			refreshStudio(engine, project);
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
