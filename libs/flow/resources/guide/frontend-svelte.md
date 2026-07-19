@@ -23,7 +23,10 @@ For logic shared with backend FlowScript, also read
 2. Compose the screen or workflow directly in Flow Svelte source using known
    canonical block tags and visible properties. Validate the complete draft
    with `frontend-svelte-code-check({ project, code })`; this catches parser
-   errors and duplicate low-code ids without writing.
+   errors, duplicate low-code ids and noncanonical bindings without writing.
+   This complete check is the first frontend operation after `code-get` for a
+   whole-screen pass. Do not browse tree/palette or issue unit mutations first
+   for blocks already described by the source contract.
 3. Persist a complete pass with `frontend-svelte-code-set({ project, code,
    revision })`. Use `frontend-svelte-code-patch({ project, revision,
    codepatch })` for subsequent compact unified diffs. A stale revision is
@@ -33,6 +36,10 @@ For logic shared with backend FlowScript, also read
    block, slot, property or schema-backed binding is unknown. Execute returned
    picker mutations unchanged through `frontend-svelte-mutate`; do not invent
    binding paths or descriptors.
+   For `FRONTEND_BINDING_INVALID`, apply `suggestedBinding` unchanged when the
+   diagnostic supplies it. Otherwise inspect only the named property and
+   source id. Informal action/context objects and dotted binding strings are
+   migration input, never authoring output.
 5. Call `flow-app-progress({ project })` after each substantial source pass.
    Its `backend.debt` section reports project-local blocks that no Flow calls
    and backend output roots that the current frontend does not consume. Treat

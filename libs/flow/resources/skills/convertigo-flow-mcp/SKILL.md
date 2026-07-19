@@ -159,6 +159,10 @@ Prefer the compact code path:
    allowed service returns a redirect loop, deprecation payload, invalid JSON,
    rate-limit response or an incompatible schema, stop and report that blocker
    instead of masking it with baked data.
+   Preserve each supplied URL byte-for-byte in the authored configuration. A
+   transport or protocol error is not permission to try a remembered legacy
+   endpoint, a related feed or a search result; report the exact failing URL
+   and error instead.
    For new project-level configuration, read `libs/flow/engine.yaml` with
    `flow-resource-get`, then update it with `flow-resource-patch` and
    `baseHash` before writing the Flow. If the MCP refuses that path, report the
@@ -245,11 +249,20 @@ schema-backed candidate.
    `.flow.svelte` model and its `revision`. This is the default starting point
    for substantial frontend work; do not reconstruct an application through
    hundreds of unit tree mutations.
-2. Write the paperboard or complete refinement pass as Flow Svelte source with
+2. The next frontend write for a whole screen must be one complete source pass:
+   write the paperboard or refinement as Flow Svelte source with
    known canonical block tags. Call `frontend-svelte-code-check({ project,
    code })`, then `frontend-svelte-code-set({ project, code, revision })`.
+   Do not call tree, palette or unit mutate between `code-get` and this first
+   `code-check` merely to assemble known blocks. Those tools are for a concrete
+   unknown reported by validation, not an alternate construction loop.
    Treat `FRONTEND_PROPERTY_UNKNOWN` as a catalog mismatch and use its
    `acceptedProperties`; do not guess a synonym.
+   Treat `FRONTEND_BINDING_INVALID` as authoritative. Apply its
+   `suggestedBinding` or executable fix unchanged when present. Otherwise make
+   one focused picker inspection for that exact property and source id. Never
+   author `{ mode:"action", ... }`, `{ mode:"context", ... }`, dotted paths,
+   or any other informal binding shape.
    Portable Flow blocks are authored directly with their palette tag, for
    example `<TextTrim text={...} target="trimmed" />`. Their canonical
    `_meta` provides properties, bindings, outputs and target availability; the
