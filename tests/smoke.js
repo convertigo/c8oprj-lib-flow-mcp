@@ -1054,6 +1054,27 @@ assertTrue(localListWarning && localListWarning.suggestedBinding &&
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <ForEach id=\"catalogItems\" source={{\"mode\":\"source\",\"source\":{\"category\":\"action\",\"actionId\":\"breadcrumb\"},\"path\":[]}}>",
+	"      <Each><Text id=\"itemName\" source={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"catalogItems\",\"value\":\"item\"},\"path\":[{\"kind\":\"property\",\"name\":\"name\"}]}} /></Each>",
+	"      <Else><Text id=\"emptyText\" text=\"No catalog items are available.\" /></Else>",
+	"    </ForEach>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressForEachElse = callTool(1396141, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(!appProgressForEachElse.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
+	return String(warning.path || "").indexOf("emptyText") !== -1;
+}), "MCP flow-app-progress should not bind static ForEach Else content to the unavailable iterator item: " +
+	JSON.stringify(appProgressForEachElse.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <GoBack id=\"invalidBack\" fallback=\"/store\" />",
 	"    <OnMount id=\"initialize\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" />",

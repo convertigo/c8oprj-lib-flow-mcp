@@ -473,6 +473,11 @@ const _meta = {
 		return type === "image" || type === "text" || type === "button" || type === "table" || type === "json";
 	}
 
+	function isForEachElseDescendant(path, iteratorPath) {
+		var relative = String(path || "").substring(String(iteratorPath || "").length);
+		return relative.indexOf(".else_") === 0 || relative.indexOf(".else.") === 0;
+	}
+
 	function visibleDescendantCount(node) {
 		var count = 0;
 		arrayValue(node && node.children).forEach(function (child) {
@@ -857,6 +862,7 @@ const _meta = {
 			arrayValue(paperboard.blocks).forEach(function (block) {
 				if ((block.type === "ForEach" || block.type === "each")
 					&& String(binding.path || "").indexOf(String(block.path || "") + ".") === 0
+					&& !isForEachElseDescendant(binding.path, block.path)
 					&& (!containingIteration || String(block.path || "").length > String(containingIteration.path || "").length)) {
 					containingIteration = block;
 				}
