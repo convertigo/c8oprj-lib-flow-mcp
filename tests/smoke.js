@@ -1218,8 +1218,10 @@ assertTrue(frontendSvelteCreate.result.result.structuredContent.created === true
 var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svelte/model/Smoke/src/routes");
 var frontendRouteSegment = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
+	definition: {
+		localName: "store"
+	},
 	mutation: {
-		localName: "store",
 		value: {
 			__frontendCreateSource: {
 				baseId: "segment",
