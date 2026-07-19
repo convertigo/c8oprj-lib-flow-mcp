@@ -127,11 +127,15 @@ _private/svelte/src/lib/...
 - Use `LinkButton` when a static route link should look like a button. When a
   route transition must happen after `SetValue`, `FullSyncGet`,
   `FullSyncView`, `FullSyncSync` or `CallSequence`, put a palette-provided
-  `Navigate` action after it in the same event. Use `GoBack` for a visible back
-  command and set its fallback route for direct page entry.
+  `Navigate` action after it in the same event. A back control is a visible
+  `Button` containing `Events -> OnClick -> Actions -> GoBack`; `GoBack` itself
+  is not a visual block. Set its fallback route for direct page entry.
 - Use a palette-provided `OnMount` event under page structure for automatic
-  lifecycle actions. Keep initialization, synchronization and the first local
-  query as separate actions so their progress and errors remain observable.
+  lifecycle actions. Initialize shared list/number/value state before long
+  requestable or FullSync actions. Keep initialization, synchronization and the
+  first local query as separate actions so their progress and errors remain
+  observable. Set `once={true}` only when that bootstrap must survive route
+  round trips; it runs again after a full browser reload.
 - Give `Status.actionId` the exact stable id of the action it represents. Set
   action-specific loading/success labels; FullSync replication progress is
   rendered from the same action state.
@@ -194,6 +198,11 @@ or properties. If `frontend-svelte-mutate` cannot apply a tree/property edit,
 report the exact focused node, `sourceMutationPath`, payload and error as a
 tooling gap.
 
+Never use Playwright execution to access `fs`, `process`, `child_process` or to
+edit project/generated files. Browser tooling validates the rendered app only;
+all authoring must remain in Flow source tools. A missing source operation is a
+tooling gap, not permission to escape the model.
+
 For new source-backed pages, Flow UI blocks, Svelte UI blocks or client
 actions, pass the palette item's `insert` payload directly. It contains
 `__frontendCreateSource`; do not write files by hand:
@@ -223,6 +232,27 @@ For moves, use the source node path and a target array path:
   }
 }
 ```
+
+To group existing sibling blocks under one container without a sequence of
+delete/insert calls, use one transactional `wrap` mutation. It preserves each
+block's id and bindings:
+
+```json
+{
+  "mutation": {
+    "op": "wrap",
+    "paths": [
+      "frontAst.slots.structure.children[1]",
+      "frontAst.slots.structure.children[2]"
+    ],
+    "slot": "children",
+    "value": { "id": "catalogSurface", "kind": "card", "tag": "Card" }
+  }
+}
+```
+
+Prefer one `mutations` batch per source file and `wrap` for structural grouping;
+do not decompose an already known transformation into repeated MCP calls.
 
 When unsure, call `frontend-svelte-palette` on the target branch first. Empty
 palettes include diagnostics and fallback hints; follow them instead of

@@ -81,7 +81,10 @@ silent tunnel.
      visible intent;
    - `ForEach`, `If`, `Await` for data-driven structure.
    - `OnMount`, `Navigate` and `GoBack` for explicit lifecycle and route
-     transitions when the workflow cannot be expressed by a static link.
+     transitions when the workflow cannot be expressed by a static link. Put
+     `GoBack` below a visible Button event action chain, and use
+     `OnMount once={true}` only for bootstrap state that must survive a route
+     round trip.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a
    placeholder result before detailed refinement begins.

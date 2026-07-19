@@ -491,7 +491,8 @@ const _meta = {
 			pageCount: 0,
 			blocks: [],
 			actions: [],
-			dataSources: []
+			dataSources: [],
+			structureWarnings: []
 		};
 		walk(tree, function (node) {
 			var kind = String(node.kind || "");
@@ -521,6 +522,7 @@ const _meta = {
 					path: node.path || "",
 					id: definition.id || "",
 					target: definition.target || "",
+					operation: definition.operation || "",
 					type: type,
 					label: visibleLabel(node, definition),
 					requestable: definition.requestable || "",
@@ -553,6 +555,33 @@ const _meta = {
 					context: definition.context || ""
 				}, 100);
 			}
+		});
+		var asyncSeenByChain = {};
+		arrayValue(summary.actions).forEach(function (action) {
+			var path = String(action.path || "");
+			var type = String(action.type || "").toLowerCase();
+			if (path.indexOf(".actions_") === -1) {
+				summary.structureWarnings.push({
+					level: "error",
+					code: "FRONTEND_ACTION_OUTSIDE_ACTIONS",
+					path: path,
+					message: String(action.type || "Action") + " is an action, not a visible block. Place it inside Button > Events > OnClick > Actions or OnMount > Actions."
+				});
+			}
+			var chain = path.split(".actions_")[0];
+			var operation = String(action.operation || "").toLowerCase();
+			var reset = type === "setvalue" ||
+				(type === "updatelist" && (operation === "clear" || operation === "set")) ||
+				(type === "updatenumber" && operation === "set");
+			if (asyncSeenByChain[chain] && reset) {
+				summary.structureWarnings.push({
+					level: "warning",
+					code: "FRONTEND_LATE_STATE_INITIALIZATION",
+					path: path,
+					message: String(action.type || "Action") + " resets client state after asynchronous lifecycle work. Move state initialization before requestable or FullSync actions."
+				});
+			}
+			if (type === "callsequence" || type.indexOf("fullsync") === 0) asyncSeenByChain[chain] = true;
 		});
 		return summary;
 	}
@@ -1177,6 +1206,7 @@ const _meta = {
 			routesPath: "",
 			structurePath: "",
 			actionIds: [],
+			structureWarnings: [],
 			error: ""
 		};
 		try {
@@ -1189,6 +1219,7 @@ const _meta = {
 				maxDepth: 7
 			});
 			summary.readable = tree && tree.ok !== false;
+			summary.structureWarnings = arrayValue(tree && tree.diagnostics);
 			var paperboardTree = tree;
 			var routesPath = firstNodePath(tree, function (node) {
 				return String(node.kind || "") === "frontendRoutes" || String(node.type || "") === "routes";
@@ -1208,11 +1239,21 @@ const _meta = {
 					});
 					if (routeTree && routeTree.ok !== false) {
 						paperboardTree = routeTree;
+						arrayValue(routeTree.diagnostics).forEach(function (diagnostic) {
+							if (!summary.structureWarnings.some(function (known) {
+								return known.code === diagnostic.code && known.path === diagnostic.path && known.sourcePath === diagnostic.sourcePath;
+							})) summary.structureWarnings.push(diagnostic);
+						});
 					}
 				} catch (ignored) {
 				}
 			}
 			summary.paperboard = paperboardSummary(paperboardTree);
+			arrayValue(summary.paperboard.structureWarnings).forEach(function (diagnostic) {
+				if (!summary.structureWarnings.some(function (known) {
+					return known.code === diagnostic.code && known.path === diagnostic.path;
+				})) summary.structureWarnings.push(diagnostic);
+			});
 			summary.structurePath = firstNodePath(paperboardTree, function (node) {
 				return String(node.kind || "") === "frontendStructure" || String(node.type || "") === "structure";
 			});
@@ -1394,6 +1435,9 @@ const _meta = {
 						frontend.bindingWarnings.length === 0,
 						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message +
 							(frontend.bindingWarnings[0].suggestedSource ? " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "") : "");
+					addTask(tasks, "frontendStructure", "Frontend actions and lifecycle state are structurally safe",
+						arrayValue(frontend.structureWarnings).length === 0,
+						arrayValue(frontend.structureWarnings).length ? frontend.structureWarnings[0].message : "");
 					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
 						frontend.actionIds.length > 0,
 						"Inspect frontend-svelte-actions and fix the builder setup if no action is available.");

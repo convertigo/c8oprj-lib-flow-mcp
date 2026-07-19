@@ -267,6 +267,9 @@ schema-backed candidate.
    completion, while keeping intentional public API outputs when the user
    contract requires them. The parser and MCP correct syntax and canonical structure; the
    agent should not compensate with generated Svelte or hidden imperative code.
+   Apply one `mutations` batch per source file. When existing sibling blocks
+   need a new common container, use the transactional `wrap` mutation instead
+   of separate delete, insert and move calls; it preserves ids and bindings.
 5. `frontend-svelte-action({ project, actionId:"generate" })` to update
    generated Svelte source, or `actionId:"dev.sync"` while dev mode is running.
    Use `frontend-svelte-actions` to inspect enabled build/dev actions. It
@@ -292,17 +295,26 @@ an active browser relay and can leave navigation calls pending indefinitely.
 
 Frontend blocks, directives, events and actions must appear in the logical tree:
 `Button -> Events -> On Click -> Actions -> CallSequence`,
-`If -> Then -> Text`, `ForEach -> Each -> ...`. Use known canonical tags
+`If -> Then -> Text`, `ForEach -> Each -> ...`. Action tags are never visible
+blocks and must occur only below an `Actions` slot. In particular, render a
+back command as `Button -> Events -> OnClick -> Actions -> GoBack`; never put
+`GoBack` directly in `Structure`. Use known canonical tags
 directly in Flow Svelte source; obtain unknown pages, UI blocks or client
 actions from one focused palette response. Do not edit `_private/svelte` directly,
 do not hard-code generated component behavior, and do not mutate library blocks
 when the tree says the source is read-only. Use `LinkButton` for a static route
 link that has no preceding action. When navigation must follow a client action,
-insert `Navigate` after that action in the same event. Use `GoBack` for a visible
-back command with a fallback route. Insert `OnMount` in page structure only for
+insert `Navigate` after that action in the same event. Use `GoBack` inside a
+visible Button's action chain and set its fallback route. Insert `OnMount` in page structure only for
 automatic lifecycle work such as initialization, local synchronization or the
 first local query; never hide external I/O in it unless the application contract
-explicitly requires that I/O. Discover any unknown action contract from the
+explicitly requires that I/O. Put `SetValue`, `UpdateList clear/set` and
+`UpdateNumber set` initialization before requestable or FullSync actions in the
+same lifecycle chain, so user interaction cannot be overwritten after an
+asynchronous action completes. Set `OnMount.once={true}` only for bootstrap,
+sync or initial-index chains whose shared client state must survive SvelteKit
+route round trips; a full browser reload starts a new runtime and executes the
+chain again. Discover any unknown action contract from the
 palette before using its canonical tag. Do not
 assume an implicit page
 layout: insert explicit layout/surface blocks from the palette (`PageShell`,

@@ -1054,6 +1054,33 @@ assertTrue(localListWarning && localListWarning.suggestedBinding &&
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <GoBack id=\"invalidBack\" fallback=\"/store\" />",
+	"    <OnMount id=\"initialize\"><Actions>",
+	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" />",
+	"      <UpdateList id=\"clearCrumbs\" target=\"breadcrumb\" operation=\"clear\" value={{\"mode\":\"literal\",\"value\":null}} />",
+	"    </Actions></OnMount>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressStructure = callTool(139615, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var structureWarnings = appProgressStructure.result.result.structuredContent.frontend.structureWarnings || [];
+assertTrue(structureWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_ACTION_OUTSIDE_ACTIONS";
+}) && structureWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_LATE_STATE_INITIALIZATION";
+}) && appProgressStructure.result.result.structuredContent.tasks.some(function (task) {
+	return task.id === "frontendStructure" && task.done === false;
+}), "MCP flow-app-progress should block unsafe action placement and late lifecycle state resets: " +
+	JSON.stringify(appProgressStructure.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" schemaRequestable=\".retailstore.ReadCategories\"><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
