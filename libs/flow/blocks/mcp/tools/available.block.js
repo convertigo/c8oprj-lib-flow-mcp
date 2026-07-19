@@ -405,7 +405,7 @@ const _meta = {
 		} else if (name === "flow-search") {
 			description = "Focused search over one project. Requires project; max 10 results. Do not use as a broad block inventory.";
 		} else if (name === "flow-block-get") {
-			description = "Reads one block signature. Compact by default; use code-get block:\"name\" for source.";
+			description = "Reads one block signature by name (the block alias is also accepted). Compact by default; use code-get block:\"name\" for source.";
 		} else if (name === "flow-block-mock") {
 			description = "Creates a typed project-local mock after UNKNOWN_BLOCK; keeps parent Flow executable while real block is built.";
 		} else if (name === "flow-block-mock-list") {

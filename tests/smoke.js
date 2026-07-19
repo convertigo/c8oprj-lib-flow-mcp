@@ -1771,6 +1771,13 @@ assertTrue(blockGet.result.result.structuredContent.code.indexOf("function smoke
 		blockGet.result.result.structuredContent.format === "flowscript"),
 	"MCP Flow code-get did not read the project-local block");
 
+var blockSignatureByAlias = callTool(131, "flow-block-get", {
+	projectDir: targetProjectDir,
+	block: "smoke.echo"
+});
+assertTrue(blockSignatureByAlias.result.result.structuredContent.name === "smoke.echo",
+	"MCP flow-block-get did not accept the code-tool block alias");
+
 var mockSet = callTool(132, "flow-block-mock", {
 	projectDir: targetProjectDir,
 	name: "smoke.todoWeather",

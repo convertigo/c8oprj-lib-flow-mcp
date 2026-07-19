@@ -1779,6 +1779,9 @@
 				}
 			}
 		} else if (name === "flow-block-get") {
+			if (!args.name && args.block) {
+				args.name = args.block;
+			}
 			var wantsSource = argBool(args.includeSource || args.includeCode || args.includeImplementation || args.includeHooks || args.allowSource, false);
 			if (!wantsSource && (String(args.detail || args.mode || "").toLowerCase() === "full" ||
 					String(args.detail || args.mode || "").toLowerCase() === "debug")) {
