@@ -1353,6 +1353,24 @@ assertTrue(frontendSourceUnknownProperty.result.result.structuredContent.ok === 
 	}).length === 2,
 	"MCP frontend-svelte-code-check should reject unknown catalog properties with accepted alternatives: " +
 		JSON.stringify(frontendSourceUnknownProperty.result.result.structuredContent));
+var frontendSourceUnknownBlock = callTool(13822, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure><OnMount><Actions>",
+		"    <TextTrm id=\"trim\" />",
+		"  </Actions></OnMount></Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendSourceUnknownBlock.result.result.structuredContent.ok === false &&
+	frontendSourceUnknownBlock.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FRONTEND_BLOCK_UNKNOWN" &&
+			diagnostic.candidates[0].tag === "TextTrim" &&
+			diagnostic.create.tool === "flow-block-mock" &&
+			diagnostic.create.arguments.targets[0] === "frontend";
+	}), "MCP frontend-svelte-code-check should suggest a palette block or explicit frontend mock: " +
+		JSON.stringify(frontendSourceUnknownBlock.result.result.structuredContent));
 var frontendPersistedSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"broken\" label=\"Broken\">",
@@ -1828,6 +1846,29 @@ assertTrue(mockStructured.ok === true &&
 assertTrue((mockStructured.warnings || []).some(function (warning) {
 	return warning.code === "FLOW_BLOCK_MOCK_CREATED";
 }), "MCP Flow flow-block-mock did not return an explicit mock warning");
+
+var frontendMockSet = callTool(1321, "flow-block-mock", {
+	projectDir: targetProjectDir,
+	name: "smoke.normalizeLabel",
+	targets: ["frontend"],
+	properties: {
+		value: { kind: "value", type: "string", description: "Value to normalize." }
+	},
+	outputs: { out: { type: "string" } },
+	mockValue: "mock label",
+	overwrite: true
+});
+var frontendMockStructured = frontendMockSet.result.result.structuredContent;
+assertTrue(frontendMockStructured.ok === true &&
+	frontendMockStructured.targets.length === 1 && frontendMockStructured.targets[0] === "frontend" &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.block.js").isFile() &&
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.browser.js").isFile(),
+	"MCP flow-block-mock should create a canonical frontend block and browser implementation: " + JSON.stringify(frontendMockStructured));
+var frontendMockDescriptor = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.block.js"), "UTF-8"));
+assertTrue(frontendMockDescriptor.indexOf('"targets": [\n    "frontend"') !== -1 &&
+	frontendMockDescriptor.indexOf('"file": "normalizeLabel.browser.js"') !== -1,
+	"Frontend mock descriptor should expose the frontend target and adjacent implementation.");
 
 var mockGet = callTool(133, "code-get", {
 	projectDir: targetProjectDir,

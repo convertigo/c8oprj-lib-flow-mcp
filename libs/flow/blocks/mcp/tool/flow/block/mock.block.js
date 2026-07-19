@@ -56,6 +56,16 @@ const _meta = {
       "type": "object",
       "description": "Optional literal value returned by the mock. If omitted, one is generated from outputs.out."
     },
+    "target": {
+      "kind": "text",
+      "type": "string",
+      "description": "Optional execution target: backend, frontend or both. Backend is the compatibility default."
+    },
+    "targets": {
+      "kind": "literal",
+      "type": "array",
+      "description": "Explicit execution targets, for example [\"frontend\"] or [\"backend\",\"frontend\"]."
+    },
     "overwrite": {
       "kind": "literal",
       "type": "boolean",
@@ -248,7 +258,54 @@ const _meta = {
 		].join("\n");
 	}
 
-	function descriptor(name, args, properties, outputs) {
+	function requestedTargets(args) {
+		var source = args.targets !== undefined && args.targets !== null ? args.targets : args.target;
+		var targets = Object.prototype.toString.call(source) === "[object Array]" ? source.slice() : nonEmpty(source) ? [source] : ["backend"];
+		var out = [];
+		targets.forEach(function (target) {
+			target = String(target || "").toLowerCase();
+			if (target === "both" || target === "dual") {
+				if (out.indexOf("backend") === -1) out.push("backend");
+				if (out.indexOf("frontend") === -1) out.push("frontend");
+			} else if ((target === "backend" || target === "frontend") && out.indexOf(target) === -1) {
+				out.push(target);
+			}
+		});
+		if (!out.length) throw new Error("flow-block-mock target must be backend, frontend or both.");
+		return out;
+	}
+
+	function browserFileName(name) {
+		return blockLocalName(name) + ".browser.js";
+	}
+
+	function browserMockCode(value) {
+		return [
+			"function (input) {",
+			"  // TODO: replace this explicit frontend mock with the real browser implementation.",
+			"  return " + JSON.stringify(value, null, 2).split("\n").join("\n  "),
+			"}",
+			""
+		].join("\n");
+	}
+
+	function writeBrowserMock(projectDir, name, value, overwrite) {
+		var File = Packages.java.io.File;
+		var FileUtils = Packages.org.apache.commons.io.FileUtils;
+		var parts = String(name || "").split(".");
+		if (!parts.length || parts.some(function (part) { return !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(part); })) {
+			throw new Error("Frontend mock block names must use dot-separated identifiers.");
+		}
+		var relative = "libs/flow/blocks/" + parts.join("/") + ".browser.js";
+		var root = new File(String(projectDir || "")).getCanonicalFile();
+		var file = new File(root, relative).getCanonicalFile();
+		if (file.exists() && !overwrite) throw new Error("Frontend mock implementation already exists: " + relative);
+		file.getParentFile().mkdirs();
+		FileUtils.writeStringToFile(file, browserMockCode(value), "UTF-8");
+		return relative;
+	}
+
+	function descriptor(name, args, properties, outputs, targets) {
 		var tags = args.tags || [];
 		if (Object.prototype.toString.call(tags) !== "[object Array]") {
 			tags = [String(tags)];
@@ -259,6 +316,9 @@ const _meta = {
 		if (tags.indexOf("todo") === -1) {
 			tags.push("todo");
 		}
+		var implementations = {};
+		if (targets.indexOf("backend") !== -1) implementations.backend = { runtime: "flow" };
+		if (targets.indexOf("frontend") !== -1) implementations.frontend = { runtime: "browser", file: browserFileName(name) };
 		return {
 			version: 1,
 			icon: args.icon || "mdi:puzzle-plus-outline",
@@ -266,6 +326,9 @@ const _meta = {
 			longDescription: args.longDescription || "Generated Flow mock. It keeps high-level FlowScript executable while the real block implementation is still missing.",
 			properties: properties,
 			outputs: outputs,
+			targets: targets,
+			effects: [],
+			implementations: implementations,
 			tags: tags,
 			mock: true,
 			todo: args.todo || "Implement this block with real FlowScript before considering the parent Flow complete.",
@@ -295,15 +358,22 @@ const _meta = {
 				var properties = normalizeProperties(args);
 				var normalizedOutputs = normalizeOutputs(args);
 				var value = mockValue(args, normalizedOutputs.outputs);
+				var targets = requestedTargets(args);
 				var blockResult = ctx.callBlock("block.code.set", {
 					name: name,
 					projectDir: args.projectDir,
 					code: mockCode(name, value),
-					descriptor: descriptor(name, args, properties, normalizedOutputs.outputs),
+					descriptor: descriptor(name, args, properties, normalizedOutputs.outputs, targets),
 					overwrite: bool(args.overwrite)
 				}, { trace: false });
+				if (targets.indexOf("frontend") !== -1) {
+					blockResult.browserFile = writeBrowserMock(args.projectDir, name, value, bool(args.overwrite));
+				}
 				blockResult.mock = true;
-				blockResult.next = "Implement " + name + " with real FlowScript, then remove mock:true/TODO. Parent Flows using this block are not complete while this mock remains.";
+				blockResult.targets = targets;
+				blockResult.next = targets.indexOf("frontend") !== -1
+					? "Implement the browser function for " + name + ", then remove mock:true/TODO. Frontends using this block are not complete while this mock remains."
+					: "Implement " + name + " with real FlowScript, then remove mock:true/TODO. Parent Flows using this block are not complete while this mock remains.";
 				blockResult.warnings = (blockResult.warnings || []).concat([
 					warning("FLOW_BLOCK_MOCK_CREATED",
 						"Created explicit mock Flow block " + name + ".",

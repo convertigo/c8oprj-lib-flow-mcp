@@ -243,6 +243,17 @@ schema-backed candidate.
    code })`, then `frontend-svelte-code-set({ project, code, revision })`.
    Treat `FRONTEND_PROPERTY_UNKNOWN` as a catalog mismatch and use its
    `acceptedProperties`; do not guess a synonym.
+   Portable Flow blocks are authored directly with their palette tag, for
+   example `<TextTrim value={...} target="trimmed" />`. Their canonical
+   `_meta` provides properties, bindings, outputs and target availability; the
+   Svelte compiler lowers each use to a static import and function call. Never
+   write or expose the legacy `RunAxiom` adapter.
+   Treat `FRONTEND_BLOCK_UNKNOWN` like backend `UNKNOWN_BLOCK`: use a suggested
+   palette candidate only when it matches the intent. Otherwise execute the
+   diagnostic's `flow-block-mock` call with `targets:["frontend"]` and typed
+   properties/outputs. The resulting project block becomes a normal direct
+   palette tag. A remaining frontend mock is unfinished work, not a successful
+   implementation.
    Use `frontend-svelte-code-patch({ project, revision, codepatch })` for small
    later refinements. Re-read after a stale-revision error.
 3. Use `frontend-svelte-tree({ project, detail:"compact", focusPath,

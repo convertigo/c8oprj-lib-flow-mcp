@@ -74,6 +74,18 @@ _private/svelte/src/lib/...
 - Treat frontend blocks like backend Flow blocks: they come from the palette,
   have a small editable property facade, and are arranged in the same tree as
   pages, components, events and actions.
+- Pure Flow blocks that declare a browser implementation are inserted directly
+  with their palette tag, for example `<TextTrim value={...}
+  target="trimmed" />`. Their canonical `_meta` defines the same properties and
+  outputs for backend and frontend; the generator imports only the browser
+  functions used by the application. `RunAxiom` is a legacy migration format,
+  not an authoring block.
+- When source validation reports `FRONTEND_BLOCK_UNKNOWN`, inspect its ranked
+  palette candidates. If none expresses the intended operation, execute the
+  returned `flow-block-mock` request with typed properties and outputs. A
+  project-local frontend mock is immediately visible in palette, tree and
+  properties, but remains explicitly unfinished until its browser
+  implementation and `mock:true` marker are replaced.
 - A route/page/component structure should mostly compile to component tags from
   the palette with clear properties, for example
   `<CountryPanel title={...} source={...}>`. Avoid hidden hard-coded behavior in

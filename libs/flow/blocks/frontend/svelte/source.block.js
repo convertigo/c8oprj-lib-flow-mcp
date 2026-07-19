@@ -193,6 +193,13 @@ const _meta = {
 							(treeError.label || treeError.summary || treeError.message) || "Flow Svelte source could not be projected."
 					});
 				} else {
+					(tree.diagnostics || []).forEach(function (item) {
+						var diagnostic = {};
+						Object.keys(item || {}).forEach(function (key) { diagnostic[key] = item[key]; });
+						diagnostic.severity = String(diagnostic.severity || diagnostic.level || "error");
+						delete diagnostic.level;
+						diagnostics.push(diagnostic);
+					});
 					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source));
 				}
 			} catch (error) {
