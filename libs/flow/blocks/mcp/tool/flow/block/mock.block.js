@@ -372,7 +372,7 @@ const _meta = {
 				blockResult.mock = true;
 				blockResult.targets = targets;
 				blockResult.next = targets.indexOf("frontend") !== -1
-					? "Implement the browser function for " + name + ", then remove mock:true/TODO. Frontends using this block are not complete while this mock remains."
+					? "Implement with code-set({block:\"" + name + "\",target:\"frontend\",code:<function>,finalize:true}). Frontends using this block are incomplete while mock:true remains."
 					: "Implement " + name + " with real FlowScript, then remove mock:true/TODO. Parent Flows using this block are not complete while this mock remains.";
 				blockResult.warnings = (blockResult.warnings || []).concat([
 					warning("FLOW_BLOCK_MOCK_CREATED",

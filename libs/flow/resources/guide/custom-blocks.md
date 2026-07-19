@@ -2,6 +2,11 @@
 
 Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.
 
+Read `flow://guide/portable-blocks` before creating a block for both backend and
+frontend. Use `targets`, `effects` and `implementations` in the canonical
+metadata, then manage the browser function with `code-*` and
+`target:"frontend"`; do not hide it in generated Svelte output.
+
 For project-local FlowScript blocks, the canonical source lives under
 `libs/flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
 the visible contract and either one FlowScript function or one Rhino IIFE for

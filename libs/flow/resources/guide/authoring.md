@@ -1,5 +1,9 @@
 # Flow Authoring Cycle
 
+For pure blocks shared by backend FlowScript and Flow Svelte, read
+`flow://guide/portable-blocks`. The block id, properties and outputs stay
+canonical while backend and frontend implementations remain explicit targets.
+
 Create or modify a Flow sidecar with the smallest loop that proves behavior:
 
 - If the user gives a `project`, `qname`, or `block`, that is the target contract. If Flow MCP cannot access it, stop and report the exact blocker instead of falling back to another project or to legacy MCP project discovery.

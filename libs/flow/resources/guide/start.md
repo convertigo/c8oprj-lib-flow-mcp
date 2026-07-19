@@ -2,6 +2,11 @@
 
 Default route for Flow authoring:
 
+When a task shares pure logic between backend FlowScript and Flow Svelte, read
+`flow://guide/portable-blocks`. Portable blocks keep one typed contract and use
+target-specific runtime implementations; do not duplicate their behavior in an
+ad hoc frontend expression.
+
 1. For a simple new Flow, learn syntax from small samples, then write compact FlowScript first. FlowScript is strict: every block call is `block.name({ key: value })` with one object argument. Do not search/copy existing application Flows unless this is maintenance, reuse, or an unclear pattern.
    If the requested `project`, `qname`, or `block` is not accessible through Flow MCP, stop and report that blocker. Do not use legacy MCP project discovery, and do not create the Flow in another project.
 2. In a fresh context, read the MCP resource `flow://guide/samples` with `resources/read`, then call the exact `code-get` examples listed there. Use them only to learn syntax: one block call, one object of named parameters, local variables, and `result.*` output. Do not pass `flow://...` URIs to `code-get`.

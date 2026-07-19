@@ -8,6 +8,10 @@ The goal is to avoid the tunnel effect: produce a running paperboard quickly,
 make unfinished parts visible as mocks or TODO blocks, then refine the app in
 short proof loops.
 
+Read `flow://guide/portable-blocks` when event normalization or another pure
+operation should use the same block contract on both sides. Keep HTTP,
+requestables, FullSync and navigation target-specific.
+
 ## Iterative Delivery Shape
 
 Do not start by perfecting backend parsing, CSS, or generated Svelte source.

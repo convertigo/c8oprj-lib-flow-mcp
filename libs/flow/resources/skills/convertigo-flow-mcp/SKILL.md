@@ -216,6 +216,13 @@ For FlowEngine Svelte frontend authoring, read the MCP resource
 work, read `flow://guide/fullstack-paperboard` before coding. Use the
 frontend-specific tools instead of raw files or generated Svelte output:
 
+When pure logic should be shared across backend and frontend, read
+`flow://guide/portable-blocks`. Author the canonical block id directly on both
+targets. For a project block browser implementation, use
+`code-get/check/set/patch({ project, block, target:"frontend" })`; pass
+`finalize:true` only after replacing a frontend-only mock. Never edit generated
+Svelte or expose the legacy `RunAxiom` adapter.
+
 For backend + frontend work, call `flow-app-progress({ project })` once after
 the first complete paperboard. Apply its composed binding plan and all
 unambiguous fixes as one refinement pass, then call it once more for final
@@ -244,7 +251,7 @@ schema-backed candidate.
    Treat `FRONTEND_PROPERTY_UNKNOWN` as a catalog mismatch and use its
    `acceptedProperties`; do not guess a synonym.
    Portable Flow blocks are authored directly with their palette tag, for
-   example `<TextTrim value={...} target="trimmed" />`. Their canonical
+   example `<TextTrim text={...} target="trimmed" />`. Their canonical
    `_meta` provides properties, bindings, outputs and target availability; the
    Svelte compiler lowers each use to a static import and function call. Never
    write or expose the legacy `RunAxiom` adapter.

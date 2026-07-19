@@ -11,6 +11,8 @@ If the task includes both backend Flow and frontend Svelte work, read
 `flow://guide/fullstack-paperboard` first. This guide remains the reference for
 tree, palette and mutation details, but the full-stack guide defines the
 paperboard-first order, mock debt checks and progress reporting.
+For logic shared with backend FlowScript, also read
+`flow://guide/portable-blocks`.
 
 ## Default Loop
 
@@ -75,7 +77,7 @@ _private/svelte/src/lib/...
   have a small editable property facade, and are arranged in the same tree as
   pages, components, events and actions.
 - Pure Flow blocks that declare a browser implementation are inserted directly
-  with their palette tag, for example `<TextTrim value={...}
+  with their palette tag, for example `<TextTrim text={...}
   target="trimmed" />`. Their canonical `_meta` defines the same properties and
   outputs for backend and frontend; the generator imports only the browser
   functions used by the application. `RunAxiom` is a legacy migration format,

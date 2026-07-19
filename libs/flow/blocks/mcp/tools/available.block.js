@@ -287,24 +287,35 @@ const _meta = {
 				description: "Target Convertigo project name, not a filesystem path."
 			};
 		}
-		var supportsBlockTarget = /^code-(get|set|patch|rg)$/.test(String(toolName || ""));
-			if (/^code-/.test(String(toolName || ""))) {
-				schema.properties.qname = schema.properties.qname || {
-					type: "string",
-					description: "Executable Flow DBO qname, for example Project.FlowName. Do not use for blocks or flow:// resources."
-				};
+		var supportsBlockTarget = /^code-(get|set|patch|check|rg)$/.test(String(toolName || ""));
+		if (/^code-/.test(String(toolName || ""))) {
+			schema.properties.qname = schema.properties.qname || {
+				type: "string",
+				description: "Executable Flow DBO qname, for example Project.FlowName. Do not use for blocks or flow:// resources."
+			};
 			if (supportsBlockTarget) {
 				schema.properties.block = {
 					type: "string",
-					description: "Project-local FlowScript block name, for example sample.sha256. Supported only by code-get, code-set, code-patch and code-rg."
+					description: "Project-local block name, for example sample.sha256. Browser implementations use target:\"frontend\"."
 				};
 				schema.properties.kind = {
 					type: "string",
 					enum: ["flow", "block"],
 					description: "Optional explicit target kind. Usually inferred from block or qname."
+				};
+				schema.properties.target = {
+					type: "string",
+					enum: ["backend", "frontend"],
+					description: "Block implementation target. Defaults to backend; use frontend for the browser function."
+				};
+				if (toolName === "code-set" || toolName === "code-patch") {
+					schema.properties.finalize = {
+						type: "boolean",
+						description: "For a frontend-only block, remove mock metadata after writing the complete implementation."
 					};
 				}
-				if (toolName === "code-get") {
+			}
+			if (toolName === "code-get") {
 					schema.properties.pattern = {
 						type: "string",
 						description: "Optional text/regex search pattern. When present, code-get returns small extracts like code-rg instead of full code."
@@ -364,9 +375,11 @@ const _meta = {
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
-			description = "Writes/checks FlowScript. For executable Flows it updates a working copy; for project-local blocks it saves the .block.js directly.";
+			description = "Writes/checks FlowScript or a target-specific project block implementation. Browser functions use block plus target:\"frontend\".";
 		} else if (name === "code-patch") {
-			description = "Patches FlowScript. For executable Flows patch the working copy; for project-local blocks patch the saved .block.js directly.";
+			description = "Patches FlowScript or a revision-checked project block implementation. Browser functions use target:\"frontend\".";
+		} else if (name === "code-check") {
+			description = "Checks FlowScript, or validates a project browser block function with block plus target:\"frontend\".";
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
 			} else if (name === "code-get") {

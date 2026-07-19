@@ -35,6 +35,7 @@ const _meta = {
 		get: true,
 		set: true,
 		patch: true,
+		check: true,
 		rg: true
 	};
 
@@ -75,6 +76,8 @@ const _meta = {
 
 	function normalizeBlockArgs(args) {
 		args = copyJson(args);
+		var implementationTarget = String(args.implementationTarget || args.runtimeTarget ||
+			(args.target === "frontend" || args.target === "backend" || args.target === "browser" ? args.target : ""));
 		if (!nonEmpty(args.name) && nonEmpty(args.block)) {
 			args.name = String(args.block);
 		}
@@ -87,6 +90,7 @@ const _meta = {
 		delete args.target;
 		delete args.block;
 		delete args.blockName;
+		if (implementationTarget) args.target = implementationTarget;
 		return args;
 	}
 
@@ -161,7 +165,7 @@ const _meta = {
 				return mcp.toolError(request, {
 					code: "UNSUPPORTED_BLOCK_CODE_OPERATION",
 					message: "code-" + effectiveOperation + " is only available for executable Flows.",
-					hint: "Use code-get, code-set, code-patch or code-rg with block:\"namespace.name\" for project-local FlowScript blocks. To validate a block, run an executable Flow that calls it."
+					hint: "Use code-get, code-set, code-patch, code-check or code-rg with block:\"namespace.name\". Browser implementations use target:\"frontend\"."
 				}, ctx);
 			}
 			var internalName = kind === "block" ? "flow-block-code-" + effectiveOperation : "flow-code-" + effectiveOperation;

@@ -201,6 +201,12 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch"].every(function (name) {
 	return list.result.result.tools.some(function (tool) { return tool.name === name; });
 }), "MCP Flow tools/list did not expose whole-source Svelte authoring tools");
+var unifiedCodeTools = {};
+list.result.result.tools.forEach(function (tool) { unifiedCodeTools[tool.name] = tool; });
+assertTrue(unifiedCodeTools["code-check"].inputSchema.properties.target.enum.indexOf("frontend") !== -1 &&
+	unifiedCodeTools["code-set"].inputSchema.properties.finalize.type === "boolean" &&
+	unifiedCodeTools["code-patch"].inputSchema.properties.target.enum.indexOf("backend") !== -1,
+	"Unified code tools did not expose target-aware block implementation schemas");
 var frontendSourceSetTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "frontend-svelte-code-set";
 })[0];
@@ -390,6 +396,9 @@ assertTrue(resources.result.result.resources.some(function (resource) {
 assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/fullstack-paperboard";
 }), "MCP Flow resources/list did not expose the full-stack paperboard guide");
+assertTrue(resources.result.result.resources.some(function (resource) {
+	return resource.uri === "flow://guide/portable-blocks";
+}), "MCP Flow resources/list did not expose the portable block guide");
 
 var methodNotFound = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -1869,6 +1878,43 @@ var frontendMockDescriptor = String(Packages.org.apache.commons.io.FileUtils.rea
 assertTrue(frontendMockDescriptor.indexOf('"targets": [\n    "frontend"') !== -1 &&
 	frontendMockDescriptor.indexOf('"file": "normalizeLabel.browser.js"') !== -1,
 	"Frontend mock descriptor should expose the frontend target and adjacent implementation.");
+var frontendBlockRead = callTool(1322, "code-get", {
+	projectDir: targetProjectDir,
+	block: "smoke.normalizeLabel",
+	target: "frontend"
+}).result.result.structuredContent;
+assertTrue(frontendBlockRead.ok === true && frontendBlockRead.code.indexOf("TODO: replace this explicit frontend mock") !== -1,
+	"Unified code-get did not read the browser implementation: " + JSON.stringify(frontendBlockRead));
+var frontendBlockInvalid = callTool(1323, "code-check", {
+	projectDir: targetProjectDir,
+	block: "smoke.normalizeLabel",
+	target: "frontend",
+	code: "function () { return Packages.java.lang.System }"
+}).result.result.structuredContent;
+assertTrue(frontendBlockInvalid.ok === false && frontendBlockInvalid.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FRONTEND_BLOCK_RUNTIME_FORBIDDEN";
+}), "Unified code-check did not reject JVM APIs in browser code: " + JSON.stringify(frontendBlockInvalid));
+var frontendBlockWrite = callTool(1324, "code-set", {
+	projectDir: targetProjectDir,
+	block: "smoke.normalizeLabel",
+	target: "frontend",
+	revision: frontendBlockRead.revision,
+	code: "function (input) { return String(input.value || '').trim() }",
+	finalize: true
+}).result.result.structuredContent;
+assertTrue(frontendBlockWrite.ok === true && frontendBlockWrite.finalized === true,
+	"Unified code-set did not write and finalize browser code: " + JSON.stringify(frontendBlockWrite));
+assertTrue(frontendBlockWrite.target === "frontend" && frontendBlockWrite.runtime === "browser",
+	"Unified code-set compact response did not preserve implementation target metadata");
+var frontendBlockPatch = callTool(1325, "code-patch", {
+	projectDir: targetProjectDir,
+	block: "smoke.normalizeLabel",
+	target: "frontend",
+	revision: frontendBlockWrite.revision,
+	code: "function (input) { return String(input.value || '').trim().toLowerCase() }"
+}).result.result.structuredContent;
+assertTrue(frontendBlockPatch.ok === true && frontendBlockPatch.oldRevision === frontendBlockWrite.revision,
+	"Unified code-patch did not update browser code: " + JSON.stringify(frontendBlockPatch));
 
 var mockGet = callTool(133, "code-get", {
 	projectDir: targetProjectDir,
