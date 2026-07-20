@@ -82,6 +82,21 @@ function LoadData({ input, config, result }) {
 }
 ```
 
+Flow metadata is a top-level `const _flow` before the function. Output schemas
+use JSON Schema objects, never shorthand strings, arrays of example values or
+`FunctionName._flow` assignments:
+
+```javascript
+const _flow = {
+  outputs: {
+    rows: { type: "array", items: { type: "object", properties: {
+      title: { type: "string" }
+    } } },
+    count: { type: "number" }
+  }
+}
+```
+
 Use `input.*` for request values, `config.*` for configuration, `local.*` for
 scratch values, `current` inside list transforms, and `result.*` for public
 output. Declare `_flow.inputs`, `_flow.outputs`, and `_flow.tests` when their
@@ -137,7 +152,9 @@ screens through Flow Svelte source, not hundreds of tree mutations:
    revision and a compact `authoringContract` for standard blocks. Treat its
    property names, SmartType intents and slots as authoritative.
 2. Write one complete `.flow.svelte` pass from that contract. Do not guess CSS,
-   Ionic or NGX property names that are absent from it.
+   Ionic or NGX property names that are absent from it. Contract `slots` are
+   exact source wrapper tags such as `Children`, `Events`, `Then` and `Else`;
+   never omit a listed wrapper around nested blocks.
 3. `frontend-svelte-code-check({ project, code })` validates it.
 4. `frontend-svelte-code-set({ project, code, revision })` persists it.
 5. Use `frontend-svelte-code-patch` for later focused changes.
@@ -192,6 +209,12 @@ waits for the settled UI and returns all required counts, broken images,
 console/application errors and desktop/mobile overflow. Do not chain separate
 navigate/find/evaluate/screenshot/console calls unless this aggregate assertion
 fails and one focused diagnosis is needed.
+
+Flow `id` values are stable authoring identities, not guaranteed DOM `id`
+attributes; repeated blocks could not safely emit duplicate DOM ids. In browser
+assertions prefer roles, visible text, images, semantic rendered classes and
+documented `data-*` attributes. Do not wait on `#flowObjectId` or
+`[id="flowObjectId"]` unless the rendered DOM has explicitly proved it exists.
 
 Give every action a unique `id`. Use `target` only when separate actions should
 update one shared reactive result. Use `Status.actionId` for lifecycle state.

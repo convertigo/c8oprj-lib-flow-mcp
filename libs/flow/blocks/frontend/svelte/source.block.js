@@ -252,6 +252,13 @@ const _meta = {
 		return out;
 	}
 
+	function sourceSlots(slots) {
+		return Object.keys(slots || {}).map(function (name) {
+			if (name === "default" || name === "children") return "Children";
+			return name.charAt(0).toUpperCase() + name.substring(1);
+		});
+	}
+
 	function starterContract(ctx, props) {
 		try {
 			var contract = ctx.authoringContractSource({
@@ -273,7 +280,7 @@ const _meta = {
 				blocks.push({
 					tag: tag,
 					properties: compactProperties(item.properties),
-					slots: Object.keys(item.slots || {})
+					slots: sourceSlots(item.slots)
 				});
 			});
 			return {
@@ -288,6 +295,7 @@ const _meta = {
 				rules: [
 					"Use only listed properties on these standard blocks.",
 					"Property contracts use type:intent|intent; source accepts @action.path, @item.path and @event.path.",
+					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
 					"After build, aggregate browser acceptance in one Playwright browser_run_code call."
 				]

@@ -19,7 +19,9 @@ For logic shared with backend FlowScript, also read
 1. Read the complete authoring model with `frontend-svelte-code-get({ project })`.
    It returns the configured `.flow.svelte` source, a `revision` and a compact
    `authoringContract`. Use the contract's standard tags, exact properties,
-   SmartType intents and slots directly; do not translate remembered Ionic,
+   SmartType intents and slots directly. Slot names are exact source wrapper
+   tags (`Children`, `Events`, `Then`, `Else`, and so on); do not omit them or
+   translate remembered Ionic,
    NGX, CSS or HTML property names. Pass the target Convertigo project name,
    not a filesystem path. For a new route or component, obtain its canonical
    source path from one focused palette call.
@@ -134,6 +136,12 @@ when the aggregate call passes. On failure, use at most one focused browser
 diagnostic for the failed field. Screenshots are for a requested visual review,
 not routine proof. This keeps the browser phase deterministic and prevents a
 successful UI from triggering an exploratory second authoring pass.
+
+Low-code `id` values identify objects in Flow authoring and the Studio tree.
+They are not guaranteed to become DOM `id` attributes, especially below an
+iterator where that would create invalid duplicates. Browser acceptance should
+use roles, visible text, images, semantic rendered classes and documented
+`data-*` attributes instead of assuming `#lowCodeId` exists.
 
 This loop deliberately allows intuitive low-code source editing. The MCP owns
 parsing, canonical projection, id checks and revision safety. It does not allow
