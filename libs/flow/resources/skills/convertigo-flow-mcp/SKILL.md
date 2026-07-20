@@ -133,9 +133,11 @@ Read `flow://guide/frontend-svelte` once for a frontend-only task, or
 `flow://guide/fullstack-paperboard` once for a full-stack task. Build whole
 screens through Flow Svelte source, not hundreds of tree mutations:
 
-1. `frontend-svelte-code-get({ project })` returns the complete source and
-   revision.
-2. Write one complete `.flow.svelte` pass with canonical palette tags.
+1. `frontend-svelte-code-get({ project })` returns the complete source,
+   revision and a compact `authoringContract` for standard blocks. Treat its
+   property names, SmartType intents and slots as authoritative.
+2. Write one complete `.flow.svelte` pass from that contract. Do not guess CSS,
+   Ionic or NGX property names that are absent from it.
 3. `frontend-svelte-code-check({ project, code })` validates it.
 4. `frontend-svelte-code-set({ project, code, revision })` persists it.
 5. Use `frontend-svelte-code-patch` for later focused changes.
@@ -183,6 +185,13 @@ that property and source id.
 Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
+
+After a successful production build, validate the primary workflow with one
+Playwright `browser_run_code` call that navigates, performs the main action,
+waits for the settled UI and returns all required counts, broken images,
+console/application errors and desktop/mobile overflow. Do not chain separate
+navigate/find/evaluate/screenshot/console calls unless this aggregate assertion
+fails and one focused diagnosis is needed.
 
 Give every action a unique `id`. Use `target` only when separate actions should
 update one shared reactive result. Use `Status.actionId` for lifecycle state.

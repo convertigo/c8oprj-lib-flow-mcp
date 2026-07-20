@@ -54,7 +54,8 @@ missing binding, execute its `inspect` call and select a returned schema-backed
 candidate. Bindable descendants of a data-bound `ForEach` require an explicit
 source, including a structured literal for intentionally static content.
 
-After each loop, call `flow-app-progress({ project })` and report its
+After the first complete paperboard and for final acceptance, call
+`flow-app-progress({ project })` and report its
 `progress.percent`, remaining mocks, first `nextAction` and `recommendedCalls`.
 This gives a chatbot or human user a factual completion gauge instead of a long
 silent tunnel.
@@ -104,7 +105,7 @@ silent tunnel.
    `actionId:"dev.sync"` after frontend mutations. Use `dev.start` only through
    MCP or the Studio menu.
 9. Call `flow-app-progress({ project })` after the first runnable paperboard and
-   after each major refinement. Report progress as facts: completed checks,
+   once for final acceptance. Report progress as facts: completed checks,
    remaining mocks, warnings, next action and `recommendedCalls`. Do not claim
    completion while mocks remain.
 10. Replace mocks one by one with real FlowScript or small Rhino primitives.

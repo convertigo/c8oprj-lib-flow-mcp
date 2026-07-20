@@ -17,11 +17,14 @@ For logic shared with backend FlowScript, also read
 ## Default Loop
 
 1. Read the complete authoring model with `frontend-svelte-code-get({ project })`.
-   It returns the configured `.flow.svelte` source and a `revision`. Pass the
-   target Convertigo project name, not a filesystem path. For a new route or
-   component, obtain its canonical source path from one focused palette call.
-2. Compose the screen or workflow directly in Flow Svelte source using known
-   canonical block tags and visible properties. Validate the complete draft
+   It returns the configured `.flow.svelte` source, a `revision` and a compact
+   `authoringContract`. Use the contract's standard tags, exact properties,
+   SmartType intents and slots directly; do not translate remembered Ionic,
+   NGX, CSS or HTML property names. Pass the target Convertigo project name,
+   not a filesystem path. For a new route or component, obtain its canonical
+   source path from one focused palette call.
+2. Compose the screen or workflow directly in Flow Svelte source using that
+   contract. Validate the complete draft
    with `frontend-svelte-code-check({ project, code })`; this catches parser
    errors, duplicate low-code ids and noncanonical bindings without writing.
    This complete check is the first frontend operation after `code-get` for a
@@ -116,6 +119,21 @@ insert a dual-target portable block when real computation is required.
    Svelte sources. If dev mode is running, use `actionId:"dev.sync"` after a
    mutation so Vite/HMR sees the new source. Use `frontend-svelte-actions` to
    inspect enabled dev/build actions.
+
+## Compact Browser Acceptance
+
+After a successful production build, use one Playwright `browser_run_code`
+call for the normal acceptance path. The function must navigate to the built
+URL, attach console/page-error collection before interaction, perform the main
+user action, wait for the expected settled state and return one small object
+containing the requirement-specific counts plus broken images, application
+errors and horizontal overflow at desktop and mobile widths.
+
+Do not call navigate, find, evaluate, screenshot and console tools separately
+when the aggregate call passes. On failure, use at most one focused browser
+diagnostic for the failed field. Screenshots are for a requested visual review,
+not routine proof. This keeps the browser phase deterministic and prevents a
+successful UI from triggering an exploratory second authoring pass.
 
 This loop deliberately allows intuitive low-code source editing. The MCP owns
 parsing, canonical projection, id checks and revision safety. It does not allow

@@ -230,7 +230,74 @@ const _meta = {
 		}
 	}
 
-	function read(ctx, props, path) {
+	var STARTER_TAGS = [
+		"PageShell", "Header", "Toolbar", "RowLayout", "ColumnLayout", "GridLayout", "Card",
+		"List", "ListItem", "Text", "Image", "Icon", "Button", "LinkButton", "Status",
+		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
+		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If", "OnMount"
+	];
+
+	function compactProperties(properties) {
+		var out = {};
+		Object.keys(properties || {}).forEach(function (name) {
+			var definition = properties[name] || {};
+			var value = String(definition.type || "unknown") + ":" +
+				(definition.intents || ["literal"]).join("|");
+			if (definition["enum"] && definition["enum"].length) {
+				value += "[" + definition["enum"].join(",") + "]";
+			}
+			if (definition.required === true) value += "!";
+			out[name] = value;
+		});
+		return out;
+	}
+
+	function starterContract(ctx, props) {
+		try {
+			var contract = ctx.authoringContractSource({
+				projectDir: String(props.projectDir),
+				surface: "frontend",
+				builder: "svelte"
+			});
+			var byTag = {};
+			(contract.items || []).forEach(function (item) {
+				var tag = String(item.tag || item.insert && item.insert.tag || "");
+				if (tag && STARTER_TAGS.indexOf(tag) !== -1 && !byTag[tag]) {
+					byTag[tag] = item;
+				}
+			});
+			var blocks = [];
+			STARTER_TAGS.forEach(function (tag) {
+				var item = byTag[tag];
+				if (!item) return;
+				blocks.push({
+					tag: tag,
+					properties: compactProperties(item.properties),
+					slots: Object.keys(item.slots || {})
+				});
+			});
+			return {
+				version: 1,
+				valueSyntax: {
+					literal: 'property="literal"',
+					expression: "property={browserExpression}",
+					source: 'property="@producer.path"'
+				},
+				blocks: blocks,
+				actionPattern: "Button > Events > OnClick > Actions > CallSequence",
+				rules: [
+					"Use only listed properties on these standard blocks.",
+					"Property contracts use type:intent|intent; source accepts @action.path, @item.path and @event.path.",
+					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
+					"After build, aggregate browser acceptance in one Playwright browser_run_code call."
+				]
+			};
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function read(ctx, props, path, includeContract) {
 		if (!path.file.isFile()) {
 			throw new Error("Unknown Flow Svelte source: " + path.relative);
 		}
@@ -240,13 +307,18 @@ const _meta = {
 			allowLarge: true,
 			maxBytes: 5000000
 		});
-		return {
+		var result = {
 			ok: true,
 			sourceFile: path.relative,
 			code: resource.content,
 			revision: resource.hash,
 			contentLength: resource.contentLength
 		};
+		if (includeContract === true) {
+			var contract = starterContract(ctx, props);
+			if (contract) result.authoringContract = contract;
+		}
+		return result;
 	}
 
 	function write(ctx, props, path, source) {
@@ -255,7 +327,7 @@ const _meta = {
 		var parent = path.file.getParentFile();
 		if (parent != null) parent.mkdirs();
 		FileUtils.writeStringToFile(path.file, source, "UTF-8");
-		var saved = read(ctx, props, path);
+		var saved = read(ctx, props, path, false);
 		saved.diagnostics = validation.diagnostics;
 		saved.errorCount = validation.errorCount;
 		saved.warningCount = validation.warningCount;
@@ -270,18 +342,18 @@ const _meta = {
 			var path = sourcePath(props);
 			var result;
 			if (operation === "get") {
-				result = read(ctx, props, path);
+				result = read(ctx, props, path, true);
 			} else if (operation === "check") {
 				var source = props.code !== undefined && props.code !== null
 					? String(props.code)
-					: String(read(ctx, props, path).code);
+					: String(read(ctx, props, path, false).code);
 				result = validate(ctx, props, path, source);
-				result.revision = path.file.isFile() ? read(ctx, props, path).revision : null;
+				result.revision = path.file.isFile() ? read(ctx, props, path, false).revision : null;
 			} else if (operation === "set") {
 				if (props.code === undefined || props.code === null) {
 					throw new Error("frontend-svelte-code-set requires code.");
 				}
-				if (props.revision && path.file.isFile() && String(read(ctx, props, path).revision) !== String(props.revision)) {
+				if (props.revision && path.file.isFile() && String(read(ctx, props, path, false).revision) !== String(props.revision)) {
 					throw new Error("Flow Svelte source changed since it was read; call frontend-svelte-code-get again.");
 				}
 				result = write(ctx, props, path, String(props.code));
@@ -307,7 +379,7 @@ const _meta = {
 					patch: patch,
 					validate: false
 				});
-				result = read(ctx, props, path);
+				result = read(ctx, props, path, false);
 				result.hunks = patched.hunks;
 				result.oldRevision = patched.oldHash;
 				result.diagnostics = validation.diagnostics;

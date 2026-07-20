@@ -1324,8 +1324,15 @@ var frontendSourceGet = callTool(1381, "frontend-svelte-code-get", {
 var frontendSourceRevision = frontendSourceGet.result.result.structuredContent.revision;
 assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 	frontendSourceGet.result.result.structuredContent.code.indexOf("<FlowComponent") !== -1 &&
-	frontendSourceRevision,
-	"MCP frontend-svelte-code-get should return complete source and a revision");
+	frontendSourceRevision &&
+	frontendSourceGet.result.result.structuredContent.authoringContract &&
+	frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+		return block.tag === "Text" && String(block.properties.text).indexOf("literal") !== -1;
+	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+		return block.tag === "Image" && block.properties.alt &&
+			String(block.properties.alt).indexOf("source") !== -1;
+	}),
+	"MCP frontend-svelte-code-get should return source, revision and a compact canonical authoring contract");
 var frontendSourceInvalid = callTool(1382, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [
