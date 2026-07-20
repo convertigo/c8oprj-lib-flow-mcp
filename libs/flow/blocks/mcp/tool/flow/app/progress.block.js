@@ -1291,7 +1291,8 @@ const _meta = {
 				surface: "frontend",
 				builder: "svelte",
 				detail: "compact",
-				maxDepth: 7
+				maxDepth: 24,
+				includeDefinition: true
 			});
 			summary.readable = tree && tree.ok !== false;
 			summary.structureWarnings = arrayValue(tree && tree.diagnostics);
@@ -1301,27 +1302,11 @@ const _meta = {
 			});
 			summary.routesPath = routesPath;
 			if (routesPath) {
-				try {
-					var routeTree = ctx.authoringTreeSource({
-						projectDir: args.projectDir,
-						engineSource: args.engineSource,
-						surface: "frontend",
-						builder: "svelte",
-						focusPath: routesPath,
-						detail: "compact",
-						maxDepth: 24,
-						includeDefinition: true
-					});
-					if (routeTree && routeTree.ok !== false) {
-						paperboardTree = routeTree;
-						arrayValue(routeTree.diagnostics).forEach(function (diagnostic) {
-							if (!summary.structureWarnings.some(function (known) {
-								return known.code === diagnostic.code && known.path === diagnostic.path && known.sourcePath === diagnostic.sourcePath;
-							})) summary.structureWarnings.push(diagnostic);
-						});
+				walk(tree, function (candidate) {
+					if (paperboardTree === tree && String(candidate.path || "") === routesPath) {
+						paperboardTree = candidate;
 					}
-				} catch (ignored) {
-				}
+				});
 			}
 			summary.paperboard = paperboardSummary(paperboardTree);
 			walk(paperboardTree, function (node) {
