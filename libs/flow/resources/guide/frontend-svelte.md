@@ -43,7 +43,16 @@ For logic shared with backend FlowScript, also read
 
 ## Intuitive Data References
 
-Flow Svelte source uses one compact reference syntax for dynamic JSON data:
+Flow Svelte has the same three value intents as the NGX SmartType, expressed
+with ordinary Svelte syntax:
+
+- `label="News"` is a literal value (NGX TXT);
+- `label={count + " items"}` is a browser expression (NGX JS);
+- `source="@loadNews.news"` is a schema-backed source (NGX picker).
+
+The quoted/expression distinction is significant. Do not quote an expression,
+and do not omit `@` from a source path. Flow Svelte source uses one compact
+reference syntax for dynamic JSON data:
 
 ```svelte
 <ForEach id="feedItems" source="@loadNews.news" context="item" index="index">
@@ -66,6 +75,38 @@ The compiler lowers these references to the canonical schema-backed
 contract, not source syntax for humans or LLMs. Use a focused picker only when
 the producer or schema path is unknown. Conditions remain ordinary readable
 expressions, such as `<If test={index % 2 === 0}>`.
+
+FlowScript and Flow Svelte share typed JSON values, paths, schemas and lexical
+iteration scopes, but they do not pretend that Rhino and the browser are the
+same runtime. FlowScript reads `input/local/current/result` directly. Flow
+Svelte uses `@action`, `@item`, `@index` and `@event` for reactive sources and
+uses `{...}` only for browser expressions. Prefer a dual-target portable block
+when a computation must run identically on both sides.
+
+## CallSequence Identity And Marker
+
+```svelte
+<CallSequence id="getCardDetail" requestable=".GetDetail" marker="cardDetail">
+  <Variables><Variable name="id" value="@item.id" /></Variables>
+</CallSequence>
+```
+
+`id` identifies this action execution, `target` optionally identifies the
+reactive result channel, and `marker` is the optional stable NGX-compatible
+source marker appended to the SDK requestable. The marker is not a business
+parameter and is never a browser expression. Put per-card values in Variables.
+Bindings continue to use the action id or target, for example
+`@getCardDetail.product`. When a marked CallSequence executes inside a
+`ForEach`, the runtime retains its result under that lexical item identity;
+bindings in the same item read that scoped result before the last global
+result. This preserves the NGX templated-card behavior without exposing a
+runtime key in source.
+
+`frontend-svelte-code-check` rejects a dynamic marker with
+`FRONTEND_CALLSEQUENCE_MARKER_STATIC_REQUIRED` and an applicable literal fix.
+It rejects a free browser expression in a client action Variable with
+`FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE`; use its suggested `@` reference, or
+insert a dual-target portable block when real computation is required.
 5. Call `flow-app-progress({ project })` after each substantial source pass.
    Its `backend.debt` section reports project-local blocks that no Flow calls
    and backend output roots that the current frontend does not consume. Treat

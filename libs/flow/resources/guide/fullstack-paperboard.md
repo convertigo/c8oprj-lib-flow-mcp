@@ -40,8 +40,15 @@ When wiring a backend action in Flow Svelte source, use an intuitive
 `@action.path` reference. If the schema path is unknown, use the schema-backed
 `binding` or `mutation` returned by the picker or by `flow-app-progress` and
 pass it unchanged. Do not invent bare relative paths or descriptor JSON. Call
-`flow-app-progress` immediately after wiring. Every legacy, invalid, unknown
-action or unknown schema-path warning must be fixed before progress can reach
+`flow-app-progress` immediately after wiring.
+
+Keep value intent visible in source: quoted attributes are literals,
+`{expression}` is browser-only logic, and quoted `@source.path` values are
+schema-backed sources. For a computation shared with backend FlowScript, use a
+dual-target portable block rather than duplicating subtly different Rhino and
+browser expressions.
+
+Every legacy, invalid or unknown action/schema-path warning must be fixed before progress can reach
 100%. Execute `frontend.bindingWarnings[].fix` directly when present; for a
 missing binding, execute its `inspect` call and select a returned schema-backed
 candidate. Bindable descendants of a data-bound `ForEach` require an explicit

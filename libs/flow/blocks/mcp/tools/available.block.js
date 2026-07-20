@@ -402,7 +402,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-code-get") {
 			description = "Reads the complete intuitive .flow.svelte model and its revision. Default starting point for substantial frontend work.";
 		} else if (name === "frontend-svelte-code-check") {
-			description = "Parses and validates a complete .flow.svelte draft without writing it. Use intuitive @action.path, @item.path, @index and @event.value data references; returns structured source diagnostics.";
+			description = "Parses and validates a complete .flow.svelte draft without writing it. Quoted values are literals, {...} values are browser expressions, and @action.path/@item.path values are schema-backed sources; incompatible forms return an applicable correction.";
 		} else if (name === "frontend-svelte-code-set") {
 			description = "Validates and writes one complete .flow.svelte model, optionally guarded by the revision returned by code-get.";
 		} else if (name === "frontend-svelte-code-patch") {

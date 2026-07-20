@@ -48,7 +48,7 @@ The Svelte palette exposes operation-aware action blocks under an event:
   schemaRequestable=".mydb.ReadItems"
 >
   <Variables>
-    <Variable name="include_docs" value={{ mode: "literal", value: true }} />
+    <Variable name="include_docs" value={true} />
   </Variables>
 </FullSyncView>
 ```
@@ -77,24 +77,17 @@ request from the operation-aware block.
 
 ## Bind FullSync results
 
-FullSync results are ordinary structured source bindings:
+FullSync results use the same intuitive source syntax as requestables:
 
-```json
-{
-  "mode": "source",
-  "source": {
-    "category": "fullsync",
-    "actionId": "readItems",
-    "operation": "view"
-  },
-  "path": [
-    { "kind": "property", "name": "rows" }
-  ]
-}
+```svelte
+<ForEach id="rows" source="@readItems.rows" context="row">
+  <Children><Text id="title" source="@row.doc.title" /></Children>
+</ForEach>
 ```
 
-Use the binding/mutation returned by the palette or `flow-app-progress`
-unchanged. Do not construct it from this example. The picker starts with a
+When the schema path is unknown, use the binding/mutation returned by the
+palette or `flow-app-progress` unchanged. Do not construct its internal
+descriptor manually. The picker starts with a
 generic CouchDB envelope and replaces/refines domain paths from the explicit
 learned `outputSchema`. `flow-app-progress` reports an executable
 `schemaPending` action when `schemaRequestable` is present but `outputSchema`

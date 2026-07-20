@@ -55,7 +55,9 @@ For a Svelte FullSync client, read `flow://guide/fullsync`, then insert the
 operation-aware `FullSyncGet`, `FullSyncView`, `FullSyncReset` and
 `FullSyncSync` palette blocks.
 Do not handwrite `fs://` request strings or PouchDB code. Bind their results
-through picker-provided `category:fullsync` descriptors. Associate
+in Flow Svelte source with intuitive references such as `@readItems.rows`.
+Use picker-provided `category:fullsync` descriptors only when the schema path
+is unknown, and apply their mutation unchanged. Associate
 `schemaRequestable` with a safe learned server read transaction when domain
 fields are needed, then apply the returned `schema` unchanged to the action's
 `outputSchema` property. Prefer executing the exact `schemaPending`
@@ -271,6 +273,22 @@ schema-backed candidate.
    Treat `FRONTEND_BINDING_REFERENCE_UNKNOWN` as a missing or out-of-scope
    producer. Use its visible reference candidates; do not create a similarly
    named action merely to silence it.
+   Preserve the three SmartType-like intents in Flow Svelte source: a quoted
+   attribute is a literal, `{expression}` is a browser expression, and a
+   quoted `@source.path` is a schema-backed source. Do not serialize a
+   `FlowValueBinding` object by hand. FlowScript uses direct typed values and
+   `input/local/current/result`; the two syntaxes share schemas and scopes but
+   not arbitrary Rhino/browser expressions. Use a dual-target portable block
+   for computation that must behave identically on both runtimes.
+   For `CallSequence`, `id` is execution identity, `target` is the reactive
+   result channel, and optional `marker` is a stable NGX-compatible source
+   marker. Write it as a literal such as `marker="cardDetail"`; never bind or
+   compute it. Per-item values belong in Variable bindings such as
+   `value="@item.id"`. A marked CallSequence inside `ForEach` keeps one result
+   per lexical item, so descendants can bind `@action.path` without inventing
+   a dynamic result key. Apply `FRONTEND_CALLSEQUENCE_MARKER_STATIC_REQUIRED`
+   and `FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE` fixes unchanged. If the latter
+   has no source correction, insert a dual-target portable block.
    Portable Flow blocks are authored directly with their palette tag, for
    example `<TextTrim text={...} target="trimmed" />`. Their canonical
    `_meta` provides properties, bindings, outputs and target availability; the
