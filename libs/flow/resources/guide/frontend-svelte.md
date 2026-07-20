@@ -40,6 +40,32 @@ For logic shared with backend FlowScript, also read
    diagnostic supplies it. Otherwise inspect only the named property and
    source id. Informal action/context objects and dotted binding strings are
    migration input, never authoring output.
+
+## Intuitive Data References
+
+Flow Svelte source uses one compact reference syntax for dynamic JSON data:
+
+```svelte
+<ForEach id="feedItems" source="@loadNews.news" context="item" index="index">
+  <Children>
+    <Image id="image" source="@item.imageUrl" />
+    <Text id="title" source="@item.title" />
+    <Text id="position" source="@index" />
+  </Children>
+</ForEach>
+```
+
+`@action.path` resolves an action, requestable or FullSync result. Inside a
+`ForEach`, `@item.path` and `@index` resolve the declared lexical aliases;
+`@feedItems.item.path` and `@feedItems.index` are stable explicit forms.
+Inside events, use `@event.value`, `@event.checked`, `@event.key` or
+`@event.name`. Array indexes are supported, for example `@load.rows[0].name`.
+
+The compiler lowers these references to the canonical schema-backed
+`FlowValueBinding`. That object is an internal tree/properties and picker
+contract, not source syntax for humans or LLMs. Use a focused picker only when
+the producer or schema path is unknown. Conditions remain ordinary readable
+expressions, such as `<If test={index % 2 === 0}>`.
 5. Call `flow-app-progress({ project })` after each substantial source pass.
    Its `backend.debt` section reports project-local blocks that no Flow calls
    and backend output roots that the current frontend does not consume. Treat
@@ -133,13 +159,12 @@ _private/svelte/src/lib/...
   SDK strings or PouchDB calls by hand. Their outputs are structured
   `category: fullsync` binding sources and their Variable children use
   `FlowValueBinding` values.
-- Data sources produced by a `CallSequence` use structured
-  `FlowValueBinding` descriptors. Select the schema path from
+- Data sources produced by a `CallSequence` use `@action.path` in intuitive
+  source. When the path is unknown, select it from
   `propertyDefinitions.<name>.bindingSources[].bindings` or
-  `flow-app-progress.frontend.bindingSuggestions[].bindings`, then pass its
-  `binding` or `mutation` unchanged. Do not translate the candidate into
-  `items`, `item.title`, action-prefixed paths or hand-built JSON. String paths
-  are accepted only as migration input and are reported in
+  `flow-app-progress.frontend.bindingSuggestions[].bindings`, then either use
+  the equivalent `@` reference or pass its `binding`/`mutation` unchanged.
+  Do not write hand-built descriptor JSON. Bare paths are accepted only as migration input and are reported in
   `frontend.bindingWarnings`; execute the returned `fix` directly, or inspect
   the reported block to select a missing candidate. Under a data-bound
   `ForEach`, every bindable descendant must set `source`: choose an iteration
@@ -164,9 +189,9 @@ _private/svelte/src/lib/...
   and other small client lists. Use `UpdateNumber` (`set`, `increment`,
   `decrement`) for bounded numeric state. Both expose their `target` as an
   ordinary structured `category: action` binding source.
-- Button labels can use a structured `source`. Text can apply `number`,
+- Button labels can use an intuitive `source="@action.label"`. Text can apply `number`,
   `decimal` or `currency` formatting and an optional numeric `multiplier`;
-  select both values from picker bindings instead of writing expressions.
+  use `@` references for both values instead of writing lookup expressions.
 - Local action variables belong under the action that owns them and their
   values must be picker-provided structured bindings or literal bindings. Shared actions
   are for reusable behavior only.

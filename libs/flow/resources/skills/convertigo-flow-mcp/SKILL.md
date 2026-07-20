@@ -233,11 +233,15 @@ unambiguous fixes as one refinement pass, then call it once more for final
 acceptance. Do not rerun it between individual binding mutations or cosmetic
 edits. Use its `progress.percent`, remaining mocks, `nextActions` and
 `recommendedCalls` to avoid broad rediscovery.
-Use `frontend.bindingSuggestions[].bindings` and picker candidates to wire
-`CallSequence` results. Pass the returned structured `binding` or `mutation`
-unchanged; do not translate it into `items`, `item.title` or another string
-path and do not construct a `FlowValueBinding` manually. String paths remain
-migration input for older projects only. When
+In Flow Svelte source, wire data with intuitive references: `@loadNews.news`
+for an action result, `@item.title` or `@index` inside `ForEach`, and
+`@event.value` inside an event. The compiler resolves these against declared
+actions, lexical scopes and schemas, then lowers them to `FlowValueBinding`;
+authors and LLMs must not write that internal object. Use
+`frontend.bindingSuggestions[].bindings` and picker candidates only when the
+source or schema path is unknown. When executing a picker fix, pass its
+structured `binding` or `mutation` unchanged. Bare paths such as `item.title`
+without `@` remain migration errors. When
 `frontend.bindingPlan.calls` is non-empty, execute every call unchanged before
 processing individual warnings: each call applies all unambiguous bindings for
 one source in a single ordered mutation batch. Rerun `flow-app-progress`, then
@@ -258,11 +262,15 @@ schema-backed candidate.
    unknown reported by validation, not an alternate construction loop.
    Treat `FRONTEND_PROPERTY_UNKNOWN` as a catalog mismatch and use its
    `acceptedProperties`; do not guess a synonym.
-   Treat `FRONTEND_BINDING_INVALID` as authoritative. Apply its
+   Treat `FRONTEND_BINDING_INVALID` as authoritative. Prefer replacing the
+   invalid value with an intuitive `@` reference. Apply its
    `suggestedBinding` or executable fix unchanged when present. Otherwise make
    one focused picker inspection for that exact property and source id. Never
    author `{ mode:"action", ... }`, `{ mode:"context", ... }`, dotted paths,
    or any other informal binding shape.
+   Treat `FRONTEND_BINDING_REFERENCE_UNKNOWN` as a missing or out-of-scope
+   producer. Use its visible reference candidates; do not create a similarly
+   named action merely to silence it.
    Portable Flow blocks are authored directly with their palette tag, for
    example `<TextTrim text={...} target="trimmed" />`. Their canonical
    `_meta` provides properties, bindings, outputs and target availability; the
@@ -308,9 +316,10 @@ schema-backed candidate.
    tool accepts both those full ids and the shorter aliases documented in the
    guide.
 
-Inside `ForEach`, the picker exposes two lexical sources for the same stable
-scope: the typed `item` and the integer `index`. Use the returned index binding
-for position-aware controls. For a purely visual odd/even branch, keep the
+Inside `ForEach`, use the declared aliases directly, for example
+`source="@item.title"` and `source="@index"`; the stable explicit forms
+`@feedItems.item.title` and `@feedItems.index` are also valid. Use the picker
+only to discover an unknown schema path. For a purely visual odd/even branch, keep the
 behavior in Flow Svelte with an `If` expression such as `index % 2 === 0`;
 do not add a backend block that decorates domain data only for presentation.
 
@@ -356,10 +365,10 @@ the needed styling vocabulary, report that tooling gap instead of hiding the UI
 in CSS. For directives, use the palette property names: `If` uses `test`,
 `ForEach` uses `source` and `context`. Bindable properties such as
 `ForEach.source`, `Text.source`, `Image.source`, `Table.source` and
-`Json.source` require the structured descriptor returned by the picker. A
+`Json.source` use intuitive `@` references in source authoring. A
 bindable descendant of a data-bound `ForEach` must set `source` explicitly;
-use a picker iteration candidate for dynamic content or a structured literal
-binding for intentionally static content. A string-path mutation is a tooling
+use `@item.path` for dynamic content or the picker literal mutation for an
+intentionally static binding. A bare string path without `@` is a tooling
 error, not a shortcut. For Svelte snippets, use the simple tree
 rule: no snippet means leaf; one `children` snippet means direct children under
 the block; multiple snippets must appear as explicit slot nodes.

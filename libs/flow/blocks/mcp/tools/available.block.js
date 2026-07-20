@@ -398,11 +398,11 @@ const _meta = {
 		} else if (name === "frontend-svelte-palette") {
 			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {
-			description = "Applies Svelte frontend tree mutations. For bindable properties, pass the structured mutation returned by the picker unchanged; new string paths are rejected.";
+			description = "Applies Svelte frontend tree mutations. Bindable properties accept intuitive @action.path/@item.path references or the structured mutation returned by the picker; bare string paths are rejected.";
 		} else if (name === "frontend-svelte-code-get") {
 			description = "Reads the complete intuitive .flow.svelte model and its revision. Default starting point for substantial frontend work.";
 		} else if (name === "frontend-svelte-code-check") {
-			description = "Parses and validates a complete .flow.svelte draft without writing it; returns structured source diagnostics.";
+			description = "Parses and validates a complete .flow.svelte draft without writing it. Use intuitive @action.path, @item.path, @index and @event.value data references; returns structured source diagnostics.";
 		} else if (name === "frontend-svelte-code-set") {
 			description = "Validates and writes one complete .flow.svelte model, optionally guarded by the revision returned by code-get.";
 		} else if (name === "frontend-svelte-code-patch") {

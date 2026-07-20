@@ -36,9 +36,10 @@ is mocked. Then iterate:
 4. output schema reviewed so frontend pickers see real fields;
 5. visual/layout refinement using explicit layout and style properties.
 
-When wiring a backend action, use the schema-backed `binding` or `mutation`
-returned by the picker or by `flow-app-progress`; pass it unchanged. Do not
-invent relative paths, action-prefixed paths or descriptor JSON. Call
+When wiring a backend action in Flow Svelte source, use an intuitive
+`@action.path` reference. If the schema path is unknown, use the schema-backed
+`binding` or `mutation` returned by the picker or by `flow-app-progress` and
+pass it unchanged. Do not invent bare relative paths or descriptor JSON. Call
 `flow-app-progress` immediately after wiring. Every legacy, invalid, unknown
 action or unknown schema-path warning must be fixed before progress can reach
 100%. Execute `frontend.bindingWarnings[].fix` directly when present; for a
