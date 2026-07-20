@@ -235,6 +235,10 @@ unambiguous fixes as one refinement pass, then call it once more for final
 acceptance. Do not rerun it between individual binding mutations or cosmetic
 edits. Use its `progress.percent`, remaining mocks, `nextActions` and
 `recommendedCalls` to avoid broad rediscovery.
+Its default compact response retains counts, debts, warnings and executable
+fixes while omitting complete paperboard and binding inventories. Do not request
+`detail:"full"` for routine progress or final acceptance; use it only when
+debugging the diagnostic itself requires the complete inventory.
 In Flow Svelte source, wire data with intuitive references: `@loadNews.news`
 for an action result, `@item.title` or `@index` inside `ForEach`, and
 `@event.value` inside an event. The compiler resolves these against declared

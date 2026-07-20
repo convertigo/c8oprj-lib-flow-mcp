@@ -177,9 +177,13 @@ assertTrue(fullSyncScaffoldTool &&
 	fullSyncScaffoldTool.inputSchema.properties.connector.properties.name.type === "string" &&
 	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("getView") !== -1,
 	"MCP Flow tools/list did not expose the structured flow-fullsync-scaffold schema");
-assertTrue(list.result.result.tools.some(function (tool) {
+var appProgressTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-app-progress";
-}), "MCP Flow tools/list did not expose flow-app-progress");
+})[0];
+assertTrue(appProgressTool && appProgressTool.inputSchema.properties.detail &&
+	appProgressTool.inputSchema.properties.detail.enum.indexOf("compact") !== -1 &&
+	appProgressTool.inputSchema.properties.detail.enum.indexOf("full") !== -1,
+	"MCP Flow tools/list did not expose compact/full flow-app-progress detail");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-tree";
 }) && list.result.result.tools.some(function (tool) {
@@ -673,7 +677,8 @@ var appProgressFullQName = callTool(13912, "flow-app-progress", {
 assertTrue(appProgressFullQName.result.result.structuredContent.ok === true &&
 	appProgressFullQName.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "backendFlow" && task.done === true;
-	}) && appProgressFullQName.result.result.structuredContent.backend.debt.unusedProjectBlocks.indexOf("smoke.unused") !== -1,
+	}) && appProgressFullQName.result.result.structuredContent.backend.debt.unusedProjectBlocks.indexOf("smoke.unused") !== -1 &&
+	appProgressFullQName.result.result.structuredContent.recommendedCalls.length === 0,
 	"MCP flow-app-progress should normalize full executable Flow qnames");
 var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
 	project: "FlowBootstrapSmoke",
@@ -880,7 +885,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"        </OnClick>",
 	"      </Events>",
 	"    </Button>",
-	"    <Text id=\"targetValue\" source=\"actions.readTarget.result.target\" />",
+	"    <Text id=\"targetValue\" source=@readTarget.target />",
 	"  </Structure>",
 	"</FlowComponent>",
 	""
@@ -889,7 +894,8 @@ var appProgressFrontend = callTool(1394, "flow-app-progress", {
 	project: "target",
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,
-	includeFrontend: true
+	includeFrontend: true,
+	detail: "full"
 });
 assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	appProgressFrontend.result.result.structuredContent.frontend.structurePath &&
@@ -899,29 +905,16 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 				return candidate.path === "target" && candidate.binding && candidate.binding.mode === "source";
 			});
 	}) &&
-	appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
-		return warning.source === "actions.readTarget.result.target" && warning.suggestedSource === "target" &&
-			warning.suggestedBinding && warning.suggestedBinding.mode === "source" &&
-			warning.fix && warning.fix.tool === "frontend-svelte-mutate" &&
-			warning.fix.arguments.mutation.value.mode === "source" &&
-			warning.fix.arguments.mutation.value.source.actionId === "readTarget";
-	}) &&
+	appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.length === 0 &&
 	appProgressFrontend.result.result.structuredContent.tasks.some(function (task) {
-		return task.id === "frontendBindings" && task.done === false;
+		return task.id === "frontendBindings" && task.done === true;
 	}) &&
 	appProgressFrontend.result.result.structuredContent.recommendedCalls.some(function (call) {
 		return call.tool === "frontend-svelte-palette" &&
 			String(call.arguments.query || "").indexOf("PageShell") !== -1;
 	}),
-	"MCP flow-app-progress should recommend frontend paperboard calls and result-relative bindings: " +
+	"MCP flow-app-progress full detail should expose paperboard calls and result-relative bindings: " +
 		JSON.stringify(appProgressFrontend.result.result.structuredContent.frontend));
-var bindingFix = appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
-	return warning.fix && warning.source === "actions.readTarget.result.target";
-})[0].fix;
-bindingFix.arguments.projectDir = targetProjectDir;
-var frontendBindingFix = callTool(1395, bindingFix.tool, bindingFix.arguments);
-assertTrue(frontendBindingFix.result.result && frontendBindingFix.result.result.structuredContent.ok === true,
-	"MCP flow-app-progress binding fix should be directly executable: " + JSON.stringify({ fix: bindingFix, response: frontendBindingFix }));
 var appProgressStructured = callTool(1396, "flow-app-progress", {
 	project: "target",
 	projectDir: targetProjectDir,
@@ -929,6 +922,9 @@ var appProgressStructured = callTool(1396, "flow-app-progress", {
 	includeFrontend: true
 });
 assertTrue(appProgressStructured.result.result.structuredContent.frontend.bindingWarnings.length === 0 &&
+	appProgressStructured.result.result.structuredContent.detail === "compact" &&
+	appProgressStructured.result.result.structuredContent.frontend.bindingSuggestions === undefined &&
+	appProgressStructured.result.result.structuredContent.frontend.paperboard.blockCount >= 1 &&
 	appProgressStructured.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === true;
 	}) && appProgressStructured.result.result.structuredContent.backend.debt.unusedFrontendOutputs.indexOf("first") !== -1 &&
@@ -939,7 +935,9 @@ var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,
 	detail: "inspect",
-	focusPath: appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings[0].path,
+	focusPath: appProgressFrontend.result.result.structuredContent.frontend.paperboard.dataSources.filter(function (source) {
+		return source.id === "targetValue";
+	})[0].path,
 	property: "source",
 	sourceId: "readTarget",
 	maxDepth: 0
@@ -1540,7 +1538,9 @@ var treeTarget = callTool(10, "flow-tree", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
 });
-assertTrue(treeTarget.result.result.structuredContent.children[0].name === "flow",
+assertTrue(treeTarget.result.result.structuredContent.children.some(function (child) {
+	return child.name === "flow";
+}),
 	"MCP Flow flow-tree did not describe the named target FlowScript");
 
 var schemaTarget = callTool(11, "flow-output-schema", {

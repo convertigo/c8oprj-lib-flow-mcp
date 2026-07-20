@@ -37,6 +37,16 @@ const _meta = {
       "default": true,
       "description": "Inspect the Svelte frontend builder and route tree."
     },
+    "detail": {
+      "kind": "text",
+      "type": "string",
+      "default": "compact",
+      "enum": [
+        "compact",
+        "full"
+      ],
+      "description": "Response detail. Compact keeps actionable diagnostics and counts; full includes paperboard and binding inventories."
+    },
     "out": {
       "kind": "path",
       "mode": "write",
@@ -268,17 +278,34 @@ const _meta = {
 
 	function nodeDefinition(node) {
 		var value = node && node.definition;
-		if (!value) {
-			return {};
+		var definition = {};
+		if (value && typeof value === "object") {
+			Object.keys(value).forEach(function (key) { definition[key] = value[key]; });
+		} else if (value) {
+			try {
+				definition = JSON.parse(String(value));
+			} catch (ignored) {
+			}
 		}
-		if (typeof value === "object") {
-			return value;
+		var info = node && node.info;
+		if (info && typeof info !== "object") {
+			try {
+				info = JSON.parse(String(info));
+			} catch (ignoredInfo) {
+				info = null;
+			}
 		}
-		try {
-			return JSON.parse(String(value));
-		} catch (e) {
-			return {};
+		if (info && typeof info === "object") {
+			["sourcePath", "sourceRelativePath", "sourceMutationPath", "sourcePropertyMutationPaths"].forEach(function (key) {
+				if (definition[key] === undefined && info[key] !== undefined) {
+					definition[key] = info[key];
+				}
+			});
+			if (definition.sourceFile === undefined && info.file !== undefined) {
+				definition.sourceFile = info.file;
+			}
 		}
+		return definition;
 	}
 
 	function addLimited(list, item, limit) {
@@ -595,7 +622,7 @@ const _meta = {
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
-		function pickerSource(path, sourceId) {
+		function pickerSource(path, sourceId, binding) {
 			try {
 				var tree = ctx.authoringTreeSource({
 					projectDir: args.projectDir,
@@ -613,10 +640,26 @@ const _meta = {
 					if (selected || String(node.path || "") !== String(path || "")) {
 						return;
 					}
+					var definition = nodeDefinition(node);
+					if (binding) {
+						if (!binding.sourceFile) {
+							binding.sourceFile = definition.sourcePath || definition.sourceFile || "";
+						}
+						if (!binding.sourceMutationPath && definition.sourceMutationPath) {
+							binding.sourceMutationPath = definition.sourceMutationPath;
+						}
+						if (!binding.sourcePropertyMutationPath && definition.sourceMutationPath) {
+							binding.sourcePropertyMutationPath = String(definition.sourceMutationPath) + ".props.source";
+						}
+					}
 					var sourceInfo = node.bindings && node.bindings.source;
 					arrayValue(sourceInfo && sourceInfo.sources).some(function (source) {
-						if (String(source.id || "") === String(sourceId || "")) {
+						var sourceActionId = source && source.source && source.source.actionId ||
+							source && source.binding && source.binding.source && source.binding.source.actionId || "";
+						if (String(source.id || "") === String(sourceId || "") ||
+							String(sourceActionId) === String(sourceId || "")) {
 							selected = source;
+							selected.sourceFile = definition.sourcePath || definition.sourceFile || "";
 							return true;
 						}
 						return false;
@@ -627,9 +670,15 @@ const _meta = {
 				return null;
 			}
 		}
-		function pickerMutation(path, sourceId, sourcePath) {
-			var source = pickerSource(path, sourceId);
+		function pickerMutation(path, sourceId, sourcePath, binding) {
+			var source = pickerSource(path, sourceId, binding);
+			if (binding && !binding.sourceFile && source && source.sourceFile) {
+				binding.sourceFile = source.sourceFile;
+			}
 			var candidate = null;
+			if (source && source.mutation && String(sourcePath || "") === "") {
+				return source.mutation;
+			}
 			arrayValue(source && source.bindings).some(function (entry) {
 				if (String(entry.path || "") === String(sourcePath || "") && entry.mutation) {
 					candidate = entry;
@@ -637,7 +686,17 @@ const _meta = {
 				}
 				return false;
 			});
-			return candidate && candidate.mutation || null;
+			if (candidate && candidate.mutation) {
+				return candidate.mutation;
+			}
+			if (source && source.mutation && source.binding && source.binding.source) {
+				return {
+					op: source.mutation.op,
+					path: source.mutation.path,
+					value: sourceBinding(source.binding.source, sourcePath)
+				};
+			}
+			return null;
 		}
 		function preferredIterationCandidate(source, type, targetPath) {
 			var candidates = arrayValue(source && source.bindings).filter(function (candidate) {
@@ -901,8 +960,8 @@ const _meta = {
 						: "ForEach still uses an empty placeholder and cannot render application data.",
 					suggestedBinding: iteratorBinding
 				};
-				if (iteratorBinding && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
-					var exactMutation = pickerMutation(binding.path, arraySuggestion.actionId, arraySuggestion.arrayPaths[0]) ||
+				if (iteratorBinding) {
+					var exactMutation = pickerMutation(binding.path, arraySuggestion.actionId, arraySuggestion.arrayPaths[0], binding) ||
 						sourceMutation(binding, iteratorBinding);
 					if (exactMutation) {
 						iteratorWarning.fix = {
@@ -1047,7 +1106,9 @@ const _meta = {
 					var suggestedArrayPath = suggestedIterator && suggestedIterator.arrayPaths[0];
 					var suggestedIteratorBinding = suggestedIterator
 						? sourceBinding(suggestedIterator.source, suggestedArrayPath) : null;
-					var suggestedIteratorMutation = suggestedIteratorBinding && sourceMutation(binding, suggestedIteratorBinding);
+					var suggestedIteratorMutation = suggestedIteratorBinding &&
+						(pickerMutation(binding.path, suggestedIterator.actionId, suggestedArrayPath, binding) ||
+							sourceMutation(binding, suggestedIteratorBinding));
 					if (suggestedIteratorMutation) {
 						plannedIterators[binding.path] = {
 							suggestion: suggestedIterator,
@@ -1098,6 +1159,13 @@ const _meta = {
 						? sourceBinding({ category: "iteration", scopeId: String(boundIteration.id || "forEach"), value: "item" }, relativePath)
 						: null);
 					var mutation = directCandidate && directCandidate.mutation || (suggested ? sourceMutation(binding, suggested) : null);
+					if (!mutation && suggested && planned) {
+						var actionPath = String(planned.arrayPath || "") + "[0]." + String(relativePath || "");
+						mutation = pickerMutation(binding.path, planned.suggestion.actionId, actionPath, binding);
+						if (mutation) {
+							mutation.value = suggested;
+						}
+					}
 					if (suggested && mutation) {
 						missingWarning.suggestedBinding = suggested;
 						missingWarning.fix = {
@@ -1211,6 +1279,7 @@ const _meta = {
 			hasStructure: false,
 			routesPath: "",
 			structurePath: "",
+			sourceFile: "",
 			actionIds: [],
 			structureWarnings: [],
 			error: ""
@@ -1255,6 +1324,21 @@ const _meta = {
 				}
 			}
 			summary.paperboard = paperboardSummary(paperboardTree);
+			walk(paperboardTree, function (node) {
+				if (summary.sourceFile || String(node.kind || "") !== "frontendPage") {
+					return;
+				}
+				var definition = nodeDefinition(node);
+				summary.sourceFile = definition.sourcePath || definition.sourceRelativePath || definition.sourceFile || "";
+			});
+			if (summary.sourceFile) {
+				arrayValue(summary.paperboard.actions).forEach(function (action) {
+					if (!action.sourceFile) action.sourceFile = summary.sourceFile;
+				});
+				arrayValue(summary.paperboard.dataSources).forEach(function (source) {
+					if (!source.sourceFile) source.sourceFile = summary.sourceFile;
+				});
+			}
 			arrayValue(summary.paperboard.structureWarnings).forEach(function (diagnostic) {
 				if (!summary.structureWarnings.some(function (known) {
 					return known.code === diagnostic.code && known.path === diagnostic.path;
@@ -1301,6 +1385,42 @@ const _meta = {
 		return summary;
 	}
 
+	function frontendResponse(frontend, full) {
+		if (full) {
+			return frontend;
+		}
+		var paperboard = frontend && frontend.paperboard || {};
+		var bindingWarnings = arrayValue(frontend && frontend.bindingWarnings);
+		var structureWarnings = arrayValue(frontend && frontend.structureWarnings);
+		var plan = frontend && frontend.bindingPlan || {};
+		return {
+			checked: frontend && frontend.checked === true,
+			readable: frontend && frontend.readable === true,
+			hasBuilder: frontend && frontend.hasBuilder === true,
+			hasRoutes: frontend && frontend.hasRoutes === true,
+			hasPage: frontend && frontend.hasPage === true,
+			hasStructure: frontend && frontend.hasStructure === true,
+			routesPath: frontend && frontend.routesPath || "",
+			structurePath: frontend && frontend.structurePath || "",
+			paperboard: {
+				routeCount: Number(paperboard.routeCount || 0),
+				pageCount: Number(paperboard.pageCount || 0),
+				blockCount: arrayValue(paperboard.blocks).length,
+				actionCount: arrayValue(paperboard.actions).length,
+				dataSourceCount: arrayValue(paperboard.dataSources).length
+			},
+			structureWarnings: structureWarnings,
+			bindingWarnings: bindingWarnings,
+			bindingSuggestionCount: arrayValue(frontend && frontend.bindingSuggestions).length,
+			bindingPlan: {
+				fixCount: Number(plan.fixCount || 0),
+				callCount: Number(plan.callCount || 0),
+				calls: arrayValue(plan.calls)
+			},
+			error: frontend && frontend.error || ""
+		};
+	}
+
 	function addRecommendedCall(calls, tool, args, reason) {
 		calls.push({
 			tool: tool,
@@ -1331,6 +1451,7 @@ const _meta = {
 					throw new Error("flow-app-progress requires project:\"<target project>\" or projectDir for standalone tests with a filesystem path.");
 				}
 				var includeFrontend = boolValue(args.includeFrontend, boolValue(prop(node, "includeFrontend"), true));
+				var fullDetail = String(args.detail || prop(node, "detail") || "compact").toLowerCase() === "full";
 				var wantedQName = String(args.qname || args.name || "").trim();
 				var progressBudget = mcp.phaseBudget(args, [
 					args.project || args.projectDir,
@@ -1344,7 +1465,7 @@ const _meta = {
 							ok: true,
 							project: args.project || "",
 							qname: wantedQName,
-							frontend: resumedFrontend,
+							frontend: frontendResponse(resumedFrontend, fullDetail),
 							next: "Continue with nextCursor for schema-backed frontend binding diagnostics."
 						}, 2, "frontend-structure"), ctx);
 						ctx.write(out, response);
@@ -1360,7 +1481,7 @@ const _meta = {
 						complete: false,
 						partial: false,
 						progressPhase: "frontend",
-						frontend: resumedFrontend,
+						frontend: frontendResponse(resumedFrontend, fullDetail),
 						nextActions: includeFrontend ? arrayValue(resumedFrontend.bindingWarnings).map(function (warning) {
 							return warning.message || warning.code;
 						}) : [],
@@ -1471,9 +1592,11 @@ const _meta = {
 						}
 					});
 				}
-				addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
-					"Confirm no explicit project-local mock remains before claiming completion.");
-				if (auditQName) {
+				if (fullDetail || nextActions.length) {
+					addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
+						"Confirm no explicit project-local mock remains before claiming completion.");
+				}
+				if ((fullDetail || nextActions.length) && auditQName) {
 					addRecommendedCall(recommendedCalls, "flow-output-schema", {
 						project: args.project || "",
 						qname: auditQName,
@@ -1484,7 +1607,7 @@ const _meta = {
 						qname: auditQName
 					}, "Prove the backend runtime result without resending code.");
 				}
-				if (includeFrontend && frontend.routesPath) {
+				if ((fullDetail || nextActions.length) && includeFrontend && frontend.routesPath) {
 					addRecommendedCall(recommendedCalls, "frontend-svelte-tree", {
 						project: args.project || "",
 						detail: "compact",
@@ -1492,14 +1615,14 @@ const _meta = {
 						maxDepth: 2
 					}, "Inspect the compact paperboard structure. Use a property- and source-targeted inspect only for one unresolved binding.");
 				}
-				if (includeFrontend && frontend.structurePath) {
+				if ((fullDetail || nextActions.length) && includeFrontend && frontend.structurePath) {
 					addRecommendedCall(recommendedCalls, "frontend-svelte-palette", {
 						project: args.project || "",
 						focusPath: frontend.structurePath,
 						query: "PageShell Card Text Button Status Table"
 					}, "Find compatible visible paperboard blocks at the first page structure.");
 				}
-				if (includeFrontend && frontend.actionIds.indexOf("frontbuilder.svelte.generate") !== -1) {
+				if ((fullDetail || nextActions.length) && includeFrontend && frontend.actionIds.indexOf("frontbuilder.svelte.generate") !== -1) {
 					addRecommendedCall(recommendedCalls, "frontend-svelte-action", {
 						project: args.project || "",
 						actionId: "generate"
@@ -1510,6 +1633,7 @@ const _meta = {
 					complete: true,
 					partial: false,
 					progressPhase: "complete",
+					detail: fullDetail ? "full" : "compact",
 					project: args.project || "",
 					qname: wantedQName,
 					progress: {
@@ -1528,7 +1652,7 @@ const _meta = {
 						count: mocks.length,
 						items: mocks
 					},
-					frontend: frontend,
+					frontend: frontendResponse(frontend, fullDetail),
 					recommendedCalls: recommendedCalls,
 					nextActions: nextActions,
 					next: nextActions.length

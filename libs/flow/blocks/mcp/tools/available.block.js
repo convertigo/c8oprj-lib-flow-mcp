@@ -287,6 +287,13 @@ const _meta = {
 				description: "Target Convertigo project name, not a filesystem path."
 			};
 		}
+		if (toolName === "flow-app-progress") {
+			schema.properties.detail = {
+				type: "string",
+				enum: ["compact", "full"],
+				description: "Compact by default. Use full only to inspect complete paperboard and binding inventories."
+			};
+		}
 		var supportsBlockTarget = /^code-(get|set|patch|check|rg)$/.test(String(toolName || ""));
 		if (/^code-/.test(String(toolName || ""))) {
 			schema.properties.qname = schema.properties.qname || {
@@ -424,7 +431,7 @@ const _meta = {
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-app-progress") {
-			description = "Reports paperboard progress, mocks, schema-backed binding diagnostics, directly executable fixes and recommended MCP calls.";
+			description = "Reports compact paperboard progress and actionable diagnostics. Use detail:'full' only for complete inventories.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {
