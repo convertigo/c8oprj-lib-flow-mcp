@@ -11,7 +11,12 @@ const _meta = {
     "path": {
       "kind": "text",
       "type": "string",
-      "description": "Exact FrontAst mutation path ending in props.outputSchema."
+      "description": "Optional exact FrontAst mutation path ending in props.outputSchema. It is resolved from actionId when omitted."
+    },
+    "actionId": {
+      "kind": "text",
+      "type": "string",
+      "description": "Stable id of the FullSync action used to resolve a missing mutation path."
     },
     "requestable": {
       "kind": "requestable",
@@ -109,16 +114,62 @@ const _meta = {
 		return current;
 	}
 
+	function nodeDefinition(node) {
+		var definition = node && node.definition;
+		if (definition && typeof definition === "object") return definition;
+		if (definition) {
+			try { return JSON.parse(String(definition)); } catch (_ignored) {}
+		}
+		return node || {};
+	}
+
+	function resolveOutputSchemaPath(ctx, props) {
+		var path = String(props.path || "");
+		if (/\.props\.outputSchema$/.test(path)) return path;
+		var actionId = String(props.actionId || "");
+		if (!actionId || !props.sourceFile) {
+			throw new Error("FullSync schema attachment requires path or sourceFile with actionId.");
+		}
+		var tree = ctx.authoringTreeSource({
+			projectDir: props.projectDir,
+			surface: "frontend",
+			builder: "svelte",
+			sourceFile: props.sourceFile,
+			detail: "inspect",
+			maxDepth: 64,
+			includeDefinition: true,
+			includeBindings: false
+		});
+		var matches = [];
+		function visit(node) {
+			if (!node) return;
+			var definition = nodeDefinition(node);
+			var type = String(node.type || definition.type || definition.tag || "").toLowerCase();
+			if (String(definition.id || node.id || "") === actionId && type.indexOf("fullsync") !== -1) {
+				var candidate = definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.outputSchema
+					|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : "");
+				if (candidate && matches.indexOf(candidate) === -1) matches.push(candidate);
+			}
+			var children = (node.children || []).concat(node.items || []);
+			for (var i = 0; i < children.length; i++) visit(children[i]);
+		}
+		visit(tree);
+		if (matches.length !== 1) {
+			throw new Error(matches.length
+				? "FullSync action id is ambiguous in source: " + actionId
+				: "FullSync action was not found in source: " + actionId);
+		}
+		return matches[0];
+	}
+
 	return {
 		normalizeFullSyncSchema: normalizeFullSyncSchema,
+		resolveOutputSchemaPath: resolveOutputSchemaPath,
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var path = String(props.path || "");
+			var path = resolveOutputSchemaPath(ctx, props);
 			var requestable = String(props.requestable || "");
-			if (!/\.props\.outputSchema$/.test(path)) {
-				throw new Error("FullSync schema attachment path must target props.outputSchema.");
-			}
 			if (!requestable) {
 				throw new Error("FullSync schema attachment requires a safe read requestable.");
 			}

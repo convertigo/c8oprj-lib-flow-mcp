@@ -896,19 +896,20 @@ const _meta = {
 						path: action.schemaInputMutationPath || "",
 						note: "Set safe sample variables for the schema requestable, then rerun flow-app-progress. These variables are never sent by the client action."
 					} : null,
-					schemaPending: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && action.outputSchemaMutationPath ? {
+					schemaPending: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && action.sourceFile && (action.outputSchemaMutationPath || action.id) ? {
 						tool: "frontend-svelte-fullsync-schema",
 						arguments: {
 							project: args.project,
 							sourceFile: action.sourceFile,
 							path: action.outputSchemaMutationPath,
+							actionId: String(action.id || actionId),
 							requestable: schemaRequestable,
 							input: schemaInput,
 							learn: true
 						},
 						note: "Execute this mutation unchanged after confirming that learning the read requestable is safe."
 					} : null,
-					schemaLocationMissing: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && !action.outputSchemaMutationPath,
+					schemaLocationMissing: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && (!action.sourceFile || (!action.outputSchemaMutationPath && !action.id)),
 					source: source,
 					root: "backendResults." + actionId,
 					sourcePaths: summary.paths.slice(0, 40),
@@ -991,7 +992,7 @@ const _meta = {
 						code: "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING",
 						actionId: suggestion.actionId,
 						executionId: suggestion.executionId,
-						message: "FullSync action " + suggestion.executionId + " has stale or missing source metadata for outputSchema. Run frontend-svelte-code-check, then reattach the schema to this exact action."
+						message: "FullSync action " + suggestion.executionId + " has no source identity for attaching outputSchema. Run frontend-svelte-code-check to restore source metadata."
 					});
 				}
 				return;

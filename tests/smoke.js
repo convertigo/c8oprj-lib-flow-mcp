@@ -40,6 +40,40 @@ assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
 	normalizedFullSyncSchema.properties.rows.items.properties.doc.properties.name.type === "string" &&
 	normalizedFullSyncSchema.properties._c8oMeta === undefined,
 	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
+var capturedFullSyncSchemaMutation = null;
+var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
+	props: function () {
+		return {
+			sourceFile: "routes/+page.flow.svelte",
+			actionId: "rootCategories",
+			requestable: ".ReadCategories",
+			projectDir: "/tmp/project",
+			input: { _use_limit: 1 },
+			out: "local.schemaAttachment"
+		};
+	},
+	authoringTreeSource: function () {
+		return { children: [{
+			type: "FullSyncView",
+			definition: {
+				id: "rootCategories",
+				sourceMutationPath: "frontAst.slots.structure.children[0]"
+			}
+		}] };
+	},
+	requestableSchema: function () {
+		return { ok: true, schema: { type: "object", properties: {} }, learned: true };
+	},
+	authoringMutateSource: function (request) {
+		capturedFullSyncSchemaMutation = request;
+		return { ok: true };
+	},
+	write: function () {}
+}, {});
+assertTrue(resolvedFullSyncSchemaAttachment.ok === true &&
+	capturedFullSyncSchemaMutation.mutation.path === "frontAst.slots.structure.children[0].props.outputSchema" &&
+	capturedFullSyncSchemaMutation.mutation.value.properties.rows.type === "array",
+	"FullSync schema attachment did not resolve and execute a missing mutation path from the stable action id");
 var fullSyncScaffoldSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/project/fullsync/scaffold.block.js"), "UTF-8"));
 var isolatedFullSyncScaffold = eval(fullSyncScaffoldSource.substring(fullSyncScaffoldSource.indexOf("(function")));
@@ -1126,23 +1160,25 @@ var appProgressPendingFullSync = callTool(13962, "flow-app-progress", {
 });
 var pendingFullSyncWarnings = appProgressPendingFullSync.result.result.structuredContent.frontend.bindingWarnings;
 assertTrue(pendingFullSyncWarnings.some(function (warning) {
-	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ||
-		(warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
+	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
 		warning.fix.tool === "frontend-svelte-fullsync-schema" &&
-		warning.fix.arguments.path && warning.fix.arguments.input &&
-		warning.fix.arguments.input._use_include_docs === true);
+		warning.fix.arguments.actionId === "rootCategories" && warning.fix.arguments.input &&
+		warning.fix.arguments.input._use_include_docs === true;
 }) && pendingFullSyncWarnings.some(function (warning) {
 	return warning.code === "FRONTEND_ITERATOR_EMPTY_SOURCE" && warning.fix &&
 		warning.fix.tool === "frontend-svelte-mutate" && warning.suggestedBinding &&
 		warning.suggestedBinding.source.category === "fullsync";
-}) && appProgressPendingFullSync.result.result.structuredContent.tasks.some(function (task) {
+	}) && !pendingFullSyncWarnings.some(function (warning) {
+		return warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING";
+	}) && appProgressPendingFullSync.result.result.structuredContent.tasks.some(function (task) {
 	return task.id === "frontendBindings" && task.done === false;
 }) && appProgressPendingFullSync.result.result.structuredContent.complete === false &&
 	appProgressPendingFullSync.result.result.structuredContent.progressPhase === "action-required" &&
 	appProgressPendingFullSync.result.result.structuredContent.progress.percent < 100 &&
 	pendingFullSyncWarnings.every(function (warning) {
-		return !warning.fix || warning.fix.tool !== "frontend-svelte-fullsync-schema" || !!warning.fix.arguments.path;
-}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
+		return !warning.fix || warning.fix.tool !== "frontend-svelte-fullsync-schema" ||
+			!!warning.fix.arguments.path || !!warning.fix.arguments.actionId;
+	}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
 		return call.tool === "frontend-svelte-mutate" && call.arguments.mutations &&
 			call.arguments.mutations[0].value.source.category === "fullsync";
 }), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
@@ -1171,7 +1207,8 @@ assertTrue(appProgressDeepFullSync.result.result.structuredContent.frontend.bind
 	return warning.actionId === "selectedProduct" &&
 		(warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ||
 			(warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
-			warning.fix.tool === "frontend-svelte-fullsync-schema" && warning.fix.arguments.path &&
+			warning.fix.tool === "frontend-svelte-fullsync-schema" &&
+			(warning.fix.arguments.path || warning.fix.arguments.actionId === "selectedProduct") &&
 			warning.fix.arguments.input && warning.fix.arguments.input._use_docid === "p1"));
 }), "MCP flow-app-progress should discover deeply nested FullSync actions: " +
 	JSON.stringify(appProgressDeepFullSync.result.result.structuredContent.frontend));
