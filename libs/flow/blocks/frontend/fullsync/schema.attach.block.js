@@ -137,6 +137,7 @@ const _meta = {
 			sourceFile: props.sourceFile,
 			detail: "inspect",
 			maxDepth: 64,
+			internalDeep: true,
 			includeDefinition: true,
 			includeBindings: false
 		});
@@ -146,8 +147,10 @@ const _meta = {
 			var definition = nodeDefinition(node);
 			var type = String(node.type || definition.type || definition.tag || "").toLowerCase();
 			if (String(definition.id || node.id || "") === actionId && type.indexOf("fullsync") !== -1) {
-				var candidate = definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.outputSchema
-					|| (definition.sourceMutationPath ? String(definition.sourceMutationPath) + ".props.outputSchema" : "");
+				var propertyPaths = definition.sourcePropertyMutationPaths || node.sourcePropertyMutationPaths || {};
+				var sourceMutationPath = definition.sourceMutationPath || node.sourceMutationPath || "";
+				var candidate = propertyPaths.outputSchema
+					|| (sourceMutationPath ? String(sourceMutationPath) + ".props.outputSchema" : "");
 				if (candidate && matches.indexOf(candidate) === -1) matches.push(candidate);
 			}
 			var children = (node.children || []).concat(node.items || []);

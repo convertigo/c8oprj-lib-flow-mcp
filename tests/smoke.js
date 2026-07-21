@@ -41,6 +41,7 @@ assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
 	normalizedFullSyncSchema.properties._c8oMeta === undefined,
 	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
 var capturedFullSyncSchemaMutation = null;
+var capturedFullSyncTreeRequest = null;
 var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
 	props: function () {
 		return {
@@ -52,14 +53,19 @@ var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
 			out: "local.schemaAttachment"
 		};
 	},
-	authoringTreeSource: function () {
-		return { children: [{
+	authoringTreeSource: function (request) {
+		capturedFullSyncTreeRequest = request;
+		var target = {
 			type: "FullSyncView",
+			sourceMutationPath: "frontAst.slots.structure.children[0]",
 			definition: {
-				id: "rootCategories",
-				sourceMutationPath: "frontAst.slots.structure.children[0]"
+				id: "rootCategories"
 			}
-		}] };
+		};
+		for (var depth = 0; depth < 24; depth++) {
+			target = { type: "Children", children: [target] };
+		}
+		return { children: [target] };
 	},
 	requestableSchema: function () {
 		return { ok: true, schema: { type: "object", properties: {} }, learned: true };
@@ -71,6 +77,8 @@ var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
 	write: function () {}
 }, {});
 assertTrue(resolvedFullSyncSchemaAttachment.ok === true &&
+	capturedFullSyncTreeRequest.internalDeep === true &&
+	capturedFullSyncTreeRequest.maxDepth === 64 &&
 	capturedFullSyncSchemaMutation.mutation.path === "frontAst.slots.structure.children[0].props.outputSchema" &&
 	capturedFullSyncSchemaMutation.mutation.value.properties.rows.type === "array",
 	"FullSync schema attachment did not resolve and execute a missing mutation path from the stable action id");
@@ -881,6 +889,24 @@ var frontendSvelteInspectStructure = findCompactNode(frontendSvelteInspectTree, 
 });
 assertTrue(frontendSvelteInspectStructure !== null && frontendSvelteInspectStructure.path,
 	"MCP frontend-svelte-tree detail=inspect should expose a frontend structure focus path");
+var frontendSvelteBoundedFull = callTool(13921, "frontend-svelte-tree", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	detail: "full",
+	maxDepth: 64,
+	internalDeep: true,
+	includeDefinition: true
+});
+var frontendSvelteBoundedFullTree = frontendSvelteBoundedFull.result.result.structuredContent;
+assertTrue(frontendSvelteBoundedFullTree.detail === "inspect" &&
+	frontendSvelteBoundedFullTree.responseDetail === "inspect" &&
+	frontendSvelteBoundedFullTree.warnings.some(function (warning) {
+		return warning.code === "FULL_TREE_DETAIL_DOWNGRADED";
+	}) && frontendSvelteBoundedFullTree.warnings.some(function (warning) {
+		return warning.code === "TREE_RESPONSE_BOUNDED";
+	}) && JSON.stringify(frontendSvelteBoundedFullTree).indexOf('"definition"') === -1 &&
+	JSON.stringify(frontendSvelteBoundedFullTree).length < 100000,
+	"MCP frontend-svelte-tree should bound accidental full responses and ignore public internalDeep flags");
 var frontendSvelteMultiQueryPalette = callTool(1393, "frontend-svelte-palette", {
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,

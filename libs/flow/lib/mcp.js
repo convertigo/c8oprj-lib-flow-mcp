@@ -1622,6 +1622,7 @@
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
+		delete args.internalDeep;
 		var responseBudgetPolicies = {
 			"flow-catalog": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
 			"flow-resource-search": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },
@@ -1714,6 +1715,18 @@
 			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
 				args.maxDepth = 6;
 			}
+			if (args.allowLarge !== true) {
+				args.maxDepth = Math.min(argInt(args.maxDepth, 6, 0, 20), 8);
+				args.includeDefinition = false;
+			}
+			if (/^(?:full|debug)$/i.test(String(args.detail || args.mode || "")) && args.allowLarge !== true) {
+				args.detail = "inspect";
+				delete args.mode;
+				args.maxDepth = Math.min(argInt(args.maxDepth, 4, 0, 20), 4);
+				args.includeDefinition = false;
+				args.includeSource = false;
+				args.includeAnalysis = false;
+			}
 		} else if (name === "authoring-palette") {
 			if (!args.surface) {
 				args.surface = "frontend";
@@ -1740,6 +1753,18 @@
 				}
 				if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
 					args.maxDepth = 8;
+				}
+				if (args.allowLarge !== true) {
+					args.maxDepth = Math.min(argInt(args.maxDepth, 8, 0, 20), 8);
+					args.includeDefinition = false;
+				}
+				if (/^(?:full|debug)$/i.test(String(args.detail || args.mode || "")) && args.allowLarge !== true) {
+					args.detail = "inspect";
+					delete args.mode;
+					args.maxDepth = Math.min(argInt(args.maxDepth, 4, 0, 20), 4);
+					args.includeDefinition = false;
+					args.includeSource = false;
+					args.includeAnalysis = false;
 				}
 			} else if (name === "frontend-svelte-palette") {
 				if (!args.position) {
@@ -3204,6 +3229,28 @@
 
 	function compactToolValue(request, value) {
 		var name = toolName(request);
+		if ((name === "frontend-svelte-tree" || name === "authoring-tree") && value && typeof value === "object") {
+			var treeArgs = toolArguments(request);
+			var boundedTreeRequest = treeArgs.allowLarge !== true &&
+				(treeArgs.includeDefinition === true || Number(treeArgs.maxDepth || 0) > 8);
+			if (boundedTreeRequest) {
+				value.warnings = Array.isArray(value.warnings) ? value.warnings.slice() : [];
+				value.warnings.push({
+					code: "TREE_RESPONSE_BOUNDED",
+					message: "Tree definitions were omitted and depth was limited to 8. Focus one path for exact properties or set allowLarge:true for explicit debugging."
+				});
+			}
+			if (/^(?:full|debug)$/i.test(String(treeArgs.detail || treeArgs.mode || "")) && treeArgs.allowLarge !== true) {
+				value.warnings = Array.isArray(value.warnings) ? value.warnings.slice() : [];
+				value.warnings.push({
+					code: "FULL_TREE_DETAIL_DOWNGRADED",
+					message: "Full tree detail was replaced with a bounded inspection response. Focus one path or set allowLarge:true for explicit debugging."
+				});
+				value.responseDetail = "inspect";
+				value.next = "Repeat with an exact focusPath and property. Use allowLarge:true only for explicit debugging."
+			}
+			return value;
+		}
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
 		}

@@ -165,7 +165,10 @@ screens through Flow Svelte source, not hundreds of tree mutations:
 Use `frontend-svelte-tree` or `frontend-svelte-palette` only for one concrete
 unknown property, block, scope or picker candidate reported by validation.
 Execute returned mutations unchanged. Do not reconstruct an application with
-unit `frontend-svelte-mutate` calls.
+unit `frontend-svelte-mutate` calls. Never request `detail:"full"` from the
+tree: use `detail:"inspect"` with an exact `focusPath`, `maxDepth:0`, the
+property name and `sourceId` when known. Full tree responses are bounded by the
+MCP because they duplicate definitions and schemas without helping authoring.
 
 Pages and components must remain explicit in the tree: layout blocks, visible
 widgets, events and actions. Events live below their owner, for example:
