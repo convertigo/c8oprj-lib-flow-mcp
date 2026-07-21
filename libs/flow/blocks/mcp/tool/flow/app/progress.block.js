@@ -438,7 +438,23 @@ const _meta = {
 			};
 		}
 		if (operation === "sync" || operation === "replicate_pull" || operation === "replicate_push") {
-			return { type: "object", properties: { ok: { type: "boolean" }, status: { type: "string" } } };
+			return {
+				type: "object",
+				properties: {
+					ok: { type: "boolean" },
+					status: { type: "string" },
+					progress: {
+						type: "object",
+						properties: {
+							current: { type: "number" },
+							total: { type: "number" },
+							percent: { type: "number" },
+							status: { type: "string" },
+							phase: { type: "string" }
+						}
+					}
+				}
+			};
 		}
 		return { type: "object" };
 	}

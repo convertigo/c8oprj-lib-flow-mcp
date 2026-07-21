@@ -1212,6 +1212,28 @@ assertTrue(pendingFullSyncWarnings.some(function (warning) {
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <OnMount id=\"initialize\"><Actions><FullSyncSync id=\"syncCatalog\" database=\"retailstore\" mode=\"pull\" /></Actions></OnMount>",
+	"    <Progress id=\"syncProgress\" value=\"@syncCatalog.progress.current\" max={100} />",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressFullSyncProgress = callTool(139620, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true,
+	detail: "full"
+});
+assertTrue(appProgressFullSyncProgress.result.result.structuredContent.frontend.bindingSuggestions.some(function (suggestion) {
+	return suggestion.actionId === "syncCatalog" && suggestion.sourcePaths.indexOf("progress.current") !== -1;
+}) && !appProgressFullSyncProgress.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_BINDING_UNKNOWN_SCHEMA_PATH";
+}), "MCP flow-app-progress should expose FullSync replication progress as a bindable schema path: " +
+	JSON.stringify(appProgressFullSyncProgress.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <ForEach id=\"catalog\" source={{\"mode\":\"literal\",\"value\":[]}} context=\"item\"><Children>",
 	"      <Card id=\"productCard\"><Children><If id=\"isProduct\" test={{\"mode\":\"literal\",\"value\":true}}><Then>",
 	"        <Button id=\"openProduct\" label=\"Open\"><Events><OnClick id=\"openProductClick\"><Actions>",
