@@ -1178,6 +1178,27 @@ assertTrue(appProgressDeepFullSync.result.result.structuredContent.frontend.bind
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
+	"    <OnMount id=\"initialize\"><Actions><UpdateNumber id=\"quantity\" operation=\"set\" value={1} /></Actions></OnMount>",
+	"    <Text id=\"quantityValue\" source={{\"mode\":\"source\",\"source\":{\"category\":\"action\",\"actionId\":\"quantity\"},\"path\":[]}} />",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressNumericState = callTool(139622, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true,
+	detail: "full"
+});
+assertTrue(appProgressNumericState.result.result.structuredContent.frontend.bindingSuggestions.some(function (suggestion) {
+	return suggestion.actionId === "quantity" && suggestion.operation === "state.number";
+}) && appProgressNumericState.result.result.structuredContent.frontend.timing.pickerCalls === 0,
+	"MCP flow-app-progress should index UpdateNumber state without reopening the picker tree: " +
+		JSON.stringify(appProgressNumericState.result.result.structuredContent.frontend.timing));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",

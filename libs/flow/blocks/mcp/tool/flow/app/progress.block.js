@@ -619,11 +619,19 @@ const _meta = {
 	}
 
 	function enrichFrontendBindings(ctx, args, frontend) {
+		var enrichStarted = Number(java.lang.System.currentTimeMillis());
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
 		var pickerCache = {};
 		var requestableSchemaCache = {};
+		var timing = frontend.timing || {};
+		timing.pickerCalls = 0;
+		timing.pickerCacheHits = 0;
+		timing.pickerMs = 0;
+		timing.pickerRequests = [];
+		timing.schemaCalls = 0;
+		timing.schemaMs = 0;
 		function cacheKey(parts) {
 			return parts.map(function (part) {
 				return typeof part === "string" ? part : JSON.stringify(part || {});
@@ -632,8 +640,12 @@ const _meta = {
 		function pickerSource(path, sourceId, binding) {
 			var key = cacheKey([path, sourceId]);
 			if (Object.prototype.hasOwnProperty.call(pickerCache, key)) {
+				timing.pickerCacheHits++;
 				return pickerCache[key];
 			}
+			var started = Number(java.lang.System.currentTimeMillis());
+			timing.pickerCalls++;
+			if (timing.pickerRequests.length < 8) timing.pickerRequests.push({ path: path, sourceId: sourceId });
 			try {
 				var tree = ctx.authoringTreeSource({
 					projectDir: args.projectDir,
@@ -681,6 +693,8 @@ const _meta = {
 			} catch (_ignored) {
 				pickerCache[key] = null;
 				return null;
+			} finally {
+				timing.pickerMs += Number(java.lang.System.currentTimeMillis()) - started;
 			}
 		}
 		function knownRequestableSchema(requestable, input) {
@@ -688,6 +702,8 @@ const _meta = {
 			if (Object.prototype.hasOwnProperty.call(requestableSchemaCache, key)) {
 				return requestableSchemaCache[key];
 			}
+			var started = Number(java.lang.System.currentTimeMillis());
+			timing.schemaCalls++;
 			try {
 				var schemaResult = ctx.callBlock("requestable.schema", {
 					requestable: requestable,
@@ -700,6 +716,8 @@ const _meta = {
 				requestableSchemaCache[key] = schema && Object.keys(schema).length ? schema : null;
 			} catch (_ignored) {
 				requestableSchemaCache[key] = null;
+			} finally {
+				timing.schemaMs += Number(java.lang.System.currentTimeMillis()) - started;
 			}
 			return requestableSchemaCache[key];
 		}
@@ -933,6 +951,29 @@ const _meta = {
 				bindings: [{ path: "", binding: sourceBinding(source, "") }],
 				example: { forEachBinding: sourceBinding(source, "") },
 				note: "Client list state exposed by UpdateList target. Pass the returned root binding unchanged."
+			});
+		});
+		var localNumberTargets = {};
+		arrayValue(paperboard.actions).forEach(function (action) {
+			var type = String(action.type || "").toLowerCase();
+			if (type !== "updatenumber") return;
+			var target = String(action.target || action.id || "");
+			if (!target || localNumberTargets[target]) return;
+			localNumberTargets[target] = true;
+			var source = { category: "action", actionId: target };
+			frontend.bindingSuggestions.push({
+				actionId: target,
+				executionId: String(action.id || target),
+				operation: "state.number",
+				schemaSource: "client numeric state",
+				source: source,
+				root: "backendResults." + target,
+				sourcePaths: [""],
+				arrayPaths: [],
+				leafPaths: [""],
+				bindings: [{ path: "", binding: sourceBinding(source, "") }],
+				example: { binding: sourceBinding(source, "") },
+				note: "Client numeric state exposed by UpdateNumber. Pass the returned root binding unchanged."
 			});
 		});
 		frontend.bindingSuggestions.forEach(function (suggestion) {
@@ -1329,6 +1370,8 @@ const _meta = {
 			calls: bindingPlanCalls,
 			note: "Execute each call unchanged, then rerun flow-app-progress. Individual warning fixes remain available for targeted Studio edits."
 		};
+		timing.bindingMs = Number(java.lang.System.currentTimeMillis()) - enrichStarted;
+		frontend.timing = timing;
 		return frontend;
 	}
 
@@ -1361,10 +1404,13 @@ const _meta = {
 	}
 
 	function frontendSummary(ctx, args) {
+		var summaryStarted = Number(java.lang.System.currentTimeMillis());
 		var projectCacheKey = String(args.projectDir || "");
 		var cacheKey = projectCacheKey + "|" + frontendSourceFingerprint(args);
 		if (frontendSummaryCache[cacheKey]) {
-			return JSON.parse(frontendSummaryCache[cacheKey]);
+			var cached = JSON.parse(frontendSummaryCache[cacheKey]);
+			cached.timing = { summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted, summaryCacheHit: true };
+			return cached;
 		}
 		var summary = {
 			checked: true,
@@ -1467,6 +1513,7 @@ const _meta = {
 			if (knownKey.indexOf(projectCacheKey + "|") === 0) delete frontendSummaryCache[knownKey];
 		});
 		frontendSummaryCache[cacheKey] = JSON.stringify(summary);
+		summary.timing = { summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted, summaryCacheHit: false };
 		return summary;
 	}
 
