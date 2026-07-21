@@ -622,7 +622,18 @@ const _meta = {
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
+		var pickerCache = {};
+		var requestableSchemaCache = {};
+		function cacheKey(parts) {
+			return parts.map(function (part) {
+				return typeof part === "string" ? part : JSON.stringify(part || {});
+			}).join("|");
+		}
 		function pickerSource(path, sourceId, binding) {
+			var key = cacheKey([path, sourceId]);
+			if (Object.prototype.hasOwnProperty.call(pickerCache, key)) {
+				return pickerCache[key];
+			}
 			try {
 				var tree = ctx.authoringTreeSource({
 					projectDir: args.projectDir,
@@ -665,10 +676,32 @@ const _meta = {
 						return false;
 					});
 				});
+				pickerCache[key] = selected;
 				return selected;
 			} catch (_ignored) {
+				pickerCache[key] = null;
 				return null;
 			}
+		}
+		function knownRequestableSchema(requestable, input) {
+			var key = cacheKey([requestable, input]);
+			if (Object.prototype.hasOwnProperty.call(requestableSchemaCache, key)) {
+				return requestableSchemaCache[key];
+			}
+			try {
+				var schemaResult = ctx.callBlock("requestable.schema", {
+					requestable: requestable,
+					project: args.project,
+					projectDir: args.projectDir,
+					input: input || {},
+					learn: false
+				}, { trace: false }) || {};
+				var schema = schemaResult.ok === false ? null : unwrapRequestableSchema(schemaResult.schema || {});
+				requestableSchemaCache[key] = schema && Object.keys(schema).length ? schema : null;
+			} catch (_ignored) {
+				requestableSchemaCache[key] = null;
+			}
+			return requestableSchemaCache[key];
 		}
 		function pickerMutation(path, sourceId, sourcePath, binding) {
 			var source = pickerSource(path, sourceId, binding);
@@ -806,6 +839,10 @@ const _meta = {
 					schema = unwrapRequestableSchema(schema);
 					schemaSource = schemaRequestable ? "learned requestable" : "declared";
 				}
+				if (!schema && operation && schemaRequestable && !schemaInputRequired && action.outputSchemaMutationPath) {
+					schema = knownRequestableSchema(schemaRequestable, schemaInput);
+					if (schema) schemaSource = "requestable cache";
+				}
 				if (!schema && !operation && requestable) {
 					var schemaResult = ctx.callBlock("requestable.schema", {
 						requestable: requestable,
@@ -819,6 +856,7 @@ const _meta = {
 					schema = unwrapRequestableSchema(schemaResult.schema || {});
 					schemaSource = "requestable";
 				}
+				var schemaResolved = !!schema;
 				if (!schema && operation) {
 					schema = fullSyncSchema(operation);
 				}
@@ -840,7 +878,7 @@ const _meta = {
 						path: action.schemaInputMutationPath || "",
 						note: "Set safe sample variables for the schema requestable, then rerun flow-app-progress. These variables are never sent by the client action."
 					} : null,
-					schemaPending: operation && schemaRequestable && !action.outputSchema && !schemaInputRequired ? {
+					schemaPending: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && action.outputSchemaMutationPath ? {
 						tool: "frontend-svelte-fullsync-schema",
 						arguments: {
 							project: args.project,
@@ -852,6 +890,7 @@ const _meta = {
 						},
 						note: "Execute this mutation unchanged after confirming that learning the read requestable is safe."
 					} : null,
+					schemaLocationMissing: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && !action.outputSchemaMutationPath,
 					source: source,
 					root: "backendResults." + actionId,
 					sourcePaths: summary.paths.slice(0, 40),
@@ -906,11 +945,20 @@ const _meta = {
 				});
 			}
 			if (!suggestion.schemaPending) {
+				if (suggestion.schemaLocationMissing) {
+					frontend.bindingWarnings.push({
+						code: "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING",
+						actionId: suggestion.actionId,
+						executionId: suggestion.executionId,
+						message: "FullSync action " + suggestion.executionId + " has stale or missing source metadata for outputSchema. Run frontend-svelte-code-check, then reattach the schema to this exact action."
+					});
+				}
 				return;
 			}
 			frontend.bindingWarnings.push({
 				code: "FRONTEND_FULLSYNC_SCHEMA_PENDING",
 				actionId: suggestion.actionId,
+				executionId: suggestion.executionId,
 				message: "FullSync action " + suggestion.actionId + " still uses the generic envelope schema; execute the returned schema learning mutation before binding domain fields.",
 				fix: suggestion.schemaPending
 			});
@@ -1241,6 +1289,21 @@ const _meta = {
 			}
 			frontend.bindingWarnings.push(warning);
 		});
+		var warningKeys = {};
+		frontend.bindingWarnings = frontend.bindingWarnings.filter(function (warning) {
+			var fix = warning && warning.fix && warning.fix.arguments || {};
+			var key = cacheKey([
+				warning.code || "",
+				warning.path || "",
+				warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ? warning.actionId || "" : warning.executionId || warning.actionId || "",
+				fix.sourceFile || "",
+				fix.path || "",
+				fix.requestable || ""
+			]);
+			if (warningKeys[key]) return false;
+			warningKeys[key] = true;
+			return true;
+		});
 		var fixesByFile = {};
 		arrayValue(frontend.bindingWarnings).forEach(function (warning) {
 			var fix = warning.fix;
@@ -1269,7 +1332,40 @@ const _meta = {
 		return frontend;
 	}
 
+	var frontendSummaryCache = {};
+
+	function frontendSourceFingerprint(args) {
+		var parts = [new java.lang.String(String(args.engineSource || "")).hashCode()];
+		var root = new java.io.File(String(args.projectDir || ""), "libs/flow/frontbuilder/svelte");
+		function visit(file) {
+			if (!file || !file.exists()) return;
+			if (file.isDirectory()) {
+				var name = String(file.getName());
+				if (name === "node_modules" || name === ".svelte-kit" || name === "build") return;
+				var children = file.listFiles() || [];
+				for (var i = 0; i < children.length; i++) visit(children[i]);
+				return;
+			}
+			var path = String(file.getAbsolutePath());
+			if (path.substring(path.length - 12) !== ".flow.svelte") return;
+			var contentHash = 0;
+			try {
+				contentHash = new java.lang.String(String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"))).hashCode();
+			} catch (_ignored) {
+			}
+			parts.push(path + ":" + file.length() + ":" + file.lastModified() + ":" + contentHash);
+		}
+		visit(root);
+		parts.sort();
+		return parts.join("|");
+	}
+
 	function frontendSummary(ctx, args) {
+		var projectCacheKey = String(args.projectDir || "");
+		var cacheKey = projectCacheKey + "|" + frontendSourceFingerprint(args);
+		if (frontendSummaryCache[cacheKey]) {
+			return JSON.parse(frontendSummaryCache[cacheKey]);
+		}
 		var summary = {
 			checked: true,
 			readable: false,
@@ -1367,6 +1463,10 @@ const _meta = {
 		} catch (e) {
 			summary.error = String(e.message || e);
 		}
+		Object.keys(frontendSummaryCache).forEach(function (knownKey) {
+			if (knownKey.indexOf(projectCacheKey + "|") === 0) delete frontendSummaryCache[knownKey];
+		});
+		frontendSummaryCache[cacheKey] = JSON.stringify(summary);
 		return summary;
 	}
 
@@ -1613,11 +1713,12 @@ const _meta = {
 						actionId: "generate"
 					}, "Regenerate Svelte sources after frontend tree mutations.");
 				}
+				var isComplete = completed === tasks.length;
 				response = mcp.toolResponse(request, {
 					ok: true,
-					complete: true,
+					complete: isComplete,
 					partial: false,
-					progressPhase: "complete",
+					progressPhase: isComplete ? "complete" : "action-required",
 					detail: fullDetail ? "full" : "compact",
 					project: args.project || "",
 					qname: wantedQName,

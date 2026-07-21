@@ -660,8 +660,9 @@ var appProgressEmpty = callTool(1391, "flow-app-progress", {
 	projectDir: targetProjectDir
 });
 assertTrue(appProgressEmpty.result.result.structuredContent.ok === true &&
-	appProgressEmpty.result.result.structuredContent.complete === true &&
+	appProgressEmpty.result.result.structuredContent.complete === false &&
 	appProgressEmpty.result.result.structuredContent.partial === false &&
+	appProgressEmpty.result.result.structuredContent.progressPhase === "action-required" &&
 	appProgressEmpty.result.result.structuredContent.progress.total >= 5 &&
 	appProgressEmpty.result.result.structuredContent.nextActions.length > 0 &&
 	appProgressEmpty.result.result.structuredContent.recommendedCalls.some(function (call) {
@@ -1125,18 +1126,23 @@ var appProgressPendingFullSync = callTool(13962, "flow-app-progress", {
 });
 var pendingFullSyncWarnings = appProgressPendingFullSync.result.result.structuredContent.frontend.bindingWarnings;
 assertTrue(pendingFullSyncWarnings.some(function (warning) {
-	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
+	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ||
+		(warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
 		warning.fix.tool === "frontend-svelte-fullsync-schema" &&
-		warning.fix.arguments.input && warning.fix.arguments.input._use_include_docs === true;
+		warning.fix.arguments.path && warning.fix.arguments.input &&
+		warning.fix.arguments.input._use_include_docs === true);
 }) && pendingFullSyncWarnings.some(function (warning) {
 	return warning.code === "FRONTEND_ITERATOR_EMPTY_SOURCE" && warning.fix &&
 		warning.fix.tool === "frontend-svelte-mutate" && warning.suggestedBinding &&
 		warning.suggestedBinding.source.category === "fullsync";
 }) && appProgressPendingFullSync.result.result.structuredContent.tasks.some(function (task) {
 	return task.id === "frontendBindings" && task.done === false;
+}) && appProgressPendingFullSync.result.result.structuredContent.complete === false &&
+	appProgressPendingFullSync.result.result.structuredContent.progressPhase === "action-required" &&
+	appProgressPendingFullSync.result.result.structuredContent.progress.percent < 100 &&
+	pendingFullSyncWarnings.every(function (warning) {
+		return !warning.fix || warning.fix.tool !== "frontend-svelte-fullsync-schema" || !!warning.fix.arguments.path;
 }) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
-	return call.tool === "frontend-svelte-fullsync-schema";
-	}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
 		return call.tool === "frontend-svelte-mutate" && call.arguments.mutations &&
 			call.arguments.mutations[0].value.source.category === "fullsync";
 }), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
@@ -1162,9 +1168,11 @@ var appProgressDeepFullSync = callTool(139621, "flow-app-progress", {
 	includeFrontend: true
 });
 assertTrue(appProgressDeepFullSync.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
-	return warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.actionId === "selectedProduct" &&
-		warning.fix && warning.fix.tool === "frontend-svelte-fullsync-schema" &&
-		warning.fix.arguments.input && warning.fix.arguments.input._use_docid === "p1";
+	return warning.actionId === "selectedProduct" &&
+		(warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ||
+			(warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
+			warning.fix.tool === "frontend-svelte-fullsync-schema" && warning.fix.arguments.path &&
+			warning.fix.arguments.input && warning.fix.arguments.input._use_docid === "p1"));
 }), "MCP flow-app-progress should discover deeply nested FullSync actions: " +
 	JSON.stringify(appProgressDeepFullSync.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
@@ -1410,21 +1418,24 @@ var frontendSourceRecoveryCheck = callTool(13821, "frontend-svelte-code-check", 
 assertTrue(frontendSourceRecoveryCheck.result.result.structuredContent.ok === true,
 	"MCP frontend-svelte-code-check should validate the supplied draft instead of a persisted invalid source");
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, frontendPersistedSource, "UTF-8");
+var frontendSetCode = [
+	"<FlowComponent id=\"home\" label=\"Home source\">",
+	"  <Structure>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n");
 var frontendSourceSet = callTool(1383, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceRevision,
-	code: [
-		"<FlowComponent id=\"home\" label=\"Home source\">",
-		"  <Structure>",
-		"  </Structure>",
-		"</FlowComponent>",
-		""
-	].join("\n")
+	code: frontendSetCode
 });
 var frontendSourceSetRevision = frontendSourceSet.result.result.structuredContent.revision;
 assertTrue(frontendSourceSet.result.result.structuredContent.written === true &&
-	frontendSourceSetRevision !== frontendSourceRevision,
-	"MCP frontend-svelte-code-set should validate and persist one complete source");
+	frontendSourceSetRevision !== frontendSourceRevision &&
+	frontendSourceSet.result.result.structuredContent.code === undefined &&
+	frontendSourceSet.result.result.structuredContent.sourceChars > 0,
+	"MCP frontend-svelte-code-set should persist source and return a compact response");
 var frontendSourcePatch = callTool(1384, "frontend-svelte-code-patch", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceSetRevision,
@@ -1439,13 +1450,18 @@ var frontendSourcePatch = callTool(1384, "frontend-svelte-code-patch", {
 		" </FlowComponent>"
 	].join("\n")
 });
+var frontendSourceAfterPatch = callTool(13841, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir
+});
 assertTrue(frontendSourcePatch.result.result.structuredContent.written === true &&
-	frontendSourcePatch.result.result.structuredContent.code.indexOf("Home patched") !== -1,
-	"MCP frontend-svelte-code-patch should validate and persist a unified patch");
+	frontendSourcePatch.result.result.structuredContent.code === undefined &&
+	frontendSourcePatch.result.result.structuredContent.sourceChars > 0 &&
+	frontendSourceAfterPatch.result.result.structuredContent.code.indexOf("Home patched") !== -1,
+	"MCP frontend-svelte-code-patch should persist a unified patch and omit source by default");
 var frontendSourceStale = callTool(1385, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceRevision,
-	code: frontendSourceSet.result.result.structuredContent.code
+	code: frontendSetCode
 });
 assertTrue(frontendSourceStale.result.error,
 	"MCP frontend-svelte-code-set should reject a stale revision");

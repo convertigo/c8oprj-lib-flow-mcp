@@ -3175,6 +3175,33 @@
 		return out;
 	}
 
+	function compactFrontendWriteToolValue(request, value) {
+		if (wantsFullMutationResponse(request) || !value || typeof value !== "object") {
+			return value;
+		}
+		var out = {};
+		["ok", "title", "message", "sourceFile", "revision", "oldRevision", "contentLength",
+			"hunks", "errorCount", "warningCount", "written", "writtenFile", "writtenBytes",
+			"created", "mutationCount", "refreshed", "schemaRequestable", "schemaLearned"].forEach(function (key) {
+			if (value[key] !== undefined && value[key] !== null && value[key] !== "") out[key] = value[key];
+		});
+		if (typeof value.source === "string") out.sourceChars = value.source.length;
+		if (typeof value.code === "string") out.sourceChars = value.code.length;
+		if (value.diagnostics) {
+			out.diagnostics = (Array.isArray(value.diagnostics) ? value.diagnostics : []).slice(0, 20);
+			if (value.diagnostics.length > 20) out.omittedDiagnostics = value.diagnostics.length - 20;
+		}
+		if (value.error) out.error = compactFlowCodeError(request, value.error);
+		if (value.schema) out.schema = compactSchemaSummary(value.schema, 20);
+		if (value.debug) out.debug = compactJsonPreview(value.debug, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
+		if (value.studioRefresh) {
+			out.studioRefresh = compactJsonPreview(value.studioRefresh, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
+		}
+		out.responseDetail = "summary";
+		out.next = "Source omitted after validation. Use frontend-svelte-code-get to read it again, or detail:'full' only for debugging.";
+		return out;
+	}
+
 	function compactToolValue(request, value) {
 		var name = toolName(request);
 		if (name === "flow-list") {
@@ -3197,6 +3224,12 @@
 		}
 		if (name === "flow-requestable-schema") {
 			return compactRequestableSchemaToolValue(request, value);
+		}
+		if (name === "frontend-svelte-code-check" || name === "frontend-svelte-code-set" ||
+				name === "frontend-svelte-code-patch" || name === "frontend-svelte-fullsync-schema" ||
+				name === "frontend-svelte-mutate" ||
+				(name === "authoring-mutate" && String(toolArguments(request).surface || "") === "frontend")) {
+			return compactFrontendWriteToolValue(request, value);
 		}
 		if (name === "flow-set" ||
 				name === "flow-edit" ||
