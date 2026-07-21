@@ -75,6 +75,18 @@ const _meta = {
 				seen[id] = occurrence;
 			}
 		}
+		var variableSourcePattern = /<Variable\b[^>]*\bsource\s*=/g;
+		while ((match = variableSourcePattern.exec(source)) !== null) {
+			diagnostics.push({
+				severity: "error",
+				code: "FRONTEND_PROPERTY_UNKNOWN",
+				message: "Unknown property 'source' on <Variable>. Use value for literal or schema-backed action parameters.",
+				line: lineNumber(source, match.index),
+				property: "source",
+				acceptedProperties: ["name", "value"],
+				hint: "Replace source with value and keep the same intuitive @reference."
+			});
+		}
 		if (!/<FlowComponent\b/.test(source)) {
 			diagnostics.push({
 				severity: "error",

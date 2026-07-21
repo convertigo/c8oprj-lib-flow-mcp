@@ -1486,6 +1486,24 @@ assertTrue(frontendSourceUnknownProperty.result.result.structuredContent.ok === 
 	}).length === 2,
 	"MCP frontend-svelte-code-check should reject unknown catalog properties with accepted alternatives: " +
 		JSON.stringify(frontendSourceUnknownProperty.result.result.structuredContent));
+var frontendSourceUnknownVariableProperty = callTool(13821, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure><OnMount id=\"load\"><Actions>",
+		"    <CallSequence id=\"read\" requestable=\".TargetSmoke\"><Variables>",
+		"      <Variable name=\"target\" source=\"@event.value\" />",
+		"    </Variables></CallSequence>",
+		"  </Actions></OnMount></Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendSourceUnknownVariableProperty.result.result.structuredContent.ok === false &&
+	frontendSourceUnknownVariableProperty.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "source" &&
+			diagnostic.acceptedProperties.indexOf("value") !== -1;
+	}), "MCP frontend-svelte-code-check should reject Variable source and expose canonical value: " +
+		JSON.stringify(frontendSourceUnknownVariableProperty.result.result.structuredContent));
 var frontendSourceUnknownBlock = callTool(13822, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [
