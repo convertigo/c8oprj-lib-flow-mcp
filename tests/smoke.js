@@ -89,6 +89,22 @@ assertTrue(isolatedFullSyncScaffold.canonicalVariableName("getView", "include_do
 	isolatedFullSyncScaffold.canonicalVariableName("getView", "_use_startkey") === "_use_startkey" &&
 	isolatedFullSyncScaffold.canonicalVariableName("postBulkDocuments", "documents") === "documents",
 	"FullSync scaffold did not normalize CouchDB read query variables to Convertigo _use_ names");
+assertTrue(isolatedFullSyncScaffold.designMismatches({
+	_id: "_design/catalog",
+	_rev: "1-live",
+	views: { categories: { map: "function (doc) { emit(doc.type, doc); }" } }
+}, {
+	_id: "_design/catalog",
+	views: { categories: { map: "function (doc) { emit(doc.type, doc); }" } }
+}).length === 0 &&
+	isolatedFullSyncScaffold.designMismatches({
+		_id: "_design/catalog",
+		views: { categories: { map: "stale" } }
+	}, {
+		_id: "_design/catalog",
+		views: { categories: { map: "expected" } }
+	})[0] === "views.categories.map",
+	"FullSync readiness should compare the saved design contract with the live document while ignoring remote metadata");
 var fullSyncViewWarnings = isolatedFullSyncScaffold.designWarnings([{
 	name: "catalog",
 	views: {
@@ -761,7 +777,8 @@ assertTrue(fullSyncScaffoldDryRun.result.result.structuredContent.ok === true &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.dryRun === true &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.connector === "FlowFullSyncSmoke.retaildb" &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.designDocuments[0] === "FlowFullSyncSmoke.retaildb.design" &&
-	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[0] === "FlowFullSyncSmoke.retaildb.GetChildren",
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[0] === "FlowFullSyncSmoke.retaildb.GetChildren" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.readiness.checked === false,
 	"MCP flow-fullsync-scaffold dry-run did not return the expected plan");
 var frontendEngineSource = [
 	"version: 1",
@@ -972,11 +989,11 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	appProgressFrontend.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === true;
 	}) &&
-	appProgressFrontend.result.result.structuredContent.recommendedCalls.some(function (call) {
-		return call.tool === "frontend-svelte-palette" &&
-			String(call.arguments.query || "").indexOf("PageShell") !== -1;
+	!appProgressFrontend.result.result.structuredContent.recommendedCalls.some(function (call) {
+		return call.tool === "frontend-svelte-palette" || call.tool === "frontend-svelte-tree" ||
+			call.tool === "frontend-svelte-action" && call.arguments.actionId === "generate";
 	}),
-	"MCP flow-app-progress full detail should expose paperboard calls and result-relative bindings: " +
+	"MCP flow-app-progress should expose result-relative bindings without speculative tree, palette or generate calls: " +
 		JSON.stringify(appProgressFrontend.result.result.structuredContent.frontend));
 var appProgressStructured = callTool(1396, "flow-app-progress", {
 	project: "target",
@@ -1209,7 +1226,7 @@ assertTrue(pendingFullSyncWarnings.some(function (warning) {
 	}) && appProgressPendingFullSync.result.result.structuredContent.recommendedCalls.some(function (call) {
 		return call.tool === "frontend-svelte-mutate" && call.arguments.mutations &&
 			call.arguments.mutations[0].value.source.category === "fullsync";
-}), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
+	}), "MCP flow-app-progress should keep pending FullSync schemas and empty iterators actionable: " +
 	JSON.stringify(appProgressPendingFullSync.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",

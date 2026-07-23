@@ -442,7 +442,7 @@ const _meta = {
 		} else if (name === "flow-project-bootstrap") {
 			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
 		} else if (name === "flow-fullsync-scaffold") {
-			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true. PostBulkDocuments accepts complete document arrays through _use_json_base.";
+			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true; apply reports saved DBOs separately from live CouchDB readiness and returns a repair call on failure. PostBulkDocuments accepts complete document arrays through _use_json_base.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-delete") {

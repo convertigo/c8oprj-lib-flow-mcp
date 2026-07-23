@@ -104,7 +104,18 @@ const _meta = {
         "updated": { "type": "array", "items": { "type": "string" } },
         "reused": { "type": "array", "items": { "type": "string" } },
         "warnings": { "type": "array", "items": { "type": "object" } },
-        "saved": { "type": "boolean" }
+        "saved": { "type": "boolean" },
+        "readiness": {
+          "type": "object",
+          "properties": {
+            "checked": { "type": "boolean" },
+            "ready": { "type": "boolean" },
+            "database": { "type": "string" },
+            "designDocuments": { "type": "array", "items": { "type": "object" } },
+            "errors": { "type": "array", "items": { "type": "object" } }
+          }
+        },
+        "repair": { "type": "object" }
       }
     }
   },
@@ -234,6 +245,100 @@ const _meta = {
 			});
 		});
 		return warnings;
+	}
+
+	function plainJson(value) {
+		if (value === undefined || value === null) {
+			return value;
+		}
+		try {
+			if (value.getClass && String(value.getClass().getName()) === "org.codehaus.jettison.json.JSONObject") {
+				return JSON.parse(String(value));
+			}
+		} catch (_ignoreJavaClass) {
+		}
+		return value;
+	}
+
+	function designMismatches(actual, expected, prefix) {
+		actual = plainJson(actual);
+		expected = plainJson(expected);
+		prefix = prefix || "";
+		var mismatches = [];
+		if (expected && typeof expected === "object" && !Array.isArray(expected)) {
+			if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
+				return [prefix || "$"];
+			}
+			Object.keys(expected).forEach(function (key) {
+				mismatches = mismatches.concat(designMismatches(
+					actual[key],
+					expected[key],
+					prefix ? prefix + "." + key : key
+				));
+			});
+			return mismatches;
+		}
+		if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+			mismatches.push(prefix || "$");
+		}
+		return mismatches;
+	}
+
+	function verifyReadiness(connector, designDocuments) {
+		var database = String(connector.getDatabaseName());
+		var readiness = {
+			checked: true,
+			ready: false,
+			database: database,
+			designDocuments: [],
+			errors: []
+		};
+		try {
+			var CouchDbManager = Packages.com.twinsoft.convertigo.engine.providers.couchdb.CouchDbManager;
+			CouchDbManager.syncDocument(connector);
+			var client = connector.getCouchClient();
+			var databaseInfo = plainJson(client.getDatabase(database));
+			if (databaseInfo && databaseInfo.error) {
+				throw new Error(String(databaseInfo.error) + ": " + String(databaseInfo.reason || "database unavailable"));
+			}
+			designDocuments.forEach(function (rawSpec) {
+				var spec = objectValue(rawSpec, "designDocuments[]");
+				var name = String(spec.name);
+				var status = { name: name, ready: false, mismatches: [] };
+				try {
+					var remote = plainJson(client.getDocument(database, "_design/" + name));
+					if (remote && remote.error) {
+						throw new Error(String(remote.error) + ": " + String(remote.reason || "design document unavailable"));
+					}
+					status.mismatches = designMismatches(remote, designJson(spec, name));
+					status.ready = status.mismatches.length === 0;
+					if (!status.ready) {
+						readiness.errors.push({
+							code: "FULLSYNC_DESIGN_DOCUMENT_STALE",
+							designDocument: name,
+							message: "Live design document differs from the saved DBO.",
+							paths: status.mismatches
+						});
+					}
+				} catch (e) {
+					status.error = String(e.message || e);
+					readiness.errors.push({
+						code: "FULLSYNC_DESIGN_DOCUMENT_UNAVAILABLE",
+						designDocument: name,
+						message: status.error
+					});
+				}
+				readiness.designDocuments.push(status);
+			});
+			readiness.ready = readiness.errors.length === 0 &&
+				readiness.designDocuments.every(function (status) { return status.ready; });
+		} catch (e) {
+			readiness.errors.push({
+				code: "FULLSYNC_DATABASE_UNAVAILABLE",
+				message: String(e.message || e)
+			});
+		}
+		return readiness;
 	}
 
 	function transactionClass(type) {
@@ -429,6 +534,7 @@ const _meta = {
 	return {
 		canonicalVariableName: canonicalVariableName,
 		designWarnings: designWarnings,
+		designMismatches: designMismatches,
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -478,6 +584,13 @@ const _meta = {
 			});
 
 			if (dryRun) {
+				result.readiness = {
+					checked: false,
+					ready: false,
+					database: fsName,
+					designDocuments: [],
+					errors: []
+				};
 				result.plan = {
 					connector: connectorQName,
 					designDocuments: designDocuments.map(function (spec) { return connectorQName + "." + spec.name; }),
@@ -525,7 +638,7 @@ const _meta = {
 					document.setJSONObject(desired);
 					connector.add(document);
 					result.created.push(qname);
-				} else if (String(document.getJSONObject().toString()) !== String(desired.toString())) {
+				} else if (designMismatches(document.getJSONObject(), desired).length !== 0) {
 					document.setJSONObject(desired);
 					document.hasChanged = true;
 					result.updated.push(qname);
@@ -565,6 +678,20 @@ const _meta = {
 			project.hasChanged = true;
 			Engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
+			result.readiness = verifyReadiness(connector, designDocuments);
+			result.ok = result.readiness.ready;
+			if (!result.ok) {
+				result.repair = {
+					tool: "flow-fullsync-scaffold",
+					arguments: {
+						project: name,
+						connector: connectorSpec,
+						designDocuments: designDocuments,
+						transactions: transactions,
+						dryRun: false
+					}
+				};
+			}
 			refreshStudio(Engine, project);
 			ctx.write(prop(props, "out") || "local.fullsyncScaffold", result);
 			return result;

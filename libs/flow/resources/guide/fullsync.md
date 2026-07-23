@@ -16,6 +16,10 @@ transactions and variables supplied by the request. It does not seed data,
 replicate external databases or infer domain design documents. Applying an
 unchanged request is idempotent.
 
+After apply, continue only when both `saved:true` and `readiness.ready:true`.
+When readiness fails, execute the returned `repair` call unchanged before
+seeding data or starting client replication.
+
 Treat every scaffold `warnings` entry as blocking during authoring. In
 particular, never coerce a potentially multi-valued relation with
 `String(doc.field)` as a view key: that creates one comma-joined key. Emit one

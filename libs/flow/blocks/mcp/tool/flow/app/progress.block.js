@@ -1738,6 +1738,9 @@ const _meta = {
 							}
 							addRecommendedCall(recommendedCalls, warning.fix.tool, warning.fix.arguments,
 								warning.message || "Resolve the frontend binding warning.");
+						} else if (warning.inspect && warning.inspect.tool && warning.inspect.arguments) {
+							addRecommendedCall(recommendedCalls, warning.inspect.tool, warning.inspect.arguments,
+								warning.message || "Inspect the unresolved frontend binding.");
 						}
 					});
 				}
@@ -1755,27 +1758,6 @@ const _meta = {
 						project: args.project || "",
 						qname: auditQName
 					}, "Prove the backend runtime result without resending code.");
-				}
-				if ((fullDetail || nextActions.length) && includeFrontend && frontend.routesPath) {
-					addRecommendedCall(recommendedCalls, "frontend-svelte-tree", {
-						project: args.project || "",
-						detail: "compact",
-						focusPath: frontend.routesPath,
-						maxDepth: 2
-					}, "Inspect the compact paperboard structure. Use a property- and source-targeted inspect only for one unresolved binding.");
-				}
-				if ((fullDetail || nextActions.length) && includeFrontend && frontend.structurePath) {
-					addRecommendedCall(recommendedCalls, "frontend-svelte-palette", {
-						project: args.project || "",
-						focusPath: frontend.structurePath,
-						query: "PageShell Card Text Button Status Table"
-					}, "Find compatible visible paperboard blocks at the first page structure.");
-				}
-				if ((fullDetail || nextActions.length) && includeFrontend && frontend.actionIds.indexOf("frontbuilder.svelte.generate") !== -1) {
-					addRecommendedCall(recommendedCalls, "frontend-svelte-action", {
-						project: args.project || "",
-						actionId: "generate"
-					}, "Regenerate Svelte sources after frontend tree mutations.");
 				}
 				var isComplete = completed === tasks.length;
 				response = mcp.toolResponse(request, {
