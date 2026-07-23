@@ -4,10 +4,9 @@ When syntax or modeling is unclear, read real executable samples before opening
 the full palette. Samples are small, private or internal examples that exercise
 the same MCP tools used for normal authoring.
 
-Read these first:
+Choose at most two examples that match the unclear syntax:
 
 ```json
-{"method":"resources/read","params":{"uri":"flow://guide/samples"}}
 {"tool":"code-get","arguments":{"project":"lib_flow_mcp","qname":"sample_blocks_flow_and_rhino"}}
 {"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.formatGreeting"}}
 {"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.sha256"}}

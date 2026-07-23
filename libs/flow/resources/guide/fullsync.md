@@ -108,7 +108,9 @@ For a read-only offline application, keep this order visible:
 3. run `FullSyncSync` in pull or sync mode and show progress/errors;
 4. query local lists through `FullSyncView`;
 5. read selected local documents through `FullSyncGet`;
-6. validate the same view/get after browser network is disabled.
+6. validate the same view/get after browser network is disabled when safe
+   offline control is exposed; otherwise report offline acceptance as
+   unverified.
 
 Offline reload of the whole application shell is a separate service-worker or
 browser-cache concern. Local FullSync data availability alone does not imply

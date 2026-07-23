@@ -7,10 +7,8 @@ parser validate and project it. Tree, palette and unit mutations remain the
 discovery and repair path, not the default way to assemble a whole application.
 Do not edit generated Svelte output directly.
 
-If the task includes both backend Flow and frontend Svelte work, read
-`flow://guide/fullstack-paperboard` first. This guide remains the reference for
-tree, palette and mutation details, but the full-stack guide defines the
-paperboard-first order, mock debt checks and progress reporting.
+If the task includes both backend Flow and frontend Svelte work, use
+`flow://guide/fullstack-paperboard` instead of this guide.
 For logic shared with backend FlowScript, also read
 `flow://guide/portable-blocks`.
 
@@ -112,30 +110,23 @@ runtime key in source.
 It rejects a free browser expression in a client action Variable with
 `FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE`; use its suggested `@` reference, or
 insert a dual-target portable block when real computation is required.
-5. Call `flow-app-progress({ project })` after each substantial source pass.
-   Its `backend.debt` section reports project-local blocks that no Flow calls
-   and backend output roots that the current frontend does not consume. Treat
-   these as cleanup diagnostics, not as proof that a public API field is wrong.
-   Resolve structural and binding diagnostics before generating.
-6. Run `frontend-svelte-action` with `actionId:"generate"` to update generated
-   Svelte sources. If dev mode is running, use `actionId:"dev.sync"` after a
-   mutation so Vite/HMR sees the new source. Use `frontend-svelte-actions` to
-   inspect enabled dev/build actions.
-
 ## Compact Browser Acceptance
 
-After a successful production build, use one Playwright `browser_run_code`
-call for the normal acceptance path. The function must navigate to the built
-URL, attach console/page-error collection before interaction, perform the main
-user action, wait for the expected settled state and return one small object
-containing the requirement-specific counts plus broken images, application
-errors and horizontal overflow at desktop and mobile widths.
+After a successful production build, use one safe aggregate Playwright call
+for the normal acceptance path when the connected browser exposes one. It
+should navigate to the built URL, attach console/page-error collection before
+interaction, perform the main user action, wait for the expected settled state
+and return one small object containing the requirement-specific counts plus
+broken images, application errors and horizontal overflow at desktop and
+mobile widths. Never substitute an unsafe runner. If aggregate, offline or
+persistent-profile controls are unavailable, use only the minimum safe
+primitives needed for the remaining assertions and report the missing
+capability.
 
-Do not call navigate, find, evaluate, screenshot and console tools separately
-when the aggregate call passes. On failure, use at most one focused browser
-diagnostic for the failed field. Screenshots are for a requested visual review,
-not routine proof. This keeps the browser phase deterministic and prevents a
-successful UI from triggering an exploratory second authoring pass.
+On failure, use at most one focused browser diagnostic for the failed field.
+Screenshots are for a requested visual review, not routine proof. This keeps
+the browser phase deterministic and prevents a successful UI from triggering
+an exploratory second authoring pass.
 
 Low-code `id` values identify objects in Flow authoring and the Studio tree.
 They are not guaranteed to become DOM `id` attributes, especially below an
@@ -242,7 +233,10 @@ _private/svelte/src/lib/...
   `FullSyncView`, `FullSyncSync` or `CallSequence`, put a palette-provided
   `Navigate` action after it in the same event. A back control is a visible
   `Button` containing `Events -> OnClick -> Actions -> GoBack`; `GoBack` itself
-  is not a visual block. Set its fallback route for direct page entry.
+  is not a visual block. Set its fallback route for direct page entry. Action
+  targets are application-scoped and can feed another route. Prefer a separate
+  route for history-backed detail; `location`, URL queries and browser globals
+  are not reactive Flow state.
 - Use a palette-provided `OnMount` event under page structure for automatic
   lifecycle actions. Initialize shared list/number/value state before long
   requestable or FullSync actions. Keep initialization, synchronization and the
@@ -382,9 +376,7 @@ Use `frontend-svelte-action` for build/dev operations:
 The `openBuilt` URL is runtime-declared and can contain an internal host or
 port. Browser tests must retain its project path but use the public runtime
 origin provided by the local, CI or deployed environment. Do not start several
-Playwright calls after one navigation has already stalled. For autonomous or CI
-validation, run the Playwright MCP headless without `--extension`. Use extension
-mode only when an interactive browser relay is known to be attached.
+Playwright calls after one navigation has already stalled.
 
 Each `ForEach` publishes schema-backed `item` and integer `index` picker
 sources. Use `item` for domain fields and `index` for position-aware behavior.

@@ -8,7 +8,7 @@ const _meta = {
     "sourceFile": { "kind": "text", "type": "string", "description": "Project-relative *.flow.svelte source path." },
     "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte source for check or set." },
     "revision": { "kind": "text", "type": "string", "description": "Revision returned by get/set/check." },
-    "codepatch": { "kind": "text", "type": "string", "description": "Unified diff for patch." },
+    "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers." },
     "projectDir": { "kind": "text", "type": "string", "description": "Resolved target project directory." },
     "out": { "kind": "path", "mode": "write", "default": "local.frontendSource" }
   },

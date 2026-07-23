@@ -261,7 +261,9 @@ var frontendSourcePatchTool = list.result.result.tools.filter(function (tool) {
 })[0];
 assertTrue(frontendSourceSetTool.inputSchema.required[0] === "code" &&
 	frontendSourcePatchTool.inputSchema.required.indexOf("revision") !== -1 &&
-	frontendSourcePatchTool.inputSchema.required.indexOf("codepatch") !== -1,
+	frontendSourcePatchTool.inputSchema.required.indexOf("codepatch") !== -1 &&
+	frontendSourcePatchTool.inputSchema.properties.codepatch.description.indexOf("numbered") !== -1 &&
+	unifiedCodeTools["code-patch"].inputSchema.properties.codepatch.description.indexOf("numbered") !== -1,
 	"MCP Flow tools/list should require complete source and revision-safe patches");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,

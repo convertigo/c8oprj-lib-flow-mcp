@@ -7,8 +7,9 @@ description: Use Convertigo Flow to inspect, create, edit, test, and run Flow ba
 
 Use this skill for FlowEngine, FlowScript, Flow blocks, schemas, portable blocks,
 and the experimental Svelte frontbuilder. Author through the `convertigo-flow`
-MCP server. Keep the workflow source-first and let diagnostics provide exact
-contracts and corrections.
+MCP server. Keep the workflow source-first. Draft once, then use only
+diagnostic candidates, or one focused lookup when none is returned; never probe
+guessed synonyms.
 
 ## Boundaries
 
@@ -61,7 +62,9 @@ Put structural service constants, URLs, namespaces, tokens and timeouts under
 Use the compact FlowScript loop:
 
 1. `code-set({ project, qname, code })` writes and checks one complete draft.
-2. Fix only returned diagnostics with `code-patch` and its `revision`.
+2. Fix only returned diagnostics with `code-patch` and its `revision`. Apply
+   writes to one Flow or frontend source sequentially; do not patch one
+   revision concurrently.
 3. `code-run({ project, qname })` runs the draft without resending code.
 4. If the result is correct and `workingCopy`/`unsaved` is true, immediately
    call `code-promote({ project, qname, revision })`.
@@ -107,8 +110,9 @@ files and resources. Useful object primitives include `object.keys`,
 `object.get`, `object.values`, and `object.firstEntry`. Do not create a custom
 block just to access ordinary object/list data.
 
-When a block is unknown, follow the diagnostic candidate threshold. Use an
-existing block only when its contract matches. Otherwise create a typed
+When a block is unknown, use the ranked diagnostic candidate or one focused
+catalog search. Do not probe synonyms with repeated `flow-block-get` calls. Use
+an existing block only when its contract matches. Otherwise create a typed
 project-local mock with `flow-block-mock`, then implement it. A task is not
 complete while `flow-block-mock-list` reports a mock.
 
@@ -149,8 +153,8 @@ Read `flow://guide/frontend-svelte` once for a frontend-only task, or
 screens through Flow Svelte source, not hundreds of tree mutations:
 
 1. `frontend-svelte-code-get({ project })` returns the complete source,
-   revision and a compact `authoringContract` for standard blocks. Treat its
-   property names, SmartType intents and slots as authoritative.
+   revision and a compact `authoringContract` for standard blocks. Use its
+   property names, SmartType intents and slots directly.
 2. Write one complete `.flow.svelte` pass from that contract. Do not guess CSS,
    Ionic or NGX property names that are absent from it. Contract `slots` are
    exact source wrapper tags such as `Children`, `Events`, `Then` and `Else`;
@@ -160,15 +164,17 @@ screens through Flow Svelte source, not hundreds of tree mutations:
 5. Use `frontend-svelte-code-patch` for later focused changes.
 6. Call `flow-app-progress({ project, qname })` once after the first complete
    paperboard and once for final acceptance. Use its default compact response.
-7. Call `frontend-svelte-action` with `generate`, then `build`.
+7. Call `frontend-svelte-action` with `build`; production build already
+   generates the sources.
 
-Use `frontend-svelte-tree` or `frontend-svelte-palette` only for one concrete
-unknown property, block, scope or picker candidate reported by validation.
-Execute returned mutations unchanged. Do not reconstruct an application with
-unit `frontend-svelte-mutate` calls. Never request `detail:"full"` from the
-tree: use `detail:"inspect"` with an exact `focusPath`, `maxDepth:0`, the
-property name and `sourceId` when known. Full tree responses are bounded by the
-MCP because they duplicate definitions and schemas without helping authoring.
+If `frontend-svelte-code-check` reports an unknown property, block, scope or
+picker candidate, make one focused `frontend-svelte-tree` or
+`frontend-svelte-palette` lookup. Execute returned mutations unchanged. Do not
+reconstruct an application with unit `frontend-svelte-mutate` calls. Never
+request `detail:"full"` from the tree: use `detail:"inspect"` with an exact
+`focusPath`, `maxDepth:0`, the property name and `sourceId` when known. Full
+tree responses are bounded by the MCP because they duplicate definitions and
+schemas without helping authoring.
 
 Pages and components must remain explicit in the tree: layout blocks, visible
 widgets, events and actions. Events live below their owner, for example:
@@ -200,18 +206,17 @@ The compiler lowers these to `FlowValueBinding`. Authors and LLMs must never
 write the internal object. Bare dotted paths without `@` are invalid migration
 input. If `code-check` returns a correction, apply it directly. If a source or
 schema path is genuinely ambiguous, perform one focused picker inspection for
-that property and source id.
+that property and source id. Intuitive `@source.path` is authoring syntax; use
+picker-returned structured bindings when validation requires them, and a
+structured literal for intentionally static iterator content.
 
 Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
 
-After a successful production build, validate the primary workflow with one
-Playwright `browser_run_code` call that navigates, performs the main action,
-waits for the settled UI and returns all required counts, broken images,
-console/application errors and desktop/mobile overflow. Do not chain separate
-navigate/find/evaluate/screenshot/console calls unless this aggregate assertion
-fails and one focused diagnosis is needed.
+After a successful production build, use safe Playwright only. Never substitute
+an unsafe runner, and do not claim full acceptance for capabilities that the
+connected browser cannot verify.
 
 Flow `id` values are stable authoring identities, not guaranteed DOM `id`
 attributes; repeated blocks could not safely emit duplicate DOM ids. In browser
@@ -276,8 +281,10 @@ Before reporting completion:
 - working copies are promoted;
 - `flow-block-mock-list` is empty;
 - `flow-app-progress` is `complete:true` and 100 percent;
-- generate and production build pass;
-- Playwright proves the real user workflow at desktop and mobile widths;
+- production build passes;
+- safe Playwright proves the real user workflow at desktop and mobile widths;
+- required offline behavior is proven, or explicitly remains unverified when
+  safe offline control is unavailable;
 - visible images have `naturalWidth > 0` and no horizontal overflow exists.
 
 Keep browser validation compact: navigate, perform the workflow, then run one

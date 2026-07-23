@@ -7,18 +7,13 @@ canonical while backend and frontend implementations remain explicit targets.
 Create or modify a Flow sidecar with the smallest loop that proves behavior:
 
 - If the user gives a `project`, `qname`, or `block`, that is the target contract. If Flow MCP cannot access it, stop and report the exact blocker instead of falling back to another project or to legacy MCP project discovery.
-- For a new Flow, start with the syntax warm-up: read the MCP resource
-  `flow://guide/samples` with `resources/read` and the exact `code-get`
-  examples listed there, then write the first FlowScript draft with
-  `code-set`. Do not pass `flow://...` URIs to `code-get`.
 - `flow-list` only to enumerate known Flow names during maintenance, not during fresh authoring.
 - `flow-search` to locate samples, nodes, schemas, block docs or existing examples only after the first draft when the block or pattern is unclear. Project search also includes visible library samples.
 - Prefer `kind:"sample"` matches only when you need a pattern. A sample is a private executable Flow named `sample_*`, meant to teach syntax and style, not to replace first-principles authoring.
-- Read `flow://guide/samples` for concrete FlowScript examples. Prefer `code-get({project:"lib_flow_mcp",qname:"sample_blocks_flow_and_rhino"})`, `code-get({project:"lib_flow_engine",qname:"sample_list_filter_sort_map"})`, and `code-get({project:"lib_flow_mcp",block:"sample.formatGreeting"})` over rereading general syntax rules.
 - Avoid `flow-catalog` when a sample exists. `flow-catalog` defaults to typed signatures; use `flow-block-get` only for one unclear block.
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
-- For a new Flow, write compact FlowScript first with `code-set`, patch the working copy with `code-patch`, check it with `code-check`, run it with `code-run`, then call `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, the Flow is still a draft: call `code-promote` before stopping. Use `code-status` when you need dirty/revision state and `code-discard` to cancel the buffer. Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user explicitly asks for low-level debugging.
+- For a new Flow, write compact FlowScript first with `code-set`, patch the working copy with `code-patch`, run it with `code-run`, then call `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, the Flow is still a draft: call `code-promote` before stopping. Use `code-status` when you need dirty/revision state and `code-discard` to cancel the buffer. Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user explicitly asks for low-level debugging.
 - Use raw `definition.nodes[]` only when debugging the compiler/model conversion. In that shape, node properties are direct fields: `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not use nested `props` or `properties` there.
 - Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`. Expression arrays/objects can contain scope expressions, for example `args: [command]` or `select: { title: current.title }`.
 - For array projections, prefer `var mapped = list.map({ items, select: {

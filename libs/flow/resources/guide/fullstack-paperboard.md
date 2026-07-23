@@ -39,8 +39,8 @@ is mocked. Then iterate:
 When wiring a backend action in Flow Svelte source, use an intuitive
 `@action.path` reference. If the schema path is unknown, use the schema-backed
 `binding` or `mutation` returned by the picker or by `flow-app-progress` and
-pass it unchanged. Do not invent bare relative paths or descriptor JSON. Call
-`flow-app-progress` immediately after wiring.
+pass it unchanged. Do not invent bare relative paths or descriptor JSON.
+Validate the complete runnable pass before calling `flow-app-progress`.
 
 Keep value intent visible in source: quoted attributes are literals,
 `{expression}` is browser-only logic, and quoted `@source.path` values are
@@ -53,12 +53,6 @@ Every legacy, invalid or unknown action/schema-path warning must be fixed before
 missing binding, execute its `inspect` call and select a returned schema-backed
 candidate. Bindable descendants of a data-bound `ForEach` require an explicit
 source, including a structured literal for intentionally static content.
-
-After the first complete paperboard and for final acceptance, call
-`flow-app-progress({ project })` and report its
-`progress.percent`, remaining mocks, first `nextAction` and `recommendedCalls`.
-This gives a chatbot or human user a factual completion gauge instead of a long
-silent tunnel.
 
 ## Golden Path
 
@@ -101,25 +95,18 @@ silent tunnel.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a
    placeholder result before detailed refinement begins.
-8. Run `frontend-svelte-action({ project, actionId:"generate" })` or
-   `actionId:"dev.sync"` after frontend mutations. Use `dev.start` only through
-   MCP or the Studio menu.
-9. Call `flow-app-progress({ project })` after the first runnable paperboard and
-   once for final acceptance. Report progress as facts: completed checks,
-   remaining mocks, warnings, next action and `recommendedCalls`. Do not claim
-   completion while mocks remain.
-10. Replace mocks one by one with real FlowScript or small Rhino primitives.
+8. Run `frontend-svelte-action({ project, actionId:"dev.sync" })` while
+   iterating. Use `dev.start` only through MCP or the Studio menu.
+9. Replace mocks one by one with real FlowScript or small Rhino primitives.
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
-11. Prove each layer with a short check:
+10. Prove each layer with a short check:
     - `code-run` for backend behavior;
     - `flow-output-schema` when downstream pickers or requestable schemas
       matter;
-    - `frontend-svelte-tree` after mutations, preferably with `focusPath` on the
-      route/page/component branch being edited;
-    - `frontend-svelte-action` generate/build/dev sync for generated output;
-    - browser smoke only when the task asks for visual proof or runtime UI
-      validation.
+    - `frontend-svelte-action` build for production, or `dev.sync` while
+      iterating;
+    - browser smoke for a user-facing workflow.
 
 ## Paperboard Contract
 

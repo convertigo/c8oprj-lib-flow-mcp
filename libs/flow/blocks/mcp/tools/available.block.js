@@ -359,6 +359,9 @@ const _meta = {
 				description: "Maximum diagnostics to return. Default 8, max 25."
 			};
 		}
+		if (toolName === "code-patch" && schema.properties.codepatch) {
+			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
+		}
 		if (toolName === "frontend-svelte-code-set") {
 			schema.required = ["code"];
 		} else if (toolName === "frontend-svelte-code-patch") {
@@ -407,19 +410,19 @@ const _meta = {
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. Bindable properties accept intuitive @action.path/@item.path references or the structured mutation returned by the picker; bare string paths are rejected.";
 		} else if (name === "frontend-svelte-code-get") {
-			description = "Reads the complete intuitive .flow.svelte model, revision and compact canonical block/property contract. Default starting point for substantial frontend work; use the returned contract instead of guessing properties.";
+			description = "Reads the complete intuitive .flow.svelte model, revision and compact common block/property contract. Default starting point for substantial frontend work; use the returned contract before one focused lookup.";
 		} else if (name === "frontend-svelte-code-check") {
 			description = "Parses and validates a complete .flow.svelte draft without writing it. Quoted values are literals, {...} values are browser expressions, and @action.path/@item.path values are schema-backed sources; incompatible forms return an applicable correction.";
 		} else if (name === "frontend-svelte-code-set") {
 			description = "Validates and writes one complete .flow.svelte model, optionally guarded by the revision returned by code-get.";
 		} else if (name === "frontend-svelte-code-patch") {
-			description = "Validates and applies a revision-checked unified diff to one .flow.svelte model for compact refinements.";
+			description = "Validates and applies a revision-checked git-style unified diff with numbered hunk headers to one .flow.svelte model.";
 		} else if (name === "frontend-svelte-fullsync-schema") {
 			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. A successful build returns the production path and a single-call browser acceptance contract; do not call openBuilt only to discover the URL.";
+			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Build already generates sources and returns the production path; do not call generate first or openBuilt only to discover the URL.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
