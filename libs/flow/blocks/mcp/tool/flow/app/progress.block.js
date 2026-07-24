@@ -37,6 +37,16 @@ const _meta = {
       "default": true,
       "description": "Inspect the Svelte frontend builder and route tree."
     },
+    "mode": {
+      "kind": "text",
+      "type": "string",
+      "default": "poc",
+      "enum": [
+        "poc",
+        "hardening"
+      ],
+      "description": "POC stops at a runnable preview. Hardening adds schema, debt, mock and structural acceptance."
+    },
     "detail": {
       "kind": "text",
       "type": "string",
@@ -1464,6 +1474,100 @@ const _meta = {
 		return parts.join("|");
 	}
 
+	function frontendPocSummary(args) {
+		var started = Number(java.lang.System.currentTimeMillis());
+		var root = new java.io.File(String(args.projectDir || ""), "libs/flow/frontbuilder/svelte");
+		var summary = {
+			checked: true,
+			readable: root.exists(),
+			hasBuilder: root.exists(),
+			hasRoutes: false,
+			hasPage: false,
+			hasStructure: false,
+			routesPath: "",
+			structurePath: "",
+			sourceFile: "",
+			actionIds: [],
+			structureWarnings: [],
+			bindingWarnings: [],
+			paperboard: {
+				routeCount: 0,
+				pageCount: 0,
+				blocks: [],
+				actions: [],
+				dataSources: []
+			},
+			error: ""
+		};
+		var wrappers = {
+			FlowComponent: true,
+			Structure: true,
+			Children: true,
+			Events: true,
+			Actions: true,
+			Then: true,
+			Else: true,
+			Variables: true
+		};
+		var actionTypes = {
+			CallSequence: true,
+			FullSyncGet: true,
+			FullSyncView: true,
+			FullSyncReset: true,
+			FullSyncSync: true,
+			GoBack: true,
+			Navigate: true,
+			UpdateList: true,
+			UpdateNumber: true,
+			SetValue: true
+		};
+		function visit(file) {
+			if (!file || !file.exists()) return;
+			if (file.isDirectory()) {
+				var name = String(file.getName());
+				if (name === "node_modules" || name === ".svelte-kit" || name === "build") return;
+				var children = file.listFiles() || [];
+				for (var i = 0; i < children.length; i++) visit(children[i]);
+				return;
+			}
+			var path = String(file.getAbsolutePath());
+			if (path.substring(path.length - 12) !== ".flow.svelte") return;
+			var relative = path.substring(String(args.projectDir || "").length + 1).replace(/\\/g, "/");
+			var content = String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"));
+			summary.hasRoutes = summary.hasRoutes || relative.indexOf("/src/routes/") !== -1;
+			summary.hasPage = summary.hasPage || /(?:^|\/)\+page\.flow\.svelte$/.test(relative);
+			summary.hasStructure = summary.hasStructure || /<Structure(?:\s|>)/.test(content);
+			if (!summary.sourceFile) summary.sourceFile = relative;
+			var seenTypes = {};
+			content.replace(/<([A-Z][A-Za-z0-9.]*)\b/g, function (_match, type) {
+				type = String(type);
+				if (wrappers[type] || seenTypes[type]) return _match;
+				seenTypes[type] = true;
+				if (actionTypes[type]) {
+					summary.paperboard.actions.push({ type: type, sourceFile: relative });
+				} else {
+					summary.paperboard.blocks.push({ type: type, sourceFile: relative });
+				}
+				return _match;
+			});
+			summary.paperboard.pageCount += /(?:^|\/)\+page\.flow\.svelte$/.test(relative) ? 1 : 0;
+		}
+		try {
+			visit(root);
+			summary.paperboard.routeCount = summary.hasRoutes ? 1 : 0;
+			summary.routesPath = summary.hasRoutes ? "frontends.svelte.authoring.routes" : "";
+			summary.structurePath = summary.hasStructure ? "frontends.svelte.authoring.routes.structure" : "";
+		} catch (e) {
+			summary.error = String(e.message || e);
+			summary.readable = false;
+		}
+		summary.timing = {
+			summaryMs: Number(java.lang.System.currentTimeMillis()) - started,
+			fastPath: true
+		};
+		return summary;
+	}
+
 	function frontendSummary(ctx, args) {
 		var summaryStarted = Number(java.lang.System.currentTimeMillis());
 		var projectCacheKey = String(args.projectDir || "");
@@ -1662,15 +1766,23 @@ const _meta = {
 					throw new Error("flow-app-progress requires project:\"<target project>\" or projectDir for standalone tests with a filesystem path.");
 				}
 				var includeFrontend = boolValue(args.includeFrontend, boolValue(prop(node, "includeFrontend"), true));
+				var mode = String(args.mode || prop(node, "mode") || "poc").toLowerCase();
+				if (mode !== "poc" && mode !== "hardening") {
+					throw new Error("flow-app-progress mode must be \"poc\" or \"hardening\".");
+				}
+				var hardening = mode === "hardening";
 				var fullDetail = String(args.detail || prop(node, "detail") || "compact").toLowerCase() === "full";
 				var wantedQName = String(args.qname || args.name || "").trim();
 				var progressBudget = mcp.phaseBudget(args, [
 					args.project || args.projectDir,
 					wantedQName,
-					includeFrontend ? "frontend" : "backend"
+					includeFrontend ? "frontend" : "backend",
+					mode
 				].join("|"));
 				if (progressBudget.phase > 0) {
-					var resumedFrontend = includeFrontend ? frontendSummary(ctx, args) : { checked: false };
+					var resumedFrontend = includeFrontend
+						? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(args))
+						: { checked: false };
 					if (includeFrontend && progressBudget.phase === 1 && progressBudget.expired()) {
 						response = mcp.toolResponse(request, progressBudget.partial({
 							ok: true,
@@ -1682,11 +1794,12 @@ const _meta = {
 						ctx.write(out, response);
 						return response;
 					}
-					if (includeFrontend) {
+					if (includeFrontend && hardening) {
 						resumedFrontend = enrichFrontendBindings(ctx, args, resumedFrontend);
 					}
 					response = mcp.toolResponse(request, {
 						ok: true,
+						mode: mode,
 						project: args.project || "",
 						qname: wantedQName,
 						complete: false,
@@ -1713,17 +1826,20 @@ const _meta = {
 				var hasWantedFlow = !wantedQName || compact.some(function (flow) {
 					return flowMatchesQName(flow, wantedQName, args.project);
 				});
-				var catalogStarted = Number(java.lang.System.currentTimeMillis());
-				var catalog = ctx.blockList({
-					projectDir: args.projectDir,
-					includePrivate: true,
-					includeInternal: true,
-					detail: "compact",
-					limit: 1000,
-					doc: false,
-					hints: false
-				});
-				backendTiming.catalogMs = Number(java.lang.System.currentTimeMillis()) - catalogStarted;
+				var catalog = { blocks: [] };
+				if (hardening) {
+					var catalogStarted = Number(java.lang.System.currentTimeMillis());
+					catalog = ctx.blockList({
+						projectDir: args.projectDir,
+						includePrivate: true,
+						includeInternal: true,
+						detail: "compact",
+						limit: 1000,
+						doc: false,
+						hints: false
+					});
+					backendTiming.catalogMs = Number(java.lang.System.currentTimeMillis()) - catalogStarted;
+				}
 				var mocks = [];
 				(catalog.blocks || []).forEach(function (block) {
 					if (isMock(block)) {
@@ -1749,14 +1865,24 @@ const _meta = {
 					ctx.write(out, response);
 					return response;
 				}
-				var frontend = includeFrontend ? enrichFrontendBindings(ctx, args, frontendSummary(ctx, args)) : { checked: false };
+				var frontend = includeFrontend
+					? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(args))
+					: { checked: false };
+				if (includeFrontend && hardening) {
+					frontend = enrichFrontendBindings(ctx, args, frontend);
+				}
 				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
-				var debtStarted = Number(java.lang.System.currentTimeMillis());
 				var debt = {
-					unusedProjectBlocks: unusedProjectBlocks(ctx, args, compact),
-					unusedFrontendOutputs: unusedFrontendOutputs(ctx, mcp, args, frontend, auditQName)
+					checked: hardening,
+					unusedProjectBlocks: [],
+					unusedFrontendOutputs: []
 				};
-				backendTiming.debtMs = Number(java.lang.System.currentTimeMillis()) - debtStarted;
+				if (hardening) {
+					var debtStarted = Number(java.lang.System.currentTimeMillis());
+					debt.unusedProjectBlocks = unusedProjectBlocks(ctx, args, compact);
+					debt.unusedFrontendOutputs = unusedFrontendOutputs(ctx, mcp, args, frontend, auditQName);
+					backendTiming.debtMs = Number(java.lang.System.currentTimeMillis()) - debtStarted;
+				}
 				var tasks = [];
 				addTask(tasks, "flowEngine", "FlowEngine readable", true, "");
 				addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
@@ -1777,26 +1903,50 @@ const _meta = {
 						frontend.paperboard && frontend.paperboard.actions && frontend.paperboard.actions.length > 0,
 						"Wire the primary button/event to a backend Flow or typed mock.");
 					addTask(tasks, "frontendBindings", "Frontend bindings are structured and schema-backed",
-						frontend.bindingWarnings.length === 0,
-						frontend.bindingWarnings.length ? frontend.bindingWarnings[0].message +
+						arrayValue(frontend.bindingWarnings).length === 0,
+						arrayValue(frontend.bindingWarnings).length ? frontend.bindingWarnings[0].message +
 							(frontend.bindingWarnings[0].suggestedSource ? " Suggested source: " + frontend.bindingWarnings[0].suggestedSource : "") : "");
 					addTask(tasks, "frontendStructure", "Frontend actions and lifecycle state are structurally safe",
 						arrayValue(frontend.structureWarnings).length === 0,
 						arrayValue(frontend.structureWarnings).length ? frontend.structureWarnings[0].message : "");
 					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
-						frontend.actionIds.length > 0,
+						arrayValue(frontend.actionIds).length > 0,
 						"Inspect frontend-svelte-actions and fix the builder setup if no action is available.");
 				}
-				var completed = tasks.filter(function (task) {
+				var pocTaskIds = {
+					flowEngine: true,
+					backendFlow: true,
+					frontendBuilder: true,
+					frontendPaperboard: true,
+					frontendVisibleBlocks: true,
+					frontendActionWiring: true
+				};
+				var activeTasks = hardening ? tasks : tasks.filter(function (task) {
+					return pocTaskIds[task.id] === true;
+				});
+				var deferredTasks = hardening ? [] : tasks.filter(function (task) {
+					return pocTaskIds[task.id] !== true;
+				}).map(function (task) {
+					return {
+						id: task.id,
+						label: task.label
+					};
+				});
+				var pocReady = tasks.filter(function (task) {
+					return pocTaskIds[task.id] === true;
+				}).every(function (task) {
+					return task.done === true;
+				});
+				var completed = activeTasks.filter(function (task) {
 					return task.done === true;
 				}).length;
-				var nextActions = tasks.filter(function (task) {
+				var nextActions = activeTasks.filter(function (task) {
 					return task.done !== true && task.next;
 				}).map(function (task) {
 					return task.next;
 				});
 				var recommendedCalls = [];
-				if (includeFrontend) {
+				if (includeFrontend && hardening) {
 					arrayValue(frontend.bindingPlan && frontend.bindingPlan.calls).forEach(function (call) {
 						addRecommendedCall(recommendedCalls, call.tool, call.arguments, call.reason);
 					});
@@ -1813,11 +1963,11 @@ const _meta = {
 						}
 					});
 				}
-				if (fullDetail || nextActions.length) {
+				if (hardening && (fullDetail || nextActions.length)) {
 					addRecommendedCall(recommendedCalls, "flow-block-mock-list", { project: args.project || "" },
 						"Confirm no explicit project-local mock remains before claiming completion.");
 				}
-				if ((fullDetail || nextActions.length) && auditQName) {
+				if (hardening && (fullDetail || nextActions.length) && auditQName) {
 					addRecommendedCall(recommendedCalls, "flow-output-schema", {
 						project: args.project || "",
 						qname: auditQName,
@@ -1828,10 +1978,13 @@ const _meta = {
 						qname: auditQName
 					}, "Prove the backend runtime result without resending code.");
 				}
-				var isComplete = completed === tasks.length;
+				var isComplete = completed === activeTasks.length;
 				response = mcp.toolResponse(request, {
 					ok: true,
+					mode: mode,
 					complete: isComplete,
+					pocReady: pocReady,
+					hardeningComplete: hardening ? isComplete : null,
 					partial: false,
 					progressPhase: isComplete ? "complete" : "action-required",
 					detail: fullDetail ? "full" : "compact",
@@ -1839,10 +1992,11 @@ const _meta = {
 					qname: wantedQName,
 					progress: {
 						completed: completed,
-						total: tasks.length,
-						percent: tasks.length ? Math.round((completed * 100) / tasks.length) : 100
+						total: activeTasks.length,
+						percent: activeTasks.length ? Math.round((completed * 100) / activeTasks.length) : 100
 					},
-					tasks: tasks,
+					tasks: activeTasks,
+					deferredTasks: deferredTasks,
 					backend: {
 						flowCount: compact.length,
 						appFlowCount: appFlows.length,
@@ -1851,7 +2005,8 @@ const _meta = {
 						timing: fullDetail ? backendTiming : undefined
 					},
 					mocks: {
-						count: mocks.length,
+						checked: hardening,
+						count: hardening ? mocks.length : null,
 						items: mocks
 					},
 					frontend: frontendResponse(frontend, fullDetail),
@@ -1859,7 +2014,19 @@ const _meta = {
 					nextActions: nextActions,
 					next: nextActions.length
 						? nextActions[0]
-						: "Paperboard checks are green. Continue with runtime proof, schema review and visual refinement."
+						: hardening
+							? "Hardening checks are green. Continue with the required runtime proof."
+							: "POC is ready. Build and show the first useful preview; run mode:\"hardening\" only on explicit request.",
+					workflow: hardening ? {
+						goal: "hardening",
+						validationPasses: 1
+					} : {
+						goal: "first-useful-preview",
+						timeBudgetMinutes: 15,
+						maxRepairPasses: 2,
+						acceptPartialResult: true,
+						stopAfterPreview: true
+					}
 				}, ctx);
 			} catch (e) {
 				response = mcp.toolError(request, e, ctx);

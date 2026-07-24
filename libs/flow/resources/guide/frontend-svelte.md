@@ -118,13 +118,13 @@ It rejects a free browser expression in a client action Variable with
 insert a dual-target portable block when real computation is required.
 ## Compact Browser Acceptance
 
-After a successful production build, execute the returned `acceptance.calls`
-unchanged and in order. This bounded safe Playwright plan navigates once,
+For a POC, execute the first build-provided smoke call and at most one required
+business interaction. During explicit hardening, execute all returned
+`acceptance.calls` unchanged and in order. This bounded safe Playwright plan
 checks desktop and mobile DOM health, reads console errors and closes the page.
-Never substitute an unsafe runner. Add one focused interaction only when a
-required business workflow is not covered by the returned probes. If offline
-or persistent-profile controls are unavailable, report that capability as
-unverified instead of probing unrelated browser tools.
+Never substitute an unsafe runner. If offline or persistent-profile controls
+are unavailable, report that capability as unverified instead of probing
+unrelated browser tools.
 
 On failure, use at most one focused browser diagnostic for the failed field.
 Screenshots are for a requested visual review, not routine proof. This keeps

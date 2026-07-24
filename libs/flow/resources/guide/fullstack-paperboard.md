@@ -4,9 +4,10 @@ Use this guide for a Flow task that must deliver a backend plus a Svelte
 frontend, especially when the user asks for an application from a short prompt
 or for a legacy Convertigo screen to be rebuilt with Flow technologies.
 
-The goal is to avoid the tunnel effect: produce a running paperboard quickly,
-make unfinished parts visible as mocks or TODO blocks, then refine the app in
-short proof loops.
+The default goal is a runnable POC: one backend pass, one frontend pass, build,
+and one useful browser path. Stop after at most two focused repairs. Mock
+replacement, exhaustive schemas, offline/history coverage and visual
+refinement belong to explicit hardening.
 
 Read `flow://guide/portable-blocks` when event normalization or another pure
 operation should use the same block contract on both sides. Keep HTTP,
@@ -28,13 +29,13 @@ Navigation links
 ```
 
 Represent those intentions with palette blocks immediately, even when the data
-is mocked. Then iterate:
+is mocked. Deliver in two phases:
 
-1. paperboard visible in the tree and generated app;
-2. primary action wired to a backend Flow, mock acceptable but explicit;
-3. backend mock replaced by real Flow/HTTP/parsing blocks;
-4. output schema reviewed so frontend pickers see real fields;
-5. visual/layout refinement using explicit layout and style properties.
+1. POC: paperboard visible in the generated app;
+2. POC: primary action wired to a backend Flow, mock acceptable but explicit;
+3. Hardening: backend mock replaced by real Flow/HTTP/parsing blocks;
+4. Hardening: output schema reviewed so frontend pickers see real fields;
+5. Hardening: visual/layout refinement using explicit layout and style properties.
 
 When wiring a backend action in Flow Svelte source, use an intuitive
 `@action.path` reference. If the schema path is unknown, use the schema-backed
@@ -48,8 +49,9 @@ schema-backed sources. For a computation shared with backend FlowScript, use a
 dual-target portable block rather than duplicating subtly different Rhino and
 browser expressions.
 
-Every legacy, invalid or unknown action/schema-path warning must be fixed before progress can reach
-100%. Execute `frontend.bindingWarnings[].fix` directly when present; for a
+In hardening mode, every legacy, invalid or unknown action/schema-path warning
+must be fixed before progress can reach 100%. Execute
+`frontend.bindingWarnings[].fix` directly when present; for a
 missing binding, execute its `inspect` call and select a returned schema-backed
 candidate. Bindable descendants of a data-bound `ForEach` require an explicit
 source, including a structured literal for intentionally static content.
@@ -97,10 +99,10 @@ source, including a structured literal for intentionally static content.
    placeholder result before detailed refinement begins.
 8. Run `frontend-svelte-action({ project, actionId:"dev.sync" })` while
    iterating. Use `dev.start` only through MCP or the Studio menu.
-9. Replace mocks one by one with real FlowScript or small Rhino primitives.
+9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
-10. Prove each layer with a short check:
+10. Hardening only: prove each layer with a short check:
     - `code-run` for backend behavior;
     - `flow-output-schema` when downstream pickers or requestable schemas
       matter;

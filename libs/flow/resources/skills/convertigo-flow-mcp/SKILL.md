@@ -11,6 +11,25 @@ MCP server. Keep the workflow source-first. Draft once, then use only
 diagnostic candidates, or one focused lookup when none is returned; never probe
 guessed synonyms.
 
+## POC First
+
+Unless the user explicitly requests production hardening, optimize for the
+first useful preview. A POC is a runnable business path, not an exhaustive
+acceptance campaign.
+
+- Target 15 minutes and stop after the first useful preview.
+- Write one backend draft and one complete frontend pass.
+- Allow at most two focused repair passes after those drafts.
+- Call `flow-app-progress({ project, mode:"poc" })` once, then build.
+- Run the build-provided bounded smoke probe and at most one required workflow.
+- Report deferred schema, mock, offline, responsive and history checks; do not
+  repair them unless they prevent the requested path.
+
+Use `flow-app-progress({ project, mode:"hardening" })` only when the user asks
+for fiabilisation, production readiness or exhaustive validation. Never use
+`flow-resource-get/patch` to edit Flow Svelte source; use
+`frontend-svelte-code-get/set/check/patch`.
+
 ## Boundaries
 
 - Never edit `c8oProject.yaml`, `_c8oProject/**/*.yaml`, generated Svelte, or
@@ -110,6 +129,12 @@ files and resources. Useful object primitives include `object.keys`,
 `object.get`, `object.values`, and `object.firstEntry`. Do not create a custom
 block just to access ordinary object/list data.
 
+For backend fixtures, `asset.read` takes a project-relative
+`libs/flow/resources/...` path and returns raw text. `flow-resource-get` is an
+MCP inspection tool and returns an envelope; pass its `content` field to a text
+consumer such as `xml.parse`, never the whole envelope. Frontend rendered asset
+URLs use `resources/...`.
+
 When a block is unknown, use the ranked diagnostic candidate or one focused
 catalog search. Do not probe synonyms with repeated `flow-block-get` calls. Use
 an existing block only when its contract matches. Otherwise create a typed
@@ -162,8 +187,8 @@ screens through Flow Svelte source, not hundreds of tree mutations:
 3. `frontend-svelte-code-check({ project, code })` validates it.
 4. `frontend-svelte-code-set({ project, code, revision })` persists it.
 5. Use `frontend-svelte-code-patch` for later focused changes.
-6. Call `flow-app-progress({ project, qname })` once after the first complete
-   paperboard and once for final acceptance. Use its default compact response.
+6. Call `flow-app-progress({ project, qname, mode:"poc" })` once after the
+   first complete paperboard. Do not rerun it when the POC is ready.
 7. Call `frontend-svelte-action` with `build`; production build already
    generates the sources.
 
@@ -214,10 +239,10 @@ Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
 
-After a successful production build, execute its bounded `acceptance.calls`
-unchanged and in order. Use safe Playwright only, never substitute an unsafe
-runner, and add at most one focused interaction for a required workflow that
-the returned desktop/mobile probes do not cover.
+For a POC, execute the build-provided bounded smoke probe and at most one
+focused interaction for the requested workflow. For explicit hardening, execute
+all returned `acceptance.calls` unchanged and in order. Use safe Playwright
+only; never substitute an unsafe runner.
 
 Flow `id` values are stable authoring identities, not guaranteed DOM `id`
 attributes; repeated blocks could not safely emit duplicate DOM ids. In browser
@@ -247,8 +272,9 @@ in the scaffold. After provisioning, learn safe read schemas with
 On the client use only `FullSyncGet`, `FullSyncView`, `FullSyncReset`, and
 `FullSyncSync` palette blocks. Do not handwrite `fs://` strings or PouchDB code.
 Use `frontend-svelte-fullsync-schema` when `flow-app-progress` returns that exact
-fix. Give actions unique ids and use schema-backed FullSync sources. Reset local
-data only for an explicit migration with a stable marker.
+repair. For a dynamic Get, fill only its requested `sampleDocId`. Give actions
+unique ids and use schema-backed FullSync sources. Reset local data only for an
+explicit migration with a stable marker.
 
 ## Portable Blocks
 
@@ -274,14 +300,14 @@ automatically. Do not tune timeout or size parameters routinely. If a response
 is `partial:true`, use its opaque `nextCursor` only when the first page is not
 enough. A partial response cannot prove absence or completion.
 
-## Final Validation
+## Hardening Validation
 
-Before reporting completion:
+Only when hardening was explicitly requested:
 
 - backend result matches the live source and required schema;
 - working copies are promoted;
 - `flow-block-mock-list` is empty;
-- `flow-app-progress` is `complete:true` and 100 percent;
+- `flow-app-progress({ mode:"hardening" })` is `complete:true` and 100 percent;
 - production build passes;
 - safe Playwright proves the real user workflow at desktop and mobile widths;
 - required offline behavior is proven, or explicitly remains unverified when

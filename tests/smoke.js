@@ -265,8 +265,10 @@ var appProgressTool = list.result.result.tools.filter(function (tool) {
 })[0];
 assertTrue(appProgressTool && appProgressTool.inputSchema.properties.detail &&
 	appProgressTool.inputSchema.properties.detail.enum.indexOf("compact") !== -1 &&
-	appProgressTool.inputSchema.properties.detail.enum.indexOf("full") !== -1,
-	"MCP Flow tools/list did not expose compact/full flow-app-progress detail");
+	appProgressTool.inputSchema.properties.detail.enum.indexOf("full") !== -1 &&
+	appProgressTool.inputSchema.properties.mode.enum.indexOf("poc") !== -1 &&
+	appProgressTool.inputSchema.properties.mode.enum.indexOf("hardening") !== -1,
+	"MCP Flow tools/list did not expose flow-app-progress modes and detail");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-tree";
 }) && list.result.result.tools.some(function (tool) {
@@ -684,6 +686,9 @@ targetFlowsDir.mkdirs();
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(
 	new java.io.File(targetFlowsDir, "TargetSmoke.flow.js"), targetFlowCode, "UTF-8");
 function callTool(id, name, args) {
+	if (name === "flow-app-progress" && args.mode === undefined) {
+		args.mode = "hardening";
+	}
 	return JSON.parse(engine.run(JSON.stringify({
 		flowSource: mcpFlowSource,
 		includeTrace: false,
@@ -1020,6 +1025,30 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	}),
 	"MCP flow-app-progress should expose result-relative bindings without speculative tree, palette or generate calls: " +
 		JSON.stringify(appProgressFrontend.result.result.structuredContent.frontend));
+var appProgressPoc = callTool(13941, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true,
+	detail: "full",
+	mode: "poc"
+});
+assertTrue(appProgressPoc.result && appProgressPoc.result.result,
+	"MCP flow-app-progress POC mode failed: " + JSON.stringify(appProgressPoc));
+assertTrue(appProgressPoc.result.result.structuredContent.complete === true &&
+	appProgressPoc.result.result.structuredContent.pocReady === true &&
+	appProgressPoc.result.result.structuredContent.hardeningComplete === null &&
+	appProgressPoc.result.result.structuredContent.tasks.every(function (task) {
+		return task.id !== "mockDebt" && task.id !== "frontendBindings" &&
+			task.id !== "frontendStructure" && task.id !== "frontendActions";
+	}) &&
+	appProgressPoc.result.result.structuredContent.deferredTasks.length === 4 &&
+	appProgressPoc.result.result.structuredContent.mocks.checked === false &&
+	appProgressPoc.result.result.structuredContent.backend.debt.checked === false &&
+	appProgressPoc.result.result.structuredContent.frontend.timing.fastPath === true &&
+	appProgressPoc.result.result.structuredContent.workflow.maxRepairPasses === 2,
+	"MCP flow-app-progress POC mode should stop at a useful preview and defer hardening audits: " +
+		JSON.stringify(appProgressPoc.result.result.structuredContent));
 var appProgressStructured = callTool(1396, "flow-app-progress", {
 	project: "target",
 	projectDir: targetProjectDir,

@@ -288,6 +288,11 @@ const _meta = {
 			};
 		}
 		if (toolName === "flow-app-progress") {
+			schema.properties.mode = {
+				type: "string",
+				enum: ["poc", "hardening"],
+				description: "POC checks only readiness for a first useful preview. Hardening runs the complete schema, debt, mock and structure audit."
+			};
 			schema.properties.detail = {
 				type: "string",
 				enum: ["compact", "full"],
@@ -434,7 +439,7 @@ const _meta = {
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-app-progress") {
-			description = "Reports compact paperboard progress and actionable diagnostics. Use detail:'full' only for complete inventories.";
+			description = "Reports progress toward a fast POC or explicit hardening. Use mode:'poc' for the first useful preview and mode:'hardening' only on request.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {

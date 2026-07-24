@@ -105,7 +105,7 @@ When a live `project` is provided, `flow-set` and `flow-edit` register/save the 
 
 Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls. Discovery tools are paginated by default; keep using `limit` and `cursor` instead of asking for unbounded catalog/tree data.
 
-Potentially expensive discovery is budgeted automatically. `flow-catalog`, `flow-resource-search` and `flow-search` stop cooperative result loops after a useful first response or before an abusive response size, then return `partial:true`, a `PARTIAL_RESULT_*` warning and an opaque `nextCursor`. Continue with that cursor only when the first results are insufficient. Never treat a partial result as proof that no more matches exist. `flow-app-progress` uses the same principle between backend, frontend structure and binding phases; only `complete:true` represents a complete assessment. The budget starts with the compatible result loop or phase; it does not preempt project loading or other Convertigo work before it.
+Potentially expensive discovery is budgeted automatically. `flow-catalog`, `flow-resource-search` and `flow-search` stop cooperative result loops after a useful first response or before an abusive response size, then return `partial:true`, a `PARTIAL_RESULT_*` warning and an opaque `nextCursor`. Continue with that cursor only when the first results are insufficient. Never treat a partial result as proof that no more matches exist. `flow-app-progress` defaults to the fast POC goal; its `complete:true` means the first useful preview is ready. Use `mode:"hardening"` only for an explicitly requested complete assessment. The budget starts with the compatible result loop or phase; it does not preempt project loading or other Convertigo work before it.
 
 Avoid shell commands for routine checks. Do not run `git status`, `git diff`, `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow. If the prompt gives `project` and `qname`, trust them; do not inspect workspace YAML/XML to rediscover them. Use MCP tool results as the source of truth. Do not call `flow-test` after saving when `code-run` already proved the result.
 
@@ -124,9 +124,10 @@ For diagnostics, MCP responses are sanitized for agents and optional JSONL traci
 
 For backend + Svelte application work, read
 `flow://guide/fullstack-paperboard` before coding. It defines the short
-paperboard loop: bootstrap, top-down backend, explicit mocks, visible frontend
-layout blocks, early action wiring, `flow-app-progress`, then iterative
-replacement of mocks. For Svelte-only frontend work, read
+paperboard loop: bootstrap, one backend pass, one visible frontend pass, early
+action wiring, `flow-app-progress({ mode:"poc" })`, build and preview. Stop
+there unless hardening was requested; mock replacement and exhaustive schema
+review are a separate phase. For Svelte-only frontend work, read
 `flow://guide/frontend-svelte` and use `frontend-svelte-tree`,
 `frontend-svelte-palette`, `frontend-svelte-mutate`,
 `frontend-svelte-actions` and `frontend-svelte-action`. These tools reuse the
