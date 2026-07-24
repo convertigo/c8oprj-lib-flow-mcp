@@ -672,7 +672,9 @@ const _meta = {
 					detail: "inspect",
 					property: "source",
 					sourceId: sourceId,
-					maxDepth: 0
+					maxDepth: 0,
+					includeFrontendCatalog: false,
+					includeFlowCatalog: false
 				});
 				var selected = null;
 				walk(tree, function (node) {
@@ -809,6 +811,35 @@ const _meta = {
 				}
 			}
 			return null;
+		}
+		function hasSemanticIterationPath(iterator, type, targetPath) {
+			var iteratorSource = iterator && iterator.source;
+			if (!validBinding(iteratorSource) || iteratorSource.mode !== "source") return true;
+			var actionId = iteratorSource.source && iteratorSource.source.actionId;
+			var suggestion = null;
+			frontend.bindingSuggestions.some(function (candidate) {
+				if (String(candidate.actionId || "") === String(actionId || "")) {
+					suggestion = candidate;
+					return true;
+				}
+				return false;
+			});
+			if (!suggestion) return true;
+			var arrayPath = bindingPathText(iteratorSource.path || []);
+			var prefix = arrayPath ? arrayPath + "[0]." : "";
+			var paths = arrayValue(suggestion.leafPaths).filter(function (path) {
+				return !prefix || String(path).indexOf(prefix) === 0;
+			}).map(function (path) {
+				return prefix ? String(path).substring(prefix.length) : String(path);
+			});
+			if (!paths.length) return String(suggestion.operation || "") !== "state.list";
+			var target = String(targetPath || "").toLowerCase();
+			var aliases = String(type || "").toLowerCase() === "image"
+				? ["imageurl", "image", "src", "url"] : [];
+			return paths.some(function (path) {
+				var leaf = String(path || "").split(".").pop().toLowerCase();
+				return aliases.indexOf(leaf) !== -1 || (leaf.length >= 3 && target.indexOf(leaf) !== -1);
+			});
 		}
 		function iteratorSuggestion() {
 			var candidates = frontend.bindingSuggestions.filter(function (suggestion) {
@@ -1095,7 +1126,8 @@ const _meta = {
 			if (validBinding(rawSource)) {
 				var structuredSource = rawSource.source || {};
 				if (rawSource.mode === "literal" && containingIteration && requiresExplicitSource(binding.type)
-					&& validBinding(containingIteration.source)) {
+					&& validBinding(containingIteration.source)
+					&& hasSemanticIterationPath(containingIteration, binding.type, binding.id || binding.path)) {
 					var semanticCandidate = semanticIterationCandidate(
 						pickerSource(binding.path, containingIteration.id), binding.type, binding.id || binding.path);
 					if (semanticCandidate) {
@@ -1423,12 +1455,19 @@ const _meta = {
 	function frontendSummary(ctx, args) {
 		var summaryStarted = Number(java.lang.System.currentTimeMillis());
 		var projectCacheKey = String(args.projectDir || "");
+		var fingerprintStarted = Number(java.lang.System.currentTimeMillis());
 		var cacheKey = projectCacheKey + "|" + frontendSourceFingerprint(args);
+		var fingerprintMs = Number(java.lang.System.currentTimeMillis()) - fingerprintStarted;
 		if (frontendSummaryCache[cacheKey]) {
 			var cached = JSON.parse(frontendSummaryCache[cacheKey]);
-			cached.timing = { summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted, summaryCacheHit: true };
+			cached.timing = {
+				summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted,
+				summaryCacheHit: true,
+				fingerprintMs: fingerprintMs
+			};
 			return cached;
 		}
+		var phaseTiming = { fingerprintMs: fingerprintMs, treeMs: 0, paperboardMs: 0, menuMs: 0 };
 		var summary = {
 			checked: true,
 			readable: false,
@@ -1444,6 +1483,7 @@ const _meta = {
 			error: ""
 		};
 		try {
+			var treeStarted = Number(java.lang.System.currentTimeMillis());
 			var tree = ctx.authoringTreeSource({
 				projectDir: args.projectDir,
 				engineSource: args.engineSource,
@@ -1451,8 +1491,11 @@ const _meta = {
 				builder: "svelte",
 				detail: "compact",
 				maxDepth: 24,
-				includeDefinition: true
+				includeDefinition: true,
+				includeFrontendCatalog: false,
+				includeFlowCatalog: false
 			});
+			phaseTiming.treeMs = Number(java.lang.System.currentTimeMillis()) - treeStarted;
 			summary.readable = tree && tree.ok !== false;
 			summary.structureWarnings = arrayValue(tree && tree.diagnostics);
 			var paperboardTree = tree;
@@ -1467,6 +1510,7 @@ const _meta = {
 					}
 				});
 			}
+			var paperboardStarted = Number(java.lang.System.currentTimeMillis());
 			summary.paperboard = paperboardSummary(paperboardTree);
 			walk(paperboardTree, function (node) {
 				if (summary.sourceFile || String(node.kind || "") !== "frontendPage") {
@@ -1507,6 +1551,8 @@ const _meta = {
 					summary.hasStructure = true;
 				}
 			});
+			phaseTiming.paperboardMs = Number(java.lang.System.currentTimeMillis()) - paperboardStarted;
+			var menuStarted = Number(java.lang.System.currentTimeMillis());
 			var menu = ctx.callBlock("authoring.menu", {
 				projectDir: args.projectDir,
 				builder: "svelte",
@@ -1523,6 +1569,7 @@ const _meta = {
 					summary.actionIds.push(id);
 				}
 			});
+			phaseTiming.menuMs = Number(java.lang.System.currentTimeMillis()) - menuStarted;
 		} catch (e) {
 			summary.error = String(e.message || e);
 		}
@@ -1530,7 +1577,10 @@ const _meta = {
 			if (knownKey.indexOf(projectCacheKey + "|") === 0) delete frontendSummaryCache[knownKey];
 		});
 		frontendSummaryCache[cacheKey] = JSON.stringify(summary);
-		summary.timing = { summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted, summaryCacheHit: false };
+		summary.timing = Object.assign(phaseTiming, {
+			summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted,
+			summaryCacheHit: false
+		});
 		return summary;
 	}
 
@@ -1639,7 +1689,10 @@ const _meta = {
 					ctx.write(out, response);
 					return response;
 				}
+				var backendTiming = { flowListMs: 0, catalogMs: 0, debtMs: 0 };
+				var flowListStarted = Number(java.lang.System.currentTimeMillis());
 				var flowList = ctx.flowList({ projectDir: args.projectDir }) || {};
+				backendTiming.flowListMs = Number(java.lang.System.currentTimeMillis()) - flowListStarted;
 				var flows = arrayValue(flowList.flows || flowList.items || flowList);
 				var compact = compactFlows(flows);
 				var appFlows = compact.filter(function (flow) {
@@ -1648,6 +1701,7 @@ const _meta = {
 				var hasWantedFlow = !wantedQName || compact.some(function (flow) {
 					return flowMatchesQName(flow, wantedQName, args.project);
 				});
+				var catalogStarted = Number(java.lang.System.currentTimeMillis());
 				var catalog = ctx.blockList({
 					projectDir: args.projectDir,
 					includePrivate: true,
@@ -1657,6 +1711,7 @@ const _meta = {
 					doc: false,
 					hints: false
 				});
+				backendTiming.catalogMs = Number(java.lang.System.currentTimeMillis()) - catalogStarted;
 				var mocks = [];
 				(catalog.blocks || []).forEach(function (block) {
 					if (isMock(block)) {
@@ -1684,10 +1739,12 @@ const _meta = {
 				}
 				var frontend = includeFrontend ? enrichFrontendBindings(ctx, args, frontendSummary(ctx, args)) : { checked: false };
 				var auditQName = wantedQName || (appFlows.length === 1 ? appFlows[0].qname || appFlows[0].name : "");
+				var debtStarted = Number(java.lang.System.currentTimeMillis());
 				var debt = {
 					unusedProjectBlocks: unusedProjectBlocks(ctx, args, compact),
 					unusedFrontendOutputs: unusedFrontendOutputs(ctx, mcp, args, frontend, auditQName)
 				};
+				backendTiming.debtMs = Number(java.lang.System.currentTimeMillis()) - debtStarted;
 				var tasks = [];
 				addTask(tasks, "flowEngine", "FlowEngine readable", true, "");
 				addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
@@ -1778,7 +1835,8 @@ const _meta = {
 						flowCount: compact.length,
 						appFlowCount: appFlows.length,
 						flows: compact.slice(0, 20),
-						debt: debt
+						debt: debt,
+						timing: fullDetail ? backendTiming : undefined
 					},
 					mocks: {
 						count: mocks.length,
