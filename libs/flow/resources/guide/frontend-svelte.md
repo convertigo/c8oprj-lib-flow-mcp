@@ -112,16 +112,13 @@ It rejects a free browser expression in a client action Variable with
 insert a dual-target portable block when real computation is required.
 ## Compact Browser Acceptance
 
-After a successful production build, use one safe aggregate Playwright call
-for the normal acceptance path when the connected browser exposes one. It
-should navigate to the built URL, attach console/page-error collection before
-interaction, perform the main user action, wait for the expected settled state
-and return one small object containing the requirement-specific counts plus
-broken images, application errors and horizontal overflow at desktop and
-mobile widths. Never substitute an unsafe runner. If aggregate, offline or
-persistent-profile controls are unavailable, use only the minimum safe
-primitives needed for the remaining assertions and report the missing
-capability.
+After a successful production build, execute the returned `acceptance.calls`
+unchanged and in order. This bounded safe Playwright plan navigates once,
+checks desktop and mobile DOM health, reads console errors and closes the page.
+Never substitute an unsafe runner. Add one focused interaction only when a
+required business workflow is not covered by the returned probes. If offline
+or persistent-profile controls are unavailable, report that capability as
+unverified instead of probing unrelated browser tools.
 
 On failure, use at most one focused browser diagnostic for the failed field.
 Screenshots are for a requested visual review, not routine proof. This keeps

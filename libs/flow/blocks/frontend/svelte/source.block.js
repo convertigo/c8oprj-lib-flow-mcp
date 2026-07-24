@@ -309,7 +309,7 @@ const _meta = {
 					"Property contracts use type:intent|intent; source accepts @action.path, @item.path and @event.path.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
-					"After build, aggregate browser acceptance in one Playwright browser_run_code call."
+					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."
 				]
 			};
 		} catch (e) {

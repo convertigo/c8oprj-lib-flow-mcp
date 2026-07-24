@@ -214,9 +214,10 @@ Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
 
-After a successful production build, use safe Playwright only. Never substitute
-an unsafe runner, and do not claim full acceptance for capabilities that the
-connected browser cannot verify.
+After a successful production build, execute its bounded `acceptance.calls`
+unchanged and in order. Use safe Playwright only, never substitute an unsafe
+runner, and add at most one focused interaction for a required workflow that
+the returned desktop/mobile probes do not cover.
 
 Flow `id` values are stable authoring identities, not guaranteed DOM `id`
 attributes; repeated blocks could not safely emit duplicate DOM ids. In browser
