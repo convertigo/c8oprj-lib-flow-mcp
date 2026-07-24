@@ -939,9 +939,21 @@ const _meta = {
 					schemaInputMutationPath: action.schemaInputMutationPath || "",
 					schemaSource: schemaSource,
 					schemaInputPending: schemaInputRequired ? {
-						sourceFile: action.sourceFile,
-						path: action.schemaInputMutationPath || "",
-						note: "Set safe sample variables for the schema requestable, then rerun flow-app-progress. These variables are never sent by the client action."
+						tool: "frontend-svelte-fullsync-schema",
+						arguments: {
+							project: args.project,
+							sourceFile: action.sourceFile,
+							path: action.outputSchemaMutationPath,
+							actionId: String(action.id || actionId),
+							requestable: schemaRequestable,
+							learn: true
+						},
+						needsInput: {
+							name: "sampleDocId",
+							requestVariable: "_use_docid",
+							description: "Set one representative safe document id, then execute this repair."
+						},
+						note: "Only sampleDocId is missing. It is used for schema learning and is not written into the client action."
 					} : null,
 					schemaPending: operation && schemaRequestable && !schemaResolved && !schemaInputRequired && action.sourceFile && (action.outputSchemaMutationPath || action.id) ? {
 						tool: "frontend-svelte-fullsync-schema",
@@ -1030,7 +1042,7 @@ const _meta = {
 					code: "FRONTEND_FULLSYNC_SCHEMA_INPUT_REQUIRED",
 					actionId: suggestion.actionId,
 					message: "FullSync Get " + suggestion.actionId + " needs safe sample variables before its schema requestable can be learned.",
-					configure: suggestion.schemaInputPending
+					repair: suggestion.schemaInputPending
 				});
 			}
 			if (!suggestion.schemaPending) {

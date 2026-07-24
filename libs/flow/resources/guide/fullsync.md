@@ -75,6 +75,9 @@ after confirming that the read is safe. The tool calls
 does not require the agent to copy paths or schema JSON. The picker reads this
 embedded contract without repeating the expensive XSD catalog walk. Both
 properties are metadata only and are never sent by the client action.
+For a dynamic `FullSyncGet`, the repair reports one missing `sampleDocId`.
+Supply a representative safe id and execute the repair; the tool maps it to the
+server transaction input without storing it in the client action.
 
 Do not handwrite `fs://` request strings. The frontbuilder derives the SDK
 request from the operation-aware block.
@@ -97,6 +100,17 @@ learned `outputSchema`. `flow-app-progress` reports an executable
 `schemaPending` action when `schemaRequestable` is present but `outputSchema`
 has not been attached.
 
+Keep the three data shapes distinct:
+
+| Producer | Binding root |
+| --- | --- |
+| Convertigo CouchDB transaction | transaction response envelope, commonly `couchdb_output` |
+| Client `FullSyncView` | local result with `rows[]` |
+| Client `FullSyncGet` | document fields at the result root |
+
+Use the learned schema for exact domain paths; do not copy a server envelope
+path into a client FullSync binding.
+
 Action parameter bindings can reference requestable results, prior FullSync
 results or the lexical item/index of an enclosing `ForEach`. The generated
 button invocation carries the lexical iteration scope; no string interpolation
@@ -115,6 +129,11 @@ For a read-only offline application, keep this order visible:
 6. validate the same view/get after browser network is disabled when safe
    offline control is exposed; otherwise report offline acceptance as
    unverified.
+
+Server initialization must use a cheap fixed marker or manifest read as a real
+short circuit. When it is valid, return before reading XML assets, parsing them
+or writing documents. Do not replace that contract with unconditional bulk
+upserts.
 
 Offline reload of the whole application shell is a separate service-worker or
 browser-cache concern. Local FullSync data availability alone does not imply

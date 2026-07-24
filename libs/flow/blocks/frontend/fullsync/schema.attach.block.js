@@ -29,6 +29,11 @@ const _meta = {
       "default": {},
       "description": "Optional safe sample inputs used when learning is required."
     },
+    "sampleDocId": {
+      "kind": "text",
+      "type": "string",
+      "description": "Representative safe document id for a dynamic FullSync Get schema."
+    },
     "learn": {
       "kind": "literal",
       "type": "boolean",
@@ -176,11 +181,16 @@ const _meta = {
 			if (!requestable) {
 				throw new Error("FullSync schema attachment requires a safe read requestable.");
 			}
+			var input = cloneSchema(props.input || {});
+			var sampleDocId = String(props.sampleDocId || "");
+			if (sampleDocId && input._use_docid === undefined) {
+				input._use_docid = sampleDocId;
+			}
 			var schemaResult = ctx.requestableSchema({
 				requestable: requestable,
 				project: props.project,
 				projectDir: props.projectDir,
-				input: props.input || {},
+				input: input,
 				learn: props.learn !== false,
 				includeSample: false
 			}) || {};

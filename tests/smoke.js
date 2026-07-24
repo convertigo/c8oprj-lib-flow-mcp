@@ -42,6 +42,7 @@ assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
 	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
 var capturedFullSyncSchemaMutation = null;
 var capturedFullSyncTreeRequest = null;
+var capturedFullSyncSchemaRequest = null;
 var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
 	props: function () {
 		return {
@@ -67,7 +68,8 @@ var resolvedFullSyncSchemaAttachment = isolatedFullSyncSchemaAttach.run({
 		}
 		return { children: [target] };
 	},
-	requestableSchema: function () {
+	requestableSchema: function (request) {
+		capturedFullSyncSchemaRequest = request;
 		return { ok: true, schema: { type: "object", properties: {} }, learned: true };
 	},
 	authoringMutateSource: function (request) {
@@ -80,8 +82,31 @@ assertTrue(resolvedFullSyncSchemaAttachment.ok === true &&
 	capturedFullSyncTreeRequest.internalDeep === true &&
 	capturedFullSyncTreeRequest.maxDepth === 64 &&
 	capturedFullSyncSchemaMutation.mutation.path === "frontAst.slots.structure.children[0].props.outputSchema" &&
+	capturedFullSyncSchemaRequest.input._use_limit === 1 &&
 	capturedFullSyncSchemaMutation.mutation.value.properties.rows.type === "array",
 	"FullSync schema attachment did not resolve and execute a missing mutation path from the stable action id");
+isolatedFullSyncSchemaAttach.run({
+	props: function () {
+		return {
+			sourceFile: "routes/+page.flow.svelte",
+			path: "frontAst.slots.structure.children[0].props.outputSchema",
+			requestable: ".ReadProduct",
+			projectDir: "/tmp/project",
+			sampleDocId: "product-42",
+			out: "local.schemaAttachment"
+		};
+	},
+	requestableSchema: function (request) {
+		capturedFullSyncSchemaRequest = request;
+		return { ok: true, schema: { type: "object", properties: {} }, learned: true };
+	},
+	authoringMutateSource: function () {
+		return { ok: true };
+	},
+	write: function () {}
+}, {});
+assertTrue(capturedFullSyncSchemaRequest.input._use_docid === "product-42",
+	"FullSync schema attachment did not map sampleDocId to the safe Get request variable");
 var fullSyncScaffoldSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/blocks/project/fullsync/scaffold.block.js"), "UTF-8"));
 var isolatedFullSyncScaffold = eval(fullSyncScaffoldSource.substring(fullSyncScaffoldSource.indexOf("(function")));
@@ -1256,7 +1281,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"    <ForEach id=\"catalog\" source={{\"mode\":\"literal\",\"value\":[]}} context=\"item\"><Children>",
 	"      <Card id=\"productCard\"><Children><If id=\"isProduct\" test={{\"mode\":\"literal\",\"value\":true}}><Then>",
 	"        <Button id=\"openProduct\" label=\"Open\"><Events><OnClick id=\"openProductClick\"><Actions>",
-	"          <FullSyncGet id=\"selectedProduct\" database=\"retailstore\" docid={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"catalog\",\"value\":\"item\"},\"path\":[{\"kind\":\"property\",\"name\":\"id\"}]}} schemaRequestable=\".retailstore.ReadProduct\" schemaInput={{\"_use_docid\":\"p1\"}} />",
+	"          <FullSyncGet id=\"selectedProduct\" database=\"retailstore\" docid={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"catalog\",\"value\":\"item\"},\"path\":[{\"kind\":\"property\",\"name\":\"id\"}]}} schemaRequestable=\".retailstore.ReadProduct\" />",
 	"        </Actions></OnClick></Events></Button>",
 	"      </Then><Else /></If></Children></Card>",
 	"    </Children></ForEach>",
@@ -1272,11 +1297,11 @@ var appProgressDeepFullSync = callTool(139621, "flow-app-progress", {
 });
 assertTrue(appProgressDeepFullSync.result.result.structuredContent.frontend.bindingWarnings.some(function (warning) {
 	return warning.actionId === "selectedProduct" &&
-		(warning.code === "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING" ||
-			(warning.code === "FRONTEND_FULLSYNC_SCHEMA_PENDING" && warning.fix &&
-			warning.fix.tool === "frontend-svelte-fullsync-schema" &&
-			(warning.fix.arguments.path || warning.fix.arguments.actionId === "selectedProduct") &&
-			warning.fix.arguments.input && warning.fix.arguments.input._use_docid === "p1"));
+		warning.code === "FRONTEND_FULLSYNC_SCHEMA_INPUT_REQUIRED" &&
+		warning.repair && warning.repair.tool === "frontend-svelte-fullsync-schema" &&
+		warning.repair.arguments.actionId === "selectedProduct" &&
+		warning.repair.needsInput && warning.repair.needsInput.name === "sampleDocId" &&
+		warning.repair.needsInput.requestVariable === "_use_docid";
 }), "MCP flow-app-progress should discover deeply nested FullSync actions: " +
 	JSON.stringify(appProgressDeepFullSync.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [

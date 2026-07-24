@@ -71,7 +71,8 @@ reference syntax for dynamic JSON data:
 `ForEach`, `@item.path` and `@index` resolve the declared lexical aliases;
 `@feedItems.item.path` and `@feedItems.index` are stable explicit forms.
 Inside events, use `@event.value`, `@event.checked`, `@event.key` or
-`@event.name`. Array indexes are supported, for example `@load.rows[0].name`.
+`@event.name`. `@index` is zero-based. Array indexes are supported, for example
+`@load.rows[0].name`.
 
 The compiler lowers these references to the canonical schema-backed
 `FlowValueBinding`. That object is an internal tree/properties and picker
@@ -85,6 +86,11 @@ same runtime. FlowScript reads `input/local/current/result` directly. Flow
 Svelte uses `@action`, `@item`, `@index` and `@event` for reactive sources and
 uses `{...}` only for browser expressions. Prefer a dual-target portable block
 when a computation must run identically on both sides.
+
+Visible components may use browser expressions where their property contract
+allows them. Client action parameters do not execute free expressions:
+`count={index + 1}` is rejected. Bind `count="@index"` directly when zero-based
+semantics fit, or compute the value with a portable block and bind its result.
 
 ## CallSequence Identity And Marker
 
