@@ -110,6 +110,7 @@ const _meta = {
           "properties": {
             "checked": { "type": "boolean" },
             "ready": { "type": "boolean" },
+            "syncAttempted": { "type": "boolean" },
             "database": { "type": "string" },
             "designDocuments": { "type": "array", "items": { "type": "object" } },
             "errors": { "type": "array", "items": { "type": "object" } }
@@ -284,18 +285,17 @@ const _meta = {
 		return mismatches;
 	}
 
-	function verifyReadiness(connector, designDocuments) {
+	function readReadiness(connector, designDocuments) {
 		var database = String(connector.getDatabaseName());
 		var readiness = {
 			checked: true,
 			ready: false,
+			syncAttempted: false,
 			database: database,
 			designDocuments: [],
 			errors: []
 		};
 		try {
-			var CouchDbManager = Packages.com.twinsoft.convertigo.engine.providers.couchdb.CouchDbManager;
-			CouchDbManager.syncDocument(connector);
 			var client = connector.getCouchClient();
 			var databaseInfo = plainJson(client.getDatabase(database));
 			if (databaseInfo && databaseInfo.error) {
@@ -338,6 +338,17 @@ const _meta = {
 				message: String(e.message || e)
 			});
 		}
+		return readiness;
+	}
+
+	function verifyReadiness(connector, designDocuments) {
+		var readiness = readReadiness(connector, designDocuments);
+		if (readiness.ready) {
+			return readiness;
+		}
+		Packages.com.twinsoft.convertigo.engine.providers.couchdb.CouchDbManager.syncDocument(connector);
+		readiness = readReadiness(connector, designDocuments);
+		readiness.syncAttempted = true;
 		return readiness;
 	}
 
@@ -464,6 +475,7 @@ const _meta = {
 		} else {
 			result.reused.push(qname);
 		}
+		return changed;
 	}
 
 	function configureTransaction(transaction, type, spec) {
@@ -569,6 +581,7 @@ const _meta = {
 				}
 			};
 			var connectorQName = name + "." + fsName;
+			var projectChanged = false;
 
 			designDocuments.forEach(function (rawSpec) {
 				var spec = objectValue(rawSpec, "designDocuments[]");
@@ -587,6 +600,7 @@ const _meta = {
 				result.readiness = {
 					checked: false,
 					ready: false,
+					syncAttempted: false,
 					database: fsName,
 					designDocuments: [],
 					errors: []
@@ -606,12 +620,14 @@ const _meta = {
 				connector.setName(fsName);
 				project.add(connector);
 				result.created.push(connectorQName);
+				projectChanged = true;
 			} else {
 				result.reused.push(connectorQName);
 			}
 			if (connectorSpec.comment !== undefined && String(connector.getComment() || "") !== String(connectorSpec.comment || "")) {
 				connector.setComment(String(connectorSpec.comment || ""));
 				connector.hasChanged = true;
+				projectChanged = true;
 			}
 			if (connectorSpec.anonymousReplication !== undefined) {
 				var FullSyncAnonymousReplication = Packages.com.twinsoft.convertigo.engine.enums.FullSyncAnonymousReplication;
@@ -619,6 +635,7 @@ const _meta = {
 				if (!sameValue(connector.getAnonymousReplication(), anonymousReplication)) {
 					connector.setAnonymousReplication(anonymousReplication);
 					connector.hasChanged = true;
+					projectChanged = true;
 				}
 			}
 
@@ -638,10 +655,12 @@ const _meta = {
 					document.setJSONObject(desired);
 					connector.add(document);
 					result.created.push(qname);
+					projectChanged = true;
 				} else if (designMismatches(document.getJSONObject(), desired).length !== 0) {
 					document.setJSONObject(desired);
 					document.hasChanged = true;
 					result.updated.push(qname);
+					projectChanged = true;
 				} else {
 					result.reused.push(qname);
 				}
@@ -665,19 +684,22 @@ const _meta = {
 					connector.add(transaction);
 					created = true;
 					result.created.push(qname);
+					projectChanged = true;
 				} else {
 					result.reused.push(qname);
 				}
-				configureTransaction(transaction, type, spec);
+				projectChanged = configureTransaction(transaction, type, spec) || projectChanged;
 				var variables = mergedVariables(type, spec);
 				variables.forEach(function (variableSpec) {
-					configureVariable(transaction, variableSpec, result, qname);
+					projectChanged = configureVariable(transaction, variableSpec, result, qname) || projectChanged;
 				});
 			});
 
-			project.hasChanged = true;
-			Engine.theApp.databaseObjectsManager.exportProject(project);
-			result.saved = true;
+			if (projectChanged) {
+				project.hasChanged = true;
+				Engine.theApp.databaseObjectsManager.exportProject(project);
+				result.saved = true;
+			}
 			result.readiness = verifyReadiness(connector, designDocuments);
 			result.ok = result.readiness.ready;
 			if (!result.ok) {
@@ -692,7 +714,9 @@ const _meta = {
 					}
 				};
 			}
-			refreshStudio(Engine, project);
+			if (projectChanged) {
+				refreshStudio(Engine, project);
+			}
 			ctx.write(prop(props, "out") || "local.fullsyncScaffold", result);
 			return result;
 		}
