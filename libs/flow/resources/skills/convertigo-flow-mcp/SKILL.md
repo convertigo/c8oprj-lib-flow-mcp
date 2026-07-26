@@ -18,12 +18,15 @@ first useful preview. A POC is a runnable business path, not an exhaustive
 acceptance campaign.
 
 - Target 15 minutes and stop after the first useful preview.
-- Write one backend draft and one complete frontend pass.
+- Write one backend draft and one complete frontend application pass. One pass
+  may contain several Page sources; it never means stacking distinct business
+  steps in one route.
 - Allow at most two focused repair passes after those drafts.
 - Call `flow-app-progress({ project, mode:"poc" })` once, then build.
 - Run the build-provided bounded smoke probe and at most one required workflow.
-- Report deferred schema, mock, offline, responsive and history checks; do not
-  repair them unless they prevent the requested path.
+- Keep one Page or mutually exclusive surface active at each business step.
+  Functional Page transitions are part of the POC; only exhaustive history,
+  offline, responsive and visual checks are deferred.
 
 Use `flow-app-progress({ project, mode:"hardening" })` only when the user asks
 for fiabilisation, production readiness or exhaustive validation. Never use
@@ -51,6 +54,9 @@ per task, and only when its feature is required:
 
 - `flow://guide/samples`: fresh FlowScript syntax warm-up.
 - `flow://guide/frontend-svelte`: Svelte frontend authoring.
+- `flow://guide/frontend-svelte-routing`: optional SvelteKit route segments,
+  parameters, layouts and route groups. Read it only for dynamic or advanced
+  routing, or when the compact mapping in the frontend guide is insufficient.
 - `flow://guide/fullstack-paperboard`: backend plus frontend architecture. When
   this is read, do not reread `frontend-svelte`; use diagnostics for details.
 - `flow://guide/fullsync`: FullSync provisioning or client use.
@@ -174,23 +180,37 @@ comment required by the guide.
 ## Svelte Frontend Workflow
 
 Read `flow://guide/frontend-svelte` once for a frontend-only task, or
-`flow://guide/fullstack-paperboard` once for a full-stack task. Build whole
-screens through Flow Svelte source, not hundreds of tree mutations:
+`flow://guide/fullstack-paperboard` once for a full-stack task. Build the
+application as explicit Pages through Flow Svelte source, not hundreds of tree
+mutations. A complete pass may write several Page sources:
 
-1. `frontend-svelte-code-get({ project })` returns the complete source,
-   revision and a compact `authoringContract` for standard blocks. Use its
-   property names, SmartType intents and slots directly.
-2. Write one complete `.flow.svelte` pass from that contract. Do not guess CSS,
-   Ionic or NGX property names that are absent from it. Contract `slots` are
-   exact source wrapper tags such as `Children`, `Events`, `Then` and `Else`;
-   never omit a listed wrapper around nested blocks.
-3. `frontend-svelte-code-check({ project, code })` validates it.
-4. `frontend-svelte-code-set({ project, code, revision })` persists it.
+1. Derive the logical Pages and transitions from the requested workflow before
+   writing markup. Each distinct business step is a Page unless it is a small,
+   mutually exclusive state of the current Page.
+2. `frontend-svelte-code-get({ project })` returns the configured source,
+   revision and a compact `authoringContract` for standard blocks. Use
+   `sourceFile` for another existing Page. Use its property names, SmartType
+   intents and slots directly.
+3. Write every Page needed by the complete application pass. Do not guess CSS,
+   Ionic or NGX property names that are absent from the contract. Contract
+   `slots` are exact source wrapper tags such as `Children`, `Events`, `Then`
+   and `Else`; never omit a listed wrapper around nested blocks.
+4. `frontend-svelte-code-check({ project, sourceFile, code })` validates each
+   Page. `frontend-svelte-code-set({ project, sourceFile, code, revision })`
+   persists it and can create a new canonical route source when no revision
+   exists.
 5. Use `frontend-svelte-code-patch` for later focused changes.
 6. Call `flow-app-progress({ project, qname, mode:"poc" })` once after the
-   first complete paperboard. Do not rerun it when the POC is ready.
+   first complete application paperboard. Do not rerun it when the POC is ready.
 7. Call `frontend-svelte-action` with `build`; production build already
    generates the sources.
+
+Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
+files or call `$app/navigation` directly. Static links use `LinkButton`;
+transitions after an action use `Navigate`; back controls use `GoBack` with a
+fallback. Read `flow://guide/frontend-svelte-routing` only when dynamic
+segments, optional/rest parameters, matchers, nested layouts or route groups
+are required.
 
 If `frontend-svelte-code-check` reports an unknown property, block, scope or
 picker candidate, make one focused `frontend-svelte-tree` or

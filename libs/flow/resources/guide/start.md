@@ -124,10 +124,12 @@ For diagnostics, MCP responses are sanitized for agents and optional JSONL traci
 
 For backend + Svelte application work, read
 `flow://guide/fullstack-paperboard` before coding. It defines the short
-paperboard loop: bootstrap, one backend pass, one visible frontend pass, early
-action wiring, `flow-app-progress({ mode:"poc" })`, build and preview. Stop
-there unless hardening was requested; mock replacement and exhaustive schema
-review are a separate phase. For Svelte-only frontend work, read
+paperboard loop: bootstrap, one backend pass, one visible frontend application
+pass that may contain several Pages, early action wiring,
+`flow-app-progress({ mode:"poc" })`, build and preview. Functional Page
+separation is part of the POC. Stop there unless hardening was requested;
+exhaustive schema, history and visual review are a separate phase. For
+Svelte-only frontend work, read
 `flow://guide/frontend-svelte` and use `frontend-svelte-tree`,
 `frontend-svelte-palette`, `frontend-svelte-mutate`,
 `frontend-svelte-actions` and `frontend-svelte-action`. These tools reuse the
@@ -135,3 +137,5 @@ same authoring contract as the Studio tree and palette; do not edit generated
 Svelte output directly. Flow Svelte source follows SvelteKit routes under
 `libs/flow/frontbuilder/svelte/model/<App>/src/routes`, and generated output
 must stay under `_private/svelte/src/routes`.
+Read optional `flow://guide/frontend-svelte-routing` only for dynamic Page
+segments, parameters, matchers, nested layouts or route groups.

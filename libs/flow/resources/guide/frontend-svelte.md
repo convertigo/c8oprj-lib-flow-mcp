@@ -12,6 +12,35 @@ If the task includes both backend Flow and frontend Svelte work, use
 For logic shared with backend FlowScript, also read
 `flow://guide/portable-blocks`.
 
+## Page-First Model
+
+Model the requested workflow as logical Pages before writing blocks. A distinct
+business step is a Page; a small transient state may stay in the current Page
+only when `If` branches make the surfaces mutually exclusive. Never show a
+downstream list or detail surface before the selection that supplies it. This
+rule is part of a POC, not production hardening.
+
+Flow Svelte follows SvelteKit while keeping generated files read-only:
+
+| Flow authoring | SvelteKit projection |
+| --- | --- |
+| `src/routes/+page.flow.svelte` | root `+page.svelte`, path `/` |
+| `src/routes/products/+page.flow.svelte` | page route `/products` |
+| `src/routes/product/[id]/+page.flow.svelte` | required parameter `/product/[id]` |
+| `src/routes/[[lang]]/home/+page.flow.svelte` | optional parameter `[[lang]]` |
+| `src/routes/files/[...path]/+page.flow.svelte` | rest parameter `[...path]` |
+| `src/routes/item/[id=integer]/+page.flow.svelte` | matched parameter `[id=integer]` |
+| `src/routes/+layout.flow.svelte` | inherited root layout |
+| `src/routes/store/+layout.flow.svelte` | nested layout for `/store/**` |
+| `src/routes/(app)/...` | layout group that does not change the URL |
+| `LinkButton`, `Navigate`, `GoBack` | links, programmatic navigation and history |
+
+An agent that already knows SvelteKit can use this mapping directly. SvelteKit
+knowledge does not permit editing `_private/svelte`, generated `+page.svelte`
+or `+layout.svelte`, nor calling `$app/navigation` from authored Flow source.
+Use `flow://guide/frontend-svelte-routing` only for detailed parameter,
+matcher, layout-group or layout-reset behavior.
+
 ## Default Loop
 
 1. Read the complete authoring model with `frontend-svelte-code-get({ project })`.
@@ -23,17 +52,18 @@ For logic shared with backend FlowScript, also read
    NGX, CSS or HTML property names. Pass the target Convertigo project name,
    not a filesystem path. For a new route or component, obtain its canonical
    source path from one focused palette call.
-2. Compose the screen or workflow directly in Flow Svelte source using that
-   contract. Validate the complete draft
-   with `frontend-svelte-code-check({ project, code })`; this catches parser
-   errors, duplicate low-code ids and noncanonical bindings without writing.
-   This complete check is the first frontend operation after `code-get` for a
-   whole-screen pass. Do not browse tree/palette or issue unit mutations first
-   for blocks already described by the source contract.
-3. Persist a complete pass with `frontend-svelte-code-set({ project, code,
-   revision })`. Use `frontend-svelte-code-patch({ project, revision,
-   codepatch })` for subsequent compact unified diffs. A stale revision is
-   rejected; re-read instead of overwriting concurrent work.
+2. Compose the complete application pass in Flow Svelte. It may include several
+   Page sources. For each Page, validate with
+   `frontend-svelte-code-check({ project, sourceFile, code })`; this catches
+   parser errors, duplicate low-code ids and noncanonical bindings without
+   writing. Do not browse tree/palette or issue unit mutations first for blocks
+   already described by the source contract.
+3. Persist each Page in that same application pass with
+   `frontend-svelte-code-set({ project, sourceFile, code, revision })`. A new
+   canonical route source has no revision. Use
+   `frontend-svelte-code-patch({ project, sourceFile, revision, codepatch })`
+   for subsequent compact unified diffs. A stale revision is rejected; re-read
+   instead of overwriting concurrent work.
 4. Use `frontend-svelte-tree({ project, detail:"inspect", focusPath, maxDepth:8 })`
    and `frontend-svelte-palette({ project, focusPath })` only when a canonical
    block, slot, property or schema-backed binding is unknown. Execute returned
@@ -167,6 +197,10 @@ _private/svelte/src/lib/...
   and `Routes -> ROOT / -> Children -> detail -> Page`, not like duplicate page
   nodes or raw `+page.svelte` filenames. Technical files and generated paths are
   implicit read-only projection details.
+- A POC with several business steps still needs several Pages or mutually
+  exclusive local surfaces. Deferring complete breadcrumbs, native-history
+  edge cases or offline restoration does not permit stacking every step in one
+  scrolling document.
 - Treat frontend blocks like backend Flow blocks: they come from the palette,
   have a small editable property facade, and are arranged in the same tree as
   pages, components, events and actions.

@@ -485,6 +485,9 @@ assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/frontend-svelte";
 }), "MCP Flow resources/list did not expose the Svelte frontend guide");
 assertTrue(resources.result.result.resources.some(function (resource) {
+	return resource.uri === "flow://guide/frontend-svelte-routing";
+}), "MCP Flow resources/list did not expose the optional Svelte routing guide");
+assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/fullstack-paperboard";
 }), "MCP Flow resources/list did not expose the full-stack paperboard guide");
 assertTrue(resources.result.result.resources.some(function (resource) {

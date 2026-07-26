@@ -4,10 +4,11 @@ Use this guide for a Flow task that must deliver a backend plus a Svelte
 frontend, especially when the user asks for an application from a short prompt
 or for a legacy Convertigo screen to be rebuilt with Flow technologies.
 
-The default goal is a runnable POC: one backend pass, one frontend pass, build,
-and one useful browser path. Stop after at most two focused repairs. Mock
-replacement, exhaustive schemas, offline/history coverage and visual
-refinement belong to explicit hardening.
+The default goal is a runnable POC: one backend pass, one frontend application
+pass, build, and one useful browser path. One application pass may contain
+several Page sources. Stop after at most two focused repairs. Exhaustive
+schemas, offline/history edge cases and visual refinement belong to explicit
+hardening; functional Page separation and transitions do not.
 
 Read `flow://guide/portable-blocks` when event normalization or another pure
 operation should use the same block contract on both sides. Keep HTTP,
@@ -64,7 +65,7 @@ source, including a structured literal for intentionally static content.
    `DisplayObjects` directly.
 2. Extract a small plan from the prompt:
    - backend requestables or service operations;
-   - frontend pages;
+   - frontend Pages and transitions;
    - visible layout intentions such as `input form`, `result table`, `detail
      card`, `status area`, `navigation`, `media list`;
    - external service URLs and structural config values.
@@ -73,6 +74,10 @@ source, including a structured literal for intentionally static content.
    understand or replace their implementation. Do not rebuild against a raw
    connector response unless the user explicitly asks for the connector-level
    API.
+   A distinct business step is a Page. Keep only one Page or mutually exclusive
+   surface active; never expose an empty downstream list or detail before its
+   required selection. For dynamic segments, layouts or route groups, read
+   `flow://guide/frontend-svelte-routing`.
 3. Store structural service constants in project FlowEngine `config.*`, not in
    low-level block code. Keep internal builder config private; do not expose it
    as application configuration.
