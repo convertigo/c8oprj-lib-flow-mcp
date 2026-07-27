@@ -188,9 +188,9 @@ mutations. A complete pass may write several Page sources:
    writing markup. Each distinct business step is a Page unless it is a small,
    mutually exclusive state of the current Page.
 2. `frontend-svelte-code-get({ project })` returns the configured source,
-   revision and a compact `authoringContract` for standard blocks. Use
-   `sourceFile` for another existing Page. Use its property names, SmartType
-   intents and slots directly.
+   revision, the application Page index and a compact `authoringContract`.
+   Navigate by logical Page id with `Params`/`Query`; target Pages read typed
+   values through `@route.params.name`. Use `sourceFile` to read another Page.
 3. Write every Page needed by the complete application pass. Do not guess CSS,
    Ionic or NGX property names that are absent from the contract. Contract
    `slots` are exact source wrapper tags such as `Children`, `Events`, `Then`
@@ -206,11 +206,12 @@ mutations. A complete pass may write several Page sources:
    generates the sources.
 
 Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
-files or call `$app/navigation` directly. Static links use `LinkButton`;
-transitions after an action use `Navigate`; back controls use `GoBack` with a
-fallback. Read `flow://guide/frontend-svelte-routing` only when dynamic
-segments, optional/rest parameters, matchers, nested layouts or route groups
-are required.
+files or call `$app/navigation` directly. Static links use `LinkButton`.
+Transitions use `<Navigate page="pageId"><Params>...</Params></Navigate>`;
+required parameters come from `authoringContract.pages`, not URL guesses.
+Back controls use `GoBack` with a fallback. Read
+`flow://guide/frontend-svelte-routing` only for optional/rest parameters,
+matchers, nested layouts or route groups.
 
 If `frontend-svelte-code-check` reports an unknown property, block, scope or
 picker candidate, make one focused `frontend-svelte-tree` or

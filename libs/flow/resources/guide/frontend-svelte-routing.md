@@ -38,10 +38,11 @@ A matcher narrows a parameter to values accepted by the named matcher. Prefer
 palette-provided matchers and typed parameter sources; do not create matcher
 code outside Flow authoring.
 
-The Page route metadata must mirror the route represented by its source path.
-Use the Page and navigation properties returned by the current authoring
-contract. If a typed route parameter is not offered as a binding source, stop
-and report the tooling gap instead of reading `$app/state` or the URL directly.
+The Page source path defines its route. Give the Page a stable logical
+`_flow.page.id`; `frontend-svelte-code-get.authoringContract.pages` returns that
+id, path, parameters and source file. Every parameter is exposed on the target
+Page as `@route.params.<name>`. If that source is absent, stop rather than
+reading `$app/state` or the URL directly.
 
 ## Layouts
 
@@ -60,8 +61,17 @@ wrappers.
 
 Use `LinkButton` for a static Page link. When navigation follows an action such
 as `FullSyncGet`, `FullSyncView`, `SetValue` or `CallSequence`, place
-`Navigate` after that action in the same event chain. Supply every required
-route parameter and explicit query value through typed properties or bindings.
+`Navigate` after that action in the same event chain. Target the Page by id and
+supply values through `Params` and `Query`:
+
+```svelte
+<Navigate id="openProduct" page="product">
+  <Params><Variable name="id" value="@item.id" /></Params>
+  <Query><Variable name="tab" value="details" /></Query>
+</Navigate>
+```
+
+The generator resolves and encodes the URL. Do not interpolate paths.
 
 Use a visible Button with `GoBack` for history navigation and set a fallback
 Page for direct entry. Complete browser-history restoration, scroll restoration

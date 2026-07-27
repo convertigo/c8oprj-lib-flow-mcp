@@ -415,7 +415,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. Bindable properties accept intuitive @action.path/@item.path references or the structured mutation returned by the picker; bare string paths are rejected.";
 		} else if (name === "frontend-svelte-code-get") {
-			description = "Reads the complete intuitive .flow.svelte model, revision and compact common block/property contract. Default starting point for substantial frontend work; use the returned contract before one focused lookup.";
+			description = "Reads one complete intuitive .flow.svelte model plus the application Page index, typed route parameters, revision and compact block contract. Navigate targets a Page id with Params/Query; target Pages read @route.params.name.";
 		} else if (name === "frontend-svelte-code-check") {
 			description = "Parses and validates a complete .flow.svelte draft without writing it. Quoted values are literals, {...} values are browser expressions, and @action.path/@item.path values are schema-backed sources; incompatible forms return an applicable correction.";
 		} else if (name === "frontend-svelte-code-set") {

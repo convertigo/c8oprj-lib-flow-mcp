@@ -246,8 +246,58 @@ const _meta = {
 		"PageShell", "Header", "Toolbar", "RowLayout", "ColumnLayout", "GridLayout", "Card",
 		"List", "ListItem", "Text", "Image", "Icon", "Button", "LinkButton", "Status",
 		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
-		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If", "OnMount"
+		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If", "OnMount",
+		"Navigate", "GoBack", "Variable"
 	];
+
+	function routeSources(props) {
+		var root = new File(String(props.projectDir || "")).getCanonicalFile();
+		var model = String(props.sourceFile || "").replace(/\\/g, "/");
+		var marker = "/src/routes/";
+		var markerIndex = model.indexOf(marker);
+		var routesRelative = markerIndex >= 0 ? model.substring(0, markerIndex + marker.length - 1) : "";
+		var routes = routesRelative ? new File(root, routesRelative) : null;
+		var pages = [];
+		function visit(directory) {
+			var files = directory && directory.listFiles();
+			if (!files) return;
+			Array.prototype.slice.call(files).sort(function (left, right) {
+				return String(left.getName()).localeCompare(String(right.getName()));
+			}).forEach(function (file) {
+				if (file.isDirectory()) {
+					visit(file);
+					return;
+				}
+				if (String(file.getName()) !== "+page.flow.svelte") return;
+				var relative = String(file.getCanonicalPath()).substring(String(root.getCanonicalPath()).length + 1).replace(/\\/g, "/");
+				var routeDir = String(file.getParentFile().getCanonicalPath()).substring(String(routes.getCanonicalPath()).length).replace(/\\/g, "/");
+				var routeParts = routeDir.split("/").filter(function (part) { return part && !/^\(.+\)$/.test(part); });
+				var path = routeParts.length ? "/" + routeParts.join("/") : "/";
+				var parameters = [];
+				routeParts.forEach(function (part) {
+					var match = part.match(/^\[\[?(\.\.\.)?([^=\]]+)(?:=([^\]]+))?\]?\]$/);
+					if (!match) return;
+					parameters.push({
+						name: match[2],
+						required: part.indexOf("[[") !== 0,
+						rest: !!match[1],
+						matcher: match[3] || "",
+						source: "@route.params." + match[2]
+					});
+				});
+				var content = FileUtils.readFileToString(file, "UTF-8");
+				var idMatch = content.match(/\bpage\s*:\s*\{[\s\S]*?\bid\s*:\s*["']([^"']+)["']/);
+				pages.push({
+					id: idMatch ? String(idMatch[1]) : path === "/" ? "home" : path.replace(/^\/+/, "").replace(/[^A-Za-z0-9]+(.)/g, function (_, next) { return String(next).toUpperCase(); }),
+					path: path,
+					parameters: parameters,
+					sourceFile: relative
+				});
+			});
+		}
+		if (routes && routes.isDirectory()) visit(routes);
+		return pages;
+	}
 
 	function compactProperties(properties) {
 		var out = {};
@@ -296,17 +346,25 @@ const _meta = {
 				});
 			});
 			return {
-				version: 1,
+				version: 2,
 				valueSyntax: {
 					literal: 'property="literal"',
 					expression: "property={browserExpression}",
 					source: 'property="@producer.path"'
+				},
+				pages: routeSources(props),
+				navigation: {
+					open: '<Navigate id="openProduct" page="product"><Params><Variable name="id" value="@item.id" /></Params></Navigate>',
+					readParameter: "@route.params.id",
+					query: '<Query><Variable name="tab" value="details" /></Query>',
+					back: '<GoBack id="back" fallback="/" />'
 				},
 				blocks: blocks,
 				actionPattern: "Button > Events > OnClick > Actions > CallSequence",
 				rules: [
 					"Use only listed properties on these standard blocks.",
 					"Property contracts use type:intent|intent; source accepts @action.path, @item.path and @event.path.",
+					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
 					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."

@@ -1516,6 +1516,14 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 	frontendSourceGet.result.result.structuredContent.code.indexOf("<FlowComponent") !== -1 &&
 	frontendSourceRevision &&
 	frontendSourceGet.result.result.structuredContent.authoringContract &&
+	frontendSourceGet.result.result.structuredContent.authoringContract.version === 2 &&
+	frontendSourceGet.result.result.structuredContent.authoringContract.pages.some(function (page) {
+		return page.id === "home" && page.path === "/";
+	}) &&
+	frontendSourceGet.result.result.structuredContent.authoringContract.pages.some(function (page) {
+		return page.path === "/store";
+	}) &&
+	frontendSourceGet.result.result.structuredContent.authoringContract.navigation.readParameter === "@route.params.id" &&
 	frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
 		return block.tag === "Text" && String(block.properties.text).indexOf("literal") !== -1;
 	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
@@ -1526,6 +1534,9 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 			block.slots.indexOf("default") === -1;
 	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
 		return block.tag === "If" && block.slots.indexOf("Then") !== -1 && block.slots.indexOf("Else") !== -1;
+	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+		return block.tag === "Navigate" && block.properties.page &&
+			block.slots.indexOf("Params") !== -1 && block.slots.indexOf("Query") !== -1;
 	}),
 	"MCP frontend-svelte-code-get should return source, revision and a compact canonical authoring contract");
 var frontendSourceInvalid = callTool(1382, "frontend-svelte-code-check", {
