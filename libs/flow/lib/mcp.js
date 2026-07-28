@@ -758,11 +758,16 @@
 		var name = String(args.name || "");
 		var sequence = projectSequenceByName(project, name);
 		var flow = null;
+		var flowWasChanged = false;
 		if (sequence != null) {
 			if (!isFlowDbo(sequence)) {
 				throw new Error("Unable to register Flow DBO: " + args.project + "." + name + " already exists and is not a Flow.");
 			}
 			flow = sequence;
+			try {
+				flowWasChanged = flow.hasChanged === true;
+			} catch (_ignoreFlowChanged) {
+			}
 			result.updated = true;
 		} else {
 			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
@@ -800,9 +805,7 @@
 		} else {
 			result.saved = true;
 			result.flowDeclarationSaved = saveFlowDeclaration(project, flow, name, args, writeResult);
-			if (result.flowDeclarationSaved) {
-				markFastSavedClean(project, flow, projectWasChanged);
-			}
+			markFastSavedClean(project, flow, projectWasChanged, flowWasChanged);
 		}
 		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
 		try {
@@ -891,11 +894,11 @@
 		};
 	}
 
-	function markFastSavedClean(project, flow, projectWasChanged) {
+	function markFastSavedClean(project, flow, projectWasChanged, flowWasChanged) {
 		try {
 			var sourceDirty = flow.isFlowSourceDirty && flow.isFlowSourceDirty() === true;
 			if (!sourceDirty) {
-				flow.hasChanged = false;
+				flow.hasChanged = flowWasChanged === true;
 				flow.bNew = false;
 			}
 		} catch (_ignoreFlowClean) {
@@ -3358,6 +3361,7 @@
 		searchWorkspace: searchWorkspace,
 		registerFlowDbo: registerFlowDbo,
 		syncFlowInputsDbo: syncFlowInputsDbo,
+		_markFastSavedClean: markFastSavedClean,
 		applyNamedFlowMutation: applyNamedFlowMutation,
 		applyNodeMutation: applyNodeMutation,
 		toolResponse: toolResponse,

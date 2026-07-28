@@ -167,6 +167,27 @@ assertTrue(sanitizedCodePaths.codeFile === "libs/flows/Smoke.flow.js" &&
 	sanitizedCodePaths.workingCodeFile === "libs/flows/Smoke.flow.js" &&
 	sanitizedCodePaths.officialCodeFile === "libs/flows/Smoke.flow.js",
 	"MCP should not expose absolute executable Flow working-copy paths");
+var cleanFastSaveProject = { hasChanged: true };
+var cleanFastSaveFlow = {
+	hasChanged: true,
+	bNew: true,
+	isFlowSourceDirty: function () { return false; }
+};
+mcpLib._markFastSavedClean(cleanFastSaveProject, cleanFastSaveFlow, false, false);
+assertTrue(cleanFastSaveFlow.hasChanged === false &&
+	cleanFastSaveFlow.bNew === false &&
+	cleanFastSaveProject.hasChanged === false,
+	"MCP fast Flow save should clear only the dirty state introduced by registration");
+var preDirtyFastSaveProject = { hasChanged: true };
+var preDirtyFastSaveFlow = {
+	hasChanged: true,
+	bNew: false,
+	isFlowSourceDirty: function () { return false; }
+};
+mcpLib._markFastSavedClean(preDirtyFastSaveProject, preDirtyFastSaveFlow, true, true);
+assertTrue(preDirtyFastSaveFlow.hasChanged === true &&
+	preDirtyFastSaveProject.hasChanged === true,
+	"MCP fast Flow save should preserve pre-existing dirty state");
 var isolatedPhaseBudget = mcpLib.phaseBudget({ timeoutMs: 50 }, "smoke-progress");
 Packages.java.lang.Thread.sleep(60);
 assertTrue(isolatedPhaseBudget.expired() === true,
