@@ -559,7 +559,7 @@ const _meta = {
 			if (kind === "frontendRoutes" || kind === "frontendRouteRoot" || kind === "frontendRouteSegment") {
 				summary.routeCount++;
 			}
-			if (kind === "frontendPage" || kind === "frontendRouteLayout" || kind === "frontendComponent") {
+			if (kind === "frontendPage") {
 				summary.pageCount++;
 			}
 			if (kind === "frontendWidget" || kind === "frontendDirectiveBlock" || kind === "frontendDataBlock") {
@@ -1446,41 +1446,11 @@ const _meta = {
 		return frontend;
 	}
 
-	var frontendSummaryCache = {};
-
-	function frontendSourceFingerprint(args) {
-		var parts = [new java.lang.String(String(args.engineSource || "")).hashCode()];
-		var root = new java.io.File(String(args.projectDir || ""), "libs/flow/frontbuilder/svelte");
-		function visit(file) {
-			if (!file || !file.exists()) return;
-			if (file.isDirectory()) {
-				var name = String(file.getName());
-				if (name === "node_modules" || name === ".svelte-kit" || name === "build") return;
-				var children = file.listFiles() || [];
-				for (var i = 0; i < children.length; i++) visit(children[i]);
-				return;
-			}
-			var path = String(file.getAbsolutePath());
-			if (path.substring(path.length - 12) !== ".flow.svelte") return;
-			var contentHash = 0;
-			try {
-				contentHash = new java.lang.String(String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"))).hashCode();
-			} catch (_ignored) {
-			}
-			parts.push(path + ":" + file.length() + ":" + file.lastModified() + ":" + contentHash);
-		}
-		visit(root);
-		parts.sort();
-		return parts.join("|");
-	}
-
-	function frontendPocSummary(args) {
-		var started = Number(java.lang.System.currentTimeMillis());
-		var root = new java.io.File(String(args.projectDir || ""), "libs/flow/frontbuilder/svelte");
-		var summary = {
+	function emptyFrontendSummary() {
+		return {
 			checked: true,
-			readable: root.exists(),
-			hasBuilder: root.exists(),
+			readable: false,
+			hasBuilder: false,
 			hasRoutes: false,
 			hasPage: false,
 			hasStructure: false,
@@ -1499,105 +1469,12 @@ const _meta = {
 			},
 			error: ""
 		};
-		var wrappers = {
-			FlowComponent: true,
-			Structure: true,
-			Children: true,
-			Events: true,
-			Actions: true,
-			Then: true,
-			Else: true,
-			Variables: true
-		};
-		var actionTypes = {
-			CallSequence: true,
-			FullSyncGet: true,
-			FullSyncView: true,
-			FullSyncReset: true,
-			FullSyncSync: true,
-			GoBack: true,
-			Navigate: true,
-			UpdateList: true,
-			UpdateNumber: true,
-			SetValue: true
-		};
-		function visit(file) {
-			if (!file || !file.exists()) return;
-			if (file.isDirectory()) {
-				var name = String(file.getName());
-				if (name === "node_modules" || name === ".svelte-kit" || name === "build") return;
-				var children = file.listFiles() || [];
-				for (var i = 0; i < children.length; i++) visit(children[i]);
-				return;
-			}
-			var path = String(file.getAbsolutePath());
-			if (path.substring(path.length - 12) !== ".flow.svelte") return;
-			var relative = path.substring(String(args.projectDir || "").length + 1).replace(/\\/g, "/");
-			var content = String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"));
-			summary.hasRoutes = summary.hasRoutes || relative.indexOf("/src/routes/") !== -1;
-			summary.hasPage = summary.hasPage || /(?:^|\/)\+page\.flow\.svelte$/.test(relative);
-			summary.hasStructure = summary.hasStructure || /<Structure(?:\s|>)/.test(content);
-			if (!summary.sourceFile) summary.sourceFile = relative;
-			var seenTypes = {};
-			content.replace(/<([A-Z][A-Za-z0-9.]*)\b/g, function (_match, type) {
-				type = String(type);
-				if (wrappers[type] || seenTypes[type]) return _match;
-				seenTypes[type] = true;
-				if (actionTypes[type]) {
-					summary.paperboard.actions.push({ type: type, sourceFile: relative });
-				} else {
-					summary.paperboard.blocks.push({ type: type, sourceFile: relative });
-				}
-				return _match;
-			});
-			summary.paperboard.pageCount += /(?:^|\/)\+page\.flow\.svelte$/.test(relative) ? 1 : 0;
-		}
-		try {
-			visit(root);
-			summary.paperboard.routeCount = summary.hasRoutes ? 1 : 0;
-			summary.routesPath = summary.hasRoutes ? "frontends.svelte.authoring.routes" : "";
-			summary.structurePath = summary.hasStructure ? "frontends.svelte.authoring.routes.structure" : "";
-		} catch (e) {
-			summary.error = String(e.message || e);
-			summary.readable = false;
-		}
-		summary.timing = {
-			summaryMs: Number(java.lang.System.currentTimeMillis()) - started,
-			fastPath: true
-		};
-		return summary;
 	}
 
-	function frontendSummary(ctx, args) {
+	function projectedFrontendSummary(ctx, args, includeMenu) {
 		var summaryStarted = Number(java.lang.System.currentTimeMillis());
-		var projectCacheKey = String(args.projectDir || "");
-		var fingerprintStarted = Number(java.lang.System.currentTimeMillis());
-		var cacheKey = projectCacheKey + "|" + frontendSourceFingerprint(args);
-		var fingerprintMs = Number(java.lang.System.currentTimeMillis()) - fingerprintStarted;
-		if (frontendSummaryCache[cacheKey]) {
-			var cached = JSON.parse(frontendSummaryCache[cacheKey]);
-			cached.timing = {
-				summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted,
-				summaryCacheHit: true,
-				fingerprintMs: fingerprintMs
-			};
-			return cached;
-		}
-		var phaseTiming = { fingerprintMs: fingerprintMs, treeMs: 0, paperboardMs: 0, menuMs: 0 };
-		var summary = {
-			checked: true,
-			readable: false,
-			hasBuilder: false,
-			hasRoutes: false,
-			hasPage: false,
-			hasStructure: false,
-			routesPath: "",
-			structurePath: "",
-			sourceFile: "",
-			actionIds: [],
-			structureWarnings: [],
-			error: ""
-		};
+		var phaseTiming = { treeMs: 0, paperboardMs: 0, menuMs: 0 };
+		var summary = emptyFrontendSummary();
 		try {
 			var treeStarted = Number(java.lang.System.currentTimeMillis());
 			var tree = ctx.authoringTreeSource({
@@ -1668,36 +1545,43 @@ const _meta = {
 				}
 			});
 			phaseTiming.paperboardMs = Number(java.lang.System.currentTimeMillis()) - paperboardStarted;
-			var menuStarted = Number(java.lang.System.currentTimeMillis());
-			var menu = ctx.callBlock("authoring.menu", {
-				projectDir: args.projectDir,
-				builder: "svelte",
-				targetObject: {
-					kind: "frontendBuilder",
-					type: "svelte",
-					path: "frontends.svelte",
-					summary: "Svelte builder"
-				}
-			}, { trace: false });
-			walk(menu, function (node) {
-				var id = String(node.id || node.actionId || "");
-				if (id && summary.actionIds.indexOf(id) === -1) {
-					summary.actionIds.push(id);
-				}
-			});
-			phaseTiming.menuMs = Number(java.lang.System.currentTimeMillis()) - menuStarted;
+			if (includeMenu) {
+				var menuStarted = Number(java.lang.System.currentTimeMillis());
+				var menu = ctx.callBlock("authoring.menu", {
+					projectDir: args.projectDir,
+					builder: "svelte",
+					targetObject: {
+						kind: "frontendBuilder",
+						type: "svelte",
+						path: "frontends.svelte",
+						summary: "Svelte builder"
+					}
+				}, { trace: false });
+				walk(menu, function (node) {
+					var id = String(node.id || node.actionId || "");
+					if (id && summary.actionIds.indexOf(id) === -1) {
+						summary.actionIds.push(id);
+					}
+				});
+				phaseTiming.menuMs = Number(java.lang.System.currentTimeMillis()) - menuStarted;
+			}
 		} catch (e) {
 			summary.error = String(e.message || e);
 		}
-		Object.keys(frontendSummaryCache).forEach(function (knownKey) {
-			if (knownKey.indexOf(projectCacheKey + "|") === 0) delete frontendSummaryCache[knownKey];
-		});
-		frontendSummaryCache[cacheKey] = JSON.stringify(summary);
 		summary.timing = Object.assign(phaseTiming, {
 			summaryMs: Number(java.lang.System.currentTimeMillis()) - summaryStarted,
-			summaryCacheHit: false
+			fastPath: !includeMenu,
+			sharedProjection: true
 		});
 		return summary;
+	}
+
+	function frontendPocSummary(ctx, args) {
+		return projectedFrontendSummary(ctx, args, false);
+	}
+
+	function frontendSummary(ctx, args) {
+		return projectedFrontendSummary(ctx, args, true);
 	}
 
 	function frontendResponse(frontend, full) {
@@ -1781,7 +1665,7 @@ const _meta = {
 				].join("|"));
 				if (progressBudget.phase > 0) {
 					var resumedFrontend = includeFrontend
-						? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(args))
+						? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(ctx, args))
 						: { checked: false };
 					if (includeFrontend && progressBudget.phase === 1 && progressBudget.expired()) {
 						response = mcp.toolResponse(request, progressBudget.partial({
@@ -1866,7 +1750,7 @@ const _meta = {
 					return response;
 				}
 				var frontend = includeFrontend
-					? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(args))
+					? (hardening ? frontendSummary(ctx, args) : frontendPocSummary(ctx, args))
 					: { checked: false };
 				if (includeFrontend && hardening) {
 					frontend = enrichFrontendBindings(ctx, args, frontend);

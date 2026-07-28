@@ -5,6 +5,14 @@ var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(en
 var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
 var engine = eval(source);
+var smokeVerbose = java.lang.Boolean.getBoolean("flow.smoke.verbose") ||
+	String(java.lang.System.getenv("FLOW_SMOKE_VERBOSE") || "").toLowerCase() === "true";
+
+function debugPrint(value) {
+	if (smokeVerbose) {
+		print(value);
+	}
+}
 
 function assertTrue(condition, message) {
 	if (!condition) {
@@ -214,7 +222,7 @@ var list = JSON.parse(engine.run(JSON.stringify({
 		})
 	}
 })));
-print(JSON.stringify(list));
+debugPrint(JSON.stringify(list));
 assertTrue(list.ok === true, "MCP Flow tools/list failed");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "code-run";
@@ -474,7 +482,7 @@ var resources = JSON.parse(engine.run(JSON.stringify({
 		})
 	}
 })));
-print(JSON.stringify(resources));
+debugPrint(JSON.stringify(resources));
 assertTrue(resources.result.result.resources.some(function (resource) {
 	return resource.uri === "flow://guide/start";
 }), "MCP Flow resources/list did not expose the start guide");
@@ -546,7 +554,7 @@ var startGuide = JSON.parse(engine.run(JSON.stringify({
 		})
 	}
 })));
-print(JSON.stringify(startGuide));
+debugPrint(JSON.stringify(startGuide));
 assertTrue(startGuide.result.result.contents[0].text.indexOf("flow-search") !== -1 &&
 	startGuide.result.result.contents[0].text.indexOf("nodeId") !== -1,
 	"MCP Flow resources/read did not return semantic edit guidance");
@@ -896,7 +904,10 @@ assertTrue(frontendSvelteStructuredBinding.result.result.structuredContent.ok ==
 	"MCP frontend-svelte-mutate should persist a structured picker binding: " + JSON.stringify(frontendSvelteStructuredBinding));
 function frontendSvelteResourceRoot() {
 	var root = new java.io.File(projectDir).getParentFile();
+	var engineProject = new java.io.File(engineDir).getParentFile().getParentFile();
+	var engineSiblings = engineProject ? engineProject.getParentFile() : null;
 	var candidates = [
+		new java.io.File(engineSiblings, "c8oprj-lib-flow-frontbuilder-svelte/libs/flow/frontbuilder/svelte"),
 		new java.io.File(root, "c8oprj-lib-flow-frontbuilder-svelte/libs/flow/frontbuilder/svelte"),
 		new java.io.File(root, "lib_flow_frontbuilder_svelte/libs/flow/frontbuilder/svelte"),
 		new java.io.File(projectDir, "libs/flow/frontbuilder/svelte")
@@ -998,7 +1009,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"        </OnClick>",
 	"      </Events>",
 	"    </Button>",
-	"    <Text id=\"targetValue\" source=@readTarget.target />",
+		"    <Text id=\"targetValue\" source={{\"mode\":\"source\",\"source\":{\"category\":\"requestable\",\"actionId\":\"readTarget\"},\"path\":[{\"kind\":\"property\",\"name\":\"target\"}]}} />",
 	"  </Structure>",
 	"</FlowComponent>",
 	""
@@ -1012,6 +1023,9 @@ var appProgressFrontend = callTool(1394, "flow-app-progress", {
 });
 assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 	appProgressFrontend.result.result.structuredContent.frontend.structurePath &&
+	appProgressFrontend.result.result.structuredContent.frontend.paperboard.routeCount === 1 &&
+	appProgressFrontend.result.result.structuredContent.frontend.paperboard.pageCount === 1 &&
+	appProgressFrontend.result.result.structuredContent.frontend.timing.sharedProjection === true &&
 	appProgressFrontend.result.result.structuredContent.frontend.bindingSuggestions.some(function (suggestion) {
 		return suggestion.actionId === "readTarget" && suggestion.leafPaths && suggestion.leafPaths.indexOf("target") !== -1 &&
 			suggestion.bindings.some(function (candidate) {
@@ -1688,7 +1702,7 @@ var codeSet = callTool(3, "code-set", {
 	name: "TargetSmoke",
 	code: targetFlowCode
 });
-print(JSON.stringify(codeSet));
+debugPrint(JSON.stringify(codeSet));
 assertTrue(codeSet.result.result.structuredContent.ok === true &&
 	codeSet.result.result.structuredContent.diagnostics.length === 0,
 	"MCP Flow code-set did not accept a target projectDir working copy");
@@ -1707,7 +1721,7 @@ var codeRun = callTool(5, "code-run", {
 		target: "ok"
 	}
 });
-print(JSON.stringify(codeRun));
+debugPrint(JSON.stringify(codeRun));
 assertTrue(codeRun.result.result.structuredContent.result.target === "ok" &&
 	codeRun.result.result.structuredContent.result.first === "a",
 	"MCP Flow code-run did not execute the working copy");
@@ -1741,7 +1755,7 @@ var codePromote = callTool(6, "code-promote", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke"
 });
-print(JSON.stringify(codePromote));
+debugPrint(JSON.stringify(codePromote));
 assertTrue(codePromote.result.result.structuredContent.ok === true,
 	"MCP Flow code-promote did not save the working copy");
 
@@ -1924,7 +1938,7 @@ var adoptTargetSchema = callTool(101, "flow-output-schema", {
 	action: "adopt",
 	source: "static"
 });
-print(JSON.stringify(adoptTargetSchema));
+debugPrint(JSON.stringify(adoptTargetSchema));
 assertTrue(adoptTargetSchema.result.result.structuredContent.action === "adopt" &&
 	adoptTargetSchema.result.result.structuredContent.written.file.indexOf("TargetSmoke.flow.js") !== -1,
 	"MCP Flow flow-output-schema did not adopt _flow.outputs");
@@ -2015,7 +2029,7 @@ var blockSet = callTool(12, "code-set", {
 	code: customBlockCode,
 	overwrite: true
 });
-print(JSON.stringify(blockSet));
+debugPrint(JSON.stringify(blockSet));
 assertTrue(blockSet.result.result.structuredContent.name === "smoke.echo" &&
 	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.block.js").isFile(),
 	"MCP Flow code-set did not write a canonical project-local block");
@@ -2085,7 +2099,7 @@ var mockSet = callTool(132, "flow-block-mock", {
 	},
 	overwrite: true
 });
-print(JSON.stringify(mockSet));
+debugPrint(JSON.stringify(mockSet));
 var mockStructured = mockSet.result.result.structuredContent;
 assertTrue(mockStructured.ok === true &&
 	mockStructured.mock === true &&
@@ -2192,3 +2206,5 @@ var resourceSearch = callTool(14, "flow-resource-search", {
 assertTrue(resourceSearch.result.result.structuredContent.resources.some(function (resource) {
 	return resource.path === "libs/flow/blocks/smoke/echo.block.js";
 }), "MCP Flow flow-resource-search did not find the custom block source");
+
+print("lib_flow_mcp smoke tests passed");
