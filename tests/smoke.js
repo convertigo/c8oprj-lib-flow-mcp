@@ -896,6 +896,30 @@ assertTrue(frontendSvelteMutate.result.result.structuredContent.ok === true &&
 	frontendSvelteMutate.result.result.structuredContent.written === true &&
 	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text") !== -1,
 	"MCP frontend-svelte-mutate should persist source-backed mutations");
+var frontendSvelteDisable = callTool(139001, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "setEnabled",
+		path: "frontAst.slots.structure.children[0]",
+		enabled: false
+	}
+});
+assertTrue(frontendSvelteDisable.result.result.structuredContent.ok === true &&
+	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("enabled={false}") !== -1,
+	"MCP frontend-svelte-mutate should persist a disabled authoring node");
+var frontendSvelteEnable = callTool(139002, "frontend-svelte-mutate", {
+	projectDir: targetProjectDir,
+	sourceFile: String(frontendPageFile.getAbsolutePath()),
+	mutation: {
+		op: "setEnabled",
+		path: "frontAst.slots.structure.children[0]",
+		enabled: true
+	}
+});
+assertTrue(frontendSvelteEnable.result.result.structuredContent.ok === true &&
+	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("enabled={false}") === -1,
+	"MCP frontend-svelte-mutate should restore a disabled authoring node");
 var frontendSvelteImplicitProps = callTool(13901, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	sourceFile: String(frontendPageFile.getAbsolutePath()),

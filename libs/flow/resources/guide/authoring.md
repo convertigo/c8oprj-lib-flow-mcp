@@ -76,6 +76,11 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - `flow-tree` is compact by default through MCP. Use `detail:"full"` only when a UI-like tree with full `definition` and `info` strings is really needed.
 - Prefer FlowScript patching for normal maintenance. Use `flow-node-add/edit/move/delete/duplicate` only for low-level model operations or UI-like tooling.
 - Node mutation tools use `properties` for node properties. That is an MCP tool argument, not the Flow definition shape. Do not send `props`.
+- To skip an existing node without deleting it, use the `sourceMutationPath`
+  returned by the tree with `authoring-mutate({ project, sourceFile, mutation:
+  { op:"setEnabled", path:sourceMutationPath, enabled:false } })`. Set
+  `enabled:true` to restore it. Disabled nodes are ignored by execution and
+  schema/data-flow analysis; absence of the disabled state means enabled.
 - For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.
 - Custom Rhino blocks are for missing low-level primitives only. They must not do HTTP or Convertigo requestable calls directly; use visible `http.get`/`http.request` and `requestable.call` nodes.
 - Enumerating JSON object keys or reading a dynamic key is not a reason for a

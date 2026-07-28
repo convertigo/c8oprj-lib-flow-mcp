@@ -131,6 +131,13 @@ If -> Then / Else
 Layout -> PageContent
 ```
 
+Temporarily skip an existing block with
+`frontend-svelte-mutate({ project, sourceFile, mutation:
+{ op:"setEnabled", path:sourceMutationPath, enabled:false } })`, using the
+`sourceMutationPath` returned by the tree. Set `enabled:true` to restore it.
+A disabled frontend block and its subtree remain authorable but are omitted
+from generated Svelte, including their actions and imports.
+
 Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 `GridLayout`, `Card`), display, forms and navigation. Do not hide behavior in
 page CSS, generated code or browser globals. A layout must contain

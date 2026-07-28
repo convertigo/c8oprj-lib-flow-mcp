@@ -135,6 +135,12 @@ files and resources. Useful object primitives include `object.keys`,
 `object.get`, `object.values`, and `object.firstEntry`. Do not create a custom
 block just to access ordinary object/list data.
 
+To temporarily skip an existing Flow node without deleting it, call
+`authoring-mutate` with the node `sourceMutationPath` and
+`{ op:"setEnabled", path:sourceMutationPath, enabled:false }`. Use
+`enabled:true` to restore it. Disabled nodes do not execute and do not
+contribute to schemas or picker data.
+
 For backend fixtures, `asset.read` takes a project-relative
 `libs/flow/resources/...` path and returns raw text. `flow-resource-get` is an
 MCP inspection tool and returns an envelope; pass its `content` field to a text
@@ -228,6 +234,11 @@ widgets, events and actions. Events live below their owner, for example:
 ```text
 Button -> Events -> OnClick -> Actions -> CallSequence
 ```
+
+For a temporary frontend skip, call `frontend-svelte-mutate` with
+`{ op:"setEnabled", path:sourceMutationPath, enabled:false }`; set
+`enabled:true` to restore the node. Disabled subtrees stay visible to authoring
+but are omitted from generated Svelte.
 
 Use palette property names exactly. On `FRONTEND_PROPERTY_UNKNOWN`, choose from
 `acceptedProperties`. On `FRONTEND_BLOCK_UNKNOWN`, use a ranked equivalent or
