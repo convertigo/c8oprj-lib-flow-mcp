@@ -203,12 +203,7 @@ const _meta = {
 		}
 	}
 
-	function svelteResourceRoot(engine) {
-		var File = Packages.java.io.File;
-		var project = loadedProject(engine, FRONTBUILDER_PROJECT);
-		if (project != null) {
-			return String(new File(String(project.getDirPath()), "libs/flow/frontbuilder/svelte").getAbsolutePath());
-		}
+	function svelteResourceRoot() {
 		return "libs/flow/frontbuilder/svelte";
 	}
 
@@ -331,7 +326,7 @@ const _meta = {
 			}
 			var project = shouldImport ? importTemplate(engine, name, templateUrl) : existing;
 			result.imported = shouldImport;
-			var resourceRoot = svelteResourceRoot(engine);
+			var resourceRoot = svelteResourceRoot();
 			var model = ui ? ensureSvelteModel(project, name) : { path: "", file: "", created: false, exists: false };
 			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
 			result.createdFlowEngine = flow.created;
