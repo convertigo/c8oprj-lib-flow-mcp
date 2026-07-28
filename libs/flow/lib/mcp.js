@@ -199,6 +199,7 @@
 		iconFile32: true,
 		iconSvg: true,
 		sourcePath: true,
+		sourceFile: true,
 		projectDir: true,
 		__flowFile: true,
 		__flowImplementationFile: true,

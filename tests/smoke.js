@@ -989,7 +989,8 @@ var frontendSvelteTextPaletteItem = frontendSvelteMultiQueryPalette.result.resul
 })[0];
 assertTrue(frontendSvelteTextPaletteItem.apply &&
 	frontendSvelteTextPaletteItem.apply.tool === "frontend-svelte-mutate" &&
-	/frontbuilder\/svelte\/model\/Smoke\/src\/routes\/\+page\.flow\.svelte$/.test(frontendSvelteTextPaletteItem.apply.arguments.sourceFile) &&
+	frontendSvelteTextPaletteItem.apply.arguments.sourceFile ===
+		"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.op === "append" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.path.indexOf("frontAst") === 0 &&
 	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteTextPaletteItem.insert),
