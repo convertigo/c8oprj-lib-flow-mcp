@@ -1345,6 +1345,10 @@ const _meta = {
 				}
 				return;
 			}
+			var intuitiveSource = source.charAt(0) === "@";
+			if (intuitiveSource) {
+				source = source.substring(1);
+			}
 			var iteration = null;
 			arrayValue(paperboard.blocks).forEach(function (block) {
 				var context = String(block.context || "item");
@@ -1372,7 +1376,7 @@ const _meta = {
 				selectedSuggestion = suggestion;
 				relative = source.substring(prefix.length).replace(/^result\./, "");
 			});
-			if (!selectedSuggestion && !iteration && frontend.bindingSuggestions.length === 1) {
+			if (!selectedSuggestion && !iteration && !intuitiveSource && frontend.bindingSuggestions.length === 1) {
 				selectedSuggestion = frontend.bindingSuggestions[0];
 			}
 			var descriptor = iteration
@@ -1381,13 +1385,18 @@ const _meta = {
 				: selectedSuggestion
 					? sourceBinding(selectedSuggestion.source || { category: "requestable", actionId: String(selectedSuggestion.actionId || "") }, relative)
 					: null;
+			if (intuitiveSource && descriptor) {
+				return;
+			}
 			var warning = {
-					code: "FRONTEND_BINDING_LEGACY_STRING",
+					code: intuitiveSource ? "FRONTEND_BINDING_UNKNOWN_REFERENCE" : "FRONTEND_BINDING_LEGACY_STRING",
 					path: binding.path,
-					source: source,
+					source: intuitiveSource ? "@" + source : source,
 					suggestedSource: relative,
 					suggestedBinding: descriptor,
-					message: descriptor
+					message: intuitiveSource
+						? "This intuitive source reference does not match a known action or iterator."
+						: descriptor
 						? "Replace this legacy string path with the schema-backed binding descriptor."
 						: "This bindable property still uses a legacy string path; select a picker candidate."
 			};

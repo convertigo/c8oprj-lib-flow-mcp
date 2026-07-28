@@ -1024,9 +1024,10 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"          </Actions>",
 	"        </OnClick>",
 	"      </Events>",
-	"    </Button>",
+		"    </Button>",
 		"    <Text id=\"targetValue\" source={{\"mode\":\"source\",\"source\":{\"category\":\"requestable\",\"actionId\":\"readTarget\"},\"path\":[{\"kind\":\"property\",\"name\":\"target\"}]}} />",
-	"  </Structure>",
+		"    <Text id=\"intuitiveTargetValue\" source=\"@readTarget.target\" />",
+		"  </Structure>",
 	"</FlowComponent>",
 	""
 ].join("\n"), "UTF-8");
