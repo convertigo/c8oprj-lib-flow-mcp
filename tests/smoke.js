@@ -152,6 +152,21 @@ assertTrue(fullSyncViewWarnings.length === 1 &&
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
 var mcpLib = eval(mcpLibSource);
+var sanitizedCodePaths = mcpLib.sanitizeForMcp({
+	codeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
+	workingCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
+	officialCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath()
+}, {
+	scopes: {
+		request: {
+			projectDir: projectDir
+		}
+	}
+});
+assertTrue(sanitizedCodePaths.codeFile === "libs/flows/Smoke.flow.js" &&
+	sanitizedCodePaths.workingCodeFile === "libs/flows/Smoke.flow.js" &&
+	sanitizedCodePaths.officialCodeFile === "libs/flows/Smoke.flow.js",
+	"MCP should not expose absolute executable Flow working-copy paths");
 var isolatedPhaseBudget = mcpLib.phaseBudget({ timeoutMs: 50 }, "smoke-progress");
 Packages.java.lang.Thread.sleep(60);
 assertTrue(isolatedPhaseBudget.expired() === true,

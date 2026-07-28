@@ -200,6 +200,9 @@
 		iconSvg: true,
 		sourcePath: true,
 		sourceFile: true,
+		codeFile: true,
+		workingCodeFile: true,
+		officialCodeFile: true,
 		projectDir: true,
 		__flowFile: true,
 		__flowImplementationFile: true,
@@ -263,6 +266,10 @@
 		}
 		if (value === null) {
 			return null;
+		}
+		if (typeof value === "object" &&
+			value instanceof Packages.java.lang.CharSequence) {
+			value = String(value);
 		}
 		if (isSensitiveKey(key)) {
 			return "[redacted]";
