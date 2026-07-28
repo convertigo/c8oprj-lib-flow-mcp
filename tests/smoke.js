@@ -1262,6 +1262,26 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
+	"      <CallSequence id=\"loadNews\" requestable=\".LoadNews\" />",
+	"    </Actions></OnClick></Events></Button>",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressNestedAction = callTool(139616, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+assertTrue(!appProgressNestedAction.result.result.structuredContent.frontend.structureWarnings.some(function (warning) {
+	return warning.code === "FRONTEND_ACTION_OUTSIDE_ACTIONS";
+}), "MCP flow-app-progress should accept actions below a stable Actions path: " +
+	JSON.stringify(appProgressNestedAction.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" schemaRequestable=\".retailstore.ReadCategories\"><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
 	"    <ForEach id=\"categories\" source={{\"mode\":\"literal\",\"value\":[]}} context=\"item\"><Children /></ForEach>",

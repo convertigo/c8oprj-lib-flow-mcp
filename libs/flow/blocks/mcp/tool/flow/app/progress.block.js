@@ -543,6 +543,12 @@ const _meta = {
 		return count;
 	}
 
+	function actionChain(path) {
+		var text = String(path || "");
+		var match = /\.actions(?:_[^.]+)?(?:\.|$)/.exec(text);
+		return match ? text.substring(0, match.index) : null;
+	}
+
 	function paperboardSummary(tree) {
 		var summary = {
 			routeCount: 0,
@@ -618,7 +624,8 @@ const _meta = {
 		arrayValue(summary.actions).forEach(function (action) {
 			var path = String(action.path || "");
 			var type = String(action.type || "").toLowerCase();
-			if (path.indexOf(".actions_") === -1) {
+			var chain = actionChain(path);
+			if (chain === null) {
 				summary.structureWarnings.push({
 					level: "error",
 					code: "FRONTEND_ACTION_OUTSIDE_ACTIONS",
@@ -626,7 +633,7 @@ const _meta = {
 					message: String(action.type || "Action") + " is an action, not a visible block. Place it inside Button > Events > OnClick > Actions or OnMount > Actions."
 				});
 			}
-			var chain = path.split(".actions_")[0];
+			chain = chain === null ? path : chain;
 			var operation = String(action.operation || "").toLowerCase();
 			var reset = type === "setvalue" ||
 				(type === "updatelist" && (operation === "clear" || operation === "set")) ||
