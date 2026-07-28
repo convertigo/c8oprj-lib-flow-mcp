@@ -32,6 +32,13 @@ function context(props) {
 			var content = String(FileUtils.readFileToString(file, "UTF-8"));
 			return { content: content, hash: hash(content), contentLength: content.length };
 		},
+		resourcePatch: function (request) {
+			assertTrue(request.dryRun === true, "Frontend source patch must only preview through resourcePatch.");
+			return {
+				content: String(props.previewCode),
+				hunks: [{ oldStart: 1, newStart: 1 }]
+			};
+		},
 		authoringTreeSource: function () {
 			return { ok: true, diagnostics: [], children: [] };
 		},
@@ -101,6 +108,29 @@ expectError({
 assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === second,
 	"Stale revision changed the existing source.");
 
+var patched = run({
+	operation: "patch",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: updated.revision,
+	codepatch: "@@ -1 +1 @@",
+	previewCode: third
+});
+assertTrue(patched.written === true && patched.code === third &&
+	patched.oldRevision === updated.revision && patched.hunks.length === 1,
+	"Patch with the current revision should use the validated atomic write path.");
+
+expectError({
+	operation: "patch",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: updated.revision,
+	codepatch: "@@ -1 +1 @@",
+	previewCode: first
+}, "FRONTEND_SOURCE_STALE_REVISION");
+assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === third,
+	"Stale patch revision changed the existing source.");
+
 var parent = source.getParentFile();
 assertTrue(parent.setWritable(false, false), "Unable to make the source directory read-only for the failure test.");
 try {
@@ -108,13 +138,13 @@ try {
 		operation: "set",
 		projectDir: String(root.getAbsolutePath()),
 		sourceFile: sourceFile,
-		revision: updated.revision,
-		code: third
+		revision: patched.revision,
+		code: first
 	}, "");
 } finally {
 	parent.setWritable(true, false);
 }
-assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === second,
+assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === third,
 	"Failed atomic write truncated or replaced the existing source.");
 
 print("frontend source write safety tests passed");

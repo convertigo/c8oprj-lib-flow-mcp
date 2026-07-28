@@ -519,31 +519,31 @@ const _meta = {
 				var patch = String(props.codepatch || props.patch || "");
 				if (!patch) throw new Error("frontend-svelte-code-patch requires codepatch.");
 				if (!props.revision) throw new Error("frontend-svelte-code-patch requires the revision returned by frontend-svelte-code-get.");
-				var preview = ctx.resourcePatch({
-					projectDir: props.projectDir,
-					path: path.relative,
-					baseHash: props.revision,
-					patch: patch,
-					dryRun: true,
-					validate: false,
-					includeContent: true
-				});
-				var validation = validate(ctx, props, path, String(preview.content));
-				requireValid(validation);
-				var patched = ctx.resourcePatch({
-					projectDir: props.projectDir,
-					path: path.relative,
-					baseHash: props.revision,
-					patch: patch,
-					validate: false
-				});
-				result = read(ctx, props, path, false);
-				result.hunks = patched.hunks;
-				result.oldRevision = patched.oldHash;
-				result.diagnostics = validation.diagnostics;
-				result.errorCount = validation.errorCount;
-				result.warningCount = validation.warningCount;
-				result.written = true;
+				sourceWriteLock.lock();
+				try {
+					assertSetRevision(ctx, props, path);
+					var preview = ctx.resourcePatch({
+						projectDir: props.projectDir,
+						path: path.relative,
+						baseHash: props.revision,
+						patch: patch,
+						dryRun: true,
+						validate: false,
+						includeContent: true
+					});
+					var validation = validate(ctx, props, path, String(preview.content));
+					requireValid(validation);
+					atomicWrite(path, String(preview.content));
+					result = read(ctx, props, path, false);
+					result.hunks = preview.hunks;
+					result.oldRevision = String(props.revision);
+					result.diagnostics = validation.diagnostics;
+					result.errorCount = validation.errorCount;
+					result.warningCount = validation.warningCount;
+					result.written = true;
+				} finally {
+					sourceWriteLock.unlock();
+				}
 			} else {
 				throw new Error("Unsupported Flow Svelte source operation: " + operation);
 			}
