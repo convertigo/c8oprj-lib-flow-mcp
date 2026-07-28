@@ -419,7 +419,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-code-check") {
 			description = "Parses and validates a complete .flow.svelte draft without writing it. Quoted values are literals, {...} values are browser expressions, and @action.path/@item.path values are schema-backed sources; incompatible forms return an applicable correction.";
 		} else if (name === "frontend-svelte-code-set") {
-			description = "Validates and writes one complete .flow.svelte model, optionally guarded by the revision returned by code-get.";
+			description = "Validates and writes one complete .flow.svelte model. Existing sources require the current revision returned by code-get; omit revision only to create a missing source.";
 		} else if (name === "frontend-svelte-code-patch") {
 			description = "Validates and applies a revision-checked git-style unified diff with numbered hunk headers to one .flow.svelte model.";
 		} else if (name === "frontend-svelte-fullsync-schema") {

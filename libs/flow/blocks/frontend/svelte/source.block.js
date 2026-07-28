@@ -7,7 +7,7 @@ const _meta = {
     "operation": { "kind": "text", "type": "string", "description": "get, check, set or patch." },
     "sourceFile": { "kind": "text", "type": "string", "description": "Project-relative *.flow.svelte source path." },
     "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte source for check or set." },
-    "revision": { "kind": "text", "type": "string", "description": "Revision returned by get/set/check." },
+    "revision": { "kind": "text", "type": "string", "description": "Current revision required when replacing an existing source; omit only to create a missing source." },
     "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers." },
     "projectDir": { "kind": "text", "type": "string", "description": "Resolved target project directory." },
     "out": { "kind": "path", "mode": "write", "default": "local.frontendSource" }
@@ -19,6 +19,12 @@ const _meta = {
 (function () {
 	var File = Packages.java.io.File;
 	var FileUtils = Packages.org.apache.commons.io.FileUtils;
+	var Files = Packages.java.nio.file.Files;
+	var StandardCopyOption = Packages.java.nio.file.StandardCopyOption;
+	var AtomicMoveNotSupportedException = Packages.java.nio.file.AtomicMoveNotSupportedException;
+	var ConcurrentHashMap = Packages.java.util.concurrent.ConcurrentHashMap;
+	var ReentrantLock = Packages.java.util.concurrent.locks.ReentrantLock;
+	var sourceWriteLocks = new ConcurrentHashMap();
 
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
@@ -399,12 +405,90 @@ const _meta = {
 		return result;
 	}
 
+	function sourceWriteError(code, message, hint) {
+		var error = new Error(message);
+		error.code = code;
+		error.hint = hint;
+		return error;
+	}
+
+	function sourceWriteLock(path) {
+		var candidate = new ReentrantLock();
+		var existing = sourceWriteLocks.putIfAbsent(path.absolute, candidate);
+		return existing == null ? candidate : existing;
+	}
+
+	function assertSetRevision(ctx, props, path) {
+		var exists = path.file.isFile();
+		var supplied = props.revision !== undefined && props.revision !== null && String(props.revision) !== "";
+		if (exists && !supplied) {
+			throw sourceWriteError(
+				"FRONTEND_SOURCE_REVISION_REQUIRED",
+				"Flow Svelte source already exists; frontend-svelte-code-set requires its current revision.",
+				"Call frontend-svelte-code-get, then retry with the returned revision."
+			);
+		}
+		if (!exists && supplied) {
+			throw sourceWriteError(
+				"FRONTEND_SOURCE_STALE_REVISION",
+				"Flow Svelte source no longer exists; the supplied revision is stale.",
+				"Call frontend-svelte-code-get to refresh the source state, or omit revision only when creating a missing source."
+			);
+		}
+		if (exists) {
+			var current = String(read(ctx, props, path, false).revision);
+			if (current !== String(props.revision)) {
+				throw sourceWriteError(
+					"FRONTEND_SOURCE_STALE_REVISION",
+					"Flow Svelte source changed since it was read; the supplied revision is stale.",
+					"Call frontend-svelte-code-get again and reapply the intended change to the current source."
+				);
+			}
+		}
+	}
+
+	function atomicWrite(path, source) {
+		var parent = path.file.getParentFile();
+		if (parent != null && !parent.isDirectory() && !parent.mkdirs() && !parent.isDirectory()) {
+			throw new Error("Unable to create Flow Svelte source directory: " + parent);
+		}
+		var parentPath = parent.toPath();
+		var temporary = Files.createTempFile(parentPath, "." + path.file.getName() + ".", ".tmp");
+		var moved = false;
+		try {
+			FileUtils.writeStringToFile(temporary.toFile(), source, "UTF-8");
+			if (path.file.isFile()) {
+				try {
+					Files.setPosixFilePermissions(temporary, Files.getPosixFilePermissions(path.file.toPath()));
+				} catch (ignored) {
+					// Non-POSIX filesystems keep their native defaults.
+				}
+			} else {
+				temporary.toFile().setReadable(true, false);
+				temporary.toFile().setWritable(true, true);
+			}
+			try {
+				Files.move(temporary, path.file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+			} catch (error) {
+				if (!(error instanceof AtomicMoveNotSupportedException)) throw error;
+				Files.move(temporary, path.file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
+			moved = true;
+		} finally {
+			if (!moved) {
+				try {
+					Files.deleteIfExists(temporary);
+				} catch (ignored) {
+					// Preserve the original write failure.
+				}
+			}
+		}
+	}
+
 	function write(ctx, props, path, source) {
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
-		var parent = path.file.getParentFile();
-		if (parent != null) parent.mkdirs();
-		FileUtils.writeStringToFile(path.file, source, "UTF-8");
+		atomicWrite(path, source);
 		var saved = read(ctx, props, path, false);
 		saved.diagnostics = validation.diagnostics;
 		saved.errorCount = validation.errorCount;
@@ -431,10 +515,14 @@ const _meta = {
 				if (props.code === undefined || props.code === null) {
 					throw new Error("frontend-svelte-code-set requires code.");
 				}
-				if (props.revision && path.file.isFile() && String(read(ctx, props, path, false).revision) !== String(props.revision)) {
-					throw new Error("Flow Svelte source changed since it was read; call frontend-svelte-code-get again.");
+				var lock = sourceWriteLock(path);
+				lock.lock();
+				try {
+					assertSetRevision(ctx, props, path);
+					result = write(ctx, props, path, String(props.code));
+				} finally {
+					lock.unlock();
 				}
-				result = write(ctx, props, path, String(props.code));
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
 				if (!patch) throw new Error("frontend-svelte-code-patch requires codepatch.");
