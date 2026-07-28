@@ -10,6 +10,11 @@ function assertTrue(condition, message) {
 	if (!condition) throw new Error(message);
 }
 
+assertTrue(blockSource.indexOf("ConcurrentHashMap") < 0,
+	"Source writes must not retain one lock per edited path.");
+assertTrue(blockSource.indexOf("var sourceWriteLock = new ReentrantLock()") >= 0,
+	"Source writes must use the bounded global authoring lock.");
+
 function hash(content) {
 	var digest = MessageDigest.getInstance("SHA-256").digest(StandardCharsets.UTF_8.encode(String(content)).array());
 	var out = "";

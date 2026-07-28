@@ -22,9 +22,8 @@ const _meta = {
 	var Files = Packages.java.nio.file.Files;
 	var StandardCopyOption = Packages.java.nio.file.StandardCopyOption;
 	var AtomicMoveNotSupportedException = Packages.java.nio.file.AtomicMoveNotSupportedException;
-	var ConcurrentHashMap = Packages.java.util.concurrent.ConcurrentHashMap;
 	var ReentrantLock = Packages.java.util.concurrent.locks.ReentrantLock;
-	var sourceWriteLocks = new ConcurrentHashMap();
+	var sourceWriteLock = new ReentrantLock();
 
 	function prop(node, key) {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
@@ -412,12 +411,6 @@ const _meta = {
 		return error;
 	}
 
-	function sourceWriteLock(path) {
-		var candidate = new ReentrantLock();
-		var existing = sourceWriteLocks.putIfAbsent(path.absolute, candidate);
-		return existing == null ? candidate : existing;
-	}
-
 	function assertSetRevision(ctx, props, path) {
 		var exists = path.file.isFile();
 		var supplied = props.revision !== undefined && props.revision !== null && String(props.revision) !== "";
@@ -515,13 +508,12 @@ const _meta = {
 				if (props.code === undefined || props.code === null) {
 					throw new Error("frontend-svelte-code-set requires code.");
 				}
-				var lock = sourceWriteLock(path);
-				lock.lock();
+				sourceWriteLock.lock();
 				try {
 					assertSetRevision(ctx, props, path);
 					result = write(ctx, props, path, String(props.code));
 				} finally {
-					lock.unlock();
+					sourceWriteLock.unlock();
 				}
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
