@@ -34,15 +34,27 @@ writing generated `+page.svelte` files.
 2. Plan the Pages and transitions. Write each complete Page with
    `frontend-svelte-code-check`, then `frontend-svelte-code-set`. A new Page has
    no revision. Existing Pages use their returned revision.
-3. Use `frontend-svelte-code-patch` only for focused later changes.
+3. Use `frontend-svelte-code-patch` only for focused later changes. The same
+   tools read and update the project application stylesheet when `sourceFile`
+   is the `app.flow.css` path exposed by the frontend tree.
 4. Use one targeted tree/palette lookup only when the contract lacks a block,
    property or schema path. Apply returned picker mutations unchanged.
-5. Call `flow-app-progress({ project, mode:"poc" })` once, build once, then run
-   the returned bounded smoke call and at most one required business path.
+5. For a freshly bootstrapped UI project, call
+   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+   immediately after bootstrap so npm initializes while you author. For an
+   existing project, start it after `code-get` confirms the builder. Do not
+   poll; call `dev.sync` once after the final repair pass, then `dev.open`.
+6. Call `flow-app-progress({ project, mode:"poc" })` once. Use the live dev
+   viewer to prove the requested visible and interactive behavior, then build
+   production once. Never claim a color, layout, timer, navigation or viewer
+   state that was not observed.
 
 Do not assemble an application with hundreds of tree mutations. Do not guess
-Ionic, NGX, CSS or HTML property names. Source wrapper tags such as `Children`,
-`Events`, `Actions`, `Params`, `Query`, `Then` and `Else` are exact.
+Ionic, NGX, CSS or HTML property names. Use semantic layout properties for
+structure and the source-backed `app.flow.css` application stylesheet plus explicit `class` names for
+visual rules that do not belong in a component contract. Source wrapper tags
+such as `Children`, `Events`, `Actions`, `Params`, `Query`, `Then` and `Else`
+are exact.
 
 ## Pages And Navigation
 

@@ -22,16 +22,20 @@ acceptance campaign.
   may contain several Page sources; it never means stacking distinct business
   steps in one route.
 - Allow at most two focused repair passes after those drafts.
-- Call `flow-app-progress({ project, mode:"poc" })` once, then build.
-- Run the build-provided bounded smoke probe and at most one required workflow.
+- For a newly bootstrapped UI project, call
+  `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+  immediately after bootstrap so dependency setup overlaps authoring. For an
+  existing project, start it after the first frontend read; do not poll.
+- Call `flow-app-progress({ project, mode:"poc" })` once, synchronize and open
+  the dev viewer, prove the requested behavior, then build production once.
 - Keep one Page or mutually exclusive surface active at each business step.
   Functional Page transitions are part of the POC; only exhaustive history,
   offline, responsive and visual checks are deferred.
 
 Use `flow-app-progress({ project, mode:"hardening" })` only when the user asks
 for fiabilisation, production readiness or exhaustive validation. Never use
-`flow-resource-get/patch` to edit Flow Svelte source; use
-`frontend-svelte-code-get/set/check/patch`.
+`flow-resource-get/patch` to edit Flow Svelte models or their source-backed
+`app.flow.css`; use `frontend-svelte-code-get/set/check/patch`.
 
 ## Boundaries
 
@@ -45,6 +49,8 @@ for fiabilisation, production readiness or exhaustive validation. Never use
   external source with remembered endpoints or baked fixtures.
 - Do not hide application behavior in Rhino, generated code, CSS, or informal
   binding objects. Keep orchestration visible in FlowScript and Flow Svelte.
+  CSS is for visual rules only and remains explicit through the application
+  CSS source plus block `class` properties.
 
 ## Read Only What Is Needed
 
@@ -77,7 +83,9 @@ flow-project-bootstrap({ project, ui:true })  # backend plus Svelte
 ```
 
 Call bootstrap once. If it succeeds, continue directly; do not probe or call it
-again. For project configuration, read `libs/flow/engine.yaml` with
+again. After `ui:true`, immediately start `dev.start` with `wait:false`, then
+continue backend and frontend authoring while dependencies initialize. For
+project configuration, read `libs/flow/engine.yaml` with
 `flow-resource-get`, then update it with `flow-resource-patch` and `baseHash`.
 Put structural service constants, URLs, namespaces, tokens and timeouts under
 `config.*`, not inside low-level blocks.
@@ -206,10 +214,15 @@ mutations. A complete pass may write several Page sources:
    persists it and can create a new canonical route source when no revision
    exists.
 5. Use `frontend-svelte-code-patch` for later focused changes.
-6. Call `flow-app-progress({ project, qname, mode:"poc" })` once after the
-   first complete application paperboard. Do not rerun it when the POC is ready.
-7. Call `frontend-svelte-action` with `build`; production build already
-   generates the sources.
+6. If dev mode was not already started after bootstrap, call
+   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+   after the first frontend read. Continue the focused repair passes while npm
+   and Vite initialize. Do not poll. Run `dev.sync` once after the final repair,
+   then `dev.open`.
+7. Call `flow-app-progress({ project, qname, mode:"poc" })` once. Prove the
+   requested visible and interactive behavior in the dev viewer, then call
+   `frontend-svelte-action` with `build`; production build already generates
+   the sources.
 
 Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
 files or call `$app/navigation` directly. Static links use `LinkButton`.
@@ -234,6 +247,11 @@ widgets, events and actions. Events live below their owner, for example:
 ```text
 Button -> Events -> OnClick -> Actions -> CallSequence
 ```
+
+Use semantic layout properties for structure. Use explicit `class` values and
+the application CSS source for gradients, typography and visual rules that do
+not belong in a reusable component contract. Do not invent CSS-like properties
+that are absent from the authoring contract and do not encode behavior in CSS.
 
 For a temporary frontend skip, call `frontend-svelte-mutate` with
 `{ op:"setEnabled", path:sourceMutationPath, enabled:false }`; set
@@ -271,10 +289,13 @@ Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
 
-For a POC, execute the build-provided bounded smoke probe and at most one
-focused interaction for the requested workflow. For explicit hardening, execute
-all returned `acceptance.calls` unchanged and in order. Use safe Playwright
-only; never substitute an unsafe runner.
+For a POC, execute the bounded browser smoke and at most one focused interaction
+for the requested workflow. Verify every explicit user-visible requirement
+before reporting it. For a timer or live value, read it twice at least one
+second apart. For a color, gradient, spacing or layout requirement, inspect
+the rendered computed style. For explicit hardening, execute all returned
+`acceptance.calls` unchanged and in order. Use safe Playwright only; never
+substitute an unsafe runner.
 
 Flow `id` values are stable authoring identities, not guaranteed DOM `id`
 attributes; repeated blocks could not safely emit duplicate DOM ids. In browser

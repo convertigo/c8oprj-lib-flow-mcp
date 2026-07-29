@@ -36,7 +36,8 @@ is mocked. Deliver in two phases:
 2. POC: primary action wired to a backend Flow, mock acceptable but explicit;
 3. Hardening: backend mock replaced by real Flow/HTTP/parsing blocks;
 4. Hardening: output schema reviewed so frontend pickers see real fields;
-5. Hardening: visual/layout refinement using explicit layout and style properties.
+5. Hardening: visual/layout refinement using semantic layout properties and
+   explicit application CSS classes.
 
 When wiring a backend action in Flow Svelte source, use an intuitive
 `@action.path` reference. If the schema path is unknown, use the schema-backed
@@ -62,7 +63,10 @@ source, including a structured literal for intentionally static content.
 1. Bootstrap the exact target project with `flow-project-bootstrap({ project,
    ui:true })` when FlowEngine or the Svelte builder is missing. Never edit
    `c8oProject.yaml`, `_c8oProject/**/*.yaml`, `_private/svelte` or
-   `DisplayObjects` directly.
+   `DisplayObjects` directly. Immediately call
+   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+   after a successful UI bootstrap so dependency setup overlaps backend and
+   frontend authoring.
 2. Extract a small plan from the prompt:
    - backend requestables or service operations;
    - frontend Pages and transitions;
@@ -99,21 +103,28 @@ source, including a structured literal for intentionally static content.
      `GoBack` below a visible Button event action chain, and use
      `OnMount once={true}` only for bootstrap state that must survive a route
      round trip.
+   Use the application CSS source plus explicit `class` values for gradients,
+   typography and other visual rules. Do not expand every UI block into a CSS
+   property matrix and do not put behavior or data wiring in CSS.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a
    placeholder result before detailed refinement begins.
-8. Run `frontend-svelte-action({ project, actionId:"dev.sync" })` while
-   iterating. Use `dev.start` only through MCP or the Studio menu.
+8. On an existing project where dev mode was not started during bootstrap,
+   start it after this first complete paperboard with `wait:false`. Continue
+   the two allowed focused repair passes while dependencies install. Do not
+   poll. Run `dev.sync` once after the final repair, then `dev.open`.
 9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
-10. Hardening only: prove each layer with a short check:
+10. Prove the POC with a short check:
     - `code-run` for backend behavior;
     - `flow-output-schema` when downstream pickers or requestable schemas
       matter;
-    - `frontend-svelte-action` build for production, or `dev.sync` while
-      iterating;
-    - browser smoke for a user-facing workflow.
+    - browser smoke in the live dev viewer for the requested visible workflow;
+    - production build once the live proof is correct.
+    For temporal requirements, sample the relevant visible value twice at
+    least one second apart. For visual requirements, inspect the rendered
+    computed style instead of inferring it from source.
 
 ## Paperboard Contract
 
@@ -151,8 +162,10 @@ Routes
 ```
 
 Do not create hidden layout defaults in the generator to make the paperboard
-look nicer. If spacing, cards, rows, columns, or responsive behavior matter,
-insert explicit blocks with visible properties.
+look nicer. If rows, columns or responsive behavior matter, insert explicit
+layout blocks with visible semantic properties. If gradients, typography or a
+cohesive theme matter, use explicit classes and the source-backed application
+CSS rail rather than duplicating general CSS properties on every block.
 
 ## Progress Signals
 

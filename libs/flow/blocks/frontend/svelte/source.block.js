@@ -2,11 +2,11 @@ const _meta = {
   "version": 1,
   "private": true,
   "icon": "mdi:file-code-outline",
-  "description": "Reads, validates and writes one intuitive Flow Svelte source.",
+  "description": "Reads, validates and writes one Flow Svelte model or application stylesheet.",
   "properties": {
     "operation": { "kind": "text", "type": "string", "description": "get, check, set or patch." },
-    "sourceFile": { "kind": "text", "type": "string", "description": "Project-relative *.flow.svelte source path." },
-    "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte source for check or set." },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Project-relative *.flow.svelte or app.flow.css source path." },
+    "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte or application CSS source for check or set." },
     "revision": { "kind": "text", "type": "string", "description": "Current revision required when replacing an existing source; omit only to create a missing source." },
     "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers." },
     "projectDir": { "kind": "text", "type": "string", "description": "Resolved target project directory." },
@@ -45,14 +45,20 @@ const _meta = {
 		file = file.getCanonicalFile();
 		var rootPath = String(root.getCanonicalPath());
 		var filePath = String(file.getCanonicalPath());
-		if (filePath.indexOf(rootPath + String(File.separator)) !== 0 || !filePath.endsWith(".flow.svelte")) {
-			throw new Error("Flow Svelte sourceFile must stay inside the target project and end with .flow.svelte.");
+		var normalizedFilePath = filePath.replace(/\\/g, "/");
+		var supported = normalizedFilePath.endsWith(".flow.svelte") || normalizedFilePath.endsWith("/app.flow.css");
+		if (filePath.indexOf(rootPath + String(File.separator)) !== 0 || !supported) {
+			throw new Error("Frontend sourceFile must stay inside the target project and end with .flow.svelte or /app.flow.css.");
 		}
 		var relative = filePath.substring(rootPath.length + 1).replace(/\\/g, "/");
 		if (relative.indexOf("libs/flow/frontbuilder/") !== 0) {
 			throw new Error("Flow Svelte sourceFile must be under libs/flow/frontbuilder/.");
 		}
 		return { root: root, file: file, relative: relative, absolute: filePath };
+	}
+
+	function isStylesheet(path) {
+		return path && String(path.relative || "").endsWith("/app.flow.css");
 	}
 
 	function lineNumber(source, offset) {
@@ -186,6 +192,33 @@ const _meta = {
 	}
 
 	function validate(ctx, props, path, source) {
+		if (isStylesheet(path)) {
+			var cssDiagnostics = [];
+			var stripped = String(source || "")
+				.replace(/\/\*[\s\S]*?\*\//g, "")
+				.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, "");
+			var depth = 0;
+			for (var cssIndex = 0; cssIndex < stripped.length; cssIndex++) {
+				if (stripped.charAt(cssIndex) === "{") depth++;
+				if (stripped.charAt(cssIndex) === "}") depth--;
+				if (depth < 0) break;
+			}
+			if (depth !== 0) {
+				cssDiagnostics.push({
+					severity: "error",
+					code: "FRONTEND_CSS_UNBALANCED_BLOCK",
+					message: "Application CSS has unbalanced block braces.",
+					hint: "Correct app.flow.css, then call frontend-svelte-code-check again."
+				});
+			}
+			return {
+				ok: cssDiagnostics.length === 0,
+				sourceFile: path.relative,
+				diagnostics: cssDiagnostics,
+				errorCount: cssDiagnostics.length,
+				warningCount: 0
+			};
+		}
 		var diagnostics = sourceDiagnostics(source);
 		if (!diagnostics.some(function (item) { return item.severity === "error"; })) {
 			try {
@@ -240,7 +273,7 @@ const _meta = {
 	function requireValid(validation) {
 		if (validation.ok !== true) {
 			var first = validation.diagnostics[0] || {};
-			var error = new Error(String(first.message || "Invalid Flow Svelte source."));
+			var error = new Error(String(first.message || "Invalid frontend source."));
 			error.code = String(first.code || "FRONTEND_SOURCE_INVALID");
 			error.hint = String(first.hint || "Call frontend-svelte-code-check for structured diagnostics.");
 			throw error;
@@ -252,7 +285,7 @@ const _meta = {
 		"List", "ListItem", "Text", "Image", "Icon", "Button", "LinkButton", "Status",
 		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
 		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If", "OnMount",
-		"Navigate", "GoBack", "Variable"
+		"Interval", "Navigate", "GoBack", "Variable"
 	];
 
 	function routeSources(props) {
@@ -397,7 +430,7 @@ const _meta = {
 			revision: resource.hash,
 			contentLength: resource.contentLength
 		};
-		if (includeContract === true) {
+		if (includeContract === true && !isStylesheet(path)) {
 			var contract = starterContract(ctx, props);
 			if (contract) result.authoringContract = contract;
 		}

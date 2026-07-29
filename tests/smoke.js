@@ -331,6 +331,12 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-action";
 }), "MCP Flow tools/list did not expose Svelte frontend authoring tools");
+var frontendSvelteActionTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "frontend-svelte-action";
+})[0];
+assertTrue(frontendSvelteActionTool.inputSchema.properties.wait &&
+	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean",
+	"MCP frontend-svelte-action did not expose the non-blocking dev start option");
 assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch"].every(function (name) {
 	return list.result.result.tools.some(function (tool) { return tool.name === name; });
 }), "MCP Flow tools/list did not expose whole-source Svelte authoring tools");
@@ -1629,6 +1635,12 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 		return block.tag === "ForEach" && block.slots.indexOf("Children") !== -1 &&
 			block.slots.indexOf("default") === -1;
 	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+		return block.tag === "PageShell" && block.properties["class"] &&
+			String(block.properties["class"]).indexOf("literal") !== -1;
+	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+		return block.tag === "Interval" && block.properties.milliseconds &&
+			block.slots.indexOf("Actions") !== -1;
+	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
 		return block.tag === "If" && block.slots.indexOf("Then") !== -1 && block.slots.indexOf("Else") !== -1;
 	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
 		return block.tag === "Navigate" && block.properties.page &&
@@ -1778,6 +1790,31 @@ var frontendSourceImplicit = callTool(1386, "frontend-svelte-code-get", {
 assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
 	frontendSourceImplicit.result.result.structuredContent.sourceFile === "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
 	"MCP frontend-svelte-code-get should infer sourceFile from config.frontbuilder.svelte.modelPath");
+var frontendCssRelative = "libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css";
+var frontendCssSet = callTool(1387, "frontend-svelte-code-set", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	code: ".clock-shell {\n  background: linear-gradient(#052e16, #4ade80);\n}\n"
+});
+var frontendCssRevision = frontendCssSet.result.result.structuredContent.revision;
+var frontendCssGet = callTool(1388, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative
+});
+assertTrue(frontendCssSet.result.result.structuredContent.written === true &&
+	frontendCssRevision &&
+	frontendCssGet.result.result.structuredContent.code.indexOf(".clock-shell") !== -1 &&
+	frontendCssGet.result.result.structuredContent.authoringContract === undefined,
+	"MCP frontend-svelte-code tools should revision-write and read the source-backed app stylesheet");
+var frontendCssInvalid = callTool(1389, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	code: ".clock-shell { color: white;\n"
+});
+assertTrue(frontendCssInvalid.result.result.structuredContent.ok === false &&
+	frontendCssInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FRONTEND_CSS_UNBALANCED_BLOCK";
+	}), "MCP frontend-svelte-code-check should reject structurally invalid app CSS");
 
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,
