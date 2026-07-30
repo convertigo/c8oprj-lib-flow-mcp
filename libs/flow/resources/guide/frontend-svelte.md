@@ -30,24 +30,31 @@ writing generated `+page.svelte` files.
 
 1. Call `frontend-svelte-code-get({ project })` once. It returns the current
    source, revision, every Page (`id`, `path`, typed parameters and sourceFile),
-   and the compact canonical block contract.
+   the compact canonical block contract, and the exact application stylesheet
+   path in `authoringContract.sources.applicationStyles`.
 2. Plan the Pages and transitions. Write each complete Page with
    `frontend-svelte-code-check`, then `frontend-svelte-code-set`. A new Page has
    no revision. Existing Pages use their returned revision.
 3. Use `frontend-svelte-code-patch` only for focused later changes. The same
    tools read and update the project application stylesheet when `sourceFile`
-   is the `app.flow.css` path exposed by the frontend tree.
+   is `authoringContract.sources.applicationStyles`; do not search for or
+   guess that path.
 4. Use one targeted tree/palette lookup only when the contract lacks a block,
    property or schema path. Apply returned picker mutations unchanged.
 5. For a freshly bootstrapped UI project, call
    `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
    immediately after bootstrap so npm initializes while you author. For an
    existing project, start it after `code-get` confirms the builder. Do not
-   poll; call `dev.sync` once after the final repair pass, then `dev.open`.
-6. Call `flow-app-progress({ project, mode:"poc" })` once. Use the live dev
-   viewer to prove the requested visible and interactive behavior, then build
-   production once. Never claim a color, layout, timer, navigation or viewer
-   state that was not observed.
+   poll or retry `dev.start`: Vite and the Studio viewer open automatically
+   when setup completes. Call `dev.sync` once after the final repair pass to
+   regenerate the completed source; use `dev.open` only to reveal an already
+   running viewer.
+6. Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
+   work. Add `qname` only when a real backend Flow is part of the application.
+   Use the live dev viewer to prove the requested visible and interactive
+   behavior. Build production only for deployment or an explicit production
+   check. Never claim a color, layout, timer, navigation or viewer state that
+   was not observed.
 
 Do not assemble an application with hundreds of tree mutations. Do not guess
 Ionic, NGX, CSS or HTML property names. Use semantic layout properties for
@@ -55,6 +62,20 @@ structure and the source-backed `app.flow.css` application stylesheet plus expli
 visual rules that do not belong in a component contract. Source wrapper tags
 such as `Children`, `Events`, `Actions`, `Params`, `Query`, `Then` and `Else`
 are exact.
+
+`FlowComponent` is the non-visual source root and accepts only `id` and
+`label`. Its three authoring slots have distinct roles:
+
+```text
+FlowComponent
+  Variables  -> page-local typed state
+  Events     -> page lifecycle such as OnMount and Interval
+  Structure  -> visible UI only
+```
+
+Put `class` and visual layout properties on the first visible child in
+`Structure`, usually `PageShell`. Lifecycle blocks never belong in
+`Structure`.
 
 ## Pages And Navigation
 
@@ -102,14 +123,19 @@ after that action in the same `Actions` slot.
 
 Flow Svelte preserves the three NGX SmartType intents:
 
-- `label="News"`: literal text (TXT);
-- `label={count + " items"}`: browser expression (JS);
-- `source="@loadNews.news"`: typed schema-backed source (picker).
+- `property="News"`: literal value (TXT);
+- `property={count + " items"}`: browser expression (JS);
+- `property="@loadNews.news"`: typed schema-backed source (picker).
 
-The quoted/expression distinction matters. A source always starts with `@`.
+The quoted/expression distinction matters. A schema-backed value always starts
+with `@`. Use the canonical bindable property of each block:
+`Text.text`, `Button.label`, `Image.src`, and `ForEach.source`. The old
+`source` property on Text, Button and Image is a hidden migration alias, not
+authoring syntax.
 Common sources are:
 
 - `@action.path`: action, requestable or FullSync result;
+- `@local.name`: a typed page-local Variable;
 - `@item.path`, `@index`: lexical aliases inside ForEach;
 - `@loop.item.path`, `@loop.index`: explicit iterator forms;
 - `@event.value`, `.checked`, `.key`, `.name`: normalized event;
@@ -118,9 +144,9 @@ Common sources are:
 ```svelte
 <ForEach id="news" source="@loadNews.news" context="item" index="index">
   <Children>
-    <Image id="image" source="@item.imageUrl" />
-    <Text id="title" source="@item.title" />
-    <Text id="position" source="@index" />
+    <Image id="image" src="@item.imageUrl" />
+    <Text id="title" text="@item.title" />
+    <Text id="position" text="@index" />
   </Children>
 </ForEach>
 ```
@@ -137,6 +163,9 @@ Pages, layouts, visible blocks, directives, events and actions remain visible
 in treeview and properties. Typical structures are:
 
 ```text
+FlowComponent -> Variables -> State / Derived / DerivedBy
+FlowComponent -> Events -> OnMount / OnDestroy / Effect / PreEffect / Interval / Timeout
+FlowComponent -> Structure -> PageShell
 Button -> Events -> OnClick -> Actions -> CallSequence -> Variables
 ForEach -> Children -> Card
 If -> Then / Else
@@ -155,10 +184,21 @@ Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 page CSS, generated code or browser globals. A layout must contain
 `PageContent`.
 
-Use `OnMount` for lifecycle actions. Initialize local state before long network
-actions. Keep provisioning, synchronization and the first local query separate
-so progress and errors remain observable. `once={true}` survives route
-round-trips but not a full browser reload.
+Use `OnMount`, `OnDestroy`, `Effect`, `PreEffect`, `Interval` or `Timeout` in
+the root `Events` slot for page lifecycle. `Interval` and `Timeout` register
+when the component mounts and clean their timer up automatically on teardown;
+nest them under `OnMount` only when their creation is part of a larger explicit
+mount chain.
+
+Declare mutable page-local state with `State`, and computed state with
+`Derived` or `DerivedBy`, in the root `Variables` slot. Write mutable state
+with an action `target="local.name"` and read it through `@local.name`; the
+picker exposes the declared schema. `Variable` remains the argument block for
+action variables, route Params and Query values, not page-local state.
+Initialize local state before long network actions. Keep provisioning,
+synchronization and the first local query separate so progress and errors
+remain observable. `OnMount once={true}` survives route round-trips but not a
+full browser reload.
 
 For FullSync, read `flow://guide/fullsync` and use `FullSyncGet`,
 `FullSyncView`, `FullSyncSync` and `FullSyncReset`; never hand-write PouchDB or
@@ -177,8 +217,11 @@ Per-item results remain scoped to the iterator. Put business values in
 Variables.
 
 Use `SetValue`, `UpdateList` and `UpdateNumber` for explicit client state.
-Pure dual-target Flow blocks are inserted directly by their palette tag.
-`RunAxiom` is legacy migration syntax, not authoring syntax.
+Their values are literals or schema-backed sources, not arbitrary browser
+expressions. Use `Derived`/`DerivedBy` for pure computation from state, or a
+typed frontend Flow block for reusable browser behavior. Pure dual-target Flow
+blocks are inserted directly by their palette tag. `RunAxiom` is legacy
+migration syntax, not authoring syntax.
 
 ## Diagnostics
 
@@ -195,10 +238,13 @@ frontend-svelte-tree({
   detail:"inspect",
   focusPath,
   maxDepth:0,
-  property:"source",
+  property:"text",
   sourceId
 })
 ```
+
+Set `property` to the exact bindable property returned by the block contract;
+for example `text`, `label`, `src`, or `source`.
 
 Use `frontend-svelte-palette` only at the intended insertion point and execute
 its `apply` payload unchanged. Create a typed frontend mock only when no

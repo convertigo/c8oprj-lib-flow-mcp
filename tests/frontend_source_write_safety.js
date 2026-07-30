@@ -5,6 +5,7 @@ var block = eval(blockSource.substring(blockSource.indexOf("(function")));
 var FileUtils = Packages.org.apache.commons.io.FileUtils;
 var MessageDigest = Packages.java.security.MessageDigest;
 var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
+var notificationRequests = [];
 
 function assertTrue(condition, message) {
 	if (!condition) throw new Error(message);
@@ -41,6 +42,10 @@ function context(props) {
 		},
 		authoringTreeSource: function () {
 			return { ok: true, diagnostics: [], children: [] };
+		},
+		notifySourceMutation: function (request) {
+			notificationRequests.push(request);
+			return { ok: true };
 		},
 		write: function () {}
 	};
@@ -79,6 +84,11 @@ var created = run({
 	code: first
 });
 assertTrue(created.written === true && created.code === first, "Creation without revision should succeed.");
+assertTrue(created.sourceFile === sourceFile, "Creation should report the written source.");
+assertTrue(notificationRequests.length === 1 &&
+	notificationRequests[0].projectDir === String(root.getAbsolutePath()) &&
+	notificationRequests[0].path === sourceFile,
+	"Creation should notify the runtime about the changed source.");
 
 expectError({
 	operation: "set",
@@ -97,6 +107,7 @@ var updated = run({
 	code: second
 });
 assertTrue(updated.written === true && updated.code === second, "Update with the current revision should succeed.");
+assertTrue(notificationRequests.length === 2, "Update should emit one source mutation notification.");
 
 expectError({
 	operation: "set",
@@ -119,6 +130,7 @@ var patched = run({
 assertTrue(patched.written === true && patched.code === third &&
 	patched.oldRevision === updated.revision && patched.hunks.length === 1,
 	"Patch with the current revision should use the validated atomic write path.");
+assertTrue(notificationRequests.length === 3, "Patch should emit one source mutation notification.");
 
 expectError({
 	operation: "patch",
@@ -146,5 +158,6 @@ try {
 }
 assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === third,
 	"Failed atomic write truncated or replaced the existing source.");
+assertTrue(notificationRequests.length === 3, "Failed writes must not emit source mutation notifications.");
 
 print("frontend source write safety tests passed");

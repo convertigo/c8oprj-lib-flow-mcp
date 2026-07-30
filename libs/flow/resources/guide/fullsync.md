@@ -88,7 +88,7 @@ FullSync results use the same intuitive source syntax as requestables:
 
 ```svelte
 <ForEach id="rows" source="@readItems.rows" context="row">
-  <Children><Text id="title" source="@row.doc.title" /></Children>
+  <Children><Text id="title" text="@row.doc.title" /></Children>
 </ForEach>
 ```
 

@@ -288,6 +288,10 @@ const _meta = {
 			};
 		}
 		if (toolName === "flow-app-progress") {
+			schema.properties.qname = {
+				type: "string",
+				description: "Backend Flow qname for backend/full-stack progress. Omit for a frontend-only application; no synthetic backend Flow is then required."
+			};
 			schema.properties.mode = {
 				type: "string",
 				enum: ["poc", "hardening"],
@@ -427,7 +431,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read to overlap npm setup with authoring, then dev.sync and dev.open when ready. Build already generates sources and returns the production path.";
+			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Build is a separate production or deployment check.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
@@ -439,7 +443,7 @@ const _meta = {
 		} else if (name === "flow-block-mock-list") {
 			description = "Lists explicit mock blocks still present in a project. Use before claiming a Flow is complete.";
 		} else if (name === "flow-app-progress") {
-			description = "Reports progress toward a fast POC or explicit hardening. Use mode:'poc' for the first useful preview and mode:'hardening' only on request.";
+			description = "Reports progress toward a fast POC or explicit hardening. Omit qname for frontend-only work; provide the backend Flow qname for backend/full-stack work. Use mode:'poc' for the first useful preview and mode:'hardening' only on request.";
 		} else if (name === "flow-output-schema") {
 			description = "Reads/adopts/removes a Flow result schema contract, or resets learned result schemas. Use before wiring downstream pickers.";
 		} else if (name === "flow-node-output-schema") {

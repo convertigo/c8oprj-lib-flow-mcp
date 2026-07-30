@@ -957,7 +957,7 @@ var frontendSvelteStructuredBinding = callTool(13903, "frontend-svelte-mutate", 
 	sourceFile: String(frontendPageFile.getAbsolutePath()),
 	mutation: {
 		op: "replace",
-		path: "frontAst.slots.structure.children[0].props.source",
+		path: "frontAst.slots.structure.children[0].props.text",
 		value: {
 			mode: "source",
 			source: { category: "requestable", actionId: "readTarget" },
@@ -1009,10 +1009,13 @@ var frontendSvelteInspect = callTool(1392, "frontend-svelte-tree", {
 });
 var frontendSvelteInspectTree = frontendSvelteInspect.result.result.structuredContent;
 var frontendSvelteInspectText = findCompactNode(frontendSvelteInspectTree, function (node) {
-	return node.type === "Text" && node.props && node.props.text === "Smoke text edited";
+	var current = node.bindings && node.bindings.text && node.bindings.text.current;
+	return node.type === "Text" && current && current.mode === "source" &&
+		current.source.actionId === "readTarget";
 });
 assertTrue(frontendSvelteInspectTree.ok === true && frontendSvelteInspectText !== null,
-	"MCP frontend-svelte-tree detail=inspect should expose visible frontend props without full metadata");
+	"MCP frontend-svelte-tree detail=inspect should expose visible frontend props without full metadata: " +
+		JSON.stringify(frontendSvelteInspectTree));
 var frontendSvelteInspectStructure = findCompactNode(frontendSvelteInspectTree, function (node) {
 	return node.kind === "frontendStructure";
 });
@@ -1076,8 +1079,8 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"        </OnClick>",
 	"      </Events>",
 		"    </Button>",
-		"    <Text id=\"targetValue\" source={{\"mode\":\"source\",\"source\":{\"category\":\"requestable\",\"actionId\":\"readTarget\"},\"path\":[{\"kind\":\"property\",\"name\":\"target\"}]}} />",
-		"    <Text id=\"intuitiveTargetValue\" source=\"@readTarget.target\" />",
+		"    <Text id=\"targetValue\" text={{\"mode\":\"source\",\"source\":{\"category\":\"requestable\",\"actionId\":\"readTarget\"},\"path\":[{\"kind\":\"property\",\"name\":\"target\"}]}} />",
+		"    <Text id=\"intuitiveTargetValue\" text=\"@readTarget.target\" />",
 		"  </Structure>",
 	"</FlowComponent>",
 	""
@@ -1124,7 +1127,7 @@ assertTrue(appProgressPoc.result.result.structuredContent.complete === true &&
 	appProgressPoc.result.result.structuredContent.pocReady === true &&
 	appProgressPoc.result.result.structuredContent.hardeningComplete === null &&
 	appProgressPoc.result.result.structuredContent.tasks.every(function (task) {
-		return task.id !== "mockDebt" && task.id !== "frontendBindings" &&
+		return task.id !== "backendFlow" && task.id !== "mockDebt" && task.id !== "frontendBindings" &&
 			task.id !== "frontendStructure" && task.id !== "frontendActions";
 	}) &&
 	appProgressPoc.result.result.structuredContent.deferredTasks.length === 4 &&
@@ -1157,11 +1160,11 @@ var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 	focusPath: appProgressFrontend.result.result.structuredContent.frontend.paperboard.dataSources.filter(function (source) {
 		return source.id === "targetValue";
 	})[0].path,
-	property: "source",
+	property: "text",
 	sourceId: "readTarget",
 	maxDepth: 0
 });
-var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.source;
+var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.text;
 assertTrue(inspectedBinding && inspectedBinding.sources.some(function (source) {
 	return source.binding && source.binding.mode === "source" && source.mutation && source.mutation.value.mode === "source";
 	}), "MCP frontend-svelte-tree detail=inspect should expose executable schema-backed binding candidates: " +
@@ -1195,11 +1198,11 @@ var appProgressMissingBindings = callTool(13961, "flow-app-progress", {
 });
 assertTrue(appProgressMissingBindings.result.result.structuredContent.frontend.bindingWarnings.filter(function (warning) {
 	return warning.code === "FRONTEND_BINDING_MISSING";
-}).length === 3 &&
+}).length === 1 &&
 	appProgressMissingBindings.result.result.structuredContent.tasks.some(function (task) {
 		return task.id === "frontendBindings" && task.done === false;
 	}),
-	"MCP flow-app-progress should require explicit Image/Text/Button bindings inside a backend-bound iterator: " +
+	"MCP flow-app-progress should require a missing Image source while accepting intentional literal Text and Button values: " +
 		JSON.stringify(appProgressMissingBindings.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
@@ -1281,7 +1284,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
 	"    <ForEach id=\"catalogItems\" source={{\"mode\":\"source\",\"source\":{\"category\":\"action\",\"actionId\":\"breadcrumb\"},\"path\":[]}}>",
-	"      <Each><Text id=\"itemName\" source={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"catalogItems\",\"value\":\"item\"},\"path\":[{\"kind\":\"property\",\"name\":\"name\"}]}} /></Each>",
+	"      <Each><Text id=\"itemName\" text={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"catalogItems\",\"value\":\"item\"},\"path\":[{\"kind\":\"property\",\"name\":\"name\"}]}} /></Each>",
 	"      <Else><Text id=\"emptyText\" text=\"No catalog items are available.\" /></Else>",
 	"    </ForEach>",
 	"  </Structure>",
@@ -1442,7 +1445,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
 	"    <OnMount id=\"initialize\"><Actions><UpdateNumber id=\"quantity\" operation=\"set\" value={1} /></Actions></OnMount>",
-	"    <Text id=\"quantityValue\" source={{\"mode\":\"source\",\"source\":{\"category\":\"action\",\"actionId\":\"quantity\"},\"path\":[]}} />",
+		"    <Text id=\"quantityValue\" text={{\"mode\":\"source\",\"source\":{\"category\":\"action\",\"actionId\":\"quantity\"},\"path\":[]}} />",
 	"  </Structure>",
 	"</FlowComponent>",
 	""
@@ -1466,7 +1469,7 @@ Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"      <FullSyncView id=\"rootCategories\" database=\"retailstore\" ddoc=\"catalog\" view=\"categories\" outputSchema={{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"doc\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"imageUrl\":{\"type\":\"string\"}}}}}}}}}><Variables /></FullSyncView>",
 	"    </Actions></OnClick></Events></Button>",
 	"    <ForEach id=\"categories\" source={{\"mode\":\"source\",\"source\":{\"category\":\"fullsync\",\"actionId\":\"rootCategories\",\"operation\":\"view\"},\"path\":[{\"kind\":\"property\",\"name\":\"rows\"}]}} context=\"item\"><Children>",
-	"      <Text id=\"categoryName\" text=\"Category\" source={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"categories\",\"value\":\"item\"},\"path\":[]}} />",
+		"      <Text id=\"categoryName\" text={{\"mode\":\"source\",\"source\":{\"category\":\"iteration\",\"scopeId\":\"categories\",\"value\":\"item\"},\"path\":[]}} />",
 	"    </Children></ForEach>",
 	"  </Structure>",
 	"</FlowComponent>",
@@ -1488,8 +1491,8 @@ assertTrue(wholeIterationWarning && wholeIterationWarning.fix &&
 		JSON.stringify(appProgressWholeIteration.result.result.structuredContent.frontend));
 var wholeIterationSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile,
-	wholeIterationSource.replace('source={{"mode":"source","source":{"category":"iteration","scopeId":"categories","value":"item"},"path":[]}}',
-		'source={{"mode":"literal","value":"Category"}}'), "UTF-8");
+		wholeIterationSource.replace('text={{"mode":"source","source":{"category":"iteration","scopeId":"categories","value":"item"},"path":[]}}',
+			'text={{"mode":"literal","value":"Category"}}'), "UTF-8");
 var appProgressLiteralIteration = callTool(13964, "flow-app-progress", {
 	project: "target",
 	projectDir: targetProjectDir,
@@ -1787,10 +1790,32 @@ assertTrue(frontendSourceStale.result.error,
 var frontendSourceImplicit = callTool(1386, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir
 });
+var frontendStarterTags = frontendSourceImplicit.result.result.structuredContent.authoringContract.blocks.map(function (block) {
+	return block.tag;
+});
 assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
-	frontendSourceImplicit.result.result.structuredContent.sourceFile === "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
-	"MCP frontend-svelte-code-get should infer sourceFile from config.frontbuilder.svelte.modelPath");
+	frontendSourceImplicit.result.result.structuredContent.sourceFile === "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.tag === "FlowComponent" &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.properties.class === undefined &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.slots.join(",") === "Variables,Events,Structure" &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.valueSyntax.local === 'property="@local.name"' &&
+	["State", "Derived", "DerivedBy", "OnMount", "OnDestroy", "Effect", "PreEffect",
+		"Interval", "Timeout", "SetValue", "UpdateList", "UpdateNumber"].every(function (tag) {
+		return frontendStarterTags.indexOf(tag) !== -1;
+	}) &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.sources.applicationStyles ===
+		"libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css",
+	"MCP frontend-svelte-code-get should expose reactive state, lifecycle, action and visual root contracts");
 var frontendCssRelative = "libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css";
+var frontendCssMissing = callTool(13861, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative
+});
+assertTrue(frontendCssMissing.result.result.structuredContent.ok === true &&
+	frontendCssMissing.result.result.structuredContent.exists === false &&
+	frontendCssMissing.result.result.structuredContent.code === "" &&
+	frontendCssMissing.result.result.structuredContent.revision === null,
+	"MCP frontend-svelte-code-get should describe a missing canonical app stylesheet without failing");
 var frontendCssSet = callTool(1387, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendCssRelative,
@@ -1803,6 +1828,7 @@ var frontendCssGet = callTool(1388, "frontend-svelte-code-get", {
 });
 assertTrue(frontendCssSet.result.result.structuredContent.written === true &&
 	frontendCssRevision &&
+	frontendCssGet.result.result.structuredContent.exists === true &&
 	frontendCssGet.result.result.structuredContent.code.indexOf(".clock-shell") !== -1 &&
 	frontendCssGet.result.result.structuredContent.authoringContract === undefined,
 	"MCP frontend-svelte-code tools should revision-write and read the source-backed app stylesheet");
@@ -2278,6 +2304,9 @@ assertTrue(frontendBlockWrite.ok === true && frontendBlockWrite.finalized === tr
 	"Unified code-set did not write and finalize browser code: " + JSON.stringify(frontendBlockWrite));
 assertTrue(frontendBlockWrite.target === "frontend" && frontendBlockWrite.runtime === "browser",
 	"Unified code-set compact response did not preserve implementation target metadata");
+assertTrue(!frontendBlockWrite.diagnostics.some(function (item) {
+	return item.code === "FRONTEND_BLOCK_MOCK_ACTIVE" || item.code === "FRONTEND_BLOCK_PLACEHOLDER_CODE";
+}), "Unified code-set kept stale mock diagnostics after finalization: " + JSON.stringify(frontendBlockWrite));
 var frontendBlockPatch = callTool(1325, "code-patch", {
 	projectDir: targetProjectDir,
 	block: "smoke.normalizeLabel",

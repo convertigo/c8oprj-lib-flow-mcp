@@ -26,8 +26,11 @@ acceptance campaign.
   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
   immediately after bootstrap so dependency setup overlaps authoring. For an
   existing project, start it after the first frontend read; do not poll.
-- Call `flow-app-progress({ project, mode:"poc" })` once, synchronize and open
-  the dev viewer, prove the requested behavior, then build production once.
+- Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
+  work. Pass `qname` only when the application really has a backend Flow;
+  never create a synthetic backend Flow to satisfy progress. Synchronize and
+  open the dev viewer, then prove the requested behavior. Build production only
+  for deployment or an explicit production check.
 - Keep one Page or mutually exclusive surface active at each business step.
   Functional Page transitions are part of the POC; only exhaustive history,
   offline, responsive and visual checks are deferred.
@@ -203,12 +206,16 @@ mutations. A complete pass may write several Page sources:
    mutually exclusive state of the current Page.
 2. `frontend-svelte-code-get({ project })` returns the configured source,
    revision, the application Page index and a compact `authoringContract`.
+   Use `authoringContract.sources.applicationStyles` as the exact
+   `app.flow.css` source path; do not search for or guess that path.
    Navigate by logical Page id with `Params`/`Query`; target Pages read typed
    values through `@route.params.name`. Use `sourceFile` to read another Page.
 3. Write every Page needed by the complete application pass. Do not guess CSS,
    Ionic or NGX property names that are absent from the contract. Contract
    `slots` are exact source wrapper tags such as `Children`, `Events`, `Then`
-   and `Else`; never omit a listed wrapper around nested blocks.
+   and `Else`; never omit a listed wrapper around nested blocks. `FlowComponent`
+   is non-visual and accepts only `id` and `label`; put classes on visible
+   children such as `PageShell`.
 4. `frontend-svelte-code-check({ project, sourceFile, code })` validates each
    Page. `frontend-svelte-code-set({ project, sourceFile, code, revision })`
    persists it and can create a new canonical route source when no revision
@@ -217,12 +224,15 @@ mutations. A complete pass may write several Page sources:
 6. If dev mode was not already started after bootstrap, call
    `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
    after the first frontend read. Continue the focused repair passes while npm
-   and Vite initialize. Do not poll. Run `dev.sync` once after the final repair,
-   then `dev.open`.
+   initializes. Do not poll or call `dev.start` again: Vite and the Studio
+   viewer open automatically as soon as dependencies are ready. Run `dev.sync`
+   once after the final repair to regenerate the completed source. Use
+   `dev.open` only to reveal an already running viewer. If synchronization
+   fails, follow its structured error once; never retry aliases speculatively.
 7. Call `flow-app-progress({ project, qname, mode:"poc" })` once. Prove the
-   requested visible and interactive behavior in the dev viewer, then call
-   `frontend-svelte-action` with `build`; production build already generates
-   the sources.
+   requested visible and interactive behavior in the dev viewer. Call
+   `frontend-svelte-action` with `build` only for deployment or an explicit
+   production check; production build already generates the sources.
 
 Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
 files or call `$app/navigation` directly. Static links use `LinkButton`.
@@ -248,6 +258,28 @@ widgets, events and actions. Events live below their owner, for example:
 Button -> Events -> OnClick -> Actions -> CallSequence
 ```
 
+The non-visual FlowComponent root has exactly three roles:
+
+```text
+Variables  -> State, Derived and DerivedBy page-local values
+Events     -> OnMount, OnDestroy, Effect, PreEffect, Interval and Timeout
+Structure  -> visible UI
+```
+
+Declare mutable page-local state with `State`, and computed state with
+`Derived` or `DerivedBy`, under root `Variables`. Write mutable state with an
+action `target="local.name"` and bind it with `@local.name`. `Variable` is for
+action variables, route Params and Query values, not page-local state. Keep
+lifecycle blocks under root `Events`; never place them among visual Structure
+children. `Interval` and `Timeout` register on mount and clean themselves up
+automatically.
+
+Use `SetValue`, `UpdateList` and `UpdateNumber` for explicit state changes.
+Their values must be literals or schema-backed sources. Use `Derived` or
+`DerivedBy` for pure computed state, and a typed frontend Flow block for
+reusable browser behavior; do not hide free browser expressions in action
+properties.
+
 Use semantic layout properties for structure. Use explicit `class` values and
 the application CSS source for gradients, typography and visual rules that do
 not belong in a reusable component contract. Do not invent CSS-like properties
@@ -266,9 +298,14 @@ an explicit typed mock. Do not guess synonyms.
 
 Flow Svelte preserves three NGX-like intents:
 
-- `text="literal"`: literal text.
-- `value={expression}`: browser expression.
-- `source="@producer.path"`: schema-backed source.
+- `property="literal"`: literal value.
+- `property={expression}`: browser expression.
+- `property="@producer.path"`: schema-backed source.
+
+Use the canonical bindable property of each block: `Text.text`,
+`Button.label`, `Image.src`, and `ForEach.source`. Do not add a parallel
+`source` property to Text, Button or Image; it is only a hidden migration
+alias for old models.
 
 Use intuitive references in source:
 
@@ -296,6 +333,17 @@ second apart. For a color, gradient, spacing or layout requirement, inspect
 the rendered computed style. For explicit hardening, execute all returned
 `acceptance.calls` unchanged and in order. Use safe Playwright only; never
 substitute an unsafe runner.
+
+Prefer the configured Browser or Chrome tool for the smoke. If neither is
+callable but `node_repl` exposes Playwright, launch the installed system Chrome
+directly with `channel:"chrome"`; do not first attempt Playwright's optional
+bundled Chromium download. Reuse one page for desktop and mobile assertions.
+
+Do not wait for whole-page text or DOM stability when the application contains
+a timer, animation, progress stream or other live value: such a page is
+intentionally never stable. Wait only for the requested target to exist, sample
+that target twice with the minimum meaningful delay, and inspect its computed
+style in the same browser assertion.
 
 Flow `id` values are stable authoring identities, not guaranteed DOM `id`
 attributes; repeated blocks could not safely emit duplicate DOM ids. In browser

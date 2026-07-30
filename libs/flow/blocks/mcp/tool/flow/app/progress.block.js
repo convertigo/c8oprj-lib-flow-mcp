@@ -506,9 +506,12 @@ const _meta = {
 			return objectValue(segment) && ((segment.kind === "property" && typeof segment.name === "string")
 				|| (segment.kind === "index" && typeof segment.index === "number"));
 		}));
-		return validPath && (((source.category === "requestable" || source.category === "action") && !!source.actionId)
-			|| (source.category === "fullsync" && !!source.actionId && !!source.operation)
-			|| (source.category === "iteration" && !!source.scopeId && (source.value === "item" || source.value === "index")));
+			return validPath && (((source.category === "requestable" || source.category === "action") && !!source.actionId)
+				|| (source.category === "fullsync" && !!source.actionId && !!source.operation)
+				|| (source.category === "local" && !!source.name && !!source.scopeId)
+				|| (source.category === "iteration" && !!source.scopeId && (source.value === "item" || source.value === "index"))
+				|| (source.category === "event" && source.value === "event")
+				|| (source.category === "route" && source.value === "route"));
 	}
 
 	function firstNodePath(tree, predicate) {
@@ -524,6 +527,14 @@ const _meta = {
 	function requiresExplicitSource(type) {
 		type = String(type || "").toLowerCase();
 		return type === "image" || type === "text" || type === "button" || type === "table" || type === "json";
+	}
+
+	function bindingProperty(type) {
+		type = String(type || "").toLowerCase();
+		if (type === "text") return "text";
+		if (type === "button") return "label";
+		if (type === "image") return "src";
+		return "source";
 	}
 
 	function isForEachElseDescendant(path, iteratorPath) {
@@ -569,13 +580,14 @@ const _meta = {
 				summary.pageCount++;
 			}
 			if (kind === "frontendWidget" || kind === "frontendDirectiveBlock" || kind === "frontendDataBlock") {
+				var blockBindingProperty = bindingProperty(type);
 				addLimited(summary.blocks, {
 					path: node.path || "",
 					kind: kind,
 					type: type,
 					id: definition.id || node.id || "",
 					label: visibleLabel(node, definition),
-					source: definition.source || definition.value || definition.path || "",
+					source: definition[blockBindingProperty] || definition.value || definition.path || "",
 					test: definition.test || definition.condition || "",
 					context: definition.context || "",
 					contentCount: visibleDescendantCount(node)
@@ -606,14 +618,16 @@ const _meta = {
 			}
 			if (definition.source || definition.path || definition.value || requiresExplicitSource(type) ||
 				type === "ForEach" || type === "each") {
+				var dataBindingProperty = bindingProperty(type);
 				addLimited(summary.dataSources, {
 					path: node.path || "",
 					id: definition.id || node.id || "",
 					type: type,
+					bindingProperty: dataBindingProperty,
 					sourceFile: definition.sourcePath || definition.sourceFile || "",
 					sourceMutationPath: definition.sourceMutationPath || "",
-					sourcePropertyMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths.source || "",
-					source: definition.source || "",
+					sourcePropertyMutationPath: definition.sourcePropertyMutationPaths && definition.sourcePropertyMutationPaths[dataBindingProperty] || "",
+					source: definition[dataBindingProperty] || "",
 					value: definition.value || "",
 					dataPath: definition.path || "",
 					context: definition.context || ""
@@ -670,8 +684,9 @@ const _meta = {
 				return typeof part === "string" ? part : JSON.stringify(part || {});
 			}).join("|");
 		}
-		function pickerSource(path, sourceId, binding) {
-			var key = cacheKey([path, sourceId]);
+			function pickerSource(path, sourceId, binding) {
+				var property = String(binding && binding.bindingProperty || "source");
+				var key = cacheKey([path, sourceId, property]);
 			if (Object.prototype.hasOwnProperty.call(pickerCache, key)) {
 				timing.pickerCacheHits++;
 				return pickerCache[key];
@@ -684,10 +699,10 @@ const _meta = {
 					projectDir: args.projectDir,
 					engineSource: args.engineSource,
 					surface: "frontend",
-					builder: "svelte",
-					focusPath: path,
-					detail: "inspect",
-					property: "source",
+						builder: "svelte",
+						focusPath: path,
+						detail: "inspect",
+						property: property,
 					sourceId: sourceId,
 					maxDepth: 0,
 					includeFrontendCatalog: false,
@@ -707,10 +722,10 @@ const _meta = {
 							binding.sourceMutationPath = definition.sourceMutationPath;
 						}
 						if (!binding.sourcePropertyMutationPath && definition.sourceMutationPath) {
-							binding.sourcePropertyMutationPath = String(definition.sourceMutationPath) + ".props.source";
+							binding.sourcePropertyMutationPath = String(definition.sourceMutationPath) + ".props." + property;
 						}
 					}
-					var sourceInfo = node.bindings && node.bindings.source;
+					var sourceInfo = node.bindings && node.bindings[property];
 					arrayValue(sourceInfo && sourceInfo.sources).some(function (source) {
 						var sourceActionId = source && source.source && source.source.actionId ||
 							source && source.binding && source.binding.source && source.binding.source.actionId || "";
@@ -888,11 +903,16 @@ const _meta = {
 		}
 		function sourceMutation(binding, value) {
 			var direct = String(binding.sourcePropertyMutationPath || "");
+			var property = String(binding.bindingProperty || "source");
 			if (!binding.sourceFile || (!direct && !binding.sourceMutationPath)) return null;
 			return {
 				op: direct ? "replace" : "merge",
 				path: direct || binding.sourceMutationPath,
-				value: direct ? value : { source: value }
+				value: direct ? value : (function () {
+					var patch = {};
+					patch[property] = value;
+					return patch;
+				})()
 			};
 		}
 		var plannedIterators = {};
@@ -1158,7 +1178,7 @@ const _meta = {
 					&& validBinding(containingIteration.source)
 					&& hasSemanticIterationPath(containingIteration, binding.type, binding.id || binding.path)) {
 					var semanticCandidate = semanticIterationCandidate(
-						pickerSource(binding.path, containingIteration.id), binding.type, binding.id || binding.path);
+						pickerSource(binding.path, containingIteration.id, binding), binding.type, binding.id || binding.path);
 					if (semanticCandidate) {
 						frontend.bindingWarnings.push({
 							code: "FRONTEND_ITERATION_LITERAL_PLACEHOLDER",
@@ -1180,7 +1200,7 @@ const _meta = {
 				}
 				if (rawSource.mode === "source" && structuredSource.category === "iteration" &&
 					arrayValue(rawSource.path).length === 0 && (String(binding.type) === "Text" || String(binding.type) === "Image")) {
-					var iterationSource = pickerSource(binding.path, structuredSource.scopeId);
+					var iterationSource = pickerSource(binding.path, structuredSource.scopeId, binding);
 					var iterationCandidate = preferredIterationCandidate(iterationSource, binding.type, binding.path);
 					if (iterationCandidate) {
 						frontend.bindingWarnings.push({
@@ -1210,7 +1230,7 @@ const _meta = {
 						return false;
 					});
 					if (!knownSuggestion) {
-						var pickerKnown = pickerSource(binding.path, structuredSource.actionId);
+						var pickerKnown = pickerSource(binding.path, structuredSource.actionId, binding);
 						if (pickerKnown) {
 							knownSuggestion = {
 								actionId: structuredSource.actionId,
@@ -1306,18 +1326,18 @@ const _meta = {
 						message: String(binding.type || "Block") + " inside a data-bound ForEach requires an explicit structured source. Select a schema-backed iteration candidate, or use a literal binding for intentional static content.",
 						inspect: {
 							tool: "frontend-svelte-tree",
-							arguments: {
-								project: args.project,
-								detail: "inspect",
-								focusPath: binding.path,
-								property: "source",
+								arguments: {
+									project: args.project,
+									detail: "inspect",
+									focusPath: binding.path,
+									property: binding.bindingProperty || "source",
 								sourceId: String(boundIteration.id || ""),
 								maxDepth: 0
 							}
 						}
 					};
 					var directCandidate = validBinding(boundIteration.source)
-						? preferredIterationCandidate(pickerSource(binding.path, boundIteration.id), binding.type, binding.path)
+						? preferredIterationCandidate(pickerSource(binding.path, boundIteration.id, binding), binding.type, binding.path)
 						: null;
 					var planned = plannedIterators[boundIteration.path];
 					var relativePath = !directCandidate && planned
@@ -1402,6 +1422,7 @@ const _meta = {
 			};
 			if (descriptor && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
 				var direct = String(binding.sourcePropertyMutationPath || "");
+				var property = String(binding.bindingProperty || "source");
 					warning.fix = {
 						tool: "frontend-svelte-mutate",
 						arguments: {
@@ -1410,7 +1431,11 @@ const _meta = {
 							mutation: {
 								op: direct ? "replace" : "merge",
 								path: direct || binding.sourceMutationPath,
-								value: direct ? descriptor : { source: descriptor }
+								value: direct ? descriptor : (function () {
+									var patch = {};
+									patch[property] = descriptor;
+									return patch;
+								})()
 							}
 						}
 					};
@@ -1673,6 +1698,7 @@ const _meta = {
 				var hardening = mode === "hardening";
 				var fullDetail = String(args.detail || prop(node, "detail") || "compact").toLowerCase() === "full";
 				var wantedQName = String(args.qname || args.name || "").trim();
+				var backendRequired = !includeFrontend || !!wantedQName;
 				var progressBudget = mcp.phaseBudget(args, [
 					args.project || args.projectDir,
 					wantedQName,
@@ -1785,9 +1811,11 @@ const _meta = {
 				}
 				var tasks = [];
 				addTask(tasks, "flowEngine", "FlowEngine readable", true, "");
-				addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
-					wantedQName ? hasWantedFlow : appFlows.length > 0,
-					wantedQName ? "Create or register " + wantedQName + " with code-set/code-promote." : "Create the main backend Flow with code-set.");
+				if (backendRequired) {
+					addTask(tasks, "backendFlow", wantedQName ? "Requested backend Flow exists" : "At least one app backend Flow exists",
+						wantedQName ? hasWantedFlow : appFlows.length > 0,
+						wantedQName ? "Create or register " + wantedQName + " with code-set/code-promote." : "Create the main backend Flow with code-set.");
+				}
 				addTask(tasks, "mockDebt", "No explicit project-local mocks remain", mocks.length === 0,
 					"Implement or remove " + mocks.length + " mock block(s) before claiming completion.");
 				if (includeFrontend) {
@@ -1815,12 +1843,14 @@ const _meta = {
 				}
 				var pocTaskIds = {
 					flowEngine: true,
-					backendFlow: true,
 					frontendBuilder: true,
 					frontendPaperboard: true,
 					frontendVisibleBlocks: true,
 					frontendActionWiring: true
 				};
+				if (backendRequired) {
+					pocTaskIds.backendFlow = true;
+				}
 				var activeTasks = hardening ? tasks : tasks.filter(function (task) {
 					return pocTaskIds[task.id] === true;
 				});

@@ -284,8 +284,10 @@ const _meta = {
 		"PageShell", "Header", "Toolbar", "RowLayout", "ColumnLayout", "GridLayout", "Card",
 		"List", "ListItem", "Text", "Image", "Icon", "Button", "LinkButton", "Status",
 		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
-		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If", "OnMount",
-		"Interval", "Navigate", "GoBack", "Variable"
+		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If",
+		"State", "Derived", "DerivedBy",
+		"OnMount", "OnDestroy", "Effect", "PreEffect", "Interval", "Timeout",
+		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable"
 	];
 
 	function routeSources(props) {
@@ -337,6 +339,16 @@ const _meta = {
 		return pages;
 	}
 
+	function relatedSources(props) {
+		var model = String(props.sourceFile || "").replace(/\\/g, "/");
+		var marker = "/src/routes/";
+		var markerIndex = model.indexOf(marker);
+		var sourceRoot = markerIndex >= 0 ? model.substring(0, markerIndex + "/src".length) : "";
+		return {
+			applicationStyles: sourceRoot ? sourceRoot + "/app.flow.css" : ""
+		};
+	}
+
 	function compactProperties(properties) {
 		var out = {};
 		Object.keys(properties || {}).forEach(function (name) {
@@ -385,12 +397,23 @@ const _meta = {
 			});
 			return {
 				version: 2,
+				root: {
+					tag: "FlowComponent",
+					properties: {
+						id: "string:literal!",
+						label: "string:literal"
+					},
+					slots: ["Variables", "Events", "Structure"],
+					example: '<FlowComponent id="home" label="Home"><Variables><State id="ready" type="boolean" value={false} /></Variables><Events>...</Events><Structure>...</Structure></FlowComponent>'
+				},
 				valueSyntax: {
 					literal: 'property="literal"',
 					expression: "property={browserExpression}",
-					source: 'property="@producer.path"'
+					source: 'property="@producer.path"',
+					local: 'property="@local.name"'
 				},
 				pages: routeSources(props),
+				sources: relatedSources(props),
 				navigation: {
 					open: '<Navigate id="openProduct" page="product"><Params><Variable name="id" value="@item.id" /></Params></Navigate>',
 					readParameter: "@route.params.id",
@@ -398,10 +421,15 @@ const _meta = {
 					back: '<GoBack id="back" fallback="/" />'
 				},
 				blocks: blocks,
-				actionPattern: "Button > Events > OnClick > Actions > CallSequence",
+				actionPattern: "FlowComponent > Events > OnMount|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
 				rules: [
+					"FlowComponent is a non-visual source root; put class and layout properties on its visible children.",
+					"Declare mutable page-local state with State, and computed state with Derived or DerivedBy, under the root Variables slot; bind them with @local.id.",
+					"Variable is for action, route Params and Query arguments; do not use it as page-local state.",
+					"Put lifecycle blocks in the root Events slot, never in visual Structure. Interval and Timeout register on mount and clean themselves up on teardown.",
+					"Use SetValue, UpdateList or UpdateNumber for explicit state changes. Free browser expressions are not portable action values; use a source, literal, Derived value or typed frontend Flow block.",
 					"Use only listed properties on these standard blocks.",
-					"Property contracts use type:intent|intent; source accepts @action.path, @item.path and @event.path.",
+					"Property contracts use type:intent|intent; bindable properties accept @local.name, @action.path, @item.path and @event.path.",
 					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
@@ -415,6 +443,17 @@ const _meta = {
 
 	function read(ctx, props, path, includeContract) {
 		if (!path.file.isFile()) {
+			if (isStylesheet(path)) {
+				return {
+					ok: true,
+					exists: false,
+					sourceFile: path.relative,
+					code: "",
+					revision: null,
+					contentLength: 0,
+					next: "Create this canonical application stylesheet with frontend-svelte-code-check, then frontend-svelte-code-set without a revision."
+				};
+			}
 			throw new Error("Unknown Flow Svelte source: " + path.relative);
 		}
 		var resource = ctx.resourceGet({
@@ -425,6 +464,7 @@ const _meta = {
 		});
 		var result = {
 			ok: true,
+			exists: true,
 			sourceFile: path.relative,
 			code: resource.content,
 			revision: resource.hash,
@@ -511,10 +551,20 @@ const _meta = {
 		}
 	}
 
+	function notifySourceMutation(ctx, props, path) {
+		if (ctx && typeof ctx.notifySourceMutation === "function") {
+			ctx.notifySourceMutation({
+				projectDir: String(props.projectDir || ""),
+				path: String(path.relative || "")
+			});
+		}
+	}
+
 	function write(ctx, props, path, source) {
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
 		atomicWrite(path, source);
+		notifySourceMutation(ctx, props, path);
 		var saved = read(ctx, props, path, false);
 		saved.diagnostics = validation.diagnostics;
 		saved.errorCount = validation.errorCount;
@@ -567,6 +617,7 @@ const _meta = {
 					var validation = validate(ctx, props, path, String(preview.content));
 					requireValid(validation);
 					atomicWrite(path, String(preview.content));
+					notifySourceMutation(ctx, props, path);
 					result = read(ctx, props, path, false);
 					result.hunks = preview.hunks;
 					result.oldRevision = String(props.revision);

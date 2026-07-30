@@ -112,7 +112,9 @@ source, including a structured literal for intentionally static content.
 8. On an existing project where dev mode was not started during bootstrap,
    start it after this first complete paperboard with `wait:false`. Continue
    the two allowed focused repair passes while dependencies install. Do not
-   poll. Run `dev.sync` once after the final repair, then `dev.open`.
+   poll: Vite and the Studio viewer open automatically when setup completes.
+   Run `dev.sync` once after the final repair to regenerate the completed
+   source. Use `dev.open` only to reveal an already running viewer.
 9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
@@ -121,7 +123,7 @@ source, including a structured literal for intentionally static content.
     - `flow-output-schema` when downstream pickers or requestable schemas
       matter;
     - browser smoke in the live dev viewer for the requested visible workflow;
-    - production build once the live proof is correct.
+    - production build only for deployment or an explicit production check.
     For temporal requirements, sample the relevant visible value twice at
     least one second apart. For visual requirements, inspect the rendered
     computed style instead of inferring it from source.

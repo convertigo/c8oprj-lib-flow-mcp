@@ -1782,6 +1782,9 @@
 					args.position = "inside";
 				}
 			} else if (name === "frontend-svelte-action" || name === "frontend-svelte-actions") {
+				if (!args.origin) {
+					args.origin = "mcp";
+				}
 				if (!args.targetObject) {
 					args.targetObject = {
 						kind: "frontendBuilder",
