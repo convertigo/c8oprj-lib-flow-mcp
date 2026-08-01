@@ -289,7 +289,7 @@ const _meta = {
 		}
 	}
 
-	var STARTER_TAGS = [
+	var PREFERRED_STARTER_TAGS = [
 		"PageShell", "Header", "Toolbar", "RowLayout", "ColumnLayout", "GridLayout", "Card",
 		"List", "ListItem", "Text", "Image", "Icon", "Button", "LinkButton", "Status",
 		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
@@ -298,6 +298,25 @@ const _meta = {
 		"OnMount", "OnDestroy", "Effect", "PreEffect", "Interval", "Timeout",
 		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable"
 	];
+
+	function standardStarterItems(items) {
+		var byTag = {};
+		(items || []).forEach(function (item) {
+			var id = String(item.id || "");
+			var tag = String(item.tag || item.insert && item.insert.tag || "");
+			var standard = id.indexOf("svelte.") === 0 || id.indexOf("frontbuilder.svelte.") === 0;
+			if (standard && tag && !byTag[tag]) {
+				byTag[tag] = item;
+			}
+		});
+		var orderedTags = PREFERRED_STARTER_TAGS.filter(function (tag) { return !!byTag[tag]; });
+		Object.keys(byTag).filter(function (tag) {
+			return PREFERRED_STARTER_TAGS.indexOf(tag) === -1;
+		}).sort().forEach(function (tag) {
+			orderedTags.push(tag);
+		});
+		return orderedTags.map(function (tag) { return byTag[tag]; });
+	}
 
 	function routeSources(props) {
 		var root = new File(String(props.projectDir || "")).getCanonicalFile();
@@ -387,17 +406,9 @@ const _meta = {
 				surface: "frontend",
 				builder: "svelte"
 			});
-			var byTag = {};
-			(contract.items || []).forEach(function (item) {
-				var tag = String(item.tag || item.insert && item.insert.tag || "");
-				if (tag && STARTER_TAGS.indexOf(tag) !== -1 && !byTag[tag]) {
-					byTag[tag] = item;
-				}
-			});
 			var blocks = [];
-			STARTER_TAGS.forEach(function (tag) {
-				var item = byTag[tag];
-				if (!item) return;
+			standardStarterItems(contract.items).forEach(function (item) {
+				var tag = String(item.tag || item.insert && item.insert.tag || "");
 				blocks.push({
 					tag: tag,
 					properties: compactProperties(item.properties),
