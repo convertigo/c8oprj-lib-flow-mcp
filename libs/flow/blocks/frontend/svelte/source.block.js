@@ -165,15 +165,13 @@ const _meta = {
 			var hasCatalog = Object.keys(definitions).some(function (name) {
 				return definitions[name] && definitions[name].catalogProperty === true;
 			});
-			var accepted = Object.keys(definitions).filter(function (name) {
+			var accepted = ["id"].concat(Object.keys(definitions).filter(function (name) {
 				var definition = definitions[name] || {};
-				return name === "id" || name === "kind" || definition.catalogProperty === true;
-			});
+				return name !== "id" && (name === "kind" || definition.catalogProperty === true);
+			}));
 			if (hasCatalog && accepted.length > 0) {
 				Object.keys(props).forEach(function (name) {
-					if (name === "kind" || name.indexOf("__") === 0 || Object.prototype.hasOwnProperty.call(definitions, name)) {
-						if (accepted.indexOf(name) !== -1) return;
-					}
+					if (accepted.indexOf(name) !== -1) return;
 					diagnostics.push({
 						severity: "error",
 						code: "FRONTEND_PROPERTY_UNKNOWN",

@@ -1684,6 +1684,22 @@ assertTrue(frontendSourceInvalid.result.result.structuredContent.ok === false &&
 	frontendSourceInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_DUPLICATE_ID";
 	}), "MCP frontend-svelte-code-check should diagnose duplicate low-code ids");
+var frontendSourceCanonicalIds = callTool(13819, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure>",
+		"    <PageShell id=\"shell\"><Children>",
+		"      <Card id=\"card\"><Children><Text id=\"title\" text=\"Ready\" /></Children></Card>",
+		"    </Children></PageShell>",
+		"  </Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(!frontendSourceCanonicalIds.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "id";
+}), "MCP frontend-svelte-code-check should always accept canonical low-code ids: " +
+	JSON.stringify(frontendSourceCanonicalIds.result.result.structuredContent));
 var frontendSourceUnknownProperty = callTool(13820, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [
