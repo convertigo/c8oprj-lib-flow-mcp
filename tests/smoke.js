@@ -1690,15 +1690,19 @@ var frontendSourceCanonicalIds = callTool(13819, "frontend-svelte-code-check", {
 		"<FlowComponent id=\"home\" label=\"Home\">",
 		"  <Structure>",
 		"    <PageShell id=\"shell\"><Children>",
-		"      <Card id=\"card\"><Children><Text id=\"title\" text=\"Ready\" /></Children></Card>",
+		"      <Card id=\"card\"><Children>",
+		"        <Text id=\"title\" source=\"1\" format=\"number\" />",
+		"        <Image id=\"image\" source=\"/ready.png\" alt=\"Ready\" />",
+		"      </Children></Card>",
 		"    </Children></PageShell>",
 		"  </Structure>",
 		"</FlowComponent>"
 	].join("\n")
 });
 assertTrue(!frontendSourceCanonicalIds.result.result.structuredContent.diagnostics.some(function (diagnostic) {
-	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "id";
-}), "MCP frontend-svelte-code-check should always accept canonical low-code ids: " +
+	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" &&
+		(diagnostic.property === "id" || diagnostic.property === "source" || diagnostic.property === "format");
+}), "MCP frontend-svelte-code-check should accept canonical and hidden authoring properties: " +
 	JSON.stringify(frontendSourceCanonicalIds.result.result.structuredContent));
 var frontendSourceUnknownProperty = callTool(13820, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,

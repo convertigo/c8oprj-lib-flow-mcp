@@ -122,8 +122,13 @@ const _meta = {
 		return null;
 	}
 
-	function projectedPropertyDiagnostics(tree, source) {
+	function projectedPropertyDiagnostics(tree, source, contract) {
 		var diagnostics = [];
+		var propertiesByTag = {};
+		(contract && contract.items || []).forEach(function (item) {
+			var tag = String(item.tag || item.insert && item.insert.tag || "");
+			if (tag && !propertiesByTag[tag]) propertiesByTag[tag] = item.properties || {};
+		});
 		function regexpEscape(value) {
 			return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 		}
@@ -136,7 +141,6 @@ const _meta = {
 			var fallback = "";
 			while ((match = matcher.exec(source)) !== null) {
 				var attributes = String(match[1] || "");
-				if (!fallback) fallback = attributes;
 				if (!id || (new RegExp("\\bid\\s*=\\s*([\\\"'])" + regexpEscape(id) + "\\1")).test(attributes)) {
 					fallback = attributes;
 					break;
@@ -158,16 +162,18 @@ const _meta = {
 				}
 			}
 			var props = authoredProperties(node, projected);
-			var definitions = node.propertyDefinitions && typeof node.propertyDefinitions === "object"
+			var canonicalDefinitions = propertiesByTag[String(projected.tag || node.type || "")];
+			var definitions = canonicalDefinitions || (
+				node.propertyDefinitions && typeof node.propertyDefinitions === "object"
 				? node.propertyDefinitions
 				: projected.propertyDefinitions && typeof projected.propertyDefinitions === "object"
-					? projected.propertyDefinitions : {};
-			var hasCatalog = Object.keys(definitions).some(function (name) {
+					? projected.propertyDefinitions : {});
+			var hasCatalog = !!canonicalDefinitions || Object.keys(definitions).some(function (name) {
 				return definitions[name] && definitions[name].catalogProperty === true;
 			});
 			var accepted = ["id"].concat(Object.keys(definitions).filter(function (name) {
 				var definition = definitions[name] || {};
-				return name !== "id" && (name === "kind" || definition.catalogProperty === true);
+				return name !== "id" && (canonicalDefinitions || name === "kind" || definition.catalogProperty === true);
 			}));
 			if (hasCatalog && accepted.length > 0) {
 				Object.keys(props).forEach(function (name) {
@@ -248,7 +254,12 @@ const _meta = {
 						delete diagnostic.level;
 						diagnostics.push(diagnostic);
 					});
-					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source));
+					var contract = ctx.authoringContractSource({
+						projectDir: String(props.projectDir),
+						surface: "frontend",
+						builder: "svelte"
+					});
+					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source, contract));
 				}
 			} catch (error) {
 				diagnostics.push({
