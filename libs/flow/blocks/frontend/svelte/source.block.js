@@ -395,6 +395,22 @@ const _meta = {
 					slots: sourceSlots(item.slots)
 				});
 			});
+			var portableBlocks = [];
+			var seenPortable = {};
+			(contract.items || []).forEach(function (item) {
+				var id = String(item.id || "");
+				var tag = String(item.tag || item.insert && item.insert.tag || "");
+				if (id.indexOf("flow.block.") !== 0 || !tag || seenPortable[id]) return;
+				seenPortable[id] = true;
+				portableBlocks.push({
+					id: id.substring("flow.block.".length),
+					tag: tag,
+					description: String(item.description || "")
+				});
+			});
+			portableBlocks.sort(function (left, right) {
+				return left.id.localeCompare(right.id);
+			});
 			return {
 				version: 2,
 				root: {
@@ -421,6 +437,7 @@ const _meta = {
 					back: '<GoBack id="back" fallback="/" />'
 				},
 				blocks: blocks,
+				portableBlocks: portableBlocks,
 				actionPattern: "FlowComponent > Events > OnMount|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
 				rules: [
 					"FlowComponent is a non-visual source root; put class and layout properties on its visible children.",
@@ -432,6 +449,8 @@ const _meta = {
 					"Property contracts use type:intent|intent; bindable properties accept @local.name, @action.path, @item.path and @event.path.",
 					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
+					"Prefer a typed portableBlocks action over an equivalent browser expression; inspect the exact palette item once when its properties are needed.",
+					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
 					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
 					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."
 				]

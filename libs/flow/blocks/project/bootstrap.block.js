@@ -20,6 +20,13 @@ const _meta = {
       "default": false,
       "description": "Also configure the experimental Svelte frontbuilder."
     },
+    "references": {
+      "kind": "literal",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Existing Convertigo projects to reference after bootstrap."
+    },
     "force": {
       "kind": "literal",
       "type": "boolean",
@@ -86,6 +93,23 @@ const _meta = {
 			throw new Error("Invalid Convertigo project name: " + name);
 		}
 		return name;
+	}
+
+	function projectNames(value) {
+		if (value === undefined || value === null || value === "") {
+			return [];
+		}
+		var values = Object.prototype.toString.call(value) === "[object Array]" ? value : [value];
+		var seen = {};
+		var names = [];
+		values.forEach(function (entry) {
+			var name = projectName(entry);
+			if (!seen[name]) {
+				seen[name] = true;
+				names.push(name);
+			}
+		});
+		return names;
 	}
 
 	function engineSource(ui, resourceRoot, modelPath) {
@@ -298,6 +322,7 @@ const _meta = {
 			var name = projectName(prop(props, "project") || prop(props, "name"));
 			var templateUrl = String(prop(props, "templateUrl") || TEMPLATE_URL).trim();
 			var ui = boolValue(prop(props, "ui"), false);
+			var references = projectNames(prop(props, "references"));
 			var force = boolValue(prop(props, "force"), false);
 			var dryRun = boolValue(prop(props, "dryRun"), false);
 			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
@@ -311,6 +336,7 @@ const _meta = {
 				ui: ui,
 				force: force,
 				dryRun: dryRun,
+				references: references,
 				imported: false,
 				existing: existing != null,
 				createdFlowEngine: false,
@@ -320,6 +346,7 @@ const _meta = {
 			if (dryRun) {
 				result.wouldImport = shouldImport;
 				result.wouldCustomize = true;
+				result.wouldReference = references.slice();
 				result.next = "Review this plan, then call flow-project-bootstrap once with dryRun:false.";
 				ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 				return result;
@@ -339,6 +366,16 @@ const _meta = {
 				result.frontbuilderModelFile = model.file;
 				result.createdSvelteModel = model.created;
 			}
+			result.projectReferences = references.map(function (referenceName) {
+				if (referenceName === name) {
+					throw new Error("A project cannot reference itself: " + name);
+				}
+				if (loadedProject(engine, referenceName) == null) {
+					throw new Error("Referenced Convertigo project is not loaded: " + referenceName);
+				}
+				engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
+				return referenceName;
+			});
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());

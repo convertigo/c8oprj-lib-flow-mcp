@@ -52,6 +52,7 @@ const _meta = {
 		"flow-output-schema": true,
 		"flow-fullsync-scaffold": true,
 		"flow-project-bootstrap": true,
+		"flow-project-reference": true,
 		"flow-requestable-list": true,
 		"flow-requestable-schema": true,
 		"flow-resource-delete": true,
@@ -450,6 +451,8 @@ const _meta = {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
 			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
+		} else if (name === "flow-project-reference") {
+			description = "Adds a loaded Convertigo project reference through DBO APIs so its shared Flow and Svelte blocks become available.";
 		} else if (name === "flow-fullsync-scaffold") {
 			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true; apply reports saved DBOs separately from live CouchDB readiness and returns a repair call on failure. PostBulkDocuments accepts complete document arrays through _use_json_base.";
 		} else if (name === "flow-resource-search") {

@@ -296,6 +296,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-project-bootstrap";
 }), "MCP Flow tools/list did not expose flow-project-bootstrap");
+assertTrue(list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-project-reference";
+}), "MCP Flow tools/list did not expose flow-project-reference");
 var fullSyncScaffoldTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-fullsync-scaffold";
 })[0];
@@ -827,13 +830,15 @@ assertTrue(appProgressFullQName.result.result.structuredContent.ok === true &&
 var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
 	project: "FlowBootstrapSmoke",
 	dryRun: true,
-	ui: true
+	ui: true,
+	references: ["SharedStopwatchProvider"]
 });
 assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
 	bootstrapDryRun.result.id === 13911 &&
 	bootstrapDryRun.result.result.structuredContent.ok === true &&
 	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
 	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke" &&
+	bootstrapDryRun.result.result.structuredContent.wouldReference.indexOf("SharedStopwatchProvider") !== -1 &&
 	bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
 	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
 var fullSyncScaffoldDryRun = callTool(139111, "flow-fullsync-scaffold", {
@@ -1017,7 +1022,8 @@ assertTrue(frontendSvelteInspectTree.ok === true && frontendSvelteInspectText !=
 	"MCP frontend-svelte-tree detail=inspect should expose visible frontend props without full metadata: " +
 		JSON.stringify(frontendSvelteInspectTree));
 var frontendSvelteInspectStructure = findCompactNode(frontendSvelteInspectTree, function (node) {
-	return node.kind === "frontendStructure";
+	return node.kind === "frontendStructure" &&
+		String(node.path || "").indexOf("frontends.svelte.routes.") === 0;
 });
 assertTrue(frontendSvelteInspectStructure !== null && frontendSvelteInspectStructure.path,
 	"MCP frontend-svelte-tree detail=inspect should expose a frontend structure focus path");
@@ -1648,8 +1654,13 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
 		return block.tag === "Navigate" && block.properties.page &&
 			block.slots.indexOf("Params") !== -1 && block.slots.indexOf("Query") !== -1;
+	}) && ["date.now", "date.format", "duration.format", "number.add", "number.subtract", "number.choose"].every(function (id) {
+		return frontendSourceGet.result.result.structuredContent.authoringContract.portableBlocks.some(function (block) {
+			return block.id === id && block.tag;
+		});
 	}),
-	"MCP frontend-svelte-code-get should return source, revision and a compact canonical authoring contract");
+	"MCP frontend-svelte-code-get should return source, revision and a compact canonical authoring contract; portable=" +
+		JSON.stringify(frontendSourceGet.result.result.structuredContent.authoringContract.portableBlocks));
 var frontendSourceInvalid = callTool(1382, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [

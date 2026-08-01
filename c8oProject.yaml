@@ -2,7 +2,7 @@
 ↓lib_flow_mcp [core.Project]: 
   comment: Flow-native MCP server for Convertigo Flow authoring
   corsOrigin: =Origin
-  version: 0.0.1
+  version: 0.0.2
   ↓McpServer [flow.Flow]: 🗏 sequences/McpServer.yaml
   ↓Ping [flow.Flow]: 🗏 sequences/Ping.yaml
   ↓_setupCodex [flow.Flow]: 🗏 sequences/_setupCodex.yaml

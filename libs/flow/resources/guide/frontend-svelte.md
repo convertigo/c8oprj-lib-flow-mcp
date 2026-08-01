@@ -223,6 +223,36 @@ typed frontend Flow block for reusable browser behavior. Pure dual-target Flow
 blocks are inserted directly by their palette tag. `RunAxiom` is legacy
 migration syntax, not authoring syntax.
 
+### Clocks And Timers
+
+`Interval` and `Timeout` are schedulers. Their callback count is not elapsed
+time: browser throttling, a busy UI or a suspended tab can delay callbacks.
+For clocks and stopwatches, read wall-clock timestamps and compute from them.
+
+The compact `authoringContract.portableBlocks` advertises the typed Flow actions
+available to source authoring. Prefer `DateNow`, `DateFormat`, `NumberAdd`,
+`NumberSubtract`, `NumberChoose` and `DurationFormat` over one opaque browser
+expression when they match the intent. Perform one exact palette lookup for the
+chosen tag when its properties are needed. A typical refresh chain reads now,
+formats or subtracts it, then publishes the typed result with `SetValue`.
+
+Keep `Derived` and `DerivedBy` for small pure projections of already typed
+state. Do not implement a stopwatch by incrementing a counter on every
+`Interval` callback.
+
+### Shared Project Components
+
+Reusable Svelte components live in the provider project's canonical
+`libs/flow/frontbuilder/svelte/components` directory. Add an explicit Convertigo
+project reference from the consumer with `flow-project-reference`, or pass
+`references` while bootstrapping a new project.
+
+Referenced components join the consumer palette as read-only library blocks.
+Use them in pages and components exactly like local palette blocks. Edit the
+definition in its provider project; do not copy or patch the referenced source
+inside consumers. Each component instance owns its page/component-local state
+unless its public contract explicitly shares state.
+
 ## Diagnostics
 
 `frontend-svelte-code-check` must reject unknown blocks/properties, duplicate

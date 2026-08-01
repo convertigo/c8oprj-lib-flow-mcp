@@ -280,6 +280,22 @@ Their values must be literals or schema-backed sources. Use `Derived` or
 reusable browser behavior; do not hide free browser expressions in action
 properties.
 
+Treat `Interval` and `Timeout` as schedulers, not clocks. Browser callbacks can
+be delayed or throttled, so elapsed time must come from wall-clock timestamps.
+For clocks and stopwatches, prefer the typed portable actions advertised by
+`authoringContract.portableBlocks`, notably `DateNow`, `DateFormat`,
+`NumberAdd`, `NumberSubtract`, `NumberChoose` and `DurationFormat`. Make one
+exact palette lookup for the selected tag when its properties are needed.
+Never measure elapsed time by counting `Interval` callbacks.
+
+For a reusable UI component, keep the canonical `.flow.svelte` definition in
+the provider project's `libs/flow/frontbuilder/svelte/components` directory.
+Create an explicit project reference with `flow-project-reference` (or
+`references` during `flow-project-bootstrap`). The component then appears as a
+read-only block in the consumer palette. Instantiate it from that palette and
+edit it only in the provider project. Do not duplicate component sources between
+projects.
+
 Use semantic layout properties for structure. Use explicit `class` values and
 the application CSS source for gradients, typography and visual rules that do
 not belong in a reusable component contract. Do not invent CSS-like properties
