@@ -93,6 +93,13 @@ project configuration, read `libs/flow/engine.yaml` with
 Put structural service constants, URLs, namespaces, tokens and timeouts under
 `config.*`, not inside low-level blocks.
 
+For Studio workspace cleanup, call
+`flow-project-remove({ project, dryRun:true })` first. Its default `unload`
+action keeps project files. Use `action:"delete"` only when the returned plan
+is `safe:true`; dirty, linked, Git-backed and referenced projects are protected
+by default. Do not use `force:true` unless the user explicitly accepts every
+reported blocker.
+
 ## Backend Workflow
 
 Use the compact FlowScript loop:

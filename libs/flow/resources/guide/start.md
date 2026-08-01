@@ -99,6 +99,12 @@ mock. Use `flow-block-mock-list` to audit remaining mocks.
 
 Prefer `code-get`, `code-set`, `code-patch`, `code-check`, `code-run`, `code-status`, `code-discard`, `code-promote`, and `code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
 
+For Studio workspace cleanup, inspect a loaded project with
+`flow-project-remove({ project, dryRun:true })`. The default `unload` action
+keeps files on disk. Use `action:"delete"` only after the plan reports
+`safe:true`; dirty, linked, Git-backed and referenced projects are protected by
+default. Never use `force:true` without reviewing every returned blocker.
+
 In `definition.nodes[]`, node properties are direct fields, for example `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not nest graph fields under `props` or `properties` in a complete definition. `properties` is only an MCP argument for `flow-node-add/edit` when mutating an existing Flow.
 
 When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.

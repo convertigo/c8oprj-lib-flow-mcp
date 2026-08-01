@@ -299,6 +299,14 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-project-reference";
 }), "MCP Flow tools/list did not expose flow-project-reference");
+var projectRemoveTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "flow-project-remove";
+})[0];
+assertTrue(projectRemoveTool &&
+	projectRemoveTool.inputSchema.properties.action.enum.indexOf("unload") !== -1 &&
+	projectRemoveTool.inputSchema.properties.action.enum.indexOf("delete") !== -1 &&
+	projectRemoveTool.inputSchema.properties.dryRun.default === true,
+	"MCP Flow tools/list did not expose the safe flow-project-remove contract");
 var fullSyncScaffoldTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-fullsync-scaffold";
 })[0];
