@@ -132,24 +132,73 @@ const _meta = {
 		function regexpEscape(value) {
 			return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 		}
+		function openingTagAttributes(start) {
+			var quote = "";
+			var escaped = false;
+			var braceDepth = 0;
+			for (var index = start; index < source.length; index++) {
+				var character = source.charAt(index);
+				if (quote) {
+					if (escaped) escaped = false;
+					else if (character === "\\") escaped = true;
+					else if (character === quote) quote = "";
+					continue;
+				}
+				if (character === '"' || character === "'") quote = character;
+				else if (character === "{") braceDepth++;
+				else if (character === "}" && braceDepth > 0) braceDepth--;
+				else if (character === ">" && braceDepth === 0) return source.substring(start, index);
+			}
+			return "";
+		}
+		function authoredAttributeNames(value) {
+			var visible = "";
+			var quote = "";
+			var escaped = false;
+			var braceDepth = 0;
+			for (var index = 0; index < value.length; index++) {
+				var character = value.charAt(index);
+				if (quote) {
+					visible += " ";
+					if (escaped) escaped = false;
+					else if (character === "\\") escaped = true;
+					else if (character === quote) quote = "";
+					continue;
+				}
+				if (character === '"' || character === "'") {
+					quote = character;
+					visible += " ";
+					continue;
+				}
+				if (character === "{") braceDepth++;
+				if (braceDepth > 0) {
+					visible += " ";
+					if (character === "}") braceDepth--;
+					continue;
+				}
+				visible += character;
+			}
+			var out = {};
+			var matcher = /(?:^|\s)([A-Za-z_$][A-Za-z0-9_$:-]*)\s*(?:=|(?=\s|\/|$))/g;
+			var match;
+			while ((match = matcher.exec(visible)) !== null) out[match[1]] = true;
+			return out;
+		}
 		function authoredProperties(node, projected) {
 			var tag = String(projected.tag || node.type || "");
 			if (!tag) return {};
 			var id = String(projected.id || node.nodeId || "");
-			var matcher = new RegExp("<" + regexpEscape(tag) + "\\b([^>]*)>", "g");
+			var matcher = new RegExp("<" + regexpEscape(tag) + "\\b", "g");
 			var match;
 			var fallback = "";
 			while ((match = matcher.exec(source)) !== null) {
-				var attributes = String(match[1] || "");
+				var attributes = openingTagAttributes(matcher.lastIndex);
 				if (!id || (new RegExp("\\bid\\s*=\\s*([\\\"'])" + regexpEscape(id) + "\\1")).test(attributes)) {
 					fallback = attributes;
 					break;
 				}
 			}
-			var out = {};
-			var attributeMatcher = /([A-Za-z_$][A-Za-z0-9_$:-]*)\s*=/g;
-			while ((match = attributeMatcher.exec(fallback)) !== null) out[match[1]] = true;
-			return out;
+			return authoredAttributeNames(fallback);
 		}
 		function visit(node) {
 			if (!node || typeof node !== "object") return;

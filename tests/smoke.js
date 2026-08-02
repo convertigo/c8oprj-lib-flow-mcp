@@ -1704,6 +1704,24 @@ assertTrue(!frontendSourceCanonicalIds.result.result.structuredContent.diagnosti
 		(diagnostic.property === "id" || diagnostic.property === "source" || diagnostic.property === "format");
 }), "MCP frontend-svelte-code-check should accept canonical and hidden authoring properties: " +
 	JSON.stringify(frontendSourceCanonicalIds.result.result.structuredContent));
+var frontendSourceMemberExpressions = callTool(138195, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Variables>",
+		"    <State id=\"activeTab\" type=\"string\" value=\"overview\" />",
+		"    <Derived id=\"isOverview\" type=\"boolean\" value={local.activeTab === \"overview\"} />",
+		"  </Variables>",
+		"  <Structure>",
+		"    <If id=\"overview\" test={local.activeTab === \"overview\"}><Then><Text id=\"title\" text=\"Overview\" /></Then><Else /></If>",
+		"  </Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(!frontendSourceMemberExpressions.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "activeTab";
+}), "MCP frontend-svelte-code-check should not read member expressions as authored properties: " +
+	JSON.stringify(frontendSourceMemberExpressions.result.result.structuredContent));
 var frontendSourceUnknownProperty = callTool(13820, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [
