@@ -1411,6 +1411,30 @@ assertTrue(structureWarnings.some(function (warning) {
 	JSON.stringify(appProgressStructure.result.result.structuredContent.frontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Variables><State id=\"loaded\" type=\"boolean\" value={false} /><State id=\"query\" type=\"string\" value=\"\" /></Variables>",
+	"  <Events><OnMount id=\"initialize\"><Actions>",
+	"    <CallSequence id=\"loadCatalog\" requestable=\".Catalog\"><Variables /></CallSequence>",
+	"    <SetValue id=\"markLoaded\" target=\"local.loaded\" value={true} />",
+	"    <SetValue id=\"resetQuery\" target=\"local.query\" value=\"\" />",
+	"  </Actions></OnMount></Events>",
+	"  <Structure />",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressCompletionFlag = callTool(1396151, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true
+});
+var completionWarnings = appProgressCompletionFlag.result.result.structuredContent.frontend.structureWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_LATE_STATE_INITIALIZATION";
+});
+assertTrue(completionWarnings.length === 1 && /children\[2\]$/.test(String(completionWarnings[0].path || "")),
+	"MCP flow-app-progress should reuse projected frontend diagnostics and distinguish completion flags from state resets: " +
+		JSON.stringify(appProgressCompletionFlag.result.result.structuredContent.frontend));
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",
 	"    <Button id=\"loadCatalog\" label=\"Load catalog\"><Events><OnClick id=\"loadCatalogClick\"><Actions>",
 	"      <CallSequence id=\"loadNews\" requestable=\".LoadNews\" />",

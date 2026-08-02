@@ -577,12 +577,6 @@ const _meta = {
 		return count;
 	}
 
-	function actionChain(path) {
-		var text = String(path || "");
-		var match = /\.actions(?:_[^.]+)?(?:\.|$)/.exec(text);
-		return match ? text.substring(0, match.index) : null;
-	}
-
 	function paperboardSummary(tree) {
 		var summary = {
 			routeCount: 0,
@@ -656,34 +650,6 @@ const _meta = {
 					context: definition.context || ""
 				}, 100);
 			}
-		});
-		var asyncSeenByChain = {};
-		arrayValue(summary.actions).forEach(function (action) {
-			var path = String(action.path || "");
-			var type = String(action.type || "").toLowerCase();
-			var chain = actionChain(path);
-			if (chain === null) {
-				summary.structureWarnings.push({
-					level: "error",
-					code: "FRONTEND_ACTION_OUTSIDE_ACTIONS",
-					path: path,
-					message: String(action.type || "Action") + " is an action, not a visible block. Place it inside Button > Events > OnClick > Actions or OnMount > Actions."
-				});
-			}
-			chain = chain === null ? path : chain;
-			var operation = String(action.operation || "").toLowerCase();
-			var reset = type === "setvalue" ||
-				(type === "updatelist" && (operation === "clear" || operation === "set")) ||
-				(type === "updatenumber" && operation === "set");
-			if (asyncSeenByChain[chain] && reset) {
-				summary.structureWarnings.push({
-					level: "warning",
-					code: "FRONTEND_LATE_STATE_INITIALIZATION",
-					path: path,
-					message: String(action.type || "Action") + " resets client state after asynchronous lifecycle work. Move state initialization before requestable or FullSync actions."
-				});
-			}
-			if (type === "callsequence" || type.indexOf("fullsync") === 0) asyncSeenByChain[chain] = true;
 		});
 		return summary;
 	}
