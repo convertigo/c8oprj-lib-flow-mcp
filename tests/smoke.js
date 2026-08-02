@@ -1080,6 +1080,15 @@ assertTrue(frontendSvelteTextPaletteItem.apply &&
 	"MCP frontend-svelte-palette should return an executable source-backed mutation");
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Variables>",
+	"    <State id=\"query\" type=\"string\" value=\"\" />",
+	"  </Variables>",
+	"  <Events>",
+	"    <OnMount id=\"restoreRoute\"><Actions>",
+	"      <ObjectGet id=\"readRouteQuery\" source=\"@route.query\" key=\"q\" defaultValue=\"\" />",
+	"      <SetValue id=\"restoreQuery\" target=\"local.query\" value=\"@readRouteQuery\" />",
+	"    </Actions></OnMount>",
+	"  </Events>",
 	"  <Structure>",
 	"    <Text id=\"smokeText\" text=\"Smoke text\" />",
 	"    <Button id=\"loadFeed\" label=\"Load feed\">",
@@ -1116,6 +1125,9 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 			suggestion.bindings.some(function (candidate) {
 				return candidate.path === "target" && candidate.binding && candidate.binding.mode === "source";
 			});
+	}) &&
+	appProgressFrontend.result.result.structuredContent.frontend.paperboard.actions.some(function (action) {
+		return action.id === "readRouteQuery" && action.type === "ObjectGet";
 	}) &&
 	appProgressFrontend.result.result.structuredContent.frontend.bindingWarnings.length === 0 &&
 	appProgressFrontend.result.result.structuredContent.tasks.some(function (task) {

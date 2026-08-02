@@ -1235,6 +1235,7 @@ const _meta = {
 				}
 				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action" || structuredSource.category === "fullsync")) {
 					var canonicalActionId = bindingActionId(structuredSource.actionId);
+					var knownAction = actionIndex.byBindingId[canonicalActionId] || actionIndex.byExecutionId[canonicalActionId];
 					var knownSuggestion = null;
 					frontend.bindingSuggestions.some(function (suggestion) {
 						if (String(suggestion.actionId || "") === canonicalActionId) {
@@ -1265,14 +1266,14 @@ const _meta = {
 							}
 						}
 					}
-					if (!knownSuggestion) {
+					if (!knownSuggestion && !knownAction) {
 						frontend.bindingWarnings.push({
 							code: "FRONTEND_BINDING_UNKNOWN_ACTION",
 							path: binding.path,
 							binding: rawSource,
 							message: "Binding references an unknown client action: " + canonicalActionId
 						});
-					} else {
+					} else if (knownSuggestion) {
 						var knownPath = !selectedPath || arrayValue(knownSuggestion.sourcePaths).indexOf(selectedPath) !== -1;
 						if (!knownPath) {
 							frontend.bindingWarnings.push({
