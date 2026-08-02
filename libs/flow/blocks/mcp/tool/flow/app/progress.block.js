@@ -1579,9 +1579,8 @@ const _meta = {
 				engineSource: args.engineSource,
 				surface: "frontend",
 				builder: "svelte",
-				detail: "compact",
-				maxDepth: 24,
-				includeDefinition: true,
+				detail: "full",
+				includeBindings: false,
 				includeFrontendCatalog: false,
 				includeFlowCatalog: false
 			});

@@ -288,7 +288,7 @@ const _meta = {
 					includeBindings: false
 				});
 				var treeError = projectedError(tree);
-				if (!tree || tree.ok !== true || treeError) {
+				if (!tree || tree.ok === false || tree.error || treeError) {
 					diagnostics.push({
 						severity: "error",
 						code: tree && tree.error && tree.error.code || "FRONTEND_SOURCE_INVALID",

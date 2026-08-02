@@ -1623,7 +1623,7 @@ var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svel
 var frontendRouteSegment = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
 	definition: {
-		localName: "store"
+		localName: "[projectId]"
 	},
 	mutation: {
 		value: {
@@ -1638,18 +1638,18 @@ var frontendRouteSegment = mcpLib.createFrontendSource({
 		}
 	}
 });
-var frontendDetailDir = new java.io.File(frontendRouteRoot, "store");
+var frontendDetailDir = new java.io.File(frontendRouteRoot, "[projectId]");
 assertTrue(frontendRouteSegment.created === true &&
 	frontendRouteSegment.written === true &&
 	new java.io.File(frontendDetailDir, ".flow-route.json").isFile(),
-	"MCP frontend source creation should apply the requested localName to route segment folders");
+	"MCP frontend source creation should apply a dynamic localName to route segment folders");
 var frontendRoutePage = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
 	sourcePath: String(new java.io.File(frontendDetailDir, ".flow-route.json").getAbsolutePath()),
 	mutation: {
 		value: {
 			__frontendCreateSource: {
-				baseId: "detailPage",
+				baseId: "projectDetail",
 				directory: "${targetRouteDirectory}",
 				fileName: "+page.flow.svelte",
 				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
@@ -1664,7 +1664,15 @@ var frontendRoutePage = mcpLib.createFrontendSource({
 					"</script>",
 					"",
 					"<FlowComponent id=\"${localName}\" label=\"${LocalName}\">",
-					"  <Structure />",
+					"  <Events>",
+					"    <OnMount id=\"projectMount\"><Actions>",
+					"      <CallSequence id=\"loadProject\" target=\"projectDetailData\" requestable=\".TargetSmoke\"><Variables /></CallSequence>",
+					"    </Actions></OnMount>",
+					"  </Events>",
+					"  <Structure>",
+					"    <Text id=\"projectId\" text=\"@route.params.projectId\" />",
+					"    <Text id=\"projectName\" text=\"@projectDetailData.target\" />",
+					"  </Structure>",
 					"</FlowComponent>",
 					""
 				].join("\n")
@@ -1686,7 +1694,7 @@ var frontendTreeAfterRouteCreation = callTool(13931, "frontend-svelte-tree", {
 	maxDepth: 10
 });
 assertTrue(findCompactNode(frontendTreeAfterRouteCreation.result.result.structuredContent, function (node) {
-		return node.kind === "frontendRouteSegment" && node.summary === "store";
+		return node.kind === "frontendRouteSegment" && node.summary === "[projectId]";
 }) !== null,
 	"MCP frontend document cache should invalidate when a sibling route is created: " +
 		JSON.stringify(frontendTreeAfterRouteCreation.result.result.structuredContent));
@@ -1707,7 +1715,8 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 		return page.id === "home" && page.path === "/";
 	}) &&
 	frontendSourceGet.result.result.structuredContent.authoringContract.pages.some(function (page) {
-		return page.path === "/store";
+		return page.id === "projectDetail" && page.path === "/[projectId]" &&
+			page.parameters.length === 1 && page.parameters[0].name === "projectId";
 	}) &&
 	frontendSourceGet.result.result.structuredContent.authoringContract.navigation.readParameter === "@route.params.id" &&
 	frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
@@ -1736,6 +1745,52 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 	}),
 	"MCP frontend-svelte-code-get should return source, revision and a compact canonical authoring contract; portable=" +
 		JSON.stringify(frontendSourceGet.result.result.structuredContent.authoringContract.portableBlocks));
+var frontendRootSourceCheck = callTool(13811, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendSourceGet.result.result.structuredContent.sourceFile,
+	code: frontendSourceGet.result.result.structuredContent.code
+});
+var frontendDetailSourceGet = callTool(13812, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/[projectId]/+page.flow.svelte"
+});
+var frontendDetailSourceCheck = callTool(13813, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendDetailSourceGet.result.result.structuredContent.sourceFile,
+	code: frontendDetailSourceGet.result.result.structuredContent.code
+});
+assertTrue(frontendRootSourceCheck.result.result.structuredContent.ok === true &&
+	frontendDetailSourceGet.result.result.structuredContent.ok === true &&
+	frontendDetailSourceCheck.result.result.structuredContent.ok === true,
+	"MCP frontend source get/check should accept unchanged root and dynamic route sources: root=" +
+		JSON.stringify(frontendRootSourceCheck) + " dynamic=" + JSON.stringify(frontendDetailSourceCheck));
+var appProgressMultiPage = callTool(13932, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	qname: "TargetSmoke",
+	engineSource: frontendEngineSource,
+	includeFrontend: true,
+	mode: "hardening",
+	detail: "full"
+});
+var multiPageFrontend = appProgressMultiPage.result.result.structuredContent.frontend;
+assertTrue(multiPageFrontend.hasRoutes === true &&
+	multiPageFrontend.paperboard.pageCount === 2 &&
+	multiPageFrontend.paperboard.blocks.some(function (block) {
+		return block.id === "projectName" && block.source && block.source.mode === "source" &&
+			block.source.source.actionId === "projectDetailData" &&
+			block.source.path.length === 1 && block.source.path[0].name === "target";
+	}) && multiPageFrontend.paperboard.actions.some(function (action) {
+		return action.id === "loadProject" && action.target === "projectDetailData" &&
+			action.requestable === ".TargetSmoke";
+	}) && multiPageFrontend.paperboard.dataSources.some(function (binding) {
+		return binding.id === "projectId" && binding.source && binding.source.mode === "source" &&
+			binding.source.source.category === "route" && binding.source.path.length === 2 &&
+			binding.source.path[0].name === "params" && binding.source.path[1].name === "projectId";
+	}) && !multiPageFrontend.bindingWarnings.some(function (warning) {
+		return warning.code === "FRONTEND_BINDING_LEGACY_STRING" && warning.path === "frontends.svelte.source";
+	}), "MCP flow-app-progress should summarize the complete multipage FrontAst projection: " +
+		JSON.stringify(multiPageFrontend));
 var frontendSourceInvalid = callTool(1382, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	code: [
