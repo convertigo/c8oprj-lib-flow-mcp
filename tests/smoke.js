@@ -1181,8 +1181,75 @@ var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.text;
 assertTrue(inspectedBinding && inspectedBinding.sources.some(function (source) {
 	return source.binding && source.binding.mode === "source" && source.mutation && source.mutation.value.mode === "source";
-	}), "MCP frontend-svelte-tree detail=inspect should expose executable schema-backed binding candidates: " +
+}), "MCP frontend-svelte-tree detail=inspect should expose executable schema-backed binding candidates: " +
 		JSON.stringify(frontendBindingInspect));
+var targetBindingSchema = {
+	type: "object",
+	properties: {
+		detail: {
+			type: "object",
+			properties: {
+				thumbnail: { type: "string" },
+				displayName: { type: "string" },
+				topics: { type: "array", items: { type: "string" } },
+				releases: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							version: { type: "string" },
+							assets: {
+								type: "array",
+								items: { type: "object", properties: { url: { type: "string" } } }
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+};
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
+	"<FlowComponent id=\"home\" label=\"Home\">",
+	"  <Structure>",
+	"    <OnMount id=\"loadProject\"><Actions>",
+	"      <CallSequence id=\"readProject\" target=\"projectDetail\" requestable=\".TargetSmoke\" outputSchema={" + JSON.stringify(targetBindingSchema) + "}>",
+	"        <Variables />",
+	"      </CallSequence>",
+	"    </Actions></OnMount>",
+	"    <Image id=\"projectThumbnail\" src=\"@projectDetail.detail.thumbnail\" alt=\"Project thumbnail\" />",
+	"    <Text id=\"projectName\" text=\"@projectDetail.detail.displayName\" />",
+	"    <Table id=\"projectTopics\" source=\"@projectDetail.detail.topics\" />",
+	"    <Text id=\"releaseVersion\" text=\"@projectDetail.detail.releases[0].version\" />",
+	"    <Text id=\"releaseAsset\" text=\"@projectDetail.detail.releases[0].assets[0].url\" />",
+	"    <Text id=\"invalidProjectField\" text=\"@projectDetail.detail.missing\" />",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
+var appProgressTargetBinding = callTool(13971, "flow-app-progress", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	includeFrontend: true,
+	detail: "full"
+});
+var targetBindingFrontend = appProgressTargetBinding.result.result.structuredContent.frontend;
+var targetBindingSuggestion = targetBindingFrontend.bindingSuggestions.filter(function (suggestion) {
+	return suggestion.actionId === "projectDetail";
+})[0];
+var targetSchemaWarnings = targetBindingFrontend.bindingWarnings.filter(function (warning) {
+	return warning.code === "FRONTEND_BINDING_UNKNOWN_SCHEMA_PATH";
+});
+assertTrue(targetBindingSuggestion && targetBindingSuggestion.executionId === "readProject" &&
+	targetBindingSuggestion.example.statusActionId === "readProject" &&
+	["detail.thumbnail", "detail.displayName", "detail.topics", "detail.releases[0].version",
+		"detail.releases[0].assets[0].url"].every(function (path) {
+		return targetBindingSuggestion.sourcePaths.indexOf(path) !== -1;
+	}) && targetSchemaWarnings.length === 1 &&
+	JSON.stringify(targetSchemaWarnings[0].binding).indexOf("missing") !== -1,
+	"MCP flow-app-progress should index CallSequence schemas by target while retaining id for execution state: " +
+		JSON.stringify(targetBindingFrontend));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
 	"  <Structure>",

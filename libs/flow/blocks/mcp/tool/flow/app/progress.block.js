@@ -341,8 +341,31 @@ const _meta = {
 		return parts.length ? parts[parts.length - 1] : "";
 	}
 
+	function actionIdentity(action) {
+		action = action || {};
+		var executionId = String(action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
+		return {
+			bindingId: String(action.target || executionId),
+			executionId: executionId
+		};
+	}
+
 	function actionResultId(action) {
-		return String(action.target || action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
+		return actionIdentity(action).bindingId;
+	}
+
+	function frontendActionIndex(actions) {
+		var index = { byBindingId: {}, byExecutionId: {} };
+		arrayValue(actions).forEach(function (action) {
+			var identity = actionIdentity(action);
+			if (identity.bindingId && !index.byBindingId[identity.bindingId]) {
+				index.byBindingId[identity.bindingId] = action;
+			}
+			if (identity.executionId && !index.byExecutionId[identity.executionId]) {
+				index.byExecutionId[identity.executionId] = action;
+			}
+		});
+		return index;
 	}
 
 	function fullSyncOperation(type, mode) {
@@ -670,7 +693,9 @@ const _meta = {
 		frontend.bindingSuggestions = [];
 		frontend.bindingWarnings = [];
 		var paperboard = frontend.paperboard || {};
+		var actionIndex = frontendActionIndex(paperboard.actions);
 		var pickerCache = {};
+		var pickerSchemaPaths = {};
 		var requestableSchemaCache = {};
 		var timing = frontend.timing || {};
 		timing.pickerCalls = 0;
@@ -684,9 +709,14 @@ const _meta = {
 				return typeof part === "string" ? part : JSON.stringify(part || {});
 			}).join("|");
 		}
-			function pickerSource(path, sourceId, binding) {
-				var property = String(binding && binding.bindingProperty || "source");
-				var key = cacheKey([path, sourceId, property]);
+		function bindingActionId(value) {
+			var id = String(value || "");
+			var action = actionIndex.byBindingId[id] || actionIndex.byExecutionId[id];
+			return action ? actionIdentity(action).bindingId : id;
+		}
+		function pickerSource(path, sourceId, binding) {
+			var property = String(binding && binding.bindingProperty || "source");
+			var key = cacheKey([path, sourceId, property]);
 			if (Object.prototype.hasOwnProperty.call(pickerCache, key)) {
 				timing.pickerCacheHits++;
 				return pickerCache[key];
@@ -699,10 +729,10 @@ const _meta = {
 					projectDir: args.projectDir,
 					engineSource: args.engineSource,
 					surface: "frontend",
-						builder: "svelte",
-						focusPath: path,
-						detail: "inspect",
-						property: property,
+					builder: "svelte",
+					focusPath: path,
+					detail: "inspect",
+					property: property,
 					sourceId: sourceId,
 					maxDepth: 0,
 					includeFrontendCatalog: false,
@@ -746,6 +776,21 @@ const _meta = {
 			} finally {
 				timing.pickerMs += Number(java.lang.System.currentTimeMillis()) - started;
 			}
+		}
+		function pickerPaths(path, sourceId, binding) {
+			sourceId = bindingActionId(sourceId);
+			var indexKey = cacheKey([sourceId, binding && binding.bindingProperty || "source", binding && binding.type || ""]);
+			if (Object.prototype.hasOwnProperty.call(pickerSchemaPaths, indexKey)) {
+				return pickerSchemaPaths[indexKey];
+			}
+			var source = pickerSource(path, sourceId, binding);
+			var paths = [];
+			arrayValue(source && source.bindings).forEach(function (candidate) {
+				var candidatePath = String(candidate && candidate.path || "");
+				if (candidatePath && paths.indexOf(candidatePath) === -1) paths.push(candidatePath);
+			});
+			pickerSchemaPaths[indexKey] = paths;
+			return paths;
 		}
 		function knownRequestableSchema(requestable, input) {
 			var key = cacheKey([requestable, input]);
@@ -917,7 +962,9 @@ const _meta = {
 		}
 		var plannedIterators = {};
 		arrayValue(paperboard.actions).forEach(function (action) {
-			var actionId = actionResultId(action);
+			var identity = actionIdentity(action);
+			var actionId = identity.bindingId;
+			var executionId = identity.executionId || actionId;
 			var operation = String(action.fullSyncOperation || "");
 			var schemaRequestable = String(action.schemaRequestable || "");
 			var requestable = String(action.requestable || "");
@@ -968,7 +1015,7 @@ const _meta = {
 					: { category: "requestable", actionId: actionId };
 				frontend.bindingSuggestions.push({
 					actionId: actionId,
-					executionId: String(action.id || actionId),
+					executionId: executionId,
 					requestable: requestable,
 					operation: operation,
 					schemaRequestable: schemaRequestable,
@@ -1015,8 +1062,8 @@ const _meta = {
 						return { path: path, binding: sourceBinding(source, path) };
 					}),
 					example: summary.arrayPaths.length
-						? { forEachBinding: sourceBinding(source, summary.arrayPaths[0]), statusActionId: actionId }
-						: { binding: sourceBinding(source, summary.leafPaths[0] || ""), statusActionId: actionId },
+						? { forEachBinding: sourceBinding(source, summary.arrayPaths[0]), statusActionId: executionId }
+						: { binding: sourceBinding(source, summary.leafPaths[0] || ""), statusActionId: executionId },
 					note: "Pass one returned binding or mutation unchanged. String paths are migration input only."
 				});
 			} catch (e) {
@@ -1221,25 +1268,35 @@ const _meta = {
 					}
 				}
 				if (rawSource.mode === "source" && (structuredSource.category === "requestable" || structuredSource.category === "action" || structuredSource.category === "fullsync")) {
+					var canonicalActionId = bindingActionId(structuredSource.actionId);
 					var knownSuggestion = null;
 					frontend.bindingSuggestions.some(function (suggestion) {
-						if (String(suggestion.actionId || "") === String(structuredSource.actionId || "")) {
+						if (String(suggestion.actionId || "") === canonicalActionId) {
 							knownSuggestion = suggestion;
 							return true;
 						}
 						return false;
 					});
-					if (!knownSuggestion) {
-						var pickerKnown = pickerSource(binding.path, structuredSource.actionId, binding);
-						if (pickerKnown) {
-							knownSuggestion = {
-								actionId: structuredSource.actionId,
-								sourcePaths: arrayValue(pickerKnown.bindings).map(function (candidate) {
-									return String(candidate && candidate.path || "");
-								}).filter(function (path) {
-									return !!path;
-								})
-							};
+					var selectedPath = bindingPathText(rawSource.path || []);
+					var knownPaths = arrayValue(knownSuggestion && knownSuggestion.sourcePaths);
+					if (!knownSuggestion || (selectedPath && knownPaths.indexOf(selectedPath) === -1)) {
+						var indexedPaths = pickerPaths(binding.path, canonicalActionId, binding);
+						if (indexedPaths.length) {
+							var mergedPaths = knownPaths.slice();
+							indexedPaths.forEach(function (path) {
+								if (mergedPaths.indexOf(path) === -1) mergedPaths.push(path);
+							});
+							if (knownSuggestion) {
+								knownSuggestion.sourcePaths = mergedPaths;
+								knownSuggestion.schemaSource = "frontend source index";
+								delete knownSuggestion.error;
+							} else {
+								knownSuggestion = {
+									actionId: canonicalActionId,
+									schemaSource: "frontend source index",
+									sourcePaths: mergedPaths
+								};
+							}
 						}
 					}
 					if (!knownSuggestion) {
@@ -1247,17 +1304,16 @@ const _meta = {
 							code: "FRONTEND_BINDING_UNKNOWN_ACTION",
 							path: binding.path,
 							binding: rawSource,
-							message: "Binding references an unknown client action: " + String(structuredSource.actionId || "")
+							message: "Binding references an unknown client action: " + canonicalActionId
 						});
 					} else {
-						var selectedPath = bindingPathText(rawSource.path || []);
 						var knownPath = !selectedPath || arrayValue(knownSuggestion.sourcePaths).indexOf(selectedPath) !== -1;
 						if (!knownPath) {
 							frontend.bindingWarnings.push({
 								code: "FRONTEND_BINDING_UNKNOWN_SCHEMA_PATH",
 								path: binding.path,
 								binding: rawSource,
-								message: "Binding path is not present in the effective schema for action " + String(structuredSource.actionId || "") + ": " + selectedPath
+								message: "Binding path is not present in the effective schema for action " + canonicalActionId + ": " + selectedPath
 							});
 						}
 					}
