@@ -11,6 +11,27 @@ MCP server. Keep the workflow source-first. Draft once, then use only
 diagnostic candidates, or one focused lookup when none is returned; never probe
 guessed synonyms.
 
+## Persistent Specialists
+
+For a full-stack application, prefer two reusable specialists over a new agent
+for every implementation lot:
+
+- `convertigo-flow-backend` owns FlowScript, schemas, backend blocks and runtime
+  proof;
+- `convertigo-flow-frontend-svelte` owns Flow Svelte, the component catalog,
+  the dev viewer and browser proof.
+
+Create or select each specialist once, keep its identity for later lots, and
+send it focused follow-up work. Do not respawn an agent merely because the next
+change concerns another file in the same domain. The orchestrator owns the
+cross-domain contract, integration order and final full-stack acceptance. It
+must close obsolete agents instead of accumulating an unbounded pool.
+
+Every specialist must use the named `convertigo-flow` MCP server. Raw MCP over
+`curl`, handwritten JSON-RPC and direct edits to Convertigo YAML are
+configuration failures, not acceptable fallbacks. Browser proof must use the
+managed Playwright connection supplied by the host for the current viewer.
+
 ## POC First
 
 Unless the user explicitly requests production hardening, optimize for the
