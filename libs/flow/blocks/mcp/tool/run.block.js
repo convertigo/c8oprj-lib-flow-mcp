@@ -140,47 +140,102 @@ const _meta = {
 		return result;
 	}
 
-	function insertProvider(ctx, args) {
+	function insertProvider(ctx, mcp, args) {
 		var mutation = args.mutation || {};
 		var provider = String(mutation.provider || "");
 		var descriptorId = String(mutation.descriptorId || "");
 		if (!provider || !descriptorId || !args.project) {
 			throw new Error("insertProvider requires a qualified parentPath, provider and descriptorId.");
 		}
-		var reference = ctx.callBlock("project.reference", {
-			project: args.project,
-			reference: provider,
-			dryRun: false
-		}, { trace: false });
-		var paletteArgs = {
-			project: args.project,
-			projectDir: args.projectDir,
-			surface: args.surface || "frontend",
-			builder: args.builder || "svelte",
-			focusPath: args.focusPath,
-			position: args.position || "inside",
-			query: descriptorId
-		};
-		var palette = ctx.callBlock("authoring.palette", paletteArgs, { trace: false });
-		var selected = null;
-		(palette.items || []).some(function (item) {
-			if (String(item.id || "") === descriptorId) {
-				selected = item;
-				return true;
+		var reference = null;
+		try {
+			reference = ctx.callBlock("project.reference", {
+				project: args.project,
+				reference: provider,
+				dryRun: false
+			}, { trace: false });
+			// A project reference changes the eligible provider set. Refresh this
+			// runtime before resolving the descriptor in the same atomic call.
+			ctx.cacheClear();
+			var paletteArgs = {
+				project: args.project,
+				projectDir: args.projectDir,
+				surface: args.surface || "frontend",
+				builder: args.builder || "svelte",
+				focusPath: args.focusPath,
+				position: args.position || "inside",
+				query: descriptorId
+			};
+			var palette = ctx.callBlock("authoring.palette", paletteArgs, { trace: false });
+			if (String(paletteArgs.surface) === "frontend" && String(paletteArgs.builder) === "svelte") {
+				palette = mcp._enrichSveltePaletteMutations(paletteArgs, palette);
 			}
-			return false;
-		});
-		if (!selected || !selected.apply || !selected.apply.arguments) {
-			throw new Error("Referenced provider " + provider + " but descriptor " + descriptorId + " is not compatible with the selected parent.");
+			var selected = null;
+			(palette.items || []).some(function (item) {
+				if (String(item.id || "") === descriptorId) {
+					selected = item;
+					return true;
+				}
+				return false;
+			});
+			if ((!selected || !selected.apply || !selected.apply.arguments) && String(args.surface || "") === "backend") {
+				var libraryResult = ctx.callBlock("project.library.search", {
+					project: args.project,
+					query: descriptorId,
+					target: "backend",
+					limit: 5
+				}, { trace: false });
+				var backendMatch = null;
+				(libraryResult.libraries || []).some(function (library) {
+					if (String(library.project || "") !== provider || library.referenced !== true) {
+						return false;
+					}
+					return (library.matches || []).some(function (match) {
+						if (match.kind === "backendBlock" && String(match.id || "") === descriptorId) {
+							backendMatch = match;
+							return true;
+						}
+						return false;
+					});
+				});
+				if (backendMatch) {
+					return {
+						ok: true,
+						target: "provider",
+						surface: "backend",
+						parentPath: mcp.qualifyAuthoringPath(args, args.focusPath),
+						catalogUpdated: true,
+						descriptor: backendMatch,
+						providerReference: reference,
+						next: "The backend block is now available to FlowScript diagnostics and the project catalog."
+					};
+				}
+			}
+			if (!selected || !selected.apply || !selected.apply.arguments) {
+				throw new Error("Referenced provider " + provider + " but descriptor " + descriptorId + " is not compatible with the selected parent.");
+			}
+			var selectedArgs = merge({}, selected.apply.arguments);
+			selectedArgs.project = args.project;
+			selectedArgs.projectDir = args.projectDir;
+			selectedArgs.surface = args.surface || selectedArgs.surface || "frontend";
+			selectedArgs.builder = args.builder || selectedArgs.builder || "svelte";
+			var mutationResult = ctx.authoringMutateSource(selectedArgs);
+			mutationResult.providerReference = reference;
+			return mutationResult;
+		} catch (e) {
+			if (reference && reference.created === true) {
+				try {
+					ctx.callBlock("project.reference.rollback", {
+						project: args.project,
+						reference: provider
+					}, { trace: false });
+					ctx.cacheClear();
+				} catch (rollbackError) {
+					throw new Error(String(e) + " Reference rollback also failed: " + String(rollbackError));
+				}
+			}
+			throw e;
 		}
-		var selectedArgs = merge({}, selected.apply.arguments);
-		selectedArgs.project = args.project;
-		selectedArgs.projectDir = args.projectDir;
-		selectedArgs.surface = args.surface || selectedArgs.surface || "frontend";
-		selectedArgs.builder = args.builder || selectedArgs.builder || "svelte";
-		var mutationResult = ctx.authoringMutateSource(selectedArgs);
-		mutationResult.providerReference = reference;
-		return mutationResult;
 	}
 
 	return {
@@ -199,7 +254,7 @@ const _meta = {
 				var result;
 				if (target === "authoring.mutate") {
 					result = args.mutation && String(args.mutation.op || "") === "insertProvider"
-						? insertProvider(ctx, args)
+						? insertProvider(ctx, mcp, args)
 						: mcp.isFrontendSourceCreation(args)
 						? mcp.createFrontendSource(args)
 						: ctx.authoringMutateSource(args);

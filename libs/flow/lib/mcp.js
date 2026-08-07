@@ -555,6 +555,16 @@
 		}
 		if (parent.path) {
 			args.focusPath = parent.path;
+			if (!args.surface) {
+				if (/^frontends(?:\.|$)/.test(parent.path)) {
+					args.surface = "frontend";
+					if (/^frontends\.svelte(?:\.|$)/.test(parent.path) && !args.builder) {
+						args.builder = "svelte";
+					}
+				} else if (/^(?:engine|catalog)(?:\.|$)/.test(parent.path)) {
+					args.surface = "backend";
+				}
+			}
 		}
 		return args;
 	}
@@ -1528,17 +1538,19 @@
 	function isSveltePaletteRequest(request) {
 		var name = toolName(request);
 		var args = toolArguments(request);
+		var parentPath = String(args && args.parentPath || "");
 		return name === "frontend-svelte-palette"
 			|| (name === "authoring-palette"
-				&& String(args && args.surface || "") === "frontend"
-				&& String(args && args.builder || "") === "svelte");
+				&& ((String(args && args.surface || "") === "frontend"
+					&& String(args && args.builder || "") === "svelte")
+					|| parentPath.indexOf("::frontends.svelte.") !== -1));
 	}
 
-	function enrichSveltePaletteMutations(request, value) {
-		if (!value || typeof value !== "object" || !isSveltePaletteRequest(request) || !Array.isArray(value.items)) {
+	function enrichSveltePaletteMutationsForArgs(args, value) {
+		if (!value || typeof value !== "object" || !Array.isArray(value.items)) {
 			return value;
 		}
-		var args = toolArguments(request) || {};
+		args = args || {};
 		var focus = value.focus || {};
 		value.items.forEach(function (item) {
 			if (!item || typeof item !== "object" || !item.insert || item.mutation || item.apply) {
@@ -1565,6 +1577,12 @@
 			};
 		});
 		return value;
+	}
+
+	function enrichSveltePaletteMutations(request, value) {
+		return isSveltePaletteRequest(request)
+			? enrichSveltePaletteMutationsForArgs(toolArguments(request) || {}, value)
+			: value;
 	}
 
 	function bootstrapFrontendDescriptor(kind) {
@@ -3444,6 +3462,7 @@
 		persistSourceMutationResult: persistSourceMutationResult,
 		isFrontendSourceCreation: isFrontendSourceCreation,
 		createFrontendSource: createFrontendSource,
+		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
 		finalizeResponse: finalizeResponse,
 		sanitizeForMcp: sanitizeForMcp,

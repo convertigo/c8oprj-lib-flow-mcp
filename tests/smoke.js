@@ -215,6 +215,21 @@ var normalizedFlowVersionYaml = mcpLib._normalizeConvertigoFlowProjectVersion([
 ].join("\n"));
 assertTrue(normalizedFlowVersionYaml.indexOf("↑convertigo: 8.5.0.m006\n") === 0,
 	"MCP should bump Convertigo project version when Flow DBOs are declared");
+var enrichedQualifiedPalette = mcpLib._enrichSveltePaletteMutations({
+	project: "Consumer"
+}, {
+	items: [{
+		id: "charts.line",
+		insert: { id: "chart", kind: "line" },
+		targetSlot: {
+			sourceMutationPath: "frontAst.slots.structure.children",
+			sourcePath: "libs/flow/frontbuilder/svelte/model/Consumer/src/routes/+page.flow.svelte"
+		}
+	}]
+});
+assertTrue(enrichedQualifiedPalette.items[0].apply.tool === "frontend-svelte-mutate" &&
+	enrichedQualifiedPalette.items[0].apply.arguments.mutation.op === "append",
+	"Qualified authoring palettes should expose an executable Svelte apply mutation");
 
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
@@ -302,6 +317,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(!list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-library-search";
 }), "MCP Flow tools/list should keep workspace library discovery internal");
+assertTrue(!list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-palette";
+}), "MCP Flow tools/list should keep specialized frontend palette discovery internal");
 var projectRemoveTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-project-remove";
 })[0];
@@ -734,6 +752,7 @@ var mcpToolRunSource = String(Packages.org.apache.commons.io.FileUtils.readFileT
 var isolatedMcpToolRun = eval(mcpToolRunSource.substring(mcpToolRunSource.indexOf("(function ()")));
 var writtenToolResponse = null;
 var providerMutationArgs = null;
+var providerCacheClearCount = 0;
 var preparedPaletteArgs = {
 	project: "Consumer",
 	projectDir: "/tmp/Consumer",
@@ -749,6 +768,7 @@ var fakeMcp = {
 	qualifyAuthoringResult: function (_args, value) { return value; },
 	toolResponse: function (_request, value) { return value; },
 	toolError: function (_request, error) { throw error; },
+	_enrichSveltePaletteMutations: function (_args, value) { return value; },
 	persistSourceMutationResult: function (_request, _args, value) { return value; },
 	isFrontendSourceCreation: function () { return false; }
 };
@@ -811,10 +831,68 @@ fakeRunCtx.authoringMutateSource = function (args) {
 	providerMutationArgs = args;
 	return { ok: true, source: "<FlowComponent />", sourceFile: args.sourceFile };
 };
+fakeRunCtx.cacheClear = function () {
+	providerCacheClearCount++;
+	return { ok: true };
+};
 var providerInsertion = isolatedMcpToolRun.run(fakeRunCtx, {});
 assertTrue(providerInsertion.ok === true && providerInsertion.providerReference.reference === "Charts" &&
-	providerMutationArgs.project === "Consumer" && providerMutationArgs.projectDir === "/tmp/Consumer",
+	providerMutationArgs.project === "Consumer" && providerMutationArgs.projectDir === "/tmp/Consumer" &&
+	providerCacheClearCount === 1,
 	"Generic provider insertion should add the reference and apply the selected descriptor atomically");
+
+preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	focusPath: "catalog.blocks",
+	surface: "backend",
+	mutation: { op: "insertProvider", provider: "Github", descriptorId: "github.repository.get" }
+};
+fakeRunCtx.callBlock = function (name) {
+	if (name === "project.reference") return { ok: true, project: "Consumer", reference: "Github", created: true, saved: true };
+	if (name === "authoring.palette") return { items: [] };
+	if (name === "project.library.search") return {
+		libraries: [{
+			project: "Github",
+			referenced: true,
+			matches: [{ kind: "backendBlock", id: "github.repository.get", name: "Get repository" }]
+		}]
+	};
+	throw new Error("Unexpected isolated backend provider insertion call: " + name);
+};
+var backendProviderInsertion = isolatedMcpToolRun.run(fakeRunCtx, {});
+assertTrue(backendProviderInsertion.ok === true && backendProviderInsertion.catalogUpdated === true &&
+	backendProviderInsertion.descriptor.id === "github.repository.get" &&
+	backendProviderInsertion.providerReference.reference === "Github" && providerCacheClearCount === 2,
+	"Generic backend provider insertion should atomically expose the selected block in the consumer catalog");
+
+var rolledBackProvider = null;
+preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	focusPath: "frontends.svelte.routes.home.structure",
+	surface: "frontend",
+	builder: "svelte",
+	mutation: { op: "insertProvider", provider: "BrokenCharts", descriptorId: "charts.missing" }
+};
+fakeRunCtx.callBlock = function (name, args) {
+	if (name === "project.reference") return { ok: true, project: "Consumer", reference: "BrokenCharts", created: true, saved: true };
+	if (name === "authoring.palette") return { items: [] };
+	if (name === "project.reference.rollback") {
+		rolledBackProvider = args;
+		return { ok: true, removed: true, saved: true };
+	}
+	throw new Error("Unexpected isolated provider rollback call: " + name);
+};
+var failedProviderInsertion = false;
+try {
+	isolatedMcpToolRun.run(fakeRunCtx, {});
+} catch (_expectedProviderFailure) {
+	failedProviderInsertion = true;
+}
+assertTrue(failedProviderInsertion === true && rolledBackProvider.project === "Consumer" &&
+	rolledBackProvider.reference === "BrokenCharts" && providerCacheClearCount === 4,
+	"Generic provider insertion should roll back a newly created reference when descriptor application fails");
 
 var targetDir = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
 	"lib_flow_mcp_target_" + java.lang.System.currentTimeMillis());
@@ -893,7 +971,8 @@ var qualifiedAuthoringPalette = callTool(1361, "authoring-palette", {
 	parentPath: "target::engine"
 });
 assertTrue(qualifiedAuthoringPalette.result.result.structuredContent.ok === true &&
-	qualifiedAuthoringPalette.result.result.structuredContent.parentPath === "target::engine",
+	qualifiedAuthoringPalette.result.result.structuredContent.parentPath === "target::engine" &&
+	qualifiedAuthoringPalette.result.result.structuredContent.surface === "backend",
 	"MCP authoring-palette should derive project and focus from qualified parentPath");
 var frontendSveltePalette = callTool(137, "frontend-svelte-palette", {
 	projectDir: targetProjectDir,
