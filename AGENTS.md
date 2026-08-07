@@ -66,6 +66,8 @@ flow-schema-reset only for broader stale learned-schema cleanup
 code-patch for revision-checked maintenance edits on that working copy
 code-promote once executable Flow behavior is clean; do not promote project-local blocks
 flow-catalog only when search/examples are insufficient; it is summary by default
+authoring-palette with the parentPath returned by authoring-tree when code diagnostics cannot resolve a reusable frontend capability; workspace providers and references are resolved by the palette
+flow-project-reference only for explicit project-reference maintenance, not normal palette discovery
 code-rg / code-get / code-patch for project-local FlowScript blocks
 code-set only when reusable vocabulary is needed
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases

@@ -1300,8 +1300,8 @@ const _meta = {
 							path: binding.path,
 							message: "Data-bound ForEach has no visible child and cannot render its rows.",
 							inspect: {
-								tool: "frontend-svelte-palette",
-								arguments: { project: args.project, focusPath: binding.path, query: "Card Text Image Button" }
+								tool: "authoring-palette",
+								arguments: { parentPath: String(args.project || "") + "::" + binding.path, query: "Card Text Image Button" }
 							}
 						});
 					}

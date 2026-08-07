@@ -86,6 +86,103 @@ const _meta = {
 		return ctx.template(value) || {};
 	}
 
+	function externalPaletteItems(ctx, mcp, args, result) {
+		if (!result || result.ok !== true || Number(result.eligibleCount || 0) > 0 || !args.project || !String(args.query || "").trim()) {
+			return result;
+		}
+		var libraries = ctx.callBlock("project.library.search", {
+			project: args.project,
+			query: args.query,
+			target: String(args.surface || "frontend") === "frontend" ? "frontend" : "backend",
+			limit: 5
+		}, { trace: false });
+		var expectedKind = String(args.surface || "frontend") === "frontend"
+			? "frontendComponent"
+			: "backendBlock";
+		var additions = [];
+		(libraries.libraries || []).forEach(function (library) {
+			if (library.referenced === true) {
+				return;
+			}
+			(library.matches || []).forEach(function (match) {
+				if (match.kind !== expectedKind) {
+					return;
+				}
+				additions.push({
+					id: match.id,
+					label: match.name || match.id,
+					category: (match.category || "Workspace library") + " - " + library.project,
+					description: match.description || "Reusable component from workspace project " + library.project + ".",
+					provider: library.project,
+					external: true,
+					apply: {
+						tool: "authoring-mutate",
+						arguments: {
+							parentPath: mcp.qualifyAuthoringPath(args, args.focusPath),
+							surface: args.surface || "frontend",
+							builder: args.builder || "svelte",
+							position: args.position || "inside",
+							mutation: {
+								op: "insertProvider",
+								provider: library.project,
+								descriptorId: match.id
+							}
+						}
+					}
+				});
+			});
+		});
+		if (additions.length) {
+			result.items = (result.items || []).concat(additions);
+			result.eligibleCount = Number(result.eligibleCount || 0) + additions.length;
+			result.workspaceCandidateCount = additions.length;
+		}
+		return result;
+	}
+
+	function insertProvider(ctx, args) {
+		var mutation = args.mutation || {};
+		var provider = String(mutation.provider || "");
+		var descriptorId = String(mutation.descriptorId || "");
+		if (!provider || !descriptorId || !args.project) {
+			throw new Error("insertProvider requires a qualified parentPath, provider and descriptorId.");
+		}
+		var reference = ctx.callBlock("project.reference", {
+			project: args.project,
+			reference: provider,
+			dryRun: false
+		}, { trace: false });
+		var paletteArgs = {
+			project: args.project,
+			projectDir: args.projectDir,
+			surface: args.surface || "frontend",
+			builder: args.builder || "svelte",
+			focusPath: args.focusPath,
+			position: args.position || "inside",
+			query: descriptorId
+		};
+		var palette = ctx.callBlock("authoring.palette", paletteArgs, { trace: false });
+		var selected = null;
+		(palette.items || []).some(function (item) {
+			if (String(item.id || "") === descriptorId) {
+				selected = item;
+				return true;
+			}
+			return false;
+		});
+		if (!selected || !selected.apply || !selected.apply.arguments) {
+			throw new Error("Referenced provider " + provider + " but descriptor " + descriptorId + " is not compatible with the selected parent.");
+		}
+		var selectedArgs = merge({}, selected.apply.arguments);
+		selectedArgs.project = args.project;
+		selectedArgs.projectDir = args.projectDir;
+		selectedArgs.surface = args.surface || selectedArgs.surface || "frontend";
+		selectedArgs.builder = args.builder || selectedArgs.builder || "svelte";
+		var mutationResult = ctx.authoringMutateSource(selectedArgs);
+		mutationResult.providerReference = reference;
+		return mutationResult;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -101,11 +198,19 @@ const _meta = {
 				merge(args, extraArgs(ctx, props.args));
 				var result;
 				if (target === "authoring.mutate") {
-					result = mcp.isFrontendSourceCreation(args)
+					result = args.mutation && String(args.mutation.op || "") === "insertProvider"
+						? insertProvider(ctx, args)
+						: mcp.isFrontendSourceCreation(args)
 						? mcp.createFrontendSource(args)
 						: ctx.authoringMutateSource(args);
 				} else {
 					result = ctx.callBlock(target, args, { trace: false });
+				}
+				if (target === "authoring.palette") {
+					result = externalPaletteItems(ctx, mcp, args, result);
+				}
+				if (target === "authoring.palette" || target === "authoring.tree") {
+					result = mcp.qualifyAuthoringResult(args, result);
 				}
 				response = mcp.toolResponse(request, mcp.persistSourceMutationResult(request, args, result), ctx);
 			} catch (e) {

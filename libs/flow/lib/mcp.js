@@ -521,6 +521,74 @@
 		return args;
 	}
 
+	function splitAuthoringParentPath(value) {
+		value = String(value || "").trim();
+		if (!value) {
+			return null;
+		}
+		var separator = value.indexOf("::");
+		if (separator === -1) {
+			return { project: "", path: value };
+		}
+		return {
+			project: value.substring(0, separator).trim(),
+			path: value.substring(separator + 2).trim()
+		};
+	}
+
+	function normalizeAuthoringParentPath(name, args) {
+		if (["authoring-palette", "authoring-mutate", "frontend-svelte-palette", "frontend-svelte-mutate"].indexOf(name) === -1) {
+			return args;
+		}
+		var parent = splitAuthoringParentPath(args.parentPath);
+		if (!parent) {
+			return args;
+		}
+		if (parent.project) {
+			if (args.project && String(args.project) !== parent.project) {
+				throw new Error(name + " parentPath project " + parent.project + " conflicts with project " + args.project + ".");
+			}
+			args.project = parent.project;
+		}
+		if (!args.project && !args.projectDir) {
+			throw new Error(name + " expects a qualified parentPath returned by authoring-tree, for example Project::frontends.svelte.routes.");
+		}
+		if (parent.path) {
+			args.focusPath = parent.path;
+		}
+		return args;
+	}
+
+	function qualifyAuthoringPath(args, path) {
+		path = String(path || "");
+		return args && args.project ? String(args.project) + "::" + path : path;
+	}
+
+	function qualifyAuthoringResult(args, value) {
+		if (!value || typeof value !== "object") {
+			return value;
+		}
+		function qualifyNode(node) {
+			if (!node || typeof node !== "object") {
+				return;
+			}
+			if (node.path !== undefined && node.path !== null) {
+				node.parentPath = qualifyAuthoringPath(args, node.path);
+			}
+			(node.children || []).forEach(qualifyNode);
+		}
+		(value.children || []).forEach(qualifyNode);
+		if (value.focus && value.focus.path !== undefined) {
+			value.focus.parentPath = qualifyAuthoringPath(args, value.focus.path);
+		}
+		if (value.focusPath !== undefined && value.focusPath !== null) {
+			value.parentPath = qualifyAuthoringPath(args, value.focusPath);
+		} else if (value.focus && value.focus.path !== undefined) {
+			value.parentPath = value.focus.parentPath;
+		}
+		return value;
+	}
+
 	function studioRefreshQName(qname) {
 		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 		var System = java.lang.System;
@@ -1650,6 +1718,7 @@
 					Number(Packages.java.lang.System.currentTimeMillis()) + 5000);
 			}
 		}
+		args = normalizeAuthoringParentPath(name, args);
 		var hasExplicitProject = args.project || args.projectDir;
 		if (args.project && (String(args.project).indexOf("/") !== -1 || String(args.project).indexOf("\\") !== -1)) {
 			throw new Error(name + " expects project:\"<Convertigo project name>\". Use projectDir only for standalone tests with a filesystem path.");
@@ -3359,6 +3428,8 @@
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
+		qualifyAuthoringPath: qualifyAuthoringPath,
+		qualifyAuthoringResult: qualifyAuthoringResult,
 		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,

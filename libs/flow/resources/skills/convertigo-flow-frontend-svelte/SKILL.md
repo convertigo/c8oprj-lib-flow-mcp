@@ -19,6 +19,13 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   and synchronize only after a successful source check.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
   tree. Put reusable visual rules in `app.flow.css` and expose concise classes.
+- Before creating a local component or mock, call `authoring-palette` once at
+  the intended qualified `parentPath` with the business capability. The
+  contextual palette searches project, references and workspace and returns
+  one executable mutation. Never copy provider source.
+- Let provider components declare exact npm dependencies. `dev.sync` owns
+  incremental installation and the exceptional dev restart; never run npm in
+  generated application files.
 - Use schema-backed sources and report missing backend fields to the backend
   specialist instead of hard-coding around them.
 - Prove the visible workflow through the host-managed Playwright connection to

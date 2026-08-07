@@ -187,10 +187,12 @@ consumer such as `xml.parse`, never the whole envelope. Frontend rendered asset
 URLs use `resources/...`.
 
 When a block is unknown, use the ranked diagnostic candidate or one focused
-catalog search. Do not probe synonyms with repeated `flow-block-get` calls. Use
-an existing block only when its contract matches. Otherwise create a typed
-project-local mock with `flow-block-mock`, then implement it. A task is not
-complete while `flow-block-mock-list` reports a mock.
+catalog search. Workspace and referenced-provider discovery belong to those
+diagnostics; never call a separate library-search tool. Do not probe synonyms
+with repeated `flow-block-get` calls. Use an existing block only when its
+contract matches. Otherwise create a typed project-local mock with
+`flow-block-mock`, then implement it. A task is not complete while
+`flow-block-mock-list` reports a mock.
 
 ## Project Blocks
 
@@ -271,8 +273,9 @@ Back controls use `GoBack` with a fallback. Read
 matchers, nested layouts or route groups.
 
 If `frontend-svelte-code-check` reports an unknown property, block, scope or
-picker candidate, make one focused `frontend-svelte-tree` or
-`frontend-svelte-palette` lookup. Execute returned mutations unchanged. Do not
+picker candidate, inspect the exact node once, then call
+`authoring-palette({ parentPath, query })` with the qualified `parentPath`
+returned by the tree. Execute returned mutations unchanged. Do not
 reconstruct an application with unit `frontend-svelte-mutate` calls. Never
 request `detail:"full"` from the tree: use `detail:"inspect"` with an exact
 `focusPath`, `maxDepth:0`, the property name and `sourceId` when known. Full
@@ -318,11 +321,20 @@ Never measure elapsed time by counting `Interval` callbacks.
 
 For a reusable UI component, keep the canonical `.flow.svelte` definition in
 the provider project's `libs/flow/frontbuilder/svelte/components` directory.
-Create an explicit project reference with `flow-project-reference` (or
-`references` during `flow-project-bootstrap`). The component then appears as a
-read-only block in the consumer palette. Instantiate it from that palette and
-edit it only in the provider project. Do not duplicate component sources between
-projects.
+Before creating a project-local component or mock, call the contextual
+`authoring-palette` once at the intended parent with the business capability,
+for example `chart`, `markdown` or `github`. It searches the current project,
+references and workspace, and its returned `apply` mutation adds a required
+reference atomically. Create an explicit typed mock only when no sufficiently
+close palette contract exists.
+
+The component then appears as a read-only block in the consumer palette.
+Instantiate it from that palette and edit it only in the provider project. Do
+not duplicate component sources between projects. A provider component may
+declare exact npm dependencies in its implementation metadata; the generator
+merges them into the application package. `dev.sync` installs newly introduced
+dependencies and restarts dev mode only when that package contract changed.
+Never run npm manually in the generated application.
 
 Use semantic layout properties for structure. Use explicit `class` values and
 the application CSS source for gradients, typography and visual rules that do

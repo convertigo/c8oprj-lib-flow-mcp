@@ -299,6 +299,9 @@ assertTrue(list.result.result.tools.some(function (tool) {
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-project-reference";
 }), "MCP Flow tools/list did not expose flow-project-reference");
+assertTrue(!list.result.result.tools.some(function (tool) {
+	return tool.name === "flow-library-search";
+}), "MCP Flow tools/list should keep workspace library discovery internal");
 var projectRemoveTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-project-remove";
 })[0];
@@ -331,10 +334,15 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "authoring-mutate";
 }), "MCP Flow tools/list did not expose generic authoring tools");
+var contextualPaletteTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "authoring-palette";
+})[0];
+assertTrue(contextualPaletteTool && contextualPaletteTool.inputSchema.required.indexOf("parentPath") !== -1 &&
+	contextualPaletteTool.inputSchema.properties.project === undefined &&
+	contextualPaletteTool.inputSchema.properties.focusPath === undefined,
+	"MCP authoring-palette should derive project and focus from parentPath");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-tree";
-}) && list.result.result.tools.some(function (tool) {
-	return tool.name === "frontend-svelte-palette";
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-mutate";
 }) && list.result.result.tools.some(function (tool) {
@@ -721,6 +729,93 @@ assertTrue(guideResourceSearch.result.result.structuredContent.resources.some(fu
 	return resource.path === "libs/flow/resources/guide/authoring.md";
 }), "MCP Flow guides should be searchable as project resources");
 
+var mcpToolRunSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/mcp/tool/run.block.js"), "UTF-8"));
+var isolatedMcpToolRun = eval(mcpToolRunSource.substring(mcpToolRunSource.indexOf("(function ()")));
+var writtenToolResponse = null;
+var providerMutationArgs = null;
+var preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	focusPath: "frontends.svelte.routes.home.structure",
+	query: "chart",
+	surface: "frontend",
+	builder: "svelte"
+};
+var fakeMcp = {
+	requestValue: function (_ctx, value) { return value; },
+	prepareToolArguments: function () { return preparedPaletteArgs; },
+	qualifyAuthoringPath: function (args, path) { return args.project + "::" + path; },
+	qualifyAuthoringResult: function (_args, value) { return value; },
+	toolResponse: function (_request, value) { return value; },
+	toolError: function (_request, error) { throw error; },
+	persistSourceMutationResult: function (_request, _args, value) { return value; },
+	isFrontendSourceCreation: function () { return false; }
+};
+var fakeRunCtx = {
+	props: function () { return { request: { params: { name: "authoring-palette" } }, target: "authoring.palette", out: "local.response" }; },
+	lib: function () { return fakeMcp; },
+	callBlock: function (name) {
+		if (name === "authoring.palette") return { ok: true, eligibleCount: 0, candidateCount: 0, items: [] };
+		if (name === "project.library.search") return {
+			libraries: [{ project: "Charts", referenced: false, matches: [{ kind: "frontendComponent", id: "charts.line", name: "Line chart" }] }]
+		};
+		throw new Error("Unexpected isolated tool call: " + name);
+	},
+	write: function (_path, value) { writtenToolResponse = value; }
+};
+var contextualWorkspacePalette = isolatedMcpToolRun.run(fakeRunCtx, {});
+assertTrue(contextualWorkspacePalette.items.length === 1 &&
+	contextualWorkspacePalette.items[0].apply.tool === "authoring-mutate" &&
+	contextualWorkspacePalette.items[0].apply.arguments.parentPath === "Consumer::frontends.svelte.routes.home.structure" &&
+	contextualWorkspacePalette.items[0].apply.arguments.mutation.op === "insertProvider" &&
+	writtenToolResponse === contextualWorkspacePalette,
+	"Contextual palette should fold workspace providers into one generic executable mutation");
+
+preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	focusPath: "engine.catalog.blocks",
+	query: "github",
+	surface: "backend"
+};
+fakeRunCtx.callBlock = function (name) {
+	if (name === "authoring.palette") return { ok: true, eligibleCount: 0, candidateCount: 0, items: [] };
+	if (name === "project.library.search") return {
+		libraries: [{ project: "Github", referenced: false, matches: [{ kind: "backendBlock", id: "github.repository.get", name: "Get repository" }] }]
+	};
+	throw new Error("Unexpected isolated backend palette call: " + name);
+};
+var contextualBackendPalette = isolatedMcpToolRun.run(fakeRunCtx, {});
+assertTrue(contextualBackendPalette.items.length === 1 &&
+	contextualBackendPalette.items[0].apply.tool === "authoring-mutate" &&
+	contextualBackendPalette.items[0].apply.arguments.parentPath === "Consumer::engine.catalog.blocks" &&
+	contextualBackendPalette.items[0].apply.arguments.mutation.descriptorId === "github.repository.get",
+	"Contextual palette should expose workspace backend providers through the same mutation contract");
+
+preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	focusPath: "frontends.svelte.routes.home.structure",
+	surface: "frontend",
+	builder: "svelte",
+	mutation: { op: "insertProvider", provider: "Charts", descriptorId: "charts.line" }
+};
+fakeRunCtx.props = function () { return { request: { params: { name: "authoring-mutate" } }, target: "authoring.mutate", out: "local.response" }; };
+fakeRunCtx.callBlock = function (name) {
+	if (name === "project.reference") return { ok: true, project: "Consumer", reference: "Charts", created: true };
+	if (name === "authoring.palette") return { items: [{ id: "charts.line", apply: { arguments: { sourceFile: "routes/+page.flow.svelte", mutation: { op: "append" } } } }] };
+	throw new Error("Unexpected isolated provider insertion call: " + name);
+};
+fakeRunCtx.authoringMutateSource = function (args) {
+	providerMutationArgs = args;
+	return { ok: true, source: "<FlowComponent />", sourceFile: args.sourceFile };
+};
+var providerInsertion = isolatedMcpToolRun.run(fakeRunCtx, {});
+assertTrue(providerInsertion.ok === true && providerInsertion.providerReference.reference === "Charts" &&
+	providerMutationArgs.project === "Consumer" && providerMutationArgs.projectDir === "/tmp/Consumer",
+	"Generic provider insertion should add the reference and apply the selected descriptor atomically");
+
 var targetDir = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
 	"lib_flow_mcp_target_" + java.lang.System.currentTimeMillis());
 targetDir.mkdirs();
@@ -791,6 +886,15 @@ assertTrue(authoringPalette.result.result.structuredContent.ok === true &&
 		return item.id === "frontbuilder.svelte.builder";
 	}),
 	"MCP authoring-palette did not dispatch to the generic engine authoring contract");
+var qualifiedAuthoringPalette = callTool(1361, "authoring-palette", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: "version: 1\n",
+	parentPath: "target::engine"
+});
+assertTrue(qualifiedAuthoringPalette.result.result.structuredContent.ok === true &&
+	qualifiedAuthoringPalette.result.result.structuredContent.parentPath === "target::engine",
+	"MCP authoring-palette should derive project and focus from qualified parentPath");
 var frontendSveltePalette = callTool(137, "frontend-svelte-palette", {
 	projectDir: targetProjectDir,
 	engineSource: "version: 1\n",
@@ -1134,7 +1238,7 @@ assertTrue(appProgressFrontend.result.result.structuredContent.ok === true &&
 		return task.id === "frontendBindings" && task.done === true;
 	}) &&
 	!appProgressFrontend.result.result.structuredContent.recommendedCalls.some(function (call) {
-		return call.tool === "frontend-svelte-palette" || call.tool === "frontend-svelte-tree" ||
+		return call.tool === "authoring-palette" || call.tool === "frontend-svelte-palette" || call.tool === "frontend-svelte-tree" ||
 			call.tool === "frontend-svelte-action" && call.arguments.actionId === "generate";
 	}),
 	"MCP flow-app-progress should expose result-relative bindings without speculative tree, palette or generate calls: " +

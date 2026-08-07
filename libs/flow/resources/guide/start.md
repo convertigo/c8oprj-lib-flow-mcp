@@ -136,8 +136,8 @@ pass that may contain several Pages, early action wiring,
 separation is part of the POC. Stop there unless hardening was requested;
 exhaustive schema, history and visual review are a separate phase. For
 Svelte-only frontend work, read
-`flow://guide/frontend-svelte` and use `frontend-svelte-tree`,
-`frontend-svelte-palette`, `frontend-svelte-mutate`,
+`flow://guide/frontend-svelte` and use `authoring-tree`,
+`authoring-palette`, `authoring-mutate`,
 `frontend-svelte-actions` and `frontend-svelte-action`. These tools reuse the
 same authoring contract as the Studio tree and palette; do not edit generated
 Svelte output directly. Flow Svelte source follows SvelteKit routes under

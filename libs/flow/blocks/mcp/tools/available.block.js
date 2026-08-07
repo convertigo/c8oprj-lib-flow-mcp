@@ -72,7 +72,6 @@ const _meta = {
 		"frontend-svelte-code-set": true,
 		"frontend-svelte-fullsync-schema": true,
 		"frontend-svelte-mutate": true,
-		"frontend-svelte-palette": true,
 		"frontend-svelte-tree": true
 	};
 	var OMIT_SCHEMA_PROPERTIES = {
@@ -203,6 +202,9 @@ const _meta = {
 		if (suffix === "fullsync.scaffold") {
 			return "project.fullsync.scaffold";
 		}
+		if (suffix === "library.search") {
+			return "project.library.search";
+		}
 		var target = "";
 		if (["cache.clear", "cache.info"].indexOf(suffix) !== -1) {
 			target = suffix;
@@ -288,6 +290,15 @@ const _meta = {
 				type: "string",
 				description: "Target Convertigo project name, not a filesystem path."
 			};
+		}
+		if (toolName === "authoring-palette") {
+			schema.properties.parentPath = {
+				type: "string",
+				description: "Qualified parentPath returned by authoring-tree. It identifies both the target project and insertion parent."
+			};
+			delete schema.properties.project;
+			delete schema.properties.focusPath;
+			schema.required = ["parentPath"];
 		}
 		if (toolName === "flow-app-progress") {
 			schema.properties.qname = {
@@ -411,7 +422,7 @@ const _meta = {
 		} else if (name === "authoring-tree") {
 			description = "Generic authoring tree for frontend/Flow surfaces. Requires project; used by Studio, MCP, and tests.";
 		} else if (name === "authoring-palette") {
-			description = "Generic authoring palette for one focusPath, including empty-palette diagnostics and fallback hints.";
+			description = "Contextual palette for one qualified parentPath. Searches the project, references and workspace; execute items[].apply unchanged.";
 		} else if (name === "authoring-mutate") {
 			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
 		} else if (name === "frontend-svelte-tree") {
@@ -452,8 +463,10 @@ const _meta = {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
 			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
+		} else if (name === "flow-library-search") {
+			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {
-			description = "Adds a loaded Convertigo project reference through DBO APIs so its shared Flow and Svelte blocks become available.";
+			description = "Resolves a selected workspace provider and adds its project reference through DBO APIs so shared Flow and Svelte blocks become available.";
 		} else if (name === "flow-project-remove") {
 			description = "Safely unloads a Studio project or deletes its workspace content. Starts with dryRun:true and blocks dirty, linked, Git-backed or referenced projects by default.";
 		} else if (name === "flow-fullsync-scaffold") {

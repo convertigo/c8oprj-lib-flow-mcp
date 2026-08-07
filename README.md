@@ -95,6 +95,8 @@ flow-code-set for broad Flow edits; it writes the FlowScript working copy
 flow-code-patch for revision-checked maintenance edits on that working copy
 flow-code-check / flow-code-run, then flow-code-promote once behavior is clean
 flow-catalog only when search/examples are insufficient; it is summary by default
+authoring-palette with a parentPath returned by authoring-tree before implementing a reusable missing frontend capability locally; provider discovery is internal
+flow-project-reference only for explicit project-reference maintenance
 flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local blocks
 flow-block-code-set only when reusable vocabulary is needed
 flow-block-create / flow-block-duplicate / flow-block-edit are compatibility facades that still write canonical .block.js

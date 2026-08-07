@@ -243,15 +243,35 @@ state. Do not implement a stopwatch by incrementing a counter on every
 ### Shared Project Components
 
 Reusable Svelte components live in the provider project's canonical
-`libs/flow/frontbuilder/svelte/components` directory. Add an explicit Convertigo
-project reference from the consumer with `flow-project-reference`, or pass
-`references` while bootstrapping a new project.
+`libs/flow/frontbuilder/svelte/components` directory. Before creating a local
+component or mock, call the same contextual palette used by Studio:
+
+```text
+authoring-palette({ parentPath:"MyProject::frontends.svelte.routes...", query:"chart" })
+```
+
+Use the actual business capability as `query` and a `parentPath` returned by
+`authoring-tree`. Execute the matching item's `apply` mutation unchanged. The
+palette searches the current project, references and workspace and adds a
+required project reference atomically. Otherwise keep a typed, visibly
+incomplete mock until the missing reusable capability is implemented; do not
+silently replace a requested chart with a table, summary numbers or fake data.
+
+Add an explicit Convertigo project reference from the consumer with
+`flow-project-reference`, or pass `references` while bootstrapping a new
+project.
 
 Referenced components join the consumer palette as read-only library blocks.
 Use them in pages and components exactly like local palette blocks. Edit the
 definition in its provider project; do not copy or patch the referenced source
 inside consumers. Each component instance owns its page/component-local state
 unless its public contract explicitly shares state.
+
+A provider may declare exact npm versions in
+`_meta.implementation.dependencies`. The generator merges those dependencies
+and rejects incompatible versions. `dev.sync` installs a changed application
+dependency contract and restarts Vite only in that exceptional case. Authors
+must never run npm manually or edit the generated `package.json`.
 
 ## Diagnostics
 
@@ -276,7 +296,7 @@ frontend-svelte-tree({
 Set `property` to the exact bindable property returned by the block contract;
 for example `text`, `label`, `src`, or `source`.
 
-Use `frontend-svelte-palette` only at the intended insertion point and execute
+Use `authoring-palette` only at the intended qualified `parentPath` and execute
 its `apply` payload unchanged. Create a typed frontend mock only when no
 canonical block expresses the requirement; a POC is unfinished while the mock
 remains.
