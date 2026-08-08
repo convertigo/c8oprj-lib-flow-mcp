@@ -39,8 +39,7 @@ writing generated `+page.svelte` files.
    kind:"source", pattern })` to search every canonical frontend source. The same
    tools read and update the project application stylesheet when `sourceFile`
    is `authoringContract.sources.applicationStyles`; do not search for or
-   guess that path. The historical `frontend-svelte-code-get/check/set/patch`
-   aliases remain compatible.
+   guess that path.
 4. Use one targeted tree/palette lookup only when the contract lacks a block,
    property or schema path. Apply returned picker mutations unchanged.
 5. For a freshly bootstrapped UI project, call
@@ -112,7 +111,7 @@ segments and builds the query. The target Page reads:
   docid="@route.params.id" />
 ```
 
-`frontend-svelte-code-get.authoringContract.pages` is authoritative. It exposes
+The `authoringContract.pages` returned by `code-get` is authoritative. It exposes
 each parameter as `@route.params.<name>`. `Navigate.to` remains an expert
 compatibility escape hatch for an external or unmodelled route; prefer `page`.
 Use a visible Button with `GoBack` and a fallback for direct entry.
@@ -277,7 +276,7 @@ must never run npm manually or edit the generated `package.json`.
 
 ## Diagnostics
 
-`frontend-svelte-code-check` must reject unknown blocks/properties, duplicate
+`code-check` must reject unknown blocks/properties, duplicate
 ids, invalid slots, unresolved sources, unknown Page ids and missing required
 Page parameters with a direct correction or one focused lookup. Do not work
 around these errors with filesystem edits or raw Svelte APIs.

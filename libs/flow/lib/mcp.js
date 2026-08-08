@@ -3324,9 +3324,7 @@
 			out.studioRefresh = compactJsonPreview(value.studioRefresh, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		}
 		out.responseDetail = "summary";
-		var readTool = toolArguments(request).unifiedSourceCode === true ||
-			String(toolName(request) || "").indexOf("code-") === 0
-				? "code-get" : "frontend-svelte-code-get";
+		var readTool = "code-get";
 		out.next = "Source omitted after validation. Use " + readTool + " to read it again, or detail:'full' only for debugging.";
 		return out;
 	}

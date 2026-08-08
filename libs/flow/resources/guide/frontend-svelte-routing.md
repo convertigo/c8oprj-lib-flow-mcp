@@ -39,7 +39,7 @@ palette-provided matchers and typed parameter sources; do not create matcher
 code outside Flow authoring.
 
 The Page source path defines its route. Give the Page a stable logical
-`_flow.page.id`; `frontend-svelte-code-get.authoringContract.pages` returns that
+`_flow.page.id`; `code-get` returns that value in `authoringContract.pages` with its
 id, path, parameters and source file. Every parameter is exposed on the target
 Page as `@route.params.<name>`. If that source is absent, stop rather than
 reading `$app/state` or the URL directly.

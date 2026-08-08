@@ -4,20 +4,76 @@ const _meta = {
   "icon": "mdi:file-code-outline",
   "description": "Reads, searches, validates and writes Flow Svelte models or application stylesheets.",
   "properties": {
-    "operation": { "kind": "text", "type": "string", "description": "get, rg, check, set or patch." },
-    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or app.flow.css source path. Omit for project-wide rg." },
-    "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte or application CSS source for check or set." },
-    "revision": { "kind": "text", "type": "string", "description": "Current revision required when replacing an existing source; omit only to create a missing source." },
-    "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers." },
-    "pattern": { "kind": "text", "type": "string", "description": "Text or regex pattern for rg." },
-    "regex": { "kind": "literal", "type": "boolean", "default": false, "description": "Treat pattern as a regular expression." },
-    "caseSensitive": { "kind": "literal", "type": "boolean", "default": false, "description": "Use case-sensitive matching." },
-    "context": { "kind": "literal", "type": "integer", "default": 2, "description": "Context lines around each rg match." },
-    "limit": { "kind": "literal", "type": "integer", "default": 20, "description": "Maximum rg extracts, from 1 to 200." },
-    "projectDir": { "kind": "text", "type": "string", "description": "Resolved target project directory." },
-    "out": { "kind": "path", "mode": "write", "default": "local.frontendSource" }
+    "operation": {
+      "kind": "text",
+      "type": "string",
+      "description": "get, rg, check, set or patch."
+    },
+    "sourceFile": {
+      "kind": "text",
+      "type": "string",
+      "description": "Optional project-relative *.flow.svelte or app.flow.css source path. Omit for project-wide rg."
+    },
+    "code": {
+      "kind": "text",
+      "type": "string",
+      "description": "Complete Flow Svelte or application CSS source for check or set."
+    },
+    "revision": {
+      "kind": "text",
+      "type": "string",
+      "description": "Current revision required when replacing an existing source; omit only to create a missing source."
+    },
+    "codepatch": {
+      "kind": "text",
+      "type": "string",
+      "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers."
+    },
+    "pattern": {
+      "kind": "text",
+      "type": "string",
+      "description": "Text or regex pattern for rg."
+    },
+    "regex": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": false,
+      "description": "Treat pattern as a regular expression."
+    },
+    "caseSensitive": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": false,
+      "description": "Use case-sensitive matching."
+    },
+    "context": {
+      "kind": "literal",
+      "type": "integer",
+      "default": 2,
+      "description": "Context lines around each rg match."
+    },
+    "limit": {
+      "kind": "literal",
+      "type": "integer",
+      "default": 20,
+      "description": "Maximum rg extracts, from 1 to 200."
+    },
+    "projectDir": {
+      "kind": "text",
+      "type": "string",
+      "description": "Resolved target project directory."
+    },
+    "out": {
+      "kind": "path",
+      "mode": "write",
+      "default": "local.frontendSource"
+    }
   },
-  "outputs": { "out": { "type": "object" } },
+  "outputs": {
+    "out": {
+      "type": "object"
+    }
+  },
   "runtime": "rhino"
 }
 
@@ -425,7 +481,7 @@ const _meta = {
 					severity: "error",
 					code: "FRONTEND_CSS_UNBALANCED_BLOCK",
 					message: "Application CSS has unbalanced block braces.",
-					hint: "Correct app.flow.css, then call frontend-svelte-code-check again."
+					hint: "Correct app.flow.css, then call code-check again."
 				});
 			}
 			return {
@@ -479,7 +535,7 @@ const _meta = {
 					severity: "error",
 					code: "FRONTEND_SOURCE_PARSE_FAILED",
 					message: String(error && error.message || error),
-					hint: "Correct the reported Svelte/Flow source, then call frontend-svelte-code-check again."
+					hint: "Correct the reported Svelte/Flow source, then call code-check again."
 				});
 			}
 		}
@@ -497,7 +553,7 @@ const _meta = {
 			var first = validation.diagnostics[0] || {};
 			var error = new Error(String(first.message || "Invalid frontend source."));
 			error.code = String(first.code || "FRONTEND_SOURCE_INVALID");
-			error.hint = String(first.hint || "Call frontend-svelte-code-check for structured diagnostics.");
+			error.hint = String(first.hint || "Call code-check for structured diagnostics.");
 			throw error;
 		}
 	}
@@ -703,7 +759,7 @@ const _meta = {
 					code: "",
 					revision: null,
 					contentLength: 0,
-					next: "Create this canonical application stylesheet with frontend-svelte-code-check, then frontend-svelte-code-set without a revision."
+					next: "Create this canonical application stylesheet with code-check, then code-set without a revision."
 				};
 			}
 			throw new Error("Unknown Flow Svelte source: " + path.relative);
@@ -742,15 +798,15 @@ const _meta = {
 		if (exists && !supplied) {
 			throw sourceWriteError(
 				"FRONTEND_SOURCE_REVISION_REQUIRED",
-				"Flow Svelte source already exists; frontend-svelte-code-set requires its current revision.",
-				"Call frontend-svelte-code-get, then retry with the returned revision."
+				"Flow Svelte source already exists; code-set requires its current revision.",
+				"Call code-get, then retry with the returned revision."
 			);
 		}
 		if (!exists && supplied) {
 			throw sourceWriteError(
 				"FRONTEND_SOURCE_STALE_REVISION",
 				"Flow Svelte source no longer exists; the supplied revision is stale.",
-				"Call frontend-svelte-code-get to refresh the source state, or omit revision only when creating a missing source."
+				"Call code-get to refresh the source state, or omit revision only when creating a missing source."
 			);
 		}
 		if (exists) {
@@ -759,7 +815,7 @@ const _meta = {
 				throw sourceWriteError(
 					"FRONTEND_SOURCE_STALE_REVISION",
 					"Flow Svelte source changed since it was read; the supplied revision is stale.",
-					"Call frontend-svelte-code-get again and reapply the intended change to the current source."
+					"Call code-get again and reapply the intended change to the current source."
 				);
 			}
 		}
@@ -843,7 +899,7 @@ const _meta = {
 				result.revision = path.file.isFile() ? read(ctx, props, path, false).revision : null;
 			} else if (operation === "set") {
 				if (props.code === undefined || props.code === null) {
-					throw new Error("frontend-svelte-code-set requires code.");
+					throw new Error("code-set requires code for a Flow Svelte source.");
 				}
 				sourceWriteLock.lock();
 				try {
@@ -854,8 +910,8 @@ const _meta = {
 				}
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
-				if (!patch) throw new Error("frontend-svelte-code-patch requires codepatch.");
-				if (!props.revision) throw new Error("frontend-svelte-code-patch requires the revision returned by frontend-svelte-code-get.");
+				if (!patch) throw new Error("code-patch requires codepatch for a Flow Svelte source.");
+				if (!props.revision) throw new Error("code-patch requires the revision returned by code-get.");
 				sourceWriteLock.lock();
 				try {
 					assertSetRevision(ctx, props, path);

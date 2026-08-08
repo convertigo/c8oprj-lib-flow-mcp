@@ -254,8 +254,7 @@ mutations. A complete pass may write several Page sources:
    exists.
 5. Use `code-patch` for later focused changes and
    `code-rg({ project, kind:"source", pattern })` to search all canonical
-   `*.flow.svelte` and `app.flow.css` sources. The historical
-   `frontend-svelte-code-get/check/set/patch` aliases remain compatible.
+   `*.flow.svelte` and `app.flow.css` sources.
 6. If dev mode was not already started after bootstrap, call
    `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
    after the first frontend read. Continue the focused repair passes while npm
@@ -277,7 +276,7 @@ Back controls use `GoBack` with a fallback. Read
 `flow://guide/frontend-svelte-routing` only for optional/rest parameters,
 matchers, nested layouts or route groups.
 
-If `frontend-svelte-code-check` reports an unknown property, block, scope or
+If `code-check` reports an unknown property, block, scope or
 picker candidate, inspect the exact node once, then call
 `authoring-palette({ parentPath, query })` with the qualified `parentPath`
 returned by the tree. Execute returned mutations unchanged. Do not

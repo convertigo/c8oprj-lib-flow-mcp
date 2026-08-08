@@ -1101,7 +1101,7 @@ const _meta = {
 						code: "FRONTEND_FULLSYNC_SCHEMA_LOCATION_MISSING",
 						actionId: suggestion.actionId,
 						executionId: suggestion.executionId,
-						message: "FullSync action " + suggestion.executionId + " has no source identity for attaching outputSchema. Run frontend-svelte-code-check to restore source metadata."
+						message: "FullSync action " + suggestion.executionId + " has no source identity for attaching outputSchema. Run code-check on its sourceFile to restore source metadata."
 					});
 				}
 				return;

@@ -374,9 +374,9 @@ var frontendSvelteActionTool = list.result.result.tools.filter(function (tool) {
 assertTrue(frontendSvelteActionTool.inputSchema.properties.wait &&
 	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean",
 	"MCP frontend-svelte-action did not expose the non-blocking dev start option");
-assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch"].every(function (name) {
-	return list.result.result.tools.some(function (tool) { return tool.name === name; });
-}), "MCP Flow tools/list did not expose whole-source Svelte authoring tools");
+assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch", "frontend-svelte-code-rg"].every(function (name) {
+	return !list.result.result.tools.some(function (tool) { return tool.name === name; });
+}), "MCP Flow tools/list should expose canonical sources only through code-* tools");
 var unifiedCodeTools = {};
 list.result.result.tools.forEach(function (tool) { unifiedCodeTools[tool.name] = tool; });
 assertTrue(unifiedCodeTools["code-check"].inputSchema.properties.target.enum.indexOf("frontend") !== -1 &&
@@ -389,18 +389,11 @@ assertTrue(["code-get", "code-check", "code-set", "code-patch", "code-rg"].every
 }) && !list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-code-rg";
 }), "Unified code tools should expose canonical sources and keep project-wide rg out of the specialized public aliases");
-var frontendSourceSetTool = list.result.result.tools.filter(function (tool) {
-	return tool.name === "frontend-svelte-code-set";
-})[0];
-var frontendSourcePatchTool = list.result.result.tools.filter(function (tool) {
-	return tool.name === "frontend-svelte-code-patch";
-})[0];
-assertTrue(frontendSourceSetTool.inputSchema.required[0] === "code" &&
-	frontendSourcePatchTool.inputSchema.required.indexOf("revision") !== -1 &&
-	frontendSourcePatchTool.inputSchema.required.indexOf("codepatch") !== -1 &&
-	frontendSourcePatchTool.inputSchema.properties.codepatch.description.indexOf("numbered") !== -1 &&
+assertTrue(unifiedCodeTools["code-set"].inputSchema.properties.code &&
+	unifiedCodeTools["code-patch"].inputSchema.properties.revision &&
+	unifiedCodeTools["code-patch"].inputSchema.properties.codepatch &&
 	unifiedCodeTools["code-patch"].inputSchema.properties.codepatch.description.indexOf("numbered") !== -1,
-	"MCP Flow tools/list should require complete source and revision-safe patches");
+	"MCP Flow tools/list should expose complete source and revision-safe patch inputs");
 var batch = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
 	includeTrace: false,
@@ -2245,6 +2238,18 @@ assertTrue(frontendCssInvalid.result.result.structuredContent.ok === false &&
 	frontendCssInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_CSS_UNBALANCED_BLOCK";
 	}), "MCP frontend-svelte-code-check should reject structurally invalid app CSS");
+var unifiedFrontendCssRg = callTool(13890, "code-rg", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	pattern: "linear-gradient",
+	context: 0,
+	limit: 10
+});
+assertTrue(unifiedFrontendCssRg.result.result.structuredContent.totalTargets === 1 &&
+	unifiedFrontendCssRg.result.result.structuredContent.matchedTargets === 1 &&
+	unifiedFrontendCssRg.result.result.structuredContent.matchCount === 1 &&
+	unifiedFrontendCssRg.result.result.structuredContent.extracts[0].sourceFile === frontendCssRelative,
+	"Unified code-rg should search a canonical app.flow.css source explicitly");
 
 var unifiedFrontendSourceGet = callTool(13891, "code-get", {
 	projectDir: targetProjectDir,
@@ -2282,6 +2287,13 @@ var unifiedFrontendSourceRg = callTool(13895, "code-rg", {
 	context: 1,
 	limit: 10
 });
+var unifiedFrontendSvelteRg = callTool(138951, "code-rg", {
+	projectDir: targetProjectDir,
+	sourceFile: unifiedFrontendSourceGet.result.result.structuredContent.sourceFile,
+	pattern: "Home unified",
+	context: 0,
+	limit: 10
+});
 var unifiedFrontendSourceGetRg = callTool(13896, "code-get", {
 	projectDir: targetProjectDir,
 	kind: "source",
@@ -2299,6 +2311,9 @@ assertTrue(unifiedFrontendSourceGet.result.result.structuredContent.ok === true 
 	unifiedFrontendSourceSet.result.result.structuredContent.written === true &&
 	unifiedFrontendSourceSet.result.result.structuredContent.sourceFile === unifiedFrontendSourceGet.result.result.structuredContent.sourceFile &&
 	unifiedFrontendSourcePatch.result.result.structuredContent.written === true &&
+	unifiedFrontendSvelteRg.result.result.structuredContent.totalTargets === 1 &&
+	unifiedFrontendSvelteRg.result.result.structuredContent.matchedTargets === 1 &&
+	unifiedFrontendSvelteRg.result.result.structuredContent.extracts[0].sourceFile.indexOf(".flow.svelte") !== -1 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.matchCount === 1 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.totalTargets === 3 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.extracts.every(function (extract) {

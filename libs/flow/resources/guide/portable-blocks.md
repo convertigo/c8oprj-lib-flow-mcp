@@ -39,7 +39,7 @@ Never author `RunAxiom`; it exists only as a legacy migration input. The Svelte
 compiler lowers a direct portable tag to a static import and bundles only used
 browser functions.
 
-If `frontend-svelte-code-check` reports `FRONTEND_BLOCK_UNKNOWN`, use its ranked
+If `code-check` reports `FRONTEND_BLOCK_UNKNOWN`, use its ranked
 palette candidate only when it matches the intent. Otherwise execute its typed
 `flow-block-mock` call with `targets:["frontend"]` or
 `targets:["backend","frontend"]`.

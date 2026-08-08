@@ -71,10 +71,6 @@ const _meta = {
 		"flow-test": true,
 		"frontend-svelte-action": true,
 		"frontend-svelte-actions": true,
-		"frontend-svelte-code-check": true,
-		"frontend-svelte-code-get": true,
-		"frontend-svelte-code-patch": true,
-		"frontend-svelte-code-set": true,
 		"frontend-svelte-fullsync-schema": true,
 		"frontend-svelte-mutate": true,
 		"frontend-svelte-tree": true
@@ -393,11 +389,6 @@ const _meta = {
 		if (toolName === "code-patch" && schema.properties.codepatch) {
 			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
 		}
-		if (toolName === "frontend-svelte-code-set") {
-			schema.required = ["code"];
-		} else if (toolName === "frontend-svelte-code-patch") {
-			schema.required = ["revision", "codepatch"];
-		}
 		return schema;
 	}
 
@@ -442,14 +433,6 @@ const _meta = {
 			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {
 			description = "Applies Svelte frontend tree mutations. Bindable properties accept intuitive @action.path/@item.path references or the structured mutation returned by the picker; bare string paths are rejected.";
-		} else if (name === "frontend-svelte-code-get") {
-			description = "Reads one complete intuitive .flow.svelte model or app.flow.css source with its revision. Flow Svelte models also return the application Page index, typed route parameters and compact block contract.";
-		} else if (name === "frontend-svelte-code-check") {
-			description = "Parses and validates a complete .flow.svelte or app.flow.css draft without writing it. Flow Svelte values use literals, {...} browser expressions or schema-backed @action.path/@item.path sources.";
-		} else if (name === "frontend-svelte-code-set") {
-			description = "Validates and writes one complete .flow.svelte model or app.flow.css source. Existing sources require the current revision returned by code-get; omit revision only to create a missing source.";
-		} else if (name === "frontend-svelte-code-patch") {
-			description = "Validates and applies a revision-checked git-style unified diff with numbered hunk headers to one .flow.svelte model or app.flow.css source.";
 		} else if (name === "frontend-svelte-fullsync-schema") {
 			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {
