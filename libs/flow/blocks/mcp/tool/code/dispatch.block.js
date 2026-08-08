@@ -7,7 +7,7 @@ const _meta = {
     "flowscript",
     "code"
   ],
-  "description": "Routes one unified code-* MCP request to Flow or block code tools.",
+  "description": "Routes one unified code-* MCP request to Flow, block or canonical source tools.",
   "properties": {
     "request": {
       "kind": "expression",
@@ -27,6 +27,7 @@ const _meta = {
       "description": "Scope path receiving the MCP response."
     }
   },
+  "outputs": { "out": { "type": "unknown" } },
   "runtime": "rhino"
 }
 
@@ -64,12 +65,17 @@ const _meta = {
 	}
 
 	function normalizeKind(args) {
-		var kind = String(args.kind || args.type || args.target || "").toLowerCase();
-		if (kind === "block" || kind === "flow") {
-			return kind;
-		}
 		if (nonEmpty(args.block) || nonEmpty(args.blockName)) {
 			return "block";
+		}
+		var kind = String(args.kind || args.type || args.target || "").toLowerCase();
+		if (nonEmpty(args.sourceFile) || nonEmpty(args.sourcePath) ||
+				kind === "source" || kind === "sourcefile" || kind === "svelte" ||
+				kind === "frontend" || kind === "browser") {
+			return "source";
+		}
+		if (kind === "block" || kind === "flow") {
+			return kind;
 		}
 		return "flow";
 	}
@@ -91,6 +97,27 @@ const _meta = {
 		delete args.block;
 		delete args.blockName;
 		if (implementationTarget) args.target = implementationTarget;
+		return args;
+	}
+
+	function normalizeSourceArgs(args) {
+		args = copyJson(args);
+		if (!nonEmpty(args.sourceFile) && nonEmpty(args.sourcePath)) {
+			args.sourceFile = String(args.sourcePath);
+		}
+		delete args.qname;
+		delete args.name;
+		delete args.flow;
+		delete args.block;
+		delete args.blockName;
+		delete args.kind;
+		delete args.type;
+		delete args.target;
+		delete args.sourcePath;
+		delete args.implementationTarget;
+		delete args.runtimeTarget;
+		delete args.finalize;
+		args.unifiedSourceCode = true;
 		return args;
 	}
 
@@ -142,11 +169,13 @@ const _meta = {
 			}, ctx);
 		}
 		var kind = normalizeKind(args);
-			if (kind === "block" && !nonEmpty(args.project) && !nonEmpty(args.projectDir)) {
+			if ((kind === "block" || kind === "source") && !nonEmpty(args.project) && !nonEmpty(args.projectDir)) {
 				return mcp.toolError(request, {
-					code: "PROJECT_REQUIRED_FOR_BLOCK_CODE",
-					message: "Project-local block code requires an explicit project.",
-					hint: "Call code-" + effectiveOperation + " with project:\"<target project>\", block:\"namespace.name\". Do not rely on the MCP endpoint project."
+					code: kind === "block" ? "PROJECT_REQUIRED_FOR_BLOCK_CODE" : "PROJECT_REQUIRED_FOR_SOURCE_CODE",
+					message: "Project-local " + kind + " code requires an explicit project.",
+					hint: kind === "block"
+						? "Call code-" + effectiveOperation + " with project:\"<target project>\", block:\"namespace.name\"."
+						: "Call code-" + effectiveOperation + " with project:\"<target project>\" and sourceFile, or kind:\"source\" for project-wide rg."
 				}, ctx);
 			}
 			if (kind === "block" && operation === "promote") {
@@ -161,18 +190,30 @@ const _meta = {
 					next: "Project-local blocks have no draft/promote step: code-set/code-patch write the canonical .block.js directly. Run an executable Flow that uses the block."
 				}, ctx);
 			}
-			if (kind === "block" && BLOCK_OPERATIONS[effectiveOperation] !== true) {
+			if ((kind === "block" || kind === "source") && BLOCK_OPERATIONS[effectiveOperation] !== true) {
 				return mcp.toolError(request, {
-					code: "UNSUPPORTED_BLOCK_CODE_OPERATION",
+					code: kind === "block" ? "UNSUPPORTED_BLOCK_CODE_OPERATION" : "UNSUPPORTED_SOURCE_CODE_OPERATION",
 					message: "code-" + effectiveOperation + " is only available for executable Flows.",
-					hint: "Use code-get, code-set, code-patch, code-check or code-rg with block:\"namespace.name\". Browser implementations use target:\"frontend\"."
+					hint: kind === "block"
+						? "Use code-get, code-set, code-patch, code-check or code-rg with block:\"namespace.name\". Browser implementations use target:\"frontend\"."
+						: "Use code-get, code-set, code-patch, code-check or code-rg with sourceFile or kind:\"source\"."
 				}, ctx);
 			}
-			var internalName = kind === "block" ? "flow-block-code-" + effectiveOperation : "flow-code-" + effectiveOperation;
+			var internalName = kind === "block"
+				? "flow-block-code-" + effectiveOperation
+				: kind === "source"
+					? "frontend-svelte-code-" + effectiveOperation
+					: "flow-code-" + effectiveOperation;
 			var internalBlock = kind === "block"
 				? "mcp.tool.flow.block.code." + effectiveOperation
-				: "mcp.tool.flow.code." + effectiveOperation;
-			var internalArgs = kind === "block" ? normalizeBlockArgs(args) : normalizeFlowArgs(args);
+				: kind === "source"
+					? "mcp.tool.frontend.svelte.code." + effectiveOperation
+					: "mcp.tool.flow.code." + effectiveOperation;
+			var internalArgs = kind === "block"
+				? normalizeBlockArgs(args)
+				: kind === "source"
+					? normalizeSourceArgs(args)
+					: normalizeFlowArgs(args);
 			if (effectiveOperation === "rg" && !nonEmpty(internalArgs.pattern) && nonEmpty(internalArgs.query)) {
 				internalArgs.pattern = internalArgs.query;
 			}

@@ -2,13 +2,18 @@ const _meta = {
   "version": 1,
   "private": true,
   "icon": "mdi:file-code-outline",
-  "description": "Reads, validates and writes one Flow Svelte model or application stylesheet.",
+  "description": "Reads, searches, validates and writes Flow Svelte models or application stylesheets.",
   "properties": {
-    "operation": { "kind": "text", "type": "string", "description": "get, check, set or patch." },
-    "sourceFile": { "kind": "text", "type": "string", "description": "Project-relative *.flow.svelte or app.flow.css source path." },
+    "operation": { "kind": "text", "type": "string", "description": "get, rg, check, set or patch." },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or app.flow.css source path. Omit for project-wide rg." },
     "code": { "kind": "text", "type": "string", "description": "Complete Flow Svelte or application CSS source for check or set." },
     "revision": { "kind": "text", "type": "string", "description": "Current revision required when replacing an existing source; omit only to create a missing source." },
     "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers." },
+    "pattern": { "kind": "text", "type": "string", "description": "Text or regex pattern for rg." },
+    "regex": { "kind": "literal", "type": "boolean", "default": false, "description": "Treat pattern as a regular expression." },
+    "caseSensitive": { "kind": "literal", "type": "boolean", "default": false, "description": "Use case-sensitive matching." },
+    "context": { "kind": "literal", "type": "integer", "default": 2, "description": "Context lines around each rg match." },
+    "limit": { "kind": "literal", "type": "integer", "default": 20, "description": "Maximum rg extracts, from 1 to 200." },
     "projectDir": { "kind": "text", "type": "string", "description": "Resolved target project directory." },
     "out": { "kind": "path", "mode": "write", "default": "local.frontendSource" }
   },
@@ -55,6 +60,165 @@ const _meta = {
 			throw new Error("Flow Svelte sourceFile must be under libs/flow/frontbuilder/.");
 		}
 		return { root: root, file: file, relative: relative, absolute: filePath };
+	}
+
+	function boolValue(value, fallback) {
+		if (value === undefined || value === null || value === "") return fallback;
+		if (typeof value === "boolean") return value;
+		return String(value) === "true";
+	}
+
+	function intValue(value, fallback, min, max) {
+		var number = Number(value);
+		if (!isFinite(number)) number = fallback;
+		number = Math.floor(number);
+		return Math.max(min, Math.min(max, number));
+	}
+
+	function sourceSearchPaths(props) {
+		if (String(props.sourceFile || "").trim()) {
+			var selected = sourcePath(props);
+			return {
+				paths: selected.file.isFile() ? [selected] : [],
+				truncated: false,
+				sourceRoot: selected.relative
+			};
+		}
+		var root = new File(String(props.projectDir || "")).getCanonicalFile();
+		if (!root.isDirectory()) {
+			throw new Error("Flow Svelte source tools require a valid projectDir.");
+		}
+		var relativeRoot = "libs/flow/frontbuilder/svelte/model";
+		var modelRoot = new File(root, relativeRoot).getCanonicalFile();
+		var rootPath = String(root.getCanonicalPath());
+		var modelPath = String(modelRoot.getCanonicalPath());
+		if (modelPath.indexOf(rootPath + String(File.separator)) !== 0) {
+			throw new Error("Flow Svelte model root escapes the target project.");
+		}
+		var paths = [];
+		var truncated = false;
+		function visit(directory) {
+			if (truncated) return;
+			var files = directory && directory.listFiles();
+			if (!files) return;
+			Array.prototype.slice.call(files).sort(function (left, right) {
+				return String(left.getName()).localeCompare(String(right.getName()));
+			}).forEach(function (file) {
+				if (truncated) return;
+				if (file.isDirectory()) {
+					if (String(file.getName()) !== "node_modules" && String(file.getName()) !== "_private") {
+						visit(file);
+					}
+					return;
+				}
+				var relative = String(file.getCanonicalPath())
+					.substring(rootPath.length + 1).replace(/\\/g, "/");
+				if (!relative.endsWith(".flow.svelte") && !relative.endsWith("/app.flow.css")) return;
+				if (paths.length >= 500) {
+					truncated = true;
+					return;
+				}
+				paths.push({
+					root: root,
+					file: file.getCanonicalFile(),
+					relative: relative,
+					absolute: String(file.getCanonicalPath())
+				});
+			});
+		}
+		if (modelRoot.isDirectory()) visit(modelRoot);
+		return {
+			paths: paths,
+			truncated: truncated,
+			sourceRoot: relativeRoot
+		};
+	}
+
+	function sourceSearchError(code, message, hint) {
+		var error = new Error(message);
+		error.code = code;
+		error.hint = hint;
+		return error;
+	}
+
+	function search(ctx, props) {
+		var pattern = String(props.pattern || props.query || props.q || "");
+		if (!pattern) {
+			throw sourceSearchError(
+				"FRONTEND_SOURCE_PATTERN_REQUIRED",
+				"code-rg for Flow Svelte sources requires a pattern.",
+				"Pass pattern and optionally sourceFile. Omit sourceFile to search all canonical frontend sources in the project."
+			);
+		}
+		var caseSensitive = boolValue(props.caseSensitive, false);
+		var useRegex = boolValue(props.regex, false);
+		var context = intValue(props.context, 2, 0, 10);
+		var limit = intValue(props.limit, 20, 1, 200);
+		var expression = null;
+		if (useRegex) {
+			try {
+				expression = new RegExp(pattern, caseSensitive ? "" : "i");
+			} catch (error) {
+				throw sourceSearchError(
+					"FRONTEND_SOURCE_REGEX_INVALID",
+					"Invalid frontend source regex: " + String(error && error.message || error),
+					"Correct pattern or call code-rg with regex:false."
+				);
+			}
+		}
+		var needle = caseSensitive ? pattern : pattern.toLowerCase();
+		var selection = sourceSearchPaths(props);
+		var extracts = [];
+		var matchedTargets = 0;
+		var matchCount = 0;
+		selection.paths.forEach(function (path) {
+			var resource = ctx.resourceGet({
+				projectDir: props.projectDir,
+				path: path.relative,
+				allowLarge: true,
+				maxBytes: 5000000
+			});
+			var lines = String(resource.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+			var matched = false;
+			lines.forEach(function (line, index) {
+				var comparable = caseSensitive ? line : line.toLowerCase();
+				var found = useRegex ? expression.test(line) : comparable.indexOf(needle) !== -1;
+				if (!found) return;
+				matched = true;
+				matchCount++;
+				if (extracts.length >= limit) return;
+				var start = Math.max(0, index - context);
+				var end = Math.min(lines.length, index + context + 1);
+				extracts.push({
+					name: path.relative,
+					sourceFile: path.relative,
+					revision: resource.hash,
+					line: index + 1,
+					startLine: start + 1,
+					endLine: end,
+					code: lines.slice(start, end).join("\n")
+				});
+			});
+			if (matched) matchedTargets++;
+		});
+		var partial = selection.truncated || matchCount > extracts.length;
+		return {
+			ok: true,
+			pattern: pattern,
+			regex: useRegex,
+			caseSensitive: caseSensitive,
+			sourceRoot: selection.sourceRoot,
+			totalTargets: selection.paths.length,
+			matchedTargets: matchedTargets,
+			matchCount: matchCount,
+			extracts: extracts,
+			partial: partial,
+			next: partial
+				? "Some matches were omitted. Narrow pattern or raise limit up to 200."
+				: matchCount === 0
+					? "No canonical Flow Svelte source matched this pattern."
+					: "Use sourceFile and revision from an extract with code-get/code-patch."
+		};
 	}
 
 	function isStylesheet(path) {
@@ -665,9 +829,11 @@ const _meta = {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var operation = String(prop(node, "operation") || "get").toLowerCase();
-			var path = sourcePath(props);
+			var path = operation === "rg" ? null : sourcePath(props);
 			var result;
-			if (operation === "get") {
+			if (operation === "rg") {
+				result = search(ctx, props);
+			} else if (operation === "get") {
 				result = read(ctx, props, path, true);
 			} else if (operation === "check") {
 				var source = props.code !== undefined && props.code !== null

@@ -72,7 +72,12 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   It documents `ctx.props`, `ctx.template`, `ctx.expr`, `ctx.read`,
   `ctx.write`, `ctx.callBlock`, `ctx.throwFlow` and `ctx.lib` so agents do not
   need shell `rg` over Flow engine sources.
-- For broad edits, use `code-get`, patch the returned code, then send it back through `code-patch` with the returned `revision`. For narrow reads, `code-get({ pattern:"..." })` returns extracts like `code-rg`; omit `pattern` only when the full source is needed.
+- For broad edits, use `code-get`, patch the returned code, then send it back
+  through `code-patch` with the returned `revision`. This same facade
+  accepts a Flow `qname`, a project `block`, or a canonical Flow Svelte
+  `sourceFile`. For narrow reads, `code-get({ pattern:"..." })` returns
+  extracts like `code-rg`; use `kind:"source"` without `sourceFile` to
+  search every canonical `*.flow.svelte` and `app.flow.css` source.
 - `flow-tree` is compact by default through MCP. Use `detail:"full"` only when a UI-like tree with full `definition` and `info` strings is really needed.
 - Prefer FlowScript patching for normal maintenance. Use `flow-node-add/edit/move/delete/duplicate` only for low-level model operations or UI-like tooling.
 - Node mutation tools use `properties` for node properties. That is an MCP tool argument, not the Flow definition shape. Do not send `props`.

@@ -1,15 +1,7 @@
 const _meta = {
   "version": 1,
-  "private": true,
-  "icon": "mdi:format-list-checks",
-  "tags": [
-    "mcp"
-  ],
   "description": "Returns the Flow MCP tool descriptors.",
-  "display": "available tools -> {{ input.out }}",
-  "hooks": {
-    "file": "available.hooks.js"
-  },
+  "icon": "mdi:format-list-checks",
   "properties": {
     "out": {
       "kind": "path",
@@ -17,6 +9,19 @@ const _meta = {
       "default": "local.tools",
       "description": "Scope path receiving the tool descriptors."
     }
+  },
+  "outputs": {
+    "out": {
+      "type": "unknown"
+    }
+  },
+  "private": true,
+  "tags": [
+    "mcp"
+  ],
+  "display": "available tools -> {{ input.out }}",
+  "hooks": {
+    "file": "available.hooks.js"
   },
   "runtime": "rhino"
 }
@@ -329,13 +334,17 @@ const _meta = {
 				};
 				schema.properties.kind = {
 					type: "string",
-					enum: ["flow", "block"],
-					description: "Optional explicit target kind. Usually inferred from block or qname."
+					enum: ["flow", "block", "source"],
+					description: "Optional target kind. Usually inferred from qname, block or sourceFile; use source for the configured Svelte model or project-wide source rg."
+				};
+				schema.properties.sourceFile = {
+					type: "string",
+					description: "Canonical project-relative *.flow.svelte or app.flow.css source. Its presence selects source code automatically."
 				};
 				schema.properties.target = {
 					type: "string",
 					enum: ["backend", "frontend"],
-					description: "Block implementation target. Defaults to backend; use frontend for the browser function."
+					description: "Backward-compatible selector. With block it selects that implementation; frontend without block selects the configured Svelte source."
 				};
 				if (toolName === "code-set" || toolName === "code-patch") {
 					schema.properties.finalize = {
@@ -407,15 +416,17 @@ const _meta = {
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
-			description = "Writes/checks FlowScript or a target-specific project block implementation. Browser functions use block plus target:\"frontend\".";
+			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation.";
 		} else if (name === "code-patch") {
-			description = "Patches FlowScript or a revision-checked project block implementation. Browser functions use target:\"frontend\".";
+			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation.";
 		} else if (name === "code-check") {
-			description = "Checks FlowScript, or validates a project browser block function with block plus target:\"frontend\".";
+			description = "Checks FlowScript, a canonical source selected by sourceFile, or a project block implementation.";
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
 			} else if (name === "code-get") {
-				description = "Reads FlowScript for qname:\"Project.Flow\" or block:\"namespace.name\"; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
+				description = "Reads code addressed by qname, block or sourceFile; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
+			} else if (name === "code-rg") {
+				description = "Searches FlowScript, block code or canonical frontend sources. Use kind:\"source\" without sourceFile for project-wide Svelte rg.";
 			}
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";

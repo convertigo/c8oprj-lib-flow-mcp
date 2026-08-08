@@ -45,7 +45,14 @@ ad hoc frontend expression.
 6. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
 7. Use `flow-search` only after the first draft when the block/pattern is still unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
 8. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-9. For FlowScript source, use `code-get({ pattern:"..." })` or `code-rg` for extracts, then `code-get` and `code-patch` for edits. Address executable Flows with a real Convertigo DBO qname such as `qname:"Project.Flow"`, and project-local blocks with `block:"namespace.name"` plus `project`. Do not encode blocks in `qname`.
+9. Treat FlowScript, project blocks and canonical Flow Svelte files as code:
+   use `code-get({ pattern:"..." })` or `code-rg` for extracts, then
+   `code-get` and `code-patch` for edits. Address executable Flows with a
+   real Convertigo DBO qname such as `qname:"Project.Flow"`, project-local
+   blocks with `block:"namespace.name"`, and Flow Svelte/CSS with
+   `sourceFile`. A `sourceFile` selects source code automatically; use
+   `kind:"source"` without `sourceFile` for project-wide source `rg`.
+   Do not encode blocks in `qname`.
 
 Project-local blocks are code-first: `code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
 

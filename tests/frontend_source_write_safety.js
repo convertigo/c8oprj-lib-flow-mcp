@@ -43,6 +43,9 @@ function context(props) {
 		authoringTreeSource: function () {
 			return { ok: true, diagnostics: [], children: [] };
 		},
+		authoringContractSource: function () {
+			return { items: [] };
+		},
 		notifySourceMutation: function (request) {
 			notificationRequests.push(request);
 			return { ok: true };

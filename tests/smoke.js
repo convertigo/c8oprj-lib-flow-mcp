@@ -383,6 +383,12 @@ assertTrue(unifiedCodeTools["code-check"].inputSchema.properties.target.enum.ind
 	unifiedCodeTools["code-set"].inputSchema.properties.finalize.type === "boolean" &&
 	unifiedCodeTools["code-patch"].inputSchema.properties.target.enum.indexOf("backend") !== -1,
 	"Unified code tools did not expose target-aware block implementation schemas");
+assertTrue(["code-get", "code-check", "code-set", "code-patch", "code-rg"].every(function (name) {
+	var schema = unifiedCodeTools[name].inputSchema.properties;
+	return schema.sourceFile && schema.kind.enum.indexOf("source") !== -1;
+}) && !list.result.result.tools.some(function (tool) {
+	return tool.name === "frontend-svelte-code-rg";
+}), "Unified code tools should expose canonical sources and keep project-wide rg out of the specialized public aliases");
 var frontendSourceSetTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "frontend-svelte-code-set";
 })[0];
@@ -2239,6 +2245,79 @@ assertTrue(frontendCssInvalid.result.result.structuredContent.ok === false &&
 	frontendCssInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_CSS_UNBALANCED_BLOCK";
 	}), "MCP frontend-svelte-code-check should reject structurally invalid app CSS");
+
+var unifiedFrontendSourceGet = callTool(13891, "code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendSourceAfterPatch.result.result.structuredContent.sourceFile
+});
+var unifiedFrontendSourceCheck = callTool(13892, "code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: unifiedFrontendSourceGet.result.result.structuredContent.sourceFile
+});
+var unifiedFrontendSourceSet = callTool(13893, "code-set", {
+	projectDir: targetProjectDir,
+	sourceFile: unifiedFrontendSourceGet.result.result.structuredContent.sourceFile,
+	revision: unifiedFrontendSourceGet.result.result.structuredContent.revision,
+	code: unifiedFrontendSourceGet.result.result.structuredContent.code
+});
+var unifiedFrontendSourcePatch = callTool(13894, "code-patch", {
+	projectDir: targetProjectDir,
+	sourceFile: unifiedFrontendSourceGet.result.result.structuredContent.sourceFile,
+	revision: unifiedFrontendSourceSet.result.result.structuredContent.revision,
+	codepatch: [
+		"--- a/+page.flow.svelte",
+		"+++ b/+page.flow.svelte",
+		"@@ -1,4 +1,4 @@",
+		"-<FlowComponent id=\"home\" label=\"Home patched\">",
+		"+<FlowComponent id=\"home\" label=\"Home unified\">",
+		"   <Structure>",
+		"   </Structure>",
+		" </FlowComponent>"
+	].join("\n")
+});
+var unifiedFrontendSourceRg = callTool(13895, "code-rg", {
+	projectDir: targetProjectDir,
+	kind: "source",
+	pattern: "Home unified",
+	context: 1,
+	limit: 10
+});
+var unifiedFrontendSourceGetRg = callTool(13896, "code-get", {
+	projectDir: targetProjectDir,
+	kind: "source",
+	pattern: "Home unified",
+	context: 0,
+	limit: 10
+});
+var unifiedFrontendImplicitGet = callTool(13897, "code-get", {
+	projectDir: targetProjectDir,
+	kind: "source"
+});
+assertTrue(unifiedFrontendSourceGet.result.result.structuredContent.ok === true &&
+	unifiedFrontendSourceCheck.result.result.structuredContent.ok === true &&
+	unifiedFrontendSourceCheck.result.result.structuredContent.next.indexOf("Use code-get") !== -1 &&
+	unifiedFrontendSourceSet.result.result.structuredContent.written === true &&
+	unifiedFrontendSourceSet.result.result.structuredContent.sourceFile === unifiedFrontendSourceGet.result.result.structuredContent.sourceFile &&
+	unifiedFrontendSourcePatch.result.result.structuredContent.written === true &&
+	unifiedFrontendSourceRg.result.result.structuredContent.matchCount === 1 &&
+	unifiedFrontendSourceRg.result.result.structuredContent.totalTargets === 3 &&
+	unifiedFrontendSourceRg.result.result.structuredContent.extracts.every(function (extract) {
+		return extract.sourceFile.indexOf("libs/flow/frontbuilder/svelte/model/") === 0 &&
+			extract.sourceFile.indexOf("_private/") === -1 &&
+			(extract.sourceFile.indexOf(".flow.svelte") !== -1 || extract.sourceFile.indexOf("/app.flow.css") !== -1);
+	}) &&
+	unifiedFrontendSourceGetRg.result.result.structuredContent.matchCount === 1 &&
+	unifiedFrontendImplicitGet.result.result.structuredContent.code.indexOf("Home unified") !== -1,
+	"Unified code get/check/set/patch/rg should treat canonical Flow Svelte sources like code: " +
+		JSON.stringify({
+			get: unifiedFrontendSourceGet,
+			check: unifiedFrontendSourceCheck,
+			set: unifiedFrontendSourceSet,
+			patch: unifiedFrontendSourcePatch,
+			rg: unifiedFrontendSourceRg,
+			getRg: unifiedFrontendSourceGetRg,
+			implicit: unifiedFrontendImplicitGet
+		}));
 
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,

@@ -3324,7 +3324,10 @@
 			out.studioRefresh = compactJsonPreview(value.studioRefresh, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		}
 		out.responseDetail = "summary";
-		out.next = "Source omitted after validation. Use frontend-svelte-code-get to read it again, or detail:'full' only for debugging.";
+		var readTool = toolArguments(request).unifiedSourceCode === true ||
+			String(toolName(request) || "").indexOf("code-") === 0
+				? "code-get" : "frontend-svelte-code-get";
+		out.next = "Source omitted after validation. Use " + readTool + " to read it again, or detail:'full' only for debugging.";
 		return out;
 	}
 
@@ -3354,6 +3357,14 @@
 		}
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
+		}
+		var codeArgs = toolArguments(request);
+		var sourceCodeRequest = codeArgs && (
+			codeArgs.sourceFile || codeArgs.sourcePath ||
+			String(codeArgs.kind || codeArgs.type || "").toLowerCase() === "source" ||
+			(String(codeArgs.target || "").toLowerCase() === "frontend" && !codeArgs.block && !codeArgs.blockName));
+		if (sourceCodeRequest && (name === "code-set" || name === "code-patch" || name === "code-check")) {
+			return compactFrontendWriteToolValue(request, value);
 		}
 		if (name === "flow-code-set" || name === "flow-code-patch" || name === "flow-code-check" ||
 				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard" ||

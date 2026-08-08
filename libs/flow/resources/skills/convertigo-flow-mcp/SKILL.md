@@ -59,7 +59,9 @@ acceptance campaign.
 Use `flow-app-progress({ project, mode:"hardening" })` only when the user asks
 for fiabilisation, production readiness or exhaustive validation. Never use
 `flow-resource-get/patch` to edit Flow Svelte models or their source-backed
-`app.flow.css`; use `frontend-svelte-code-get/set/check/patch`.
+`app.flow.css`; use `code-get/set/check/patch` with `sourceFile`. Use
+`code-rg({ project, kind:"source", pattern })` for project-wide canonical
+frontend search.
 
 ## Boundaries
 
@@ -234,7 +236,7 @@ mutations. A complete pass may write several Page sources:
 1. Derive the logical Pages and transitions from the requested workflow before
    writing markup. Each distinct business step is a Page unless it is a small,
    mutually exclusive state of the current Page.
-2. `frontend-svelte-code-get({ project })` returns the configured source,
+2. `code-get({ project, kind:"source" })` returns the configured source,
    revision, the application Page index and a compact `authoringContract`.
    Use `authoringContract.sources.applicationStyles` as the exact
    `app.flow.css` source path; do not search for or guess that path.
@@ -246,11 +248,14 @@ mutations. A complete pass may write several Page sources:
    and `Else`; never omit a listed wrapper around nested blocks. `FlowComponent`
    is non-visual and accepts only `id` and `label`; put classes on visible
    children such as `PageShell`.
-4. `frontend-svelte-code-check({ project, sourceFile, code })` validates each
-   Page. `frontend-svelte-code-set({ project, sourceFile, code, revision })`
+4. `code-check({ project, sourceFile, code })` validates each
+   Page. `code-set({ project, sourceFile, code, revision })`
    persists it and can create a new canonical route source when no revision
    exists.
-5. Use `frontend-svelte-code-patch` for later focused changes.
+5. Use `code-patch` for later focused changes and
+   `code-rg({ project, kind:"source", pattern })` to search all canonical
+   `*.flow.svelte` and `app.flow.css` sources. The historical
+   `frontend-svelte-code-get/check/set/patch` aliases remain compatible.
 6. If dev mode was not already started after bootstrap, call
    `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
    after the first frontend read. Continue the focused repair passes while npm
