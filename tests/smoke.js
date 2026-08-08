@@ -170,6 +170,30 @@ assertTrue(leanAuthoringTreeArgs.includeFrontendCatalog === false &&
 	explicitCatalogTreeArgs.includeFrontendCatalog === true &&
 	explicitCatalogTreeArgs.includeFlowCatalog === true,
 	"MCP authoring-tree should omit eager catalogs by default and preserve explicit inspection");
+var proxyAwareFrontendArgs = mcpLib.prepareToolArguments({
+	convertigoContext: function () {
+		return {
+			httpServletRequest: {
+				getHeader: function (name) {
+					if (name === "X-Forwarded-Proto") return "https";
+					if (name === "X-Forwarded-Host") return "convertigo.goodnet.work";
+					return null;
+				},
+				getScheme: function () { return "http"; },
+				getServerName: function () { return "127.0.0.1"; },
+				getServerPort: function () { return 28080; },
+				getContextPath: function () { return "/convertigo"; }
+			}
+		};
+	}
+}, {
+	params: {
+		name: "frontend-svelte-action",
+		arguments: { project: "Marketplace", actionId: "dev.start", publicBaseUrl: "https://attacker.invalid" }
+	}
+}, { resolveProject: false });
+assertTrue(proxyAwareFrontendArgs.publicBaseUrl === "https://convertigo.goodnet.work/convertigo",
+	"MCP frontend actions should derive their public origin from the server request and ignore a client-supplied origin");
 var sanitizedCodePaths = mcpLib.sanitizeForMcp({
 	codeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
 	workingCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),

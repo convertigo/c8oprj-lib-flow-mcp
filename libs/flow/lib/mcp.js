@@ -1715,6 +1715,45 @@
 		}));
 	}
 
+	function firstForwardedValue(value) {
+		return String(value || "").split(",")[0].trim();
+	}
+
+	function frontendPublicBaseUrl(ctx) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			var servletRequest = context && context.httpServletRequest;
+			if (!servletRequest) {
+				return "";
+			}
+			var proto = firstForwardedValue(servletRequest.getHeader("X-Forwarded-Proto"))
+				|| String(servletRequest.getScheme() || "").trim();
+			proto = proto.toLowerCase();
+			if (proto !== "http" && proto !== "https") {
+				return "";
+			}
+			var host = firstForwardedValue(servletRequest.getHeader("X-Forwarded-Host"))
+				|| firstForwardedValue(servletRequest.getHeader("Host"));
+			if (!host) {
+				host = String(servletRequest.getServerName() || "").trim();
+				var port = Number(servletRequest.getServerPort() || 0);
+				if (port > 0 && !(proto === "http" && port === 80) && !(proto === "https" && port === 443)) {
+					host += ":" + port;
+				}
+			}
+			if (!host || /[\s\/?#@]/.test(host)) {
+				return "";
+			}
+			var contextPath = String(servletRequest.getContextPath() || "").trim();
+			if (contextPath && !/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(contextPath)) {
+				return "";
+			}
+			return proto + "://" + host + contextPath.replace(/\/+$/, "");
+		} catch (e) {
+			return "";
+		}
+	}
+
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
@@ -1851,6 +1890,14 @@
 		} else if (/^frontend-svelte-/.test(name)) {
 			args.surface = "frontend";
 			args.builder = "svelte";
+			if (name === "frontend-svelte-action" || name === "frontend-svelte-actions") {
+				var publicBaseUrl = frontendPublicBaseUrl(ctx);
+				if (publicBaseUrl) {
+					args.publicBaseUrl = publicBaseUrl;
+				} else {
+					delete args.publicBaseUrl;
+				}
+			}
 			if (name === "frontend-svelte-tree") {
 				if (!args.detail && !args.mode) {
 					args.detail = "compact";
@@ -3461,6 +3508,7 @@
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
+		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,
 		phaseBudget: phaseBudget,
