@@ -59,7 +59,7 @@ writing generated `+page.svelte` files.
 
 Do not assemble an application with hundreds of tree mutations. Do not guess
 Ionic, NGX, CSS or HTML property names. Use semantic layout properties for
-structure and the source-backed `app.flow.css` application stylesheet plus explicit `class` names for
+structure, the source-backed `theme.flow.css` project theme, and the free-form `app.flow.css` application stylesheet plus explicit `class` names for
 visual rules that do not belong in a component contract. Source wrapper tags
 such as `Children`, `Events`, `Actions`, `Params`, `Query`, `Then` and `Else`
 are exact.

@@ -2,7 +2,7 @@ const _meta = {
   "version": 1,
   "private": true,
   "icon": "mdi:file-code-outline",
-  "description": "Reads, searches, validates and writes Flow Svelte models or application stylesheets.",
+  "description": "Reads, searches, validates and writes Flow Svelte models or canonical Flow CSS sources.",
   "properties": {
     "operation": {
       "kind": "text",
@@ -12,12 +12,12 @@ const _meta = {
     "sourceFile": {
       "kind": "text",
       "type": "string",
-      "description": "Optional project-relative *.flow.svelte or app.flow.css source path. Omit for project-wide rg."
+      "description": "Optional project-relative *.flow.svelte or *.flow.css source path. Omit for project-wide rg."
     },
     "code": {
       "kind": "text",
       "type": "string",
-      "description": "Complete Flow Svelte or application CSS source for check or set."
+      "description": "Complete Flow Svelte or Flow CSS source for check or set."
     },
     "revision": {
       "kind": "text",
@@ -107,9 +107,9 @@ const _meta = {
 		var rootPath = String(root.getCanonicalPath());
 		var filePath = String(file.getCanonicalPath());
 		var normalizedFilePath = filePath.replace(/\\/g, "/");
-		var supported = normalizedFilePath.endsWith(".flow.svelte") || normalizedFilePath.endsWith("/app.flow.css");
+		var supported = normalizedFilePath.endsWith(".flow.svelte") || normalizedFilePath.endsWith(".flow.css");
 		if (filePath.indexOf(rootPath + String(File.separator)) !== 0 || !supported) {
-			throw new Error("Frontend sourceFile must stay inside the target project and end with .flow.svelte or /app.flow.css.");
+			throw new Error("Frontend sourceFile must stay inside the target project and end with .flow.svelte or .flow.css.");
 		}
 		var relative = filePath.substring(rootPath.length + 1).replace(/\\/g, "/");
 		if (relative.indexOf("libs/flow/frontbuilder/") !== 0) {
@@ -169,7 +169,7 @@ const _meta = {
 				}
 				var relative = String(file.getCanonicalPath())
 					.substring(rootPath.length + 1).replace(/\\/g, "/");
-				if (!relative.endsWith(".flow.svelte") && !relative.endsWith("/app.flow.css")) return;
+				if (!relative.endsWith(".flow.svelte") && !relative.endsWith(".flow.css")) return;
 				if (paths.length >= 500) {
 					truncated = true;
 					return;
@@ -272,13 +272,17 @@ const _meta = {
 			next: partial
 				? "Some matches were omitted. Narrow pattern or raise limit up to 200."
 				: matchCount === 0
-					? "No canonical Flow Svelte source matched this pattern."
+					? "No canonical Flow Svelte/CSS source matched this pattern."
 					: "Use sourceFile and revision from an extract with code-get/code-patch."
 		};
 	}
 
 	function isStylesheet(path) {
-		return path && String(path.relative || "").endsWith("/app.flow.css");
+		return path && String(path.relative || "").endsWith(".flow.css");
+	}
+
+	function isThemeStylesheet(path) {
+		return path && String(path.relative || "").endsWith("/theme.flow.css");
 	}
 
 	function lineNumber(source, offset) {
@@ -480,8 +484,17 @@ const _meta = {
 				cssDiagnostics.push({
 					severity: "error",
 					code: "FRONTEND_CSS_UNBALANCED_BLOCK",
-					message: "Application CSS has unbalanced block braces.",
-					hint: "Correct app.flow.css, then call code-check again."
+					message: "Flow CSS has unbalanced block braces.",
+					hint: "Correct the *.flow.css source, then call code-check again."
+				});
+			}
+			if (isThemeStylesheet(path) && String(source || "").trim() &&
+				!/@layer\s+flow\.theme\s*\{/.test(String(source || ""))) {
+				cssDiagnostics.push({
+					severity: "error",
+					code: "FLOW_THEME_LAYER_REQUIRED",
+					message: "theme.flow.css must declare @layer flow.theme.",
+					hint: "Wrap project theme selectors and variables in @layer flow.theme { ... }."
 				});
 			}
 			return {
@@ -642,6 +655,7 @@ const _meta = {
 		var markerIndex = model.indexOf(marker);
 		var sourceRoot = markerIndex >= 0 ? model.substring(0, markerIndex + "/src".length) : "";
 		return {
+			applicationTheme: sourceRoot ? sourceRoot + "/theme.flow.css" : "",
 			applicationStyles: sourceRoot ? sourceRoot + "/app.flow.css" : ""
 		};
 	}
@@ -759,7 +773,7 @@ const _meta = {
 					code: "",
 					revision: null,
 					contentLength: 0,
-					next: "Create this canonical application stylesheet with code-check, then code-set without a revision."
+						next: "Create this canonical Flow stylesheet with code-check, then code-set without a revision."
 				};
 			}
 			throw new Error("Unknown Flow Svelte source: " + path.relative);

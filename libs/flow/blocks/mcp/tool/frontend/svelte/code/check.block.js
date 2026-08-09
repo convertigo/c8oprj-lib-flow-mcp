@@ -4,7 +4,7 @@ const _meta = {
   "icon": "mdi:file-check-outline",
   "properties": {
     "request": { "kind": "expression", "type": "object", "default": "input.request" },
-    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative .flow.svelte path; defaults to the configured modelPath." },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or *.flow.css path; defaults to the configured modelPath." },
     "code": { "kind": "text", "type": "string", "description": "Complete .flow.svelte draft. Omit to check the saved source." },
     "out": { "kind": "path", "mode": "write", "default": "local.response" }
   },

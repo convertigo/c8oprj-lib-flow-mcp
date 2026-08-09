@@ -59,7 +59,7 @@ acceptance campaign.
 Use `flow-app-progress({ project, mode:"hardening" })` only when the user asks
 for fiabilisation, production readiness or exhaustive validation. Never use
 `flow-resource-get/patch` to edit Flow Svelte models or their source-backed
-`app.flow.css`; use `code-get/set/check/patch` with `sourceFile`. Use
+`*.flow.css`; use `code-get/set/check/patch` with `sourceFile`. Use
 `code-rg({ project, kind:"source", pattern })` for project-wide canonical
 frontend search.
 
@@ -238,8 +238,8 @@ mutations. A complete pass may write several Page sources:
    mutually exclusive state of the current Page.
 2. `code-get({ project, kind:"source" })` returns the configured source,
    revision, the application Page index and a compact `authoringContract`.
-   Use `authoringContract.sources.applicationStyles` as the exact
-   `app.flow.css` source path; do not search for or guess that path.
+   Use `authoringContract.sources.applicationTheme` and `applicationStyles` as the exact
+   `theme.flow.css` and `app.flow.css` source paths; do not search for or guess them.
    Navigate by logical Page id with `Params`/`Query`; target Pages read typed
    values through `@route.params.name`. Use `sourceFile` to read another Page.
 3. Write every Page needed by the complete application pass. Do not guess CSS,
@@ -254,7 +254,7 @@ mutations. A complete pass may write several Page sources:
    exists.
 5. Use `code-patch` for later focused changes and
    `code-rg({ project, kind:"source", pattern })` to search all canonical
-   `*.flow.svelte` and `app.flow.css` sources.
+   `*.flow.svelte` and `*.flow.css` sources.
 6. If dev mode was not already started after bootstrap, call
    `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
    after the first frontend read. Continue the focused repair passes while npm

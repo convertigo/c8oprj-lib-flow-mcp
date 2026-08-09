@@ -2200,6 +2200,8 @@ assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
 		"Interval", "Timeout", "SetValue", "UpdateList", "UpdateNumber"].every(function (tag) {
 		return frontendStarterTags.indexOf(tag) !== -1;
 	}) &&
+	frontendSourceImplicit.result.result.structuredContent.authoringContract.sources.applicationTheme ===
+		"libs/flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css" &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.sources.applicationStyles ===
 		"libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css",
 	"MCP frontend-svelte-code-get should expose reactive state, lifecycle, action and visual root contracts");
@@ -2250,6 +2252,101 @@ assertTrue(unifiedFrontendCssRg.result.result.structuredContent.totalTargets ===
 	unifiedFrontendCssRg.result.result.structuredContent.matchCount === 1 &&
 	unifiedFrontendCssRg.result.result.structuredContent.extracts[0].sourceFile === frontendCssRelative,
 	"Unified code-rg should search a canonical app.flow.css source explicitly");
+
+var frontendThemeRelative = "libs/flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css";
+var frontendThemeMissing = callTool(138901, "code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative
+});
+var frontendThemeInvalid = callTool(138902, "code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative,
+	code: ":root { --flow-color-primary: #075985; }\n"
+});
+var frontendThemeCode = [
+	"@layer flow.theme {",
+	"  :root {",
+	"    --flow-color-primary: #075985;",
+	"    --flow-gap-small: 0.5rem;",
+	"  }",
+	"  @media (min-width: 64rem) {",
+	"    :root { --flow-gap-small: 0.75rem; }",
+	"  }",
+	"}",
+	""
+].join("\n");
+var frontendThemeCheck = callTool(138903, "code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative,
+	code: frontendThemeCode
+});
+var frontendThemeSet = callTool(138904, "code-set", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative,
+	code: frontendThemeCode
+});
+var frontendThemeTree = callTool(1389041, "authoring-tree", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	surface: "frontend",
+	builder: "svelte",
+	detail: "inspect",
+	maxDepth: 8
+});
+var frontendThemeNode = findCompactNode(frontendThemeTree.result.result.structuredContent, function (node) {
+	return node.kind === "frontendThemeSource";
+});
+var frontendThemeValueNode = findCompactNode(frontendThemeNode, function (node) {
+	return node.kind === "frontendThemeTokenValue" && node.summary === "(min-width: 64rem)";
+});
+var frontendThemeMutation = callTool(1389042, "authoring-mutate", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	surface: "frontend",
+	builder: "svelte",
+	sourceFile: frontendThemeRelative,
+	mutation: {
+		op: "replace",
+		path: "theme.tokens[1].values[1].props.value",
+		value: "1rem"
+	}
+});
+var frontendThemeGet = callTool(138905, "code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative
+});
+var frontendThemeRg = callTool(138906, "code-rg", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendThemeRelative,
+	pattern: "--flow-gap-small",
+	context: 0,
+	limit: 10
+});
+assertTrue(frontendThemeMissing.result.result.structuredContent.exists === false &&
+	frontendThemeInvalid.result.result.structuredContent.ok === false &&
+	frontendThemeInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FLOW_THEME_LAYER_REQUIRED";
+	}) &&
+	frontendThemeCheck.result.result.structuredContent.ok === true &&
+	frontendThemeSet.result.result.structuredContent.written === true &&
+	frontendThemeNode !== null &&
+	frontendThemeValueNode !== null &&
+	frontendThemeMutation.result.result.structuredContent.written === true &&
+	frontendThemeGet.result.result.structuredContent.code.indexOf("@layer flow.theme") !== -1 &&
+	frontendThemeGet.result.result.structuredContent.code.indexOf("--flow-gap-small: 1rem") !== -1 &&
+	frontendThemeRg.result.result.structuredContent.matchCount === 2 &&
+	frontendThemeRg.result.result.structuredContent.extracts.every(function (extract) {
+		return extract.sourceFile === frontendThemeRelative;
+	}), "Unified code tools should treat theme.flow.css as canonical source code: " + JSON.stringify({
+		missing: frontendThemeMissing,
+		invalid: frontendThemeInvalid,
+		check: frontendThemeCheck,
+		set: frontendThemeSet,
+		tree: frontendThemeTree,
+		mutation: frontendThemeMutation,
+		get: frontendThemeGet,
+		rg: frontendThemeRg
+	}));
 
 var unifiedFrontendSourceGet = callTool(13891, "code-get", {
 	projectDir: targetProjectDir,
@@ -2315,11 +2412,11 @@ assertTrue(unifiedFrontendSourceGet.result.result.structuredContent.ok === true 
 	unifiedFrontendSvelteRg.result.result.structuredContent.matchedTargets === 1 &&
 	unifiedFrontendSvelteRg.result.result.structuredContent.extracts[0].sourceFile.indexOf(".flow.svelte") !== -1 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.matchCount === 1 &&
-	unifiedFrontendSourceRg.result.result.structuredContent.totalTargets === 3 &&
+	unifiedFrontendSourceRg.result.result.structuredContent.totalTargets === 4 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.extracts.every(function (extract) {
 		return extract.sourceFile.indexOf("libs/flow/frontbuilder/svelte/model/") === 0 &&
 			extract.sourceFile.indexOf("_private/") === -1 &&
-			(extract.sourceFile.indexOf(".flow.svelte") !== -1 || extract.sourceFile.indexOf("/app.flow.css") !== -1);
+			(extract.sourceFile.indexOf(".flow.svelte") !== -1 || extract.sourceFile.indexOf(".flow.css") !== -1);
 	}) &&
 	unifiedFrontendSourceGetRg.result.result.structuredContent.matchCount === 1 &&
 	unifiedFrontendImplicitGet.result.result.structuredContent.code.indexOf("Home unified") !== -1,

@@ -18,7 +18,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Start `dev.start` asynchronously once, continue authoring during npm warm-up,
   and synchronize only after a successful source check.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
-  tree. Put reusable visual rules in `app.flow.css` and expose concise classes.
+  tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
+  rules in `app.flow.css` and expose concise classes.
 - Before creating a local component or mock, call `authoring-palette` once at
   the intended qualified `parentPath` with the business capability. The
   contextual palette searches project, references and workspace and returns

@@ -4,7 +4,7 @@ const _meta = {
   "icon": "mdi:source-branch-sync",
   "properties": {
     "request": { "kind": "expression", "type": "object", "default": "input.request" },
-    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative .flow.svelte path; defaults to the configured modelPath." },
+    "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or *.flow.css path; defaults to the configured modelPath." },
     "revision": { "kind": "text", "type": "string", "description": "Revision from code-get; rejects stale patches." },
     "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff against the retrieved source, with numbered @@ -old,count +new,count @@ hunk headers." },
     "out": { "kind": "path", "mode": "write", "default": "local.response" }

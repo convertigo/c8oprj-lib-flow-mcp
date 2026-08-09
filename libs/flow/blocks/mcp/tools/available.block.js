@@ -335,7 +335,7 @@ const _meta = {
 				};
 				schema.properties.sourceFile = {
 					type: "string",
-					description: "Canonical project-relative *.flow.svelte or app.flow.css source. Its presence selects source code automatically."
+					description: "Canonical project-relative *.flow.svelte or *.flow.css source. Its presence selects source code automatically."
 				};
 				schema.properties.target = {
 					type: "string",
@@ -417,7 +417,7 @@ const _meta = {
 			} else if (name === "code-get") {
 				description = "Reads code addressed by qname, block or sourceFile; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
 			} else if (name === "code-rg") {
-				description = "Searches FlowScript, block code or canonical frontend sources. Use kind:\"source\" without sourceFile for project-wide Svelte rg.";
+				description = "Searches FlowScript, block code or canonical frontend sources. Use kind:\"source\" without sourceFile for project-wide Flow Svelte/CSS rg.";
 			}
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
