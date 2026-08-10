@@ -258,6 +258,11 @@ required project reference atomically. Otherwise keep a typed, visibly
 incomplete mock until the missing reusable capability is implemented; do not
 silently replace a requested chart with a table, summary numbers or fake data.
 
+`authoring-tree` omits the frontend and Flow block catalogs by default so the
+initial project structure stays fast. Use `authoring-palette` for contextual
+block discovery. Set `includeFrontendCatalog:true` or `includeFlowCatalog:true`
+only for an explicit catalog inspection.
+
 Add an explicit Convertigo project reference from the consumer with
 `flow-project-reference`, or pass `references` while bootstrapping a new
 project.

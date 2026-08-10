@@ -422,7 +422,7 @@ const _meta = {
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
 		} else if (name === "authoring-tree") {
-			description = "Generic authoring tree for frontend/Flow surfaces. Requires project; used by Studio, MCP, and tests.";
+			description = "Generic authoring tree for frontend/Flow surfaces. Requires project; catalogs are omitted by default because authoring-palette resolves blocks contextually.";
 		} else if (name === "authoring-palette") {
 			description = "Contextual palette for one qualified parentPath. Searches the project, references and workspace; execute items[].apply unchanged.";
 		} else if (name === "authoring-mutate") {

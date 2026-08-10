@@ -152,6 +152,24 @@ assertTrue(fullSyncViewWarnings.length === 1 &&
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
 var mcpLib = eval(mcpLibSource);
+var leanAuthoringTreeArgs = mcpLib.prepareToolArguments(null, {
+	params: { name: "authoring-tree", arguments: { projectDir: projectDir } }
+}, { resolveProject: false });
+var explicitCatalogTreeArgs = mcpLib.prepareToolArguments(null, {
+	params: {
+		name: "authoring-tree",
+		arguments: {
+			projectDir: projectDir,
+			includeFrontendCatalog: true,
+			includeFlowCatalog: true
+		}
+	}
+}, { resolveProject: false });
+assertTrue(leanAuthoringTreeArgs.includeFrontendCatalog === false &&
+	leanAuthoringTreeArgs.includeFlowCatalog === false &&
+	explicitCatalogTreeArgs.includeFrontendCatalog === true &&
+	explicitCatalogTreeArgs.includeFlowCatalog === true,
+	"MCP authoring-tree should omit eager catalogs by default and preserve explicit inspection");
 var sanitizedCodePaths = mcpLib.sanitizeForMcp({
 	codeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
 	workingCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
@@ -2293,6 +2311,9 @@ var frontendThemeTree = callTool(1389041, "authoring-tree", {
 	detail: "inspect",
 	maxDepth: 8
 });
+assertTrue(findCompactNode(frontendThemeTree.result.result.structuredContent, function (node) {
+	return node.kind === "frontendBlockCatalog" || node.path === "catalog";
+}) === null, "MCP authoring-tree should omit eager catalogs by default");
 var frontendThemeNode = findCompactNode(frontendThemeTree.result.result.structuredContent, function (node) {
 	return node.kind === "frontendThemeSource";
 });

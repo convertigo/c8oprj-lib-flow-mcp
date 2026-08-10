@@ -1807,6 +1807,12 @@
 			if (!args.builder) {
 				args.builder = "svelte";
 			}
+			if (args.includeFrontendCatalog === undefined || args.includeFrontendCatalog === null) {
+				args.includeFrontendCatalog = false;
+			}
+			if (args.includeFlowCatalog === undefined || args.includeFlowCatalog === null) {
+				args.includeFlowCatalog = false;
+			}
 			if (!args.detail && !args.mode) {
 				args.detail = "compact";
 			}
