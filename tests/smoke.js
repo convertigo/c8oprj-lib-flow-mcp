@@ -312,9 +312,15 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "code-set";
 }), "MCP Flow tools/list did not expose code get/set");
-assertTrue(list.result.result.tools.some(function (tool) {
+var resourcePatchTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-resource-patch";
-}), "MCP Flow tools/list did not expose resource patching");
+})[0];
+assertTrue(resourcePatchTool &&
+	resourcePatchTool.inputSchema.properties.scope.enum.indexOf("project") !== -1 &&
+	resourcePatchTool.inputSchema.properties.scope.enum.indexOf("engine-internal") !== -1 &&
+	resourcePatchTool.inputSchema.properties.scope.default === "project" &&
+	resourcePatchTool.inputSchema.properties.files.maxItems === 16,
+	"MCP Flow tools/list did not expose the bounded resource synchronization contract");
 assertTrue(list.result.result.tools.some(function (tool) {
 	return tool.name === "flow-output-schema";
 }) && list.result.result.tools.some(function (tool) {

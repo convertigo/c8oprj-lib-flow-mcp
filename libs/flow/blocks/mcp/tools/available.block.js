@@ -389,6 +389,33 @@ const _meta = {
 		if (toolName === "code-patch" && schema.properties.codepatch) {
 			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
 		}
+		if (toolName === "flow-resource-patch") {
+			schema.properties.scope = {
+				type: "string",
+				enum: ["project", "engine-internal"],
+				default: "project",
+				description: "Project patches use path+patch. engine-internal performs a bounded, staged and revision-checked lib_flow_engine synchronization."
+			};
+			schema.properties.revision = {
+				type: "string",
+				description: "Target Git commit id required by engine-internal synchronization."
+			};
+			schema.properties.files = {
+				type: "array",
+				maxItems: 16,
+				description: "engine-internal only: complete files with path, content, current baseHash and target sha256.",
+				items: {
+					type: "object",
+					required: ["path", "content", "baseHash", "sha256"],
+					properties: {
+						path: { type: "string" },
+						content: { type: "string" },
+						baseHash: { type: "string" },
+						sha256: { type: "string" }
+					}
+				}
+			};
+		}
 		return schema;
 	}
 
@@ -471,6 +498,8 @@ const _meta = {
 			description = "Deletes one project-local Flow resource. Requires project, path and optionally baseHash.";
 		} else if (name === "flow-resource-get") {
 			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
+		} else if (name === "flow-resource-patch") {
+			description = "Patches one project resource, or synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
 		} else if (name === "flow-cache-clear") {
 			description = "Debug only: clears runtime caches when automatic invalidation is suspected stale. Do not use during normal authoring.";
 		} else if (name === "flow-cache-info") {
