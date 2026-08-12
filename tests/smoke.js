@@ -120,8 +120,41 @@ var fullSyncScaffoldSource = String(Packages.org.apache.commons.io.FileUtils.rea
 var isolatedFullSyncScaffold = eval(fullSyncScaffoldSource.substring(fullSyncScaffoldSource.indexOf("(function")));
 assertTrue(isolatedFullSyncScaffold.canonicalVariableName("getView", "include_docs") === "_use_include_docs" &&
 	isolatedFullSyncScaffold.canonicalVariableName("getView", "_use_startkey") === "_use_startkey" &&
+	isolatedFullSyncScaffold.canonicalVariableName("getDocumentAttachment", "attname") === "_use_attname" &&
+	isolatedFullSyncScaffold.canonicalVariableName("putDocumentAttachment", "attbase64") === "_use_attbase64" &&
 	isolatedFullSyncScaffold.canonicalVariableName("postBulkDocuments", "documents") === "documents",
-	"FullSync scaffold did not normalize CouchDB read query variables to Convertigo _use_ names");
+	"FullSync scaffold did not normalize CouchDB read and attachment variables to Convertigo _use_ names");
+var isolatedPostDocument = isolatedFullSyncScaffold.newTransaction("postDocument");
+assertTrue(String(isolatedPostDocument.getClass().getName()) === "com.twinsoft.convertigo.beans.transactions.couchdb.PostDocumentTransaction" &&
+	isolatedFullSyncScaffold.configureTransaction(isolatedPostDocument, "postDocument", {
+		policy: "override",
+		aclPolicy: "fromKeyC8oAcl",
+		useHash: true
+	}) === true &&
+	String(isolatedPostDocument.getPolicy().name()) === "override" &&
+	String(isolatedPostDocument.getFullSyncAclPolicy().name()) === "fromKeyC8oAcl" &&
+	isolatedPostDocument.isUseHash() === true,
+	"FullSync scaffold did not configure PostDocument policy, ACL and hashing through official DBO setters");
+var isolatedGetAttachment = isolatedFullSyncScaffold.newTransaction("getDocumentAttachment");
+var isolatedPutAttachment = isolatedFullSyncScaffold.newTransaction("putDocumentAttachment");
+assertTrue(String(isolatedGetAttachment.getClass().getName()) === "com.twinsoft.convertigo.beans.transactions.couchdb.GetDocumentAttachmentTransaction" &&
+	String(isolatedPutAttachment.getClass().getName()) === "com.twinsoft.convertigo.beans.transactions.couchdb.PutDocumentAttachmentTransaction" &&
+	isolatedFullSyncScaffold.defaultVariables("putDocumentAttachment", {}).some(function (variable) {
+		return variable.name === "_use_attbase64";
+	}),
+	"FullSync scaffold did not instantiate attachment transactions with their standard request variables");
+var isolatedListener = new Packages.com.twinsoft.convertigo.beans.couchdb.FullSyncListener();
+assertTrue(isolatedFullSyncScaffold.configureListener(isolatedListener, {
+	targetSequence: "FlowFullSyncSmoke.OnMessage",
+	targetView: "FlowFullSyncSmoke.retaildb.design.children_byFather",
+	chunk: 25,
+	enabled: false
+}) === true &&
+	String(isolatedListener.getTargetSequence()) === "FlowFullSyncSmoke.OnMessage" &&
+	String(isolatedListener.getTargetView()) === "FlowFullSyncSmoke.retaildb.design.children_byFather" &&
+	Number(isolatedListener.getChunk()) === 25 &&
+	isolatedListener.isEnabled() === false,
+	"FullSync scaffold did not configure a disabled FullSync listener targeting a Flow and view");
 assertTrue(isolatedFullSyncScaffold.designMismatches({
 	_id: "_design/catalog",
 	_rev: "1-live",
@@ -382,7 +415,12 @@ var fullSyncScaffoldTool = list.result.result.tools.filter(function (tool) {
 assertTrue(fullSyncScaffoldTool &&
 	fullSyncScaffoldTool.inputSchema.properties.connector.type === "object" &&
 	fullSyncScaffoldTool.inputSchema.properties.connector.properties.name.type === "string" &&
-	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("getView") !== -1,
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("getView") !== -1 &&
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("postDocument") !== -1 &&
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("getDocumentAttachment") !== -1 &&
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.type.enum.indexOf("putDocumentAttachment") !== -1 &&
+	fullSyncScaffoldTool.inputSchema.properties.transactions.items.properties.policy.enum.indexOf("override") !== -1 &&
+	fullSyncScaffoldTool.inputSchema.properties.listeners.items.properties.targetView.type === "string",
 	"MCP Flow tools/list did not expose the structured flow-fullsync-scaffold schema");
 var appProgressTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-app-progress";
@@ -1096,6 +1134,22 @@ var fullSyncScaffoldDryRun = callTool(139111, "flow-fullsync-scaffold", {
 		view: "design/children_byFather",
 		accessibility: "Public",
 		variables: [{ name: "key", description: "View key" }]
+	}, {
+		name: "PutMessage",
+		type: "postDocument",
+		policy: "override",
+		aclPolicy: "fromKeyC8oAcl",
+		variables: [{ name: "_id" }, { name: "message" }, { name: "_c8oAcl" }]
+	}, {
+		name: "PutAttachment",
+		type: "putDocumentAttachment"
+	}],
+	listeners: [{
+		name: "OnMessage",
+		targetSequence: "FlowFullSyncSmoke.OnMessage",
+		targetView: "FlowFullSyncSmoke.retaildb.design.children_byFather",
+		chunk: 10,
+		enabled: false
 	}],
 	dryRun: true
 });
@@ -1104,6 +1158,9 @@ assertTrue(fullSyncScaffoldDryRun.result.result.structuredContent.ok === true &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.connector === "FlowFullSyncSmoke.retaildb" &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.designDocuments[0] === "FlowFullSyncSmoke.retaildb.design" &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[0] === "FlowFullSyncSmoke.retaildb.GetChildren" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[1] === "FlowFullSyncSmoke.retaildb.PutMessage" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.transactions[2] === "FlowFullSyncSmoke.retaildb.PutAttachment" &&
+	fullSyncScaffoldDryRun.result.result.structuredContent.plan.listeners[0] === "FlowFullSyncSmoke.retaildb.OnMessage" &&
 	fullSyncScaffoldDryRun.result.result.structuredContent.readiness.checked === false,
 	"MCP flow-fullsync-scaffold dry-run did not return the expected plan");
 var frontendEngineSource = [

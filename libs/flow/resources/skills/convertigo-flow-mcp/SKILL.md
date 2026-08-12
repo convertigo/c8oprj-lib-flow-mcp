@@ -430,6 +430,14 @@ CouchDB directly, or fall back to legacy MCP. Use standard CouchDB option names
 in the scaffold. After provisioning, learn safe read schemas with
 `flow-requestable-schema` so frontend bindings expose domain fields.
 
+The scaffold accepts `postDocument`, `postBulkDocuments`,
+`getDocumentAttachment`, `putDocumentAttachment`, and `listeners[]` in addition
+to read/reset transactions. Preserve document `policy`, `aclPolicy`, `useHash`,
+variable multiplicity and defaults from the observed source. Create a listener
+disabled until its target Sequence/Flow is saved and a disposable differential
+fixture is authorized. Never execute reset, write, attachment or listener paths
+to learn a schema.
+
 On the client use only `FullSyncGet`, `FullSyncView`, `FullSyncReset`, and
 `FullSyncSync` palette blocks. Do not handwrite `fs://` strings or PouchDB code.
 Use `frontend-svelte-fullsync-schema` when `flow-app-progress` returns that exact

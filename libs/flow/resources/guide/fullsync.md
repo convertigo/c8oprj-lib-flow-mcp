@@ -7,14 +7,27 @@ code.
 ## Provision server DBOs
 
 Call `flow-project-bootstrap({ project, ui:true })` for a blank target. Then
-call `flow-fullsync-scaffold` with a structured connector, design-document and
-transaction specification. Always inspect `dryRun:true` first and apply the
+call `flow-fullsync-scaffold` with a structured connector, design-document,
+transaction and listener specification. Always inspect `dryRun:true` first and apply the
 identical request with `dryRun:false`.
 
 The scaffold is generic. It creates only the names, views, functions,
 transactions and variables supplied by the request. It does not seed data,
 replicate external databases or infer domain design documents. Applying an
 unchanged request is idempotent.
+
+The transaction surface includes document reads/views, `postDocument`,
+`postBulkDocuments`, get/put attachment, server info and reset. Preserve
+`policy` (`none`, `create`, `override`, `merge`), `aclPolicy`, `useHash`,
+variable multiplicity and defaults exactly when migrating an existing DBO.
+Attachment transactions provision their standard `_use_docid`,
+`_use_attname`, path/base64 and content-type variables.
+
+`listeners[]` creates FullSync view listeners targeting a saved Sequence or
+Flow and a fully qualified design-document view. Keep a listener disabled until
+its target is saved and a disposable differential fixture is ready. An enabled
+listener, a document write, an attachment write and `ResetDatabase` are
+effectful; never execute them merely to learn a schema.
 
 After apply, continue only when both `saved:true` and `readiness.ready:true`.
 When readiness fails, execute the returned `repair` call unchanged before

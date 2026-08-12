@@ -43,20 +43,25 @@ const _meta = {
       "kind": "literal",
       "type": "array",
       "default": [],
-      "description": "Transactions: getDocument, getView, getServerInfo, postBulkDocuments or resetDatabase.",
+      "description": "Transactions: getDocument, getView, getServerInfo, postDocument, postBulkDocuments, getDocumentAttachment, putDocumentAttachment or resetDatabase.",
       "items": {
         "type": "object",
         "properties": {
           "name": { "type": "string" },
           "type": {
             "type": "string",
-            "enum": ["getDocument", "getView", "getServerInfo", "postBulkDocuments", "resetDatabase"]
+            "enum": ["getDocument", "getView", "getServerInfo", "postDocument", "postBulkDocuments", "getDocumentAttachment", "putDocumentAttachment", "resetDatabase"]
           },
           "view": { "type": "string" },
+          "policy": {
+            "type": "string",
+            "enum": ["none", "create", "override", "merge"]
+          },
           "aclPolicy": {
             "type": "string",
             "enum": ["fromAuthenticatedUser", "anonymous", "noOp", "fromKeyC8oAcl"]
           },
+          "useHash": { "type": "boolean" },
           "accessibility": { "type": "string", "enum": ["Private", "Public", "Hidden"] },
           "comment": { "type": "string" },
           "variables": {
@@ -76,6 +81,25 @@ const _meta = {
           }
         },
         "required": ["name", "type"],
+        "additionalProperties": false
+      }
+    },
+    "listeners": {
+      "kind": "literal",
+      "type": "array",
+      "default": [],
+      "description": "FullSync view listeners targeting a Sequence or Flow: {name, targetSequence, targetView, chunk?, enabled?, comment?}.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "targetSequence": { "type": "string" },
+          "targetView": { "type": "string" },
+          "chunk": { "type": "integer", "minimum": 1 },
+          "enabled": { "type": "boolean" },
+          "comment": { "type": "string" }
+        },
+        "required": ["name", "targetSequence", "targetView"],
         "additionalProperties": false
       }
     },
@@ -128,7 +152,10 @@ const _meta = {
 		getDocument: "com.twinsoft.convertigo.beans.transactions.couchdb.GetDocumentTransaction",
 		getView: "com.twinsoft.convertigo.beans.transactions.couchdb.GetViewTransaction",
 		getServerInfo: "com.twinsoft.convertigo.beans.transactions.couchdb.GetServerInfoTransaction",
+		postDocument: "com.twinsoft.convertigo.beans.transactions.couchdb.PostDocumentTransaction",
 		postBulkDocuments: "com.twinsoft.convertigo.beans.transactions.couchdb.PostBulkDocumentsTransaction",
+		getDocumentAttachment: "com.twinsoft.convertigo.beans.transactions.couchdb.GetDocumentAttachmentTransaction",
+		putDocumentAttachment: "com.twinsoft.convertigo.beans.transactions.couchdb.PutDocumentAttachmentTransaction",
 		resetDatabase: "com.twinsoft.convertigo.beans.transactions.couchdb.ResetDatabaseTransaction"
 	};
 
@@ -378,7 +405,10 @@ const _meta = {
 		case "getDocument": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.GetDocumentTransaction();
 		case "getView": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.GetViewTransaction();
 		case "getServerInfo": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.GetServerInfoTransaction();
+		case "postDocument": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.PostDocumentTransaction();
 		case "postBulkDocuments": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.PostBulkDocumentsTransaction();
+		case "getDocumentAttachment": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.GetDocumentAttachmentTransaction();
+		case "putDocumentAttachment": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.PutDocumentAttachmentTransaction();
 		case "resetDatabase": return new Packages.com.twinsoft.convertigo.beans.transactions.couchdb.ResetDatabaseTransaction();
 		default: throw new Error("Unsupported FullSync transaction type: " + type);
 		}
@@ -393,6 +423,22 @@ const _meta = {
 				name: "_use_json_base",
 				description: "JSON array of complete documents to write in one bulk request"
 			}];
+		}
+		if (type === "getDocumentAttachment") {
+			return [
+				{ name: "_use_attpath", description: "Optional destination attachment path" },
+				{ name: "_use_attname", description: "Attachment name" },
+				{ name: "_use_docid", description: "Document ID" }
+			];
+		}
+		if (type === "putDocumentAttachment") {
+			return [
+				{ name: "_use_attpath", description: "Optional source attachment path" },
+				{ name: "_use_attname", description: "Attachment name" },
+				{ name: "_use_docid", description: "Document ID" },
+				{ name: "_use_attbase64", description: "Base64 content used when the path is blank or unavailable" },
+				{ name: "_use_attcontent_type", description: "Attachment content type" }
+			];
 		}
 		if (type === "getView") {
 			var variables = [
@@ -412,7 +458,7 @@ const _meta = {
 
 	function canonicalVariableName(type, name) {
 		name = String(name || "");
-		if ((type === "getView" || type === "getDocument") && name.indexOf("_use_") !== 0) {
+		if ((type === "getView" || type === "getDocument" || type === "getDocumentAttachment" || type === "putDocumentAttachment") && name.indexOf("_use_") !== 0) {
 			return "_use_" + name;
 		}
 		return name;
@@ -496,7 +542,15 @@ const _meta = {
 			transaction.setViewname(String(spec.view || ""));
 			changed = true;
 		}
-		if (type === "postBulkDocuments" && spec.aclPolicy !== undefined) {
+		if ((type === "postDocument" || type === "postBulkDocuments") && spec.policy !== undefined) {
+			var CouchPostDocumentPolicy = Packages.com.twinsoft.convertigo.engine.enums.CouchPostDocumentPolicy;
+			var policy = CouchPostDocumentPolicy.valueOf(String(spec.policy));
+			if (!sameValue(transaction.getPolicy(), policy)) {
+				transaction.setPolicy(policy);
+				changed = true;
+			}
+		}
+		if ((type === "postDocument" || type === "postBulkDocuments") && spec.aclPolicy !== undefined) {
 			var FullSyncAclPolicy = Packages.com.twinsoft.convertigo.engine.enums.FullSyncAclPolicy;
 			var aclPolicy = FullSyncAclPolicy.valueOf(String(spec.aclPolicy));
 			if (!sameValue(transaction.getFullSyncAclPolicy(), aclPolicy)) {
@@ -504,8 +558,57 @@ const _meta = {
 				changed = true;
 			}
 		}
+		if ((type === "postDocument" || type === "postBulkDocuments") && spec.useHash !== undefined && Boolean(transaction.isUseHash()) !== boolValue(spec.useHash, false)) {
+			transaction.setUseHash(boolValue(spec.useHash, false));
+			changed = true;
+		}
 		if (changed) {
 			transaction.hasChanged = true;
+		}
+		return changed;
+	}
+
+	function listenerTarget(value, label, segments) {
+		var target = String(value || "").trim();
+		var parts = target.split(".");
+		if (parts.length !== segments || parts.some(function (part) { return !/^[A-Za-z_][A-Za-z0-9_$-]*$/.test(part); })) {
+			throw new Error("Invalid " + label + ": " + target);
+		}
+		return target;
+	}
+
+	function configureListener(listener, spec) {
+		var changed = false;
+		var targetSequence = listenerTarget(spec.targetSequence, "listener targetSequence", 2);
+		var targetView = listenerTarget(spec.targetView, "listener targetView", 4);
+		if (String(listener.getTargetSequence() || "") !== targetSequence) {
+			listener.setTargetSequence(targetSequence);
+			changed = true;
+		}
+		if (String(listener.getTargetView() || "") !== targetView) {
+			listener.setTargetView(targetView);
+			changed = true;
+		}
+		if (spec.chunk !== undefined) {
+			var chunk = Number(spec.chunk);
+			if (!isFinite(chunk) || Math.floor(chunk) !== chunk || chunk < 1) {
+				throw new Error("listeners[].chunk must be a positive integer.");
+			}
+			if (Number(listener.getChunk()) !== chunk) {
+				listener.setChunk(chunk);
+				changed = true;
+			}
+		}
+		if (spec.enabled !== undefined && Boolean(listener.isEnabled()) !== boolValue(spec.enabled, true)) {
+			listener.setEnabled(boolValue(spec.enabled, true));
+			changed = true;
+		}
+		if (spec.comment !== undefined && String(listener.getComment() || "") !== String(spec.comment || "")) {
+			listener.setComment(String(spec.comment || ""));
+			changed = true;
+		}
+		if (changed) {
+			listener.hasChanged = true;
 		}
 		return changed;
 	}
@@ -545,8 +648,12 @@ const _meta = {
 
 	return {
 		canonicalVariableName: canonicalVariableName,
+		configureListener: configureListener,
+		configureTransaction: configureTransaction,
+		defaultVariables: defaultVariables,
 		designWarnings: designWarnings,
 		designMismatches: designMismatches,
+		newTransaction: newTransaction,
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -555,6 +662,7 @@ const _meta = {
 			var fsName = connectorName(connectorSpec.name);
 			var designDocuments = arrayValue(prop(props, "designDocuments"), "designDocuments");
 			var transactions = arrayValue(prop(props, "transactions"), "transactions");
+			var listeners = arrayValue(prop(props, "listeners"), "listeners");
 			var dryRun = boolValue(prop(props, "dryRun"), false);
 			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 			var project = loadedProject(Engine, name);
@@ -595,6 +703,18 @@ const _meta = {
 				transactionClass(type);
 				mergedVariables(type, spec);
 			});
+			listeners.forEach(function (rawSpec) {
+				var spec = objectValue(rawSpec, "listeners[]");
+				dboName(spec.name, "listener name");
+				listenerTarget(spec.targetSequence, "listener targetSequence", 2);
+				listenerTarget(spec.targetView, "listener targetView", 4);
+				if (spec.chunk !== undefined) {
+					var chunk = Number(spec.chunk);
+					if (!isFinite(chunk) || Math.floor(chunk) !== chunk || chunk < 1) {
+						throw new Error("listeners[].chunk must be a positive integer.");
+					}
+				}
+			});
 
 			if (dryRun) {
 				result.readiness = {
@@ -608,7 +728,8 @@ const _meta = {
 				result.plan = {
 					connector: connectorQName,
 					designDocuments: designDocuments.map(function (spec) { return connectorQName + "." + spec.name; }),
-					transactions: transactions.map(function (spec) { return connectorQName + "." + spec.name; })
+					transactions: transactions.map(function (spec) { return connectorQName + "." + spec.name; }),
+					listeners: listeners.map(function (spec) { return connectorQName + "." + spec.name; })
 				};
 				ctx.write(prop(props, "out") || "local.fullsyncScaffold", result);
 				return result;
@@ -695,6 +816,28 @@ const _meta = {
 				});
 			});
 
+			listeners.forEach(function (rawSpec) {
+				var spec = objectValue(rawSpec, "listeners[]");
+				var listenerName = dboName(spec.name, "listener name");
+				var qname = connectorQName + "." + listenerName;
+				var listener = connector.getListenerByName(listenerName);
+				var expectedClass = "com.twinsoft.convertigo.beans.couchdb.FullSyncListener";
+				if (listener != null && String(listener.getClass().getName()) !== expectedClass) {
+					throw new Error("Listener " + qname + " exists with incompatible type " + listener.getClass().getName() + ".");
+				}
+				if (listener == null) {
+					listener = new Packages.com.twinsoft.convertigo.beans.couchdb.FullSyncListener();
+					listener.bNew = true;
+					listener.setName(listenerName);
+					connector.add(listener);
+					result.created.push(qname);
+					projectChanged = true;
+				} else {
+					result.reused.push(qname);
+				}
+				projectChanged = configureListener(listener, spec) || projectChanged;
+			});
+
 			if (projectChanged) {
 				project.hasChanged = true;
 				Engine.theApp.databaseObjectsManager.exportProject(project);
@@ -710,6 +853,7 @@ const _meta = {
 						connector: connectorSpec,
 						designDocuments: designDocuments,
 						transactions: transactions,
+						listeners: listeners,
 						dryRun: false
 					}
 				};
