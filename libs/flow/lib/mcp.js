@@ -1745,7 +1745,7 @@
 				return "";
 			}
 			var contextPath = String(servletRequest.getContextPath() || "").trim();
-			if (contextPath && !/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(contextPath)) {
+			if (contextPath && !/^\/[A-Za-z0-9._~!$&'()*+,;=:@%\/-]*$/.test(contextPath)) {
 				return "";
 			}
 			return proto + "://" + host + contextPath.replace(/\/+$/, "");
