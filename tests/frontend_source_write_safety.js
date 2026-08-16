@@ -43,8 +43,20 @@ function context(props) {
 		authoringTreeSource: function () {
 			return { ok: true, diagnostics: [], children: [] };
 		},
-		authoringContractSource: function () {
-			return { items: [] };
+		authoringContractSource: function (request) {
+			var drafts = request && request.frontendSourceDrafts || {};
+			var paths = Object.keys(drafts);
+			if (paths.length === 0) return { ok: true, items: [] };
+			var draft = String(drafts[paths[0]] || "");
+			if (draft.indexOf("<BrokenSvelte>") >= 0) {
+				throw new Error("Unexpected end of Svelte component");
+			}
+			var id = draft.match(/\bid\s*:\s*["']([^"']+)["']/);
+			var tag = draft.match(/\btag\s*:\s*["']([^"']+)["']/);
+			return {
+				ok: true,
+				items: id ? [{ id: id[1], tag: tag ? tag[1] : "" }] : []
+			};
 		},
 		notifySourceMutation: function (request) {
 			notificationRequests.push(request);
@@ -162,5 +174,69 @@ try {
 assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === third,
 	"Failed atomic write truncated or replaced the existing source.");
 assertTrue(notificationRequests.length === 3, "Failed writes must not emit source mutation notifications.");
+
+var componentSourceFile = "libs/flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
+var componentSource = [
+	"<script module>",
+	"  export const _meta = {",
+	"    id: \"svelte.testBadge\",",
+	"    tag: \"TestBadge\",",
+	"    label: \"Test badge\",",
+	"    insert: { id: \"testBadge\", kind: \"testBadge\", tag: \"TestBadge\" },",
+	"    implementation: { kind: \"flow-svelte\", file: \"./TestBadge.flow.svelte\" }",
+	"  };",
+	"</script>",
+	"<script>let { label = \"Badge\" } = $props();</script>",
+	"<span>{label}</span>",
+	""
+].join("\n");
+
+var componentCreated = run({
+	operation: "set",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: componentSourceFile,
+	code: componentSource
+});
+assertTrue(componentCreated.written === true && componentCreated.code === componentSource,
+	"A canonical provider component with static _meta should be writable without a FlowComponent root.");
+
+var componentCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: componentSourceFile,
+	code: componentSource
+});
+assertTrue(componentCheck.ok === true && componentCheck.errorCount === 0,
+	"A valid provider component should pass code-check.");
+
+var missingMetaCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: componentSourceFile,
+	code: "<span>Missing metadata</span>\n"
+});
+assertTrue(missingMetaCheck.ok === false &&
+	missingMetaCheck.diagnostics[0].code === "FRONTEND_COMPONENT_META_REQUIRED",
+	"Provider components without module-level _meta must remain rejected.");
+
+var brokenComponentCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: componentSourceFile,
+	code: componentSource.replace("<span>{label}</span>", "<BrokenSvelte>")
+});
+assertTrue(brokenComponentCheck.ok === false &&
+	brokenComponentCheck.diagnostics[0].code === "FRONTEND_COMPONENT_PARSE_FAILED",
+	"Provider component drafts must be parsed by the frontbuilder before writes.");
+
+var modelWithoutRoot = "libs/flow/frontbuilder/svelte/model/Test/src/routes/raw.flow.svelte";
+var modelCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: modelWithoutRoot,
+	code: componentSource
+});
+assertTrue(modelCheck.ok === false && modelCheck.diagnostics[0].code === "FRONTEND_FLOW_COMPONENT_REQUIRED",
+	"Raw provider syntax must not weaken the FlowComponent contract of application model sources.");
 
 print("frontend source write safety tests passed");

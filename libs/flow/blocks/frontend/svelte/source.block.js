@@ -2,7 +2,7 @@ const _meta = {
   "version": 1,
   "private": true,
   "icon": "mdi:file-code-outline",
-  "description": "Reads, searches, validates and writes Flow Svelte models or canonical Flow CSS sources.",
+  "description": "Reads, searches, validates and writes Flow Svelte models, provider components or canonical Flow CSS sources.",
   "properties": {
     "operation": {
       "kind": "text",
@@ -285,11 +285,37 @@ const _meta = {
 		return path && String(path.relative || "").endsWith("/theme.flow.css");
 	}
 
+	function isProviderComponent(path) {
+		var relative = path && String(path.relative || "").replace(/\\/g, "/");
+		return !!relative && relative.indexOf("libs/flow/frontbuilder/svelte/components/") === 0 &&
+			relative.endsWith(".flow.svelte");
+	}
+
+	function providerComponentName(path) {
+		return String(path && path.file && path.file.getName() || "")
+			.replace(/\.flow\.svelte$/, "");
+	}
+
+	function providerModuleSource(source) {
+		var match = String(source || "").match(/<script\s+module(?:\s[^>]*)?>([\s\S]*?)<\/script>/i);
+		return match ? String(match[1]) : "";
+	}
+
+	function providerMetaString(source, name) {
+		var moduleSource = providerModuleSource(source);
+		var marker = moduleSource.search(/export\s+const\s+_meta\s*=/);
+		if (marker < 0) return "";
+		var metaSource = moduleSource.substring(marker);
+		var escaped = String(name || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		var match = metaSource.match(new RegExp("\\b" + escaped + "\\s*:\\s*([\\\"'])((?:\\\\.|(?!\\1).)*)\\1"));
+		return match ? String(match[2]) : "";
+	}
+
 	function lineNumber(source, offset) {
 		return String(source).substring(0, offset).split("\n").length;
 	}
 
-	function sourceDiagnostics(source) {
+	function sourceDiagnostics(source, path) {
 		var diagnostics = [];
 		var seen = {};
 		var match;
@@ -322,7 +348,17 @@ const _meta = {
 				hint: "Replace source with value and keep the same intuitive @reference."
 			});
 		}
-		if (!/<FlowComponent\b/.test(source)) {
+		if (isProviderComponent(path)) {
+			var moduleSource = providerModuleSource(source);
+			if (!moduleSource || !/export\s+const\s+_meta\s*=/.test(moduleSource)) {
+				diagnostics.push({
+					severity: "error",
+					code: "FRONTEND_COMPONENT_META_REQUIRED",
+					message: "A provider Flow Svelte component must export one module-level _meta descriptor.",
+					hint: "Add <script module> with export const _meta, then keep the Svelte implementation in the same canonical component source."
+				});
+			}
+		} else if (!/<FlowComponent\b/.test(source)) {
 			diagnostics.push({
 				severity: "error",
 				code: "FRONTEND_FLOW_COMPONENT_REQUIRED",
@@ -331,6 +367,44 @@ const _meta = {
 			});
 		}
 		return diagnostics;
+	}
+
+	function validateProviderComponent(ctx, props, path, source, diagnostics) {
+		try {
+			var drafts = {};
+			drafts[path.absolute] = source;
+			var contract = ctx.authoringContractSource({
+				projectDir: String(props.projectDir),
+				surface: "frontend",
+				builder: "svelte",
+				frontendSourceDrafts: drafts
+			});
+			if (!contract || contract.ok === false || !Array.isArray(contract.items)) {
+				throw new Error(contract && contract.error && contract.error.message ||
+					"Flow Svelte provider component could not be projected.");
+			}
+			var expectedId = providerMetaString(source, "id");
+			var expectedTag = providerMetaString(source, "tag") || providerComponentName(path);
+			var descriptor = contract.items.filter(function (item) {
+				if (expectedId) return String(item && item.id || "") === expectedId;
+				return String(item && item.tag || "") === expectedTag;
+			})[0];
+			if (!descriptor) {
+				diagnostics.push({
+					severity: "error",
+					code: "FRONTEND_COMPONENT_DESCRIPTOR_INVALID",
+					message: "The provider Flow Svelte source did not produce its expected palette descriptor.",
+					hint: "Keep _meta static and ensure its id/tag and implementation describe this canonical component."
+				});
+			}
+		} catch (error) {
+			diagnostics.push({
+				severity: "error",
+				code: "FRONTEND_COMPONENT_PARSE_FAILED",
+				message: String(error && error.message || error),
+				hint: "Correct the Svelte syntax or the module-level _meta descriptor, then call code-check again."
+			});
+		}
 	}
 
 	function projectedError(node) {
@@ -505,8 +579,18 @@ const _meta = {
 				warningCount: 0
 			};
 		}
-		var diagnostics = sourceDiagnostics(source);
+		var diagnostics = sourceDiagnostics(source, path);
 		if (!diagnostics.some(function (item) { return item.severity === "error"; })) {
+			if (isProviderComponent(path)) {
+				validateProviderComponent(ctx, props, path, source, diagnostics);
+				return {
+					ok: !diagnostics.some(function (item) { return item.severity === "error"; }),
+					sourceFile: path.relative,
+					diagnostics: diagnostics,
+					errorCount: diagnostics.filter(function (item) { return item.severity === "error"; }).length,
+					warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length
+				};
+			}
 			try {
 				var drafts = {};
 				drafts[path.absolute] = source;
