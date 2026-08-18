@@ -1956,7 +1956,7 @@ var headlessRouteCreate = callTool(1401, "frontend-svelte-mutate", {
 		value: {
 			__frontendCreateSource: {
 				baseId: "headless",
-				directory: "headless",
+				directory: "${targetRouteDirectory}/${localName}",
 				fileName: "+page.flow.svelte",
 				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
 				source: [
@@ -1965,6 +1965,7 @@ var headlessRouteCreate = callTool(1401, "frontend-svelte-mutate", {
 					"</script>",
 					"",
 					"<FlowComponent id=\"headless\" label=\"Headless authoring\">",
+					"  <Variables />",
 					"  <Structure />",
 					"</FlowComponent>",
 					""
@@ -2089,16 +2090,15 @@ var headlessPicker = callTool(1407, "frontend-svelte-tree", {
 	sourceFile: headlessSourceFile,
 	focusPath: "frontAst.slots.structure.children[0].slots.children.children[1]",
 	property: "text",
-	sourceId: "componentLoop",
 	detail: "inspect",
 	maxDepth: 4
 });
 var headlessPickerJson = JSON.stringify(headlessPicker.result.result.structuredContent);
 assertTrue(headlessPickerJson.indexOf('"value":"item"') !== -1 &&
 	headlessPickerJson.indexOf('"value":"index"') !== -1 &&
-	headlessPickerJson.indexOf('"name":"icon"') !== -1 &&
-	headlessPickerJson.indexOf('"name":"description"') !== -1 &&
-	headlessPickerJson.indexOf('"type":"integer"') !== -1,
+	headlessPickerJson.indexOf('"path":"icon"') !== -1 &&
+	headlessPickerJson.indexOf('"path":"description"') !== -1 &&
+	headlessPickerJson.indexOf('"type":"integer","scalar":true') !== -1,
 	"MCP picker should expose typed iteration item fields and the numeric index: " + headlessPickerJson);
 var headlessSourceGet = callTool(1408, "frontend-svelte-code-get", {
 	project: "target",

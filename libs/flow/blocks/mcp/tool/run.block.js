@@ -90,12 +90,21 @@ const _meta = {
 		if (!result || result.ok !== true || Number(result.eligibleCount || 0) > 0 || !args.project || !String(args.query || "").trim()) {
 			return result;
 		}
-		var libraries = ctx.callBlock("project.library.search", {
-			project: args.project,
-			query: args.query,
-			target: String(args.surface || "frontend") === "frontend" ? "frontend" : "backend",
-			limit: 5
-		}, { trace: false });
+		var libraries;
+		try {
+			libraries = ctx.callBlock("project.library.search", {
+				project: args.project,
+				query: args.query,
+				target: String(args.surface || "frontend") === "frontend" ? "frontend" : "backend",
+				limit: 5
+			}, { trace: false });
+		} catch (error) {
+			result.workspaceSearch = {
+				status: "unavailable",
+				message: String(error)
+			};
+			return result;
+		}
 		var expectedKind = String(args.surface || "frontend") === "frontend"
 			? "frontendComponent"
 			: "backendBlock";
@@ -253,11 +262,14 @@ const _meta = {
 				merge(args, extraArgs(ctx, props.args));
 				var result;
 				if (target === "authoring.mutate") {
-					result = args.mutation && String(args.mutation.op || "") === "insertProvider"
-						? insertProvider(ctx, mcp, args)
-						: mcp.isFrontendSourceCreation(args)
-						? mcp.createFrontendSource(args)
-						: ctx.authoringMutateSource(args);
+					if (args.mutation && String(args.mutation.op || "") === "insertProvider") {
+						result = insertProvider(ctx, mcp, args);
+					} else if (mcp.isFrontendSourceCreation(args)) {
+						result = mcp.createFrontendSource(args);
+						ctx.cacheClear();
+					} else {
+						result = ctx.authoringMutateSource(args);
+					}
 				} else {
 					result = ctx.callBlock(target, args, { trace: false });
 				}
