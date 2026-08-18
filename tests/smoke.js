@@ -1269,6 +1269,10 @@ assertTrue(frontendSvelteStructuredBinding.result.result.structuredContent.ok ==
 	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("readTarget") !== -1,
 	"MCP frontend-svelte-mutate should persist a structured picker binding: " + JSON.stringify(frontendSvelteStructuredBinding));
 function frontendSvelteResourceRoot() {
+	var explicitRoot = String(java.lang.System.getenv("FLOW_FRONTBUILDER_RESOURCE_ROOT") || "").trim();
+	if (explicitRoot && new java.io.File(explicitRoot, "src-builder/frontDocumentCli.ts").isFile()) {
+		return explicitRoot;
+	}
 	var root = new java.io.File(projectDir).getParentFile();
 	var engineProject = new java.io.File(engineDir).getParentFile().getParentFile();
 	var engineSiblings = engineProject ? engineProject.getParentFile() : null;
@@ -1943,6 +1947,183 @@ assertTrue(frontendSvelteCreate.result.result.structuredContent.created === true
 	frontendCreatedFile.isFile(),
 	"MCP frontend-svelte-mutate should create source-backed frontend blocks from palette payloads");
 var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svelte/model/Smoke/src/routes");
+var headlessRouteCreate = callTool(1401, "frontend-svelte-mutate", {
+	project: "target",
+	projectDir: targetProjectDir,
+	focusPath: "frontends.svelte.routes",
+	mutation: {
+		op: "insert",
+		value: {
+			__frontendCreateSource: {
+				baseId: "headless",
+				directory: "headless",
+				fileName: "+page.flow.svelte",
+				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
+				source: [
+					"<script module>",
+					"  export const _flow = { page: { id: \"headless\", title: \"Headless authoring\" } };",
+					"</script>",
+					"",
+					"<FlowComponent id=\"headless\" label=\"Headless authoring\">",
+					"  <Structure />",
+					"</FlowComponent>",
+					""
+				].join("\n")
+			}
+		}
+	}
+});
+var headlessSourceFile = "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/headless/+page.flow.svelte";
+assertTrue(headlessRouteCreate.result.result.structuredContent.created === true &&
+	headlessRouteCreate.result.result.structuredContent.written === true,
+	"MCP headless fixture should create its canonical frontend source through MCP");
+var headlessStructurePalette = callTool(1402, "authoring-palette", {
+	project: "target",
+	projectDir: targetProjectDir,
+	parentPath: "target::frontends.svelte.routes.headless.structure",
+	query: "Text"
+});
+var headlessVariablesPalette = callTool(1403, "authoring-palette", {
+	project: "target",
+	projectDir: targetProjectDir,
+	parentPath: "target::frontends.svelte.routes.headless.variables",
+	query: "Text"
+});
+var structurePaletteItems = headlessStructurePalette.result.result.structuredContent.items || [];
+var variablesPaletteItems = headlessVariablesPalette.result.result.structuredContent.items || [];
+assertTrue(structurePaletteItems.some(function (item) {
+	return item.id === "svelte.text" || item.id === "frontbuilder.svelte.text" || item.tag === "Text";
+}) && !variablesPaletteItems.some(function (item) {
+	return item.id === "svelte.text" || item.id === "frontbuilder.svelte.text" || item.tag === "Text";
+}), "MCP contextual palette should derive eligibility from parentPath rather than mixing categories");
+var headlessInsertLoop = callTool(1404, "frontend-svelte-mutate", {
+	project: "target",
+	projectDir: targetProjectDir,
+	sourceFile: headlessSourceFile,
+	mutation: {
+		op: "insert",
+		path: "frontAst.slots.structure.children",
+		index: "end",
+		value: {
+			id: "componentLoop",
+			kind: "each",
+			tag: "ForEach",
+			source: {
+				mode: "literal",
+				value: [{ icon: "star", description: "Featured" }]
+			},
+			context: "item",
+			index: "index"
+		}
+	}
+});
+assertTrue(headlessInsertLoop.result.result.structuredContent.ok === true &&
+	headlessInsertLoop.result.result.structuredContent.written === true,
+	"MCP headless fixture should insert the typed ForEach through MCP");
+var headlessInsertChildren = callTool(1405, "frontend-svelte-mutate", {
+	project: "target",
+	projectDir: targetProjectDir,
+	sourceFile: headlessSourceFile,
+	mutations: [{
+		op: "insert",
+		path: "frontAst.slots.structure.children[0].slots.children.children",
+		value: { id: "componentIcon", kind: "text", tag: "Text", text: { mode: "literal", value: "Icon" } }
+	}, {
+		op: "insert",
+		path: "frontAst.slots.structure.children[0].slots.children.children",
+		value: { id: "componentIndex", kind: "text", tag: "Text", text: { mode: "literal", value: "Index" } }
+	}, {
+		op: "insert",
+		path: "frontAst.slots.structure.children[0].slots.children.children",
+		value: { id: "componentDescription", kind: "text", tag: "Text", text: { mode: "literal", value: "Description" } }
+	}, {
+		op: "insert",
+		path: "frontAst.slots.structure.children[0].slots.children.children",
+		value: { id: "deleteMe", kind: "text", tag: "Text", text: { mode: "literal", value: "Delete me" } }
+	}]
+});
+assertTrue(headlessInsertChildren.result.result.structuredContent.ok === true &&
+	headlessInsertChildren.result.result.structuredContent.mutationCount === 4,
+	"MCP headless fixture should batch literal authoring mutations");
+var headlessEditBindings = callTool(1406, "frontend-svelte-mutate", {
+	project: "target",
+	projectDir: targetProjectDir,
+	sourceFile: headlessSourceFile,
+	mutations: [{
+		op: "replace",
+		path: "frontAst.slots.structure.children[0].slots.children.children[0].props.text",
+		value: {
+			mode: "source",
+			source: { category: "iteration", scopeId: "componentLoop", value: "item" },
+			path: [{ kind: "property", name: "icon" }]
+		}
+	}, {
+		op: "replace",
+		path: "frontAst.slots.structure.children[0].slots.children.children[1].props.text",
+		value: {
+			mode: "source",
+			source: { category: "iteration", scopeId: "componentLoop", value: "index" },
+			path: [],
+			transform: [{ kind: "format", prefix: "index[", suffix: "]" }]
+		}
+	}, {
+		op: "replace",
+		path: "frontAst.slots.structure.children[0].slots.children.children[2].props.text",
+		value: { mode: "expression", expression: "String(item.description)" }
+	}, {
+		op: "move",
+		from: "frontAst.slots.structure.children[0].slots.children.children[2]",
+		path: "frontAst.slots.structure.children[0].slots.children.children",
+		index: 0
+	}, {
+		op: "delete",
+		path: "frontAst.slots.structure.children[0].slots.children.children[3]"
+	}]
+});
+assertTrue(headlessEditBindings.result.result.structuredContent.ok === true &&
+	headlessEditBindings.result.result.structuredContent.mutationCount === 5,
+	"MCP headless fixture should edit Source/Expression, move and delete without filesystem authoring");
+var headlessPicker = callTool(1407, "frontend-svelte-tree", {
+	project: "target",
+	projectDir: targetProjectDir,
+	sourceFile: headlessSourceFile,
+	focusPath: "frontAst.slots.structure.children[0].slots.children.children[1]",
+	property: "text",
+	sourceId: "componentLoop",
+	detail: "inspect",
+	maxDepth: 4
+});
+var headlessPickerJson = JSON.stringify(headlessPicker.result.result.structuredContent);
+assertTrue(headlessPickerJson.indexOf('"value":"item"') !== -1 &&
+	headlessPickerJson.indexOf('"value":"index"') !== -1 &&
+	headlessPickerJson.indexOf('"name":"icon"') !== -1 &&
+	headlessPickerJson.indexOf('"name":"description"') !== -1 &&
+	headlessPickerJson.indexOf('"type":"integer"') !== -1,
+	"MCP picker should expose typed iteration item fields and the numeric index: " + headlessPickerJson);
+var headlessSourceGet = callTool(1408, "frontend-svelte-code-get", {
+	project: "target",
+	projectDir: targetProjectDir,
+	sourceFile: headlessSourceFile
+});
+var headlessCanonicalSource = headlessSourceGet.result.result.structuredContent.code || "";
+assertTrue(headlessCanonicalSource.indexOf('"prefix":"index["') !== -1 &&
+	headlessCanonicalSource.indexOf('"suffix":"]"') !== -1 &&
+	headlessCanonicalSource.indexOf("deleteMe") === -1 &&
+	headlessCanonicalSource.indexOf("String(item.description)") !== -1,
+	"MCP headless fixture should round-trip literal, source, expression, move and delete mutations");
+var headlessGenerate = callTool(1409, "frontend-svelte-action", {
+	project: "target",
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	sourceFile: headlessSourceFile,
+	actionId: "generate"
+});
+assertTrue(headlessGenerate.result.result.structuredContent.ok === true &&
+	headlessGenerate.result.result.structuredContent.details &&
+	headlessGenerate.result.result.structuredContent.details.steps.some(function (step) {
+		return step.ok === true;
+	}), "MCP headless fixture should regenerate Svelte through the public authoring action: " +
+	JSON.stringify(headlessGenerate.result.result.structuredContent));
 var frontendRouteSegment = mcpLib.createFrontendSource({
 	projectDir: targetProjectDir,
 	definition: {
