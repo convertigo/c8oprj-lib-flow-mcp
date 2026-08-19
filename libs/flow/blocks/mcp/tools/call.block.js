@@ -64,8 +64,12 @@ const _meta = {
 
 	function toolMap(ctx) {
 		var map = {};
-		(ctx.blockList({ includePrivate: true, detail: "summary" }).blocks || []).forEach(function (block) {
-			var blockId = block.block || block.blockId || block.name;
+		var blockIds = typeof ctx.blockNames === "function"
+			? ctx.blockNames()
+			: (ctx.blockList({ includePrivate: true, detail: "summary" }).blocks || []).map(function (block) {
+				return block.block || block.blockId || block.name;
+			});
+		blockIds.forEach(function (blockId) {
 			var name = toolName(blockId);
 			if (name) {
 				map[name] = blockId;

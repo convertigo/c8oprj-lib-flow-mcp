@@ -419,14 +419,14 @@ const _meta = {
 		return schema;
 	}
 
-	function descriptorFor(ctx, wrapper, byName) {
+	function descriptorFor(wrapper, byName, contractFor) {
 		var blockId = wrapper.blockId || wrapper.name || wrapper.block || "";
 		var name = toolName(blockId);
 		if (!name || PUBLIC_TOOLS[name] !== true) {
 			return null;
 		}
 		var target = targetFromWrapperName(blockId, byName);
-		var capability = target ? byName[target] : null;
+		var capability = target ? contractFor(target) : null;
 		var source = specificToolSchema(wrapper) ? wrapper : capability || wrapper;
 		var description = String(name.indexOf("code-") === 0
 			? wrapper.description || source.description || "Flow MCP tool."
@@ -521,11 +521,41 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
-			var catalog = ctx.blockList({ includePrivate: true, detail: "compact", limit: 500, doc: false, hints: false });
-			var byName = indexBlocks(catalog);
+			var names;
+			var byName;
+			var contractFor;
+			if (typeof ctx.blockNames === "function" && typeof ctx.blockContract === "function") {
+				names = ctx.blockNames();
+				byName = {};
+				var contracts = {};
+				names.forEach(function (name) {
+					byName[name] = true;
+				});
+				contractFor = function (name) {
+					if (!byName[name]) {
+						return null;
+					}
+					if (!Object.prototype.hasOwnProperty.call(contracts, name)) {
+						contracts[name] = ctx.blockContract(name);
+					}
+					return contracts[name];
+				};
+			} else {
+				var catalog = ctx.blockList({ includePrivate: true, detail: "compact", limit: 500, doc: false, hints: false });
+				byName = indexBlocks(catalog);
+				names = (catalog.blocks || []).map(function (block) {
+					return block.block || block.blockId || block.name;
+				});
+				contractFor = function (name) { return byName[name] || null; };
+			}
 			var tools = [];
-			(catalog.blocks || []).forEach(function (block) {
-				var descriptor = descriptorFor(ctx, block, byName);
+			names.forEach(function (name) {
+				var publicName = toolName(name);
+				if (!publicName || PUBLIC_TOOLS[publicName] !== true) {
+					return;
+				}
+				var block = contractFor(name);
+				var descriptor = block ? descriptorFor(block, byName, contractFor) : null;
 				if (descriptor) {
 					tools.push(descriptor);
 				}
