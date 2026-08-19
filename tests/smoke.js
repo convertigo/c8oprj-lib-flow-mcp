@@ -2062,10 +2062,12 @@ var headlessEditBindings = callTool(1406, "frontend-svelte-mutate", {
 		op: "replace",
 		path: "frontAst.slots.structure.children[0].slots.children.children[1].props.text",
 		value: {
-			mode: "source",
-			source: { category: "iteration", scopeId: "componentLoop", value: "index" },
-			path: [],
-			transform: [{ kind: "format", prefix: "index[", suffix: "]" }]
+			mode: "expression",
+			parts: [
+				{ kind: "literal", value: "index[" },
+				{ kind: "source", source: { category: "iteration", scopeId: "componentLoop", value: "index" }, path: [] },
+				{ kind: "literal", value: "]" }
+			]
 		}
 	}, {
 		op: "replace",
@@ -2106,8 +2108,9 @@ var headlessSourceGet = callTool(1408, "frontend-svelte-code-get", {
 	sourceFile: headlessSourceFile
 });
 var headlessCanonicalSource = headlessSourceGet.result.result.structuredContent.code || "";
-assertTrue(headlessCanonicalSource.indexOf('"prefix":"index["') !== -1 &&
-	headlessCanonicalSource.indexOf('"suffix":"]"') !== -1 &&
+assertTrue(headlessCanonicalSource.indexOf('"parts"') !== -1 &&
+	headlessCanonicalSource.indexOf('"value":"index["') !== -1 &&
+	headlessCanonicalSource.indexOf('"value":"]"') !== -1 &&
 	headlessCanonicalSource.indexOf("deleteMe") === -1 &&
 	headlessCanonicalSource.indexOf("String(item.description)") !== -1,
 	"MCP headless fixture should round-trip literal, source, expression, move and delete mutations");

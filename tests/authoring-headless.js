@@ -206,10 +206,12 @@ try {
 			op: "replace",
 			path: "frontAst.slots.structure.children[0].slots.children.children[1].props.text",
 			value: {
-				mode: "source",
-				source: { category: "iteration", scopeId: "componentLoop", value: "index" },
-				path: [],
-				transform: [{ kind: "format", prefix: "index[", suffix: "]" }]
+				mode: "expression",
+				parts: [
+					{ kind: "literal", value: "index[" },
+					{ kind: "source", source: { category: "iteration", scopeId: "componentLoop", value: "index" }, path: [] },
+					{ kind: "literal", value: "]" }
+				]
 			}
 		}, {
 			op: "replace",
@@ -233,8 +235,9 @@ try {
 		sourceFile: absoluteSourceFile
 	});
 	var code = String(canonical.code || "");
-	assertTrue(code.indexOf('"prefix":"index["') !== -1 &&
-		code.indexOf('"suffix":"]"') !== -1 &&
+	assertTrue(code.indexOf('"parts"') !== -1 &&
+		code.indexOf('"value":"index["') !== -1 &&
+		code.indexOf('"value":"]"') !== -1 &&
 		code.indexOf("deleteMe") === -1 &&
 		code.indexOf("String(item.description)") !== -1 &&
 		code.indexOf("componentIcon") !== -1,

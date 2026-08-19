@@ -382,6 +382,12 @@ that property and source id. Intuitive `@source.path` is authoring syntax; use
 picker-returned structured bindings when validation requires them, and a
 structured literal for intentionally static iterator content.
 
+The Studio picker can compose several typed sources, literals and explicit
+operators in one ordered value. Agents should express the same intent directly
+in Flow source, for example `index + 1 + " / " + total`, `[item]`, or
+`value ?? "default"`, and let MCP validate and lower it. Do not manufacture the
+composed binding transport JSON.
+
 Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.

@@ -518,7 +518,22 @@ const _meta = {
 			return Object.prototype.hasOwnProperty.call(value, "value");
 		}
 		if (value.mode === "expression") {
-			return typeof value.expression === "string";
+			if (typeof value.expression === "string") {
+				return true;
+			}
+			return Object.prototype.toString.call(value.parts) === "[object Array]" && value.parts.length > 0
+				&& value.parts.every(function (part) {
+					part = objectValue(part);
+					if (!part) return false;
+					if (part.kind === "literal") return Object.prototype.hasOwnProperty.call(part, "value");
+					if (part.kind === "expression") return typeof part.expression === "string";
+					if (part.kind === "source") return validBinding({
+						mode: "source",
+						source: part.source,
+						path: part.path
+					});
+					return false;
+				});
 		}
 		var source = objectValue(value.source);
 		if (value.mode !== "source" || !source) {

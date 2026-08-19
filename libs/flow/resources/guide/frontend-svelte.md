@@ -158,6 +158,13 @@ free browser expressions; use a source, a literal, or a portable dual-target
 block for computation. Apply `suggestedBinding` or an exact picker mutation
 when validation returns one.
 
+Studio may compose a bindable value from ordered literal, source and explicit
+code parts. This supports displays such as `index + 1 + " / " + total`, wrappers
+such as `[index]`, and nullish defaults while preserving each picked source.
+This is a human-facing authoring model, not another JSON syntax for agents to
+hand-write. In Flow source, keep using intuitive `@source.path` references or a
+concise browser expression; let MCP lower and validate the representation.
+
 ## Structure And Actions
 
 Pages, layouts, visible blocks, directives, events and actions remain visible
