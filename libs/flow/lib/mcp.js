@@ -739,9 +739,9 @@
 						ConvertigoPlugin.logException(resourceError, "Unable to refresh Eclipse resources after Flow MCP frontend update", false);
 					}
 					try {
-						Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.clearCaches();
+						Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.invalidateDataCaches();
 					} catch (cacheError) {
-						ConvertigoPlugin.logException(cacheError, "Unable to clear Flow engine caches after Flow MCP frontend update", false);
+						ConvertigoPlugin.logException(cacheError, "Unable to invalidate Flow authoring caches after Flow MCP frontend update", false);
 					}
 					try {
 						Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(project);
@@ -3375,6 +3375,9 @@
 		if (value.debug) out.debug = compactJsonPreview(value.debug, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		if (value.studioRefresh) {
 			out.studioRefresh = compactJsonPreview(value.studioRefresh, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
+		}
+		if (value.devSync) {
+			out.devSync = compactJsonPreview(value.devSync, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		}
 		out.responseDetail = "summary";
 		var readTool = "code-get";

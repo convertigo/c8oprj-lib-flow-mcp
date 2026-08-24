@@ -926,6 +926,38 @@ assertTrue(providerInsertion.ok === true && providerInsertion.providerReference.
 	providerCacheClearCount === 1,
 	"Generic provider insertion should add the reference and apply the selected descriptor atomically");
 
+var frontendDevSyncArgs = null;
+preparedPaletteArgs = {
+	project: "Consumer",
+	projectDir: "/tmp/Consumer",
+	sourceFile: "/tmp/Consumer/routes/+page.flow.svelte",
+	surface: "frontend",
+	builder: "svelte",
+	mutation: { op: "set", path: "frontAst.slots.structure.children[0].props.type", value: "bar" }
+};
+fakeMcp.persistSourceMutationResult = function (_request, _args, value) {
+	value.written = true;
+	value.writtenFile = preparedPaletteArgs.sourceFile;
+	return value;
+};
+fakeRunCtx.authoringMutateSource = function () {
+	return { ok: true, changed: true, sourceFile: preparedPaletteArgs.sourceFile };
+};
+fakeRunCtx.callBlock = function (name, args) {
+	if (name === "authoring.action") {
+		frontendDevSyncArgs = args;
+		return { ok: true, generated: true };
+	}
+	throw new Error("Unexpected frontend mutation synchronization call: " + name);
+};
+var frontendMutationWithDevSync = isolatedMcpToolRun.run(fakeRunCtx, {});
+assertTrue(frontendMutationWithDevSync.ok === true && frontendMutationWithDevSync.devSync.generated === true &&
+	frontendDevSyncArgs.projectDir === "/tmp/Consumer" &&
+	frontendDevSyncArgs.action.id === "frontbuilder.svelte.dev.sync" &&
+	frontendDevSyncArgs.action.payload.sourcePath === preparedPaletteArgs.sourceFile,
+	"Generic frontend mutations should synchronize the active Svelte dev viewer automatically");
+fakeMcp.persistSourceMutationResult = function (_request, _args, value) { return value; };
+
 preparedPaletteArgs = {
 	project: "Consumer",
 	projectDir: "/tmp/Consumer",

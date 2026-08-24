@@ -86,6 +86,43 @@ const _meta = {
 		return ctx.template(value) || {};
 	}
 
+	function syncFrontendDevAfterMutation(ctx, args, result) {
+		if (!result || result.ok !== true || result.written !== true || result.changed === false ||
+				String(args.surface || "") !== "frontend" || String(args.builder || "") !== "svelte") {
+			return result;
+		}
+		try {
+			var sourcePath = String(result.writtenFile || result.sourceFile || "");
+			var sync = ctx.callBlock("authoring.action", {
+				actionId: "dev.sync",
+				builder: "svelte",
+				projectDir: args.projectDir,
+				action: {
+					id: "frontbuilder.svelte.dev.sync",
+					payload: { sourcePath: sourcePath }
+				}
+			}, { trace: false });
+			result.devSync = {
+				ok: sync && sync.ok !== false,
+				generated: sync && sync.generated === true,
+				pending: sync && sync.pending === true,
+				message: String(sync && sync.message || "")
+			};
+		} catch (error) {
+			result.devSync = {
+				ok: false,
+				generated: false,
+				pending: false,
+				message: "Frontend source was saved, but dev synchronization failed: " + String(error)
+			};
+			result.warnings = (result.warnings || []).concat([{
+				code: "FRONTEND_DEV_SYNC_FAILED",
+				message: result.devSync.message
+			}]);
+		}
+		return result;
+	}
+
 	function externalPaletteItems(ctx, mcp, args, result) {
 		if (!result || result.ok !== true || Number(result.eligibleCount || 0) > 0 || !args.project || !String(args.query || "").trim()) {
 			return result;
@@ -279,7 +316,11 @@ const _meta = {
 				if (target === "authoring.palette" || target === "authoring.tree") {
 					result = mcp.qualifyAuthoringResult(args, result);
 				}
-				response = mcp.toolResponse(request, mcp.persistSourceMutationResult(request, args, result), ctx);
+				result = mcp.persistSourceMutationResult(request, args, result);
+				if (target === "authoring.mutate") {
+					result = syncFrontendDevAfterMutation(ctx, args, result);
+				}
+				response = mcp.toolResponse(request, result, ctx);
 			} catch (e) {
 				response = mcp.toolError(request, e, ctx);
 			}
