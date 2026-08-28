@@ -70,6 +70,7 @@ const _meta = {
 		"flow-sync-inputs": true,
 		"flow-test": true,
 		"frontend-svelte-action": true,
+		"frontend-svelte-asset-import": true,
 		"frontend-svelte-actions": true,
 		"frontend-svelte-fullsync-schema": true,
 		"frontend-svelte-mutate": true,
@@ -187,6 +188,9 @@ const _meta = {
 			}
 			if (frontendSuffix === "svelte.fullsync.schema") {
 				return "frontend.fullsync.schema.attach";
+			}
+			if (frontendSuffix === "svelte.asset.import") {
+				return "frontend.asset.import";
 			}
 			return "";
 		}

@@ -1962,6 +1962,15 @@ const _meta = {
 						total: activeTasks.length,
 						percent: activeTasks.length ? Math.round((completed * 100) / activeTasks.length) : 100
 					},
+					proof: {
+						structural: true,
+						runtime: false,
+						browserRequired: includeFrontend,
+						assetNetworkRequired: includeFrontend,
+						message: includeFrontend
+							? "Structural readiness does not prove the visible viewer or asset HTTP responses. Complete browser acceptance and reject asset 404s."
+							: "Structural readiness does not replace runtime execution proof."
+					},
 					tasks: activeTasks,
 					deferredTasks: deferredTasks,
 					backend: {
@@ -1983,7 +1992,7 @@ const _meta = {
 						? nextActions[0]
 						: hardening
 							? "Hardening checks are green. Continue with the required runtime proof."
-							: "POC is ready. Build and show the first useful preview; run mode:\"hardening\" only on explicit request.",
+							: "POC structure is ready. Show and verify the first useful preview, including asset requests; run mode:\"hardening\" only on explicit request.",
 					workflow: hardening ? {
 						goal: "hardening",
 						validationPasses: 1

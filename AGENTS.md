@@ -73,6 +73,12 @@ canonical Flow Svelte sourceFile targets; kind:"source" selects project-wide
 frontend rg
 for Studio-visible frontend writes, pass reveal:true so the virtual tree is
 reconciled and the modified source node is selected
+after the first frontend code-get of every turn, call frontend-svelte-action
+with dev.ensure and wait:false before mutation; it is the idempotent recovery
+path after a Studio restart
+import local or generated images with frontend-svelte-asset-import and reuse
+the returned resources/... URL unchanged; never shell-copy project assets or
+write generated static folders
 before Playwright, call frontend-svelte-action with dev.open and require
 browserControlReady:true
 code-set only when reusable vocabulary is needed

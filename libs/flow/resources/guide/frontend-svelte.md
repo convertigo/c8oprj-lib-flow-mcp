@@ -32,6 +32,10 @@ writing generated `+page.svelte` files.
    source, revision, every Page (`id`, `path`, typed parameters and sourceFile),
    the compact canonical block contract, and the exact application stylesheet
    path in `authoringContract.sources.applicationStyles`.
+   Immediately call `frontend-svelte-action({ project,
+   actionId:"dev.ensure", wait:false })`. This idempotent preflight preserves a
+   running viewer and restarts it after Studio was relaunched, so subsequent
+   mutations are visible live. Do not poll it.
 2. Plan the Pages and transitions. Write each complete Page with
    `code-check`, then `code-set`, addressing it by `sourceFile`. A new Page has
    no revision. Existing Pages use their returned revision.
@@ -42,20 +46,33 @@ writing generated `+page.svelte` files.
    guess that path.
 4. Use one targeted tree/palette lookup only when the contract lacks a block,
    property or schema path. Apply returned picker mutations unchanged.
-5. For a freshly bootstrapped UI project, call
-   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
-   immediately after bootstrap so npm initializes while you author. For an
-   existing project, start it after `code-get` confirms the builder. Do not
-   poll or retry `dev.start`: Vite and the Studio viewer open automatically
+5. For a freshly bootstrapped UI project, call the same `dev.ensure` action
+   immediately after bootstrap so npm initializes while you author. Do not
+   poll or retry it: Vite and the Studio viewer open automatically
    when setup completes. Call `dev.sync` once after the final repair pass to
    regenerate the completed source; use `dev.open` only to reveal an already
    running viewer.
 6. Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
    work. Add `qname` only when a real backend Flow is part of the application.
    Use the live dev viewer to prove the requested visible and interactive
-   behavior. Build production only for deployment or an explicit production
-   check. Never claim a color, layout, timer, navigation or viewer state that
-   was not observed.
+   behavior and confirm referenced images load without 404 responses. Build
+   production only for deployment or an explicit production check. Never claim
+   a color, layout, timer, navigation or viewer state that was not observed.
+
+## Assets
+
+Import each supplied or generated image once with
+`frontend-svelte-asset-import({ project, sourceFile,
+assetPath:"resources/<name>" })`. The tool validates the file, writes it only
+inside the project's `resources/` directory, synchronizes the dev projection,
+and returns the canonical `resources/...` URL. Use that URL unchanged in an
+Image property or in `app.flow.css`; the generator resolves it in both dev and
+production. Do not copy files with shell commands, do not duplicate them under
+`libs/flow/resources`, and do not edit `_private/svelte/static`.
+
+`code-check` reports `FRONTEND_ASSET_MISSING` when a canonical source refers to
+an absent project image. `flow-app-progress` is structural readiness, not
+browser/network proof; the final Playwright pass must still catch 404s.
 
 Do not assemble an application with hundreds of tree mutations. Do not guess
 Ionic, NGX, CSS or HTML property names. Use semantic layout properties for

@@ -318,7 +318,7 @@ const _meta = {
 					result = mcp.qualifyAuthoringResult(args, result);
 				}
 				result = mcp.persistSourceMutationResult(request, args, result);
-				if (target === "authoring.mutate") {
+				if (target === "authoring.mutate" || target === "frontend.asset.import") {
 					result = syncFrontendDevAfterMutation(ctx, args, result);
 				}
 				response = mcp.toolResponse(request, result, ctx);

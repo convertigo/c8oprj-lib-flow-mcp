@@ -53,9 +53,23 @@ var unmanaged = mcp.prepareToolArguments(requestContext(0), {
 	}
 }, { resolveProject: false });
 
+var ensured = mcp.prepareToolArguments(requestContext(40811), {
+	params: {
+		name: "frontend-svelte-action",
+		arguments: {
+			project: "Clock",
+			actionId: "dev.ensure",
+			wait: false
+		}
+	}
+}, { resolveProject: false });
+
 assertTrue(managed.browserDebugPort === 40811,
 	"The MCP transport header must override client-supplied viewer ports");
 assertTrue(unmanaged.browserDebugPort === undefined,
 	"Client-supplied viewer ports must be discarded without a managed transport header");
+assertTrue(ensured.actionId === "frontbuilder.svelte.dev.start" &&
+	ensured.action.id === "frontbuilder.svelte.dev.start" && ensured.wait === false,
+	"dev.ensure must stay an idempotent public alias for the existing dev start contract");
 
 print("managed-viewer-transport OK");

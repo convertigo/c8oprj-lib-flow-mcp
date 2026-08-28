@@ -48,6 +48,39 @@ assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
 	normalizedFullSyncSchema.properties.rows.items.properties.doc.properties.name.type === "string" &&
 	normalizedFullSyncSchema.properties._c8oMeta === undefined,
 	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
+var assetImportSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+	new java.io.File(projectDir, "libs/flow/blocks/frontend/asset/import.block.js"), "UTF-8"));
+var isolatedAssetImport = eval(assetImportSource.substring(assetImportSource.indexOf("(function")));
+var assetImportRoot = Packages.java.nio.file.Files.createTempDirectory("flow-asset-import-");
+var assetImportInput = assetImportRoot.resolve("generated.png");
+Packages.java.nio.file.Files.writeString(assetImportInput, "png");
+var assetImportResult = isolatedAssetImport.run({
+	props: function () {
+		return {
+			project: "AssetProject",
+			projectDir: String(assetImportRoot),
+			sourceFile: String(assetImportInput),
+			assetPath: "resources/hero.png"
+		};
+	},
+	write: function () {}
+}, {});
+assertTrue(assetImportResult.ok === true && assetImportResult.url === "resources/hero.png" &&
+	assetImportResult.written === true && Packages.java.nio.file.Files.isRegularFile(assetImportRoot.resolve("resources/hero.png")),
+	"Frontend asset import did not copy the image to the canonical resources URL");
+var assetTraversalRejected = false;
+try {
+	isolatedAssetImport.run({
+		props: function () {
+			return { projectDir: String(assetImportRoot), sourceFile: String(assetImportInput), assetPath: "resources/../escape.png" };
+		},
+		write: function () {}
+	}, {});
+} catch (_expectedAssetTraversal) {
+	assetTraversalRejected = true;
+}
+assertTrue(assetTraversalRejected, "Frontend asset import accepted a traversal outside resources/");
+Packages.org.apache.commons.io.FileUtils.deleteDirectory(assetImportRoot.toFile());
 var capturedFullSyncSchemaMutation = null;
 var capturedFullSyncTreeRequest = null;
 var capturedFullSyncSchemaRequest = null;
@@ -456,6 +489,15 @@ assertTrue(list.result.result.tools.some(function (tool) {
 }) && list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-action";
 }), "MCP Flow tools/list did not expose Svelte frontend authoring tools");
+var frontendAssetImportTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "frontend-svelte-asset-import";
+})[0];
+assertTrue(frontendAssetImportTool &&
+	frontendAssetImportTool.inputSchema.properties.sourceFile.type === "string" &&
+	frontendAssetImportTool.inputSchema.properties.assetPath.type === "string" &&
+	frontendAssetImportTool.inputSchema.properties.overwrite.default === true &&
+	frontendAssetImportTool.inputSchema.properties.projectDir === undefined,
+	"MCP tools/list did not expose the bounded KISS frontend asset import contract");
 var frontendSvelteActionTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "frontend-svelte-action";
 })[0];
@@ -1489,6 +1531,9 @@ assertTrue(appProgressPoc.result.result.structuredContent.complete === true &&
 	appProgressPoc.result.result.structuredContent.mocks.checked === false &&
 	appProgressPoc.result.result.structuredContent.backend.debt.checked === false &&
 	appProgressPoc.result.result.structuredContent.frontend.timing.fastPath === true &&
+	appProgressPoc.result.result.structuredContent.proof.structural === true &&
+	appProgressPoc.result.result.structuredContent.proof.runtime === false &&
+	appProgressPoc.result.result.structuredContent.proof.assetNetworkRequired === true &&
 	appProgressPoc.result.result.structuredContent.workflow.maxRepairPasses === 2,
 	"MCP flow-app-progress POC mode should stop at a useful preview and defer hardening audits: " +
 		JSON.stringify(appProgressPoc.result.result.structuredContent));

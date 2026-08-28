@@ -44,9 +44,11 @@ acceptance campaign.
   steps in one route.
 - Allow at most two focused repair passes after those drafts.
 - For a newly bootstrapped UI project, call
-  `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+  `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`
   immediately after bootstrap so dependency setup overlaps authoring. For an
-  existing project, start it after the first frontend read; do not poll.
+  existing project, call the same idempotent action immediately after the
+  first frontend read of every turn; it recovers the viewer after Studio was
+  restarted without disturbing an already running Vite process. Do not poll.
 - Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
   work. Pass `qname` only when the application really has a backend Flow;
   never create a synthetic backend Flow to satisfy progress. Synchronize and
@@ -62,6 +64,12 @@ for fiabilisation, production readiness or exhaustive validation. Never use
 `*.flow.css`; use `code-get/set/check/patch` with `sourceFile`. Use
 `code-rg({ project, kind:"source", pattern })` for project-wide canonical
 frontend search.
+
+For images, use `frontend-svelte-asset-import({ project, sourceFile,
+assetPath:"resources/..." })`, then keep its returned `resources/...` URL in
+the canonical Flow source or `app.flow.css`. This is the only asset-copy step:
+never use shell copies and never write `_private/svelte/static`. A missing
+reference is a `FRONTEND_ASSET_MISSING` code diagnostic.
 
 ## Boundaries
 
@@ -109,7 +117,7 @@ flow-project-bootstrap({ project, ui:true })  # backend plus Svelte
 ```
 
 Call bootstrap once. If it succeeds, continue directly; do not probe or call it
-again. After `ui:true`, immediately start `dev.start` with `wait:false`, then
+again. After `ui:true`, immediately call `dev.ensure` with `wait:false`, then
 continue backend and frontend authoring while dependencies initialize. For
 project configuration, read `libs/flow/engine.yaml` with
 `flow-resource-get`, then update it with `flow-resource-patch` and `baseHash`.
@@ -255,16 +263,16 @@ mutations. A complete pass may write several Page sources:
 5. Use `code-patch` for later focused changes and
    `code-rg({ project, kind:"source", pattern })` to search all canonical
    `*.flow.svelte` and `*.flow.css` sources.
-6. If dev mode was not already started after bootstrap, call
-   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
-   after the first frontend read. Continue the focused repair passes while npm
-   initializes. Do not poll or call `dev.start` again: Vite and the Studio
+6. Immediately after the first frontend read of each turn, call
+   `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`.
+   Continue the focused repair passes while npm initializes. Do not poll: Vite and the Studio
    viewer open automatically as soon as dependencies are ready. Run `dev.sync`
    once after the final repair to regenerate the completed source. Use
    `dev.open` only to reveal an already running viewer. If synchronization
    fails, follow its structured error once; never retry aliases speculatively.
-7. Call `flow-app-progress({ project, qname, mode:"poc" })` once. Prove the
-   requested visible and interactive behavior in the dev viewer. Call
+7. Call `flow-app-progress({ project, qname, mode:"poc" })` once. This proves
+   structural readiness only; prove the requested visible and interactive
+   behavior in the dev viewer and confirm asset requests do not return 404. Call
    `frontend-svelte-action` with `build` only for deployment or an explicit
    production check; production build already generates the sources.
 

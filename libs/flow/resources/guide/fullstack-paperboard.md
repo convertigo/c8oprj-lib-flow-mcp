@@ -64,7 +64,7 @@ source, including a structured literal for intentionally static content.
    ui:true })` when FlowEngine or the Svelte builder is missing. Never edit
    `c8oProject.yaml`, `_c8oProject/**/*.yaml`, `_private/svelte` or
    `DisplayObjects` directly. Immediately call
-   `frontend-svelte-action({ project, actionId:"dev.start", wait:false })`
+   `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`
    after a successful UI bootstrap so dependency setup overlaps backend and
    frontend authoring.
 2. Extract a small plan from the prompt:
