@@ -1754,6 +1754,18 @@
 		}
 	}
 
+	function managedViewerDebugPort(ctx) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			var servletRequest = context && context.httpServletRequest;
+			var value = servletRequest && servletRequest.getHeader("X-Convertigo-Viewer-Debug-Port");
+			var port = Number(String(value || "").trim());
+			return isFinite(port) && port >= 1024 && port <= 65535 ? Math.floor(port) : 0;
+		} catch (e) {
+			return 0;
+		}
+	}
+
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
@@ -1922,6 +1934,14 @@
 					args.position = "inside";
 				}
 			} else if (name === "frontend-svelte-action" || name === "frontend-svelte-actions") {
+				if (name === "frontend-svelte-action") {
+					var viewerDebugPort = managedViewerDebugPort(ctx);
+					if (viewerDebugPort) {
+						args.browserDebugPort = viewerDebugPort;
+					} else {
+						delete args.browserDebugPort;
+					}
+				}
 				if (!args.origin) {
 					args.origin = "mcp";
 				}

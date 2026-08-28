@@ -210,6 +210,7 @@ var proxyAwareFrontendArgs = mcpLib.prepareToolArguments({
 				getHeader: function (name) {
 					if (name === "X-Forwarded-Proto") return "https";
 					if (name === "X-Forwarded-Host") return "convertigo.goodnet.work";
+					if (name === "X-Convertigo-Viewer-Debug-Port") return "40811";
 					return null;
 				},
 				getScheme: function () { return "http"; },
@@ -225,8 +226,9 @@ var proxyAwareFrontendArgs = mcpLib.prepareToolArguments({
 		arguments: { project: "Marketplace", actionId: "dev.start", publicBaseUrl: "https://attacker.invalid" }
 	}
 }, { resolveProject: false });
-assertTrue(proxyAwareFrontendArgs.publicBaseUrl === "https://convertigo.goodnet.work/convertigo",
-	"MCP frontend actions should derive their public origin from the server request and ignore a client-supplied origin");
+assertTrue(proxyAwareFrontendArgs.publicBaseUrl === "https://convertigo.goodnet.work/convertigo" &&
+	proxyAwareFrontendArgs.browserDebugPort === 40811,
+	"MCP frontend actions should derive their public origin and managed CDP port from the server request");
 var sanitizedCodePaths = mcpLib.sanitizeForMcp({
 	codeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
 	workingCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
@@ -458,7 +460,8 @@ var frontendSvelteActionTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "frontend-svelte-action";
 })[0];
 assertTrue(frontendSvelteActionTool.inputSchema.properties.wait &&
-	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean",
+	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean" &&
+	frontendSvelteActionTool.inputSchema.properties.browserDebugPort === undefined,
 	"MCP frontend-svelte-action did not expose the non-blocking dev start option");
 assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch", "frontend-svelte-code-rg"].every(function (name) {
 	return !list.result.result.tools.some(function (tool) { return tool.name === name; });
@@ -467,6 +470,7 @@ var unifiedCodeTools = {};
 list.result.result.tools.forEach(function (tool) { unifiedCodeTools[tool.name] = tool; });
 assertTrue(unifiedCodeTools["code-check"].inputSchema.properties.target.enum.indexOf("frontend") !== -1 &&
 	unifiedCodeTools["code-set"].inputSchema.properties.finalize.type === "boolean" &&
+	unifiedCodeTools["code-set"].inputSchema.properties.reveal.type === "boolean" &&
 	unifiedCodeTools["code-patch"].inputSchema.properties.target.enum.indexOf("backend") !== -1,
 	"Unified code tools did not expose target-aware block implementation schemas");
 assertTrue(["code-get", "code-check", "code-set", "code-patch", "code-rg"].every(function (name) {
@@ -930,6 +934,7 @@ var frontendDevSyncArgs = null;
 preparedPaletteArgs = {
 	project: "Consumer",
 	projectDir: "/tmp/Consumer",
+	browserDebugPort: 40811,
 	sourceFile: "/tmp/Consumer/routes/+page.flow.svelte",
 	surface: "frontend",
 	builder: "svelte",
@@ -953,6 +958,7 @@ fakeRunCtx.callBlock = function (name, args) {
 var frontendMutationWithDevSync = isolatedMcpToolRun.run(fakeRunCtx, {});
 assertTrue(frontendMutationWithDevSync.ok === true && frontendMutationWithDevSync.devSync.generated === true &&
 	frontendDevSyncArgs.projectDir === "/tmp/Consumer" &&
+	frontendDevSyncArgs.browserDebugPort === 40811 &&
 	frontendDevSyncArgs.action.id === "frontbuilder.svelte.dev.sync" &&
 	frontendDevSyncArgs.action.payload.sourcePath === preparedPaletteArgs.sourceFile,
 	"Generic frontend mutations should synchronize the active Svelte dev viewer automatically");

@@ -71,6 +71,10 @@ flow-project-reference only for explicit project-reference maintenance, not norm
 code-rg / code-get / code-patch for project-local FlowScript blocks and
 canonical Flow Svelte sourceFile targets; kind:"source" selects project-wide
 frontend rg
+for Studio-visible frontend writes, pass reveal:true so the virtual tree is
+reconciled and the modified source node is selected
+before Playwright, call frontend-svelte-action with dev.open and require
+browserControlReady:true
 code-set only when reusable vocabulary is needed
 flow-block-create / flow-block-duplicate / flow-block-edit / flow-type-create only for Rhino/native/type compatibility cases
 flow-resource-search / flow-resource-get / flow-resource-patch for project JS/HTML/CSS/library/type/resource maintenance patches

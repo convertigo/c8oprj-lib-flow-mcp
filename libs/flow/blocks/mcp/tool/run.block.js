@@ -97,6 +97,7 @@ const _meta = {
 				actionId: "dev.sync",
 				builder: "svelte",
 				projectDir: args.projectDir,
+				browserDebugPort: args.browserDebugPort,
 				action: {
 					id: "frontbuilder.svelte.dev.sync",
 					payload: { sourcePath: sourcePath }

@@ -63,6 +63,12 @@ const _meta = {
       "type": "string",
       "description": "Resolved target project directory."
     },
+    "reveal": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": false,
+      "description": "Reveal the refreshed frontend source in the Studio project tree after a successful write."
+    },
     "out": {
       "kind": "path",
       "mode": "write",
@@ -961,7 +967,8 @@ const _meta = {
 		if (ctx && typeof ctx.notifySourceMutation === "function") {
 			ctx.notifySourceMutation({
 				projectDir: String(props.projectDir || ""),
-				path: String(path.relative || "")
+				path: String(path.relative || ""),
+				reveal: boolValue(props.reveal, false)
 			});
 		}
 	}

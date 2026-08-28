@@ -292,6 +292,9 @@ const _meta = {
 				description: "Target Convertigo project name, not a filesystem path."
 			};
 		}
+		if (toolName === "frontend-svelte-action" || toolName === "frontend-svelte-actions") {
+			delete schema.properties.browserDebugPort;
+		}
 		if (toolName === "authoring-palette") {
 			schema.properties.parentPath = {
 				type: "string",
@@ -346,6 +349,10 @@ const _meta = {
 					schema.properties.finalize = {
 						type: "boolean",
 						description: "For a frontend-only block, remove mock metadata after writing the complete implementation."
+					};
+					schema.properties.reveal = {
+						type: "boolean",
+						description: "For canonical frontend source writes, refresh and reveal the affected source in the Studio project tree."
 					};
 				}
 			}
@@ -465,7 +472,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Build is a separate production or deployment check.";
+			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Before Playwright, call dev.open and require browserControlReady:true. Build is a separate production or deployment check.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
