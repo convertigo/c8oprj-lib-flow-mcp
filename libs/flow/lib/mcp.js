@@ -1766,10 +1766,28 @@
 		}
 	}
 
+	function managedRevealMode(ctx) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			var servletRequest = context && context.httpServletRequest;
+			var value = String(servletRequest && servletRequest.getHeader("X-Convertigo-Reveal-Mode") || "")
+				.trim().toLowerCase();
+			return value === "true" || value === "1" || value === "yes" || value === "on";
+		} catch (e) {
+			return false;
+		}
+	}
+
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
+		var managedSourceWrite = name === "frontend-svelte-code-set"
+			|| name === "frontend-svelte-code-patch"
+			|| ((name === "code-set" || name === "code-patch") && String(args.sourceFile || "").length > 0);
+		if (managedSourceWrite && args.reveal === undefined && managedRevealMode(ctx)) {
+			args.reveal = true;
+		}
 		delete args.internalDeep;
 		var responseBudgetPolicies = {
 			"flow-catalog": { timeoutMs: 1000, maxResponseKB: 64, minItems: 1 },

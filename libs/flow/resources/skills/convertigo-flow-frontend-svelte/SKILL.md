@@ -39,6 +39,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   the current viewer. Do not open a separate browser or use raw CDP.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
   also confirm that referenced images load without 404 responses.
+- For maps and other network-backed provider visualizations, verify their
+  rendered resources too; a correctly sized container or attribution is not
+  proof that tiles or remote content loaded.
 - Do not use `curl` or handwritten JSON-RPC to reach MCP. Report a missing named
   MCP or Playwright tool as a host configuration defect.
 

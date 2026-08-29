@@ -342,3 +342,8 @@ Execute the build-provided safe Playwright plan. Prefer roles, visible text,
 images and documented `data-*` attributes; low-code ids are not guaranteed DOM
 ids. On failure, allow one focused browser diagnostic instead of starting an
 exploratory test campaign.
+
+Do not infer that a network-backed component works from its container size or
+attribution alone. For maps, confirm that at least one rendered tile image has
+`naturalWidth > 0` and report any failed tile request. Apply the equivalent
+resource-level check to other provider visualizations before claiming success.

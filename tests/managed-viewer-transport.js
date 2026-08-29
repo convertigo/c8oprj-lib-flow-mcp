@@ -10,7 +10,7 @@ function assertTrue(value, message) {
 	}
 }
 
-function requestContext(port) {
+function requestContext(port, revealMode) {
 	return {
 		convertigoContext: function () {
 			return {
@@ -19,6 +19,7 @@ function requestContext(port) {
 						if (name === "X-Forwarded-Proto") return "http";
 						if (name === "Host") return "127.0.0.1:18080";
 						if (name === "X-Convertigo-Viewer-Debug-Port") return String(port || "");
+						if (name === "X-Convertigo-Reveal-Mode") return revealMode ? "true" : "";
 						return null;
 					},
 					getScheme: function () { return "http"; },
@@ -64,6 +65,31 @@ var ensured = mcp.prepareToolArguments(requestContext(40811), {
 	}
 }, { resolveProject: false });
 
+var managedReveal = mcp.prepareToolArguments(requestContext(40811, true), {
+	params: {
+		name: "code-set",
+		arguments: { project: "Clock", sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
+	}
+}, { resolveProject: false });
+
+var explicitNoReveal = mcp.prepareToolArguments(requestContext(40811, true), {
+	params: {
+		name: "code-patch",
+		arguments: {
+			project: "Clock",
+			sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte",
+			reveal: false
+		}
+	}
+}, { resolveProject: false });
+
+var unmanagedReveal = mcp.prepareToolArguments(requestContext(40811, false), {
+	params: {
+		name: "code-set",
+		arguments: { project: "Clock", sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
+	}
+}, { resolveProject: false });
+
 assertTrue(managed.browserDebugPort === 40811,
 	"The MCP transport header must override client-supplied viewer ports");
 assertTrue(unmanaged.browserDebugPort === undefined,
@@ -71,5 +97,11 @@ assertTrue(unmanaged.browserDebugPort === undefined,
 assertTrue(ensured.actionId === "frontbuilder.svelte.dev.start" &&
 	ensured.action.id === "frontbuilder.svelte.dev.start" && ensured.wait === false,
 	"dev.ensure must stay an idempotent public alias for the existing dev start contract");
+assertTrue(managedReveal.reveal === true,
+	"Managed reveal mode must default canonical frontend source writes to reveal=true");
+assertTrue(explicitNoReveal.reveal === false,
+	"An explicit reveal=false must override the managed reveal default");
+assertTrue(unmanagedReveal.reveal === undefined,
+	"Unmanaged transports must not change frontend source reveal behavior");
 
 print("managed-viewer-transport OK");
