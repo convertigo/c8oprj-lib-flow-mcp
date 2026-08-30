@@ -225,9 +225,10 @@ const _meta = {
 			var internalRequest = setRequestArgs(request, internalName, internalArgs);
 			return ctx.callBlock(internalBlock, {
 				request: internalRequest,
-			out: out
-		}, { trace: false });
-	}
+				reveal: internalArgs.reveal,
+				out: out
+			}, { trace: false });
+		}
 
 	return {
 		run: function (ctx, node) {

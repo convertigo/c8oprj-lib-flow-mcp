@@ -119,5 +119,8 @@ assertTrue(unmanagedReveal.reveal === undefined,
 	assertTrue(/args\s*:\s*\{[^}]*reveal\s*:\s*input\.reveal/.test(descriptor),
 		"The private frontend write block must forward reveal to the source operation: " + relativePath);
 });
+assertTrue(/reveal\s*:\s*internalArgs\.reveal/.test(readProjectFile(
+	"libs/flow/blocks/mcp/tool/code/dispatch.block.js")),
+	"The unified code dispatcher must bind reveal on the private frontend write block");
 
 print("managed-viewer-transport OK");
