@@ -22,7 +22,17 @@ const _meta = {
     "revision": {
       "kind": "text",
       "type": "string",
-      "description": "Current revision required when replacing an existing source; omit only to create a missing source."
+      "description": "Current revision required when replacing an existing source; for a ranged get, optionally require the source to still have this revision."
+    },
+    "startLine": {
+      "kind": "literal",
+      "type": "integer",
+      "description": "First one-based line for a bounded get; requires endLine."
+    },
+    "endLine": {
+      "kind": "literal",
+      "type": "integer",
+      "description": "Last inclusive one-based line for a bounded get; requires startLine, maximum 500 lines."
     },
     "codepatch": {
       "kind": "text",
@@ -874,15 +884,60 @@ const _meta = {
 			allowLarge: true,
 			maxBytes: 5000000
 		});
+		var hasStartLine = props.startLine !== undefined && props.startLine !== null && String(props.startLine) !== "";
+		var hasEndLine = props.endLine !== undefined && props.endLine !== null && String(props.endLine) !== "";
+		if (hasStartLine !== hasEndLine) {
+			throw sourceWriteError(
+				"FRONTEND_SOURCE_RANGE_INCOMPLETE",
+				"A bounded code-get requires both startLine and endLine.",
+				"Pass an inclusive one-based range, for example startLine:20 and endLine:60."
+			);
+		}
+		if (hasStartLine && props.revision !== undefined && props.revision !== null && String(props.revision) !== "" &&
+			String(props.revision) !== String(resource.hash)) {
+			throw sourceWriteError(
+				"FRONTEND_SOURCE_STALE_REVISION",
+				"Flow Svelte source changed since the requested revision.",
+				"Repeat code-rg or code-get without a revision, then retry the bounded read with the current revision."
+			);
+		}
+		var code = String(resource.content || "");
+		var startLine = null;
+		var endLine = null;
+		var totalLines = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").length;
+		if (hasStartLine) {
+			startLine = Number(props.startLine);
+			endLine = Number(props.endLine);
+			var validIntegers = isFinite(startLine) && isFinite(endLine) &&
+				Math.floor(startLine) === startLine && Math.floor(endLine) === endLine;
+			if (!validIntegers || startLine < 1 || endLine < startLine || endLine > totalLines || endLine - startLine + 1 > 500) {
+				throw sourceWriteError(
+					"FRONTEND_SOURCE_RANGE_INVALID",
+					"Invalid Flow Svelte source range " + String(props.startLine) + "-" + String(props.endLine) +
+						" for a " + totalLines + " line source.",
+					"Use inclusive one-based bounds inside the source and request at most 500 lines."
+				);
+			}
+			code = code.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n")
+				.slice(startLine - 1, endLine).join("\n");
+		}
 		var result = {
 			ok: true,
 			exists: true,
 			sourceFile: path.relative,
-			code: resource.content,
+			code: code,
 			revision: resource.hash,
-			contentLength: resource.contentLength
+			contentLength: code.length
 		};
-		if (includeContract === true && !isStylesheet(path)) {
+		if (hasStartLine) {
+			result.startLine = startLine;
+			result.endLine = endLine;
+			result.totalLines = totalLines;
+			result.totalContentLength = resource.contentLength;
+			result.partial = true;
+			result.next = "Use this revision with code-patch, or request another bounded range. Escalate to full code-get only when context is ambiguous.";
+		}
+		if (includeContract === true && !hasStartLine && !isStylesheet(path)) {
 			var contract = starterContract(ctx, props);
 			if (contract) result.authoringContract = contract;
 		}

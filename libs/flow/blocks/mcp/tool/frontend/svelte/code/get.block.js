@@ -5,6 +5,9 @@ const _meta = {
   "properties": {
     "request": { "kind": "expression", "type": "object", "default": "input.request" },
     "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or *.flow.css path; defaults to the configured modelPath." },
+    "revision": { "kind": "text", "type": "string", "description": "Optional expected revision for a bounded read; rejects stale context." },
+    "startLine": { "kind": "literal", "type": "integer", "description": "First one-based line for a bounded read; requires endLine." },
+    "endLine": { "kind": "literal", "type": "integer", "description": "Last inclusive one-based line for a bounded read; requires startLine, maximum 500 lines." },
     "out": { "kind": "path", "mode": "write", "default": "local.response" }
   },
   "outputs": { "out": { "type": "object" } },

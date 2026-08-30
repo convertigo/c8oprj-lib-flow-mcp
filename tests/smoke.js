@@ -2549,6 +2549,43 @@ assertTrue(frontendSourcePatch.result.result.structuredContent.written === true 
 	frontendSourcePatch.result.result.structuredContent.sourceChars > 0 &&
 	frontendSourceAfterPatch.result.result.structuredContent.code.indexOf("Home patched") !== -1,
 	"MCP frontend-svelte-code-patch should persist a unified patch and omit source by default");
+var frontendSourceRange = callTool(13842, "code-get", {
+	projectDir: targetProjectDir,
+	kind: "source",
+	sourceFile: frontendSourceAfterPatch.result.result.structuredContent.sourceFile,
+	revision: frontendSourceAfterPatch.result.result.structuredContent.revision,
+	startLine: 1,
+	endLine: 2
+});
+assertTrue(frontendSourceRange.result.result.structuredContent.ok === true &&
+	frontendSourceRange.result.result.structuredContent.startLine === 1 &&
+	frontendSourceRange.result.result.structuredContent.endLine === 2 &&
+	frontendSourceRange.result.result.structuredContent.totalLines >= 4 &&
+	frontendSourceRange.result.result.structuredContent.partial === true &&
+	frontendSourceRange.result.result.structuredContent.code.split("\n").length === 2 &&
+	frontendSourceRange.result.result.structuredContent.authoringContract === undefined,
+	"MCP code-get should return a revision-checked bounded canonical source range");
+var frontendSourceRangeStale = callTool(13843, "code-get", {
+	projectDir: targetProjectDir,
+	kind: "source",
+	sourceFile: frontendSourceAfterPatch.result.result.structuredContent.sourceFile,
+	revision: "stale-revision",
+	startLine: 1,
+	endLine: 2
+});
+assertTrue(frontendSourceRangeStale.result.error &&
+	frontendSourceRangeStale.result.error.data.code === "FRONTEND_SOURCE_STALE_REVISION",
+	"MCP ranged code-get should reject stale source context");
+var frontendSourceRangeInvalid = callTool(13844, "code-get", {
+	projectDir: targetProjectDir,
+	kind: "source",
+	sourceFile: frontendSourceAfterPatch.result.result.structuredContent.sourceFile,
+	startLine: 0,
+	endLine: 2
+});
+assertTrue(frontendSourceRangeInvalid.result.error &&
+	frontendSourceRangeInvalid.result.error.data.code === "FRONTEND_SOURCE_RANGE_INVALID",
+	"MCP ranged code-get should reject invalid one-based bounds");
 var frontendSourceStale = callTool(1385, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceRevision,

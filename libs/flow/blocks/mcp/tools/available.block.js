@@ -361,6 +361,18 @@ const _meta = {
 				}
 			}
 			if (toolName === "code-get") {
+					schema.properties.revision = {
+						type: "string",
+						description: "For a bounded canonical source read, optionally require this current revision."
+					};
+					schema.properties.startLine = {
+						type: "integer",
+						description: "Canonical source only: first one-based line for a bounded read; requires endLine."
+					};
+					schema.properties.endLine = {
+						type: "integer",
+						description: "Canonical source only: last inclusive line for a bounded read; requires startLine, maximum 500 lines."
+					};
 					schema.properties.pattern = {
 						type: "string",
 						description: "Optional text/regex search pattern. When present, code-get returns small extracts like code-rg instead of full code."
@@ -453,7 +465,7 @@ const _meta = {
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
 			} else if (name === "code-get") {
-				description = "Reads code addressed by qname, block or sourceFile; with pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
+				description = "Reads code addressed by qname, block or sourceFile; canonical sources support startLine/endLine, while pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
 			} else if (name === "code-rg") {
 				description = "Searches FlowScript, block code or canonical frontend sources. Use kind:\"source\" without sourceFile for project-wide Flow Svelte/CSS rg.";
 			}

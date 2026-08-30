@@ -262,9 +262,10 @@ mutations. A complete pass may write several Page sources:
    exists.
 5. Use the light edit path for focused changes: `code-rg({ project,
    kind:"source", pattern })` first, preserve its revision and contextual
-   match, then apply the smallest `code-patch`. Escalate to `code-get` only
-   when the match is absent, ambiguous, duplicated, or the change genuinely
-   needs the full source. Never replace a whole Page for a local edit.
+   match, then apply the smallest `code-patch`. If more context is required,
+   call `code-get` with that `sourceFile`, `revision`, `startLine` and `endLine`.
+   Request the full source only when a bounded read is still ambiguous or the
+   change is genuinely broad. Never replace a whole Page for a local edit.
 6. Immediately after the first frontend read of each turn, call
    `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`.
    Continue the focused repair passes while npm initializes. Do not poll: Vite and the Studio

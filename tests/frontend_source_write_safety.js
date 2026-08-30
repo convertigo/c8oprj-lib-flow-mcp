@@ -147,6 +147,39 @@ assertTrue(patched.written === true && patched.code === third &&
 	"Patch with the current revision should use the validated atomic write path.");
 assertTrue(notificationRequests.length === 3, "Patch should emit one source mutation notification.");
 
+var ranged = run({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: patched.revision,
+	startLine: 1,
+	endLine: 1
+});
+assertTrue(ranged.code === third.trim() && ranged.startLine === 1 && ranged.endLine === 1 &&
+	ranged.totalLines === 2 && ranged.partial === true && ranged.authoringContract === undefined,
+	"Bounded reads should return only the requested lines while preserving the full-source revision.");
+expectError({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: updated.revision,
+	startLine: 1,
+	endLine: 1
+}, "FRONTEND_SOURCE_STALE_REVISION");
+expectError({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	startLine: 0,
+	endLine: 1
+}, "FRONTEND_SOURCE_RANGE_INVALID");
+expectError({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	startLine: 1
+}, "FRONTEND_SOURCE_RANGE_INCOMPLETE");
+
 expectError({
 	operation: "patch",
 	projectDir: String(root.getAbsolutePath()),
