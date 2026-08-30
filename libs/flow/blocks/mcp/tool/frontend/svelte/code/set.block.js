@@ -16,5 +16,5 @@ const _meta = {
 }
 
 function mcp_tool_frontend_svelte_code_set({ input, config, result }) {
-  mcp.tool.run({ id: "frontendSvelteCodeSet", request: input.request, target: "frontend.svelte.source", args: { operation: "set" } })
+  mcp.tool.run({ id: "frontendSvelteCodeSet", request: input.request, target: "frontend.svelte.source", args: { operation: "set", reveal: input.reveal } })
 }

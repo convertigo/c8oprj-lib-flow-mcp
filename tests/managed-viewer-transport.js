@@ -116,6 +116,8 @@ assertTrue(unmanagedReveal.reveal === undefined,
 	var descriptor = readProjectFile(relativePath);
 	assertTrue(/"reveal"\s*:\s*\{[^}]*"type"\s*:\s*"boolean"/.test(descriptor),
 		"The private frontend write block must preserve reveal through dispatch: " + relativePath);
+	assertTrue(/args\s*:\s*\{[^}]*reveal\s*:\s*input\.reveal/.test(descriptor),
+		"The private frontend write block must forward reveal to the source operation: " + relativePath);
 });
 
 print("managed-viewer-transport OK");
