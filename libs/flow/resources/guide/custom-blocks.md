@@ -95,11 +95,12 @@ than treating them as schema keywords.
 
 Use `code-set` directly when the block should become available in the project palette. Treat it like writing code: register it, run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
 
-For edits, prefer `code-get` followed by `code-patch`
-with the returned `revision`. Use full `code` replacement only when the patch
-would be larger or less clear than the complete `.block.js` source.
-Use `code-rg` first when you need to find which FlowScript block
-contains a phrase, property, helper call or expression.
+For focused edits, use `code-rg` first. If one contextual extract identifies
+the intended phrase, property, helper call or expression, apply `code-patch`
+directly with its revision. Request a bounded `code-get` range only when more
+context is needed. Use a full read or full `code` replacement only when the
+change is broad or the patch would be larger or less clear than the complete
+`.block.js` source.
 
 When calling a block from compact FlowScript, use direct typed values where possible: `user.summary({ name: current.name, email: current.email })`, `forEach({ items: sorted })`, or `set({ path: "local.count", value: news.length })`. Quoted expression strings such as `items: "local.items"` are accepted for low-level calls, but the bare form is clearer. Use `{{ expression }}` only for mixed text templates, for example `"Hello {{ input.name }}"`, or when working with low-level canonical node data.
 

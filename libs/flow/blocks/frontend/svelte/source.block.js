@@ -289,7 +289,7 @@ const _meta = {
 				? "Some matches were omitted. Narrow pattern or raise limit up to 200."
 				: matchCount === 0
 					? "No canonical Flow Svelte/CSS source matched this pattern."
-					: "Use sourceFile and revision from an extract with code-get/code-patch."
+					: "For a unique local match, use its sourceFile, revision and context directly with code-patch. Use bounded code-get only when more context is required."
 		};
 	}
 

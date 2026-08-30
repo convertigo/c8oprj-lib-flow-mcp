@@ -2843,6 +2843,49 @@ assertTrue(unifiedFrontendSourceGet.result.result.structuredContent.ok === true 
 			implicit: unifiedFrontendImplicitGet
 		}));
 
+var contextualExtract = unifiedFrontendSourceRg.result.result.structuredContent.extracts[0];
+assertTrue(contextualExtract.revision && contextualExtract.sourceFile &&
+	contextualExtract.startLine <= contextualExtract.line &&
+	contextualExtract.endLine >= contextualExtract.line,
+	"Unified code-rg should return a revisioned contextual extract suitable for a direct patch");
+var contextualPatch = callTool(13898, "code-patch", {
+	projectDir: targetProjectDir,
+	sourceFile: contextualExtract.sourceFile,
+	revision: contextualExtract.revision,
+	codepatch: [
+		"--- a/+page.flow.svelte",
+		"+++ b/+page.flow.svelte",
+		"@@ -1,1 +1,1 @@",
+		"-<FlowComponent id=\"home\" label=\"Home unified\">",
+		"+<FlowComponent id=\"home\" label=\"Home contextual\">"
+	].join("\n")
+});
+var contextualAfter = callTool(13899, "code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: contextualExtract.sourceFile,
+	revision: contextualPatch.result.result.structuredContent.revision,
+	startLine: 1,
+	endLine: 1
+});
+var contextualStalePatch = callTool(13900, "code-patch", {
+	projectDir: targetProjectDir,
+	sourceFile: contextualExtract.sourceFile,
+	revision: contextualExtract.revision,
+	codepatch: [
+		"--- a/+page.flow.svelte",
+		"+++ b/+page.flow.svelte",
+		"@@ -1,1 +1,1 @@",
+		"-<FlowComponent id=\"home\" label=\"Home contextual\">",
+		"+<FlowComponent id=\"home\" label=\"Home stale\">"
+	].join("\n")
+});
+assertTrue(contextualPatch.result.result.structuredContent.written === true &&
+	contextualAfter.result.result.structuredContent.code.indexOf("Home contextual") !== -1 &&
+	contextualAfter.result.result.structuredContent.partial === true &&
+	contextualStalePatch.result.error &&
+	contextualStalePatch.result.error.data.code === "FRONTEND_SOURCE_STALE_REVISION",
+	"The light edit path should patch directly from code-rg context and reject a stale retry");
+
 var codeSet = callTool(3, "code-set", {
 	projectDir: targetProjectDir,
 	name: "TargetSmoke",

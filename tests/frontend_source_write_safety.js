@@ -134,11 +134,25 @@ expectError({
 assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === second,
 	"Stale revision changed the existing source.");
 
+var contextual = run({
+	operation: "rg",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	pattern: "id=\"second\"",
+	context: 0
+});
+assertTrue(contextual.matchCount === 1 && contextual.extracts.length === 1 &&
+	contextual.extracts[0].sourceFile === sourceFile &&
+	contextual.extracts[0].revision === updated.revision &&
+	contextual.extracts[0].line === 1 && contextual.extracts[0].startLine === 1 &&
+	contextual.extracts[0].endLine === 1,
+	"Contextual search should return the source identity, revision and exact line range needed by code-patch.");
+
 var patched = run({
 	operation: "patch",
 	projectDir: String(root.getAbsolutePath()),
 	sourceFile: sourceFile,
-	revision: updated.revision,
+	revision: contextual.extracts[0].revision,
 	codepatch: "@@ -1 +1 @@",
 	previewCode: third
 });

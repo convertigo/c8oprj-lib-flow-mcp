@@ -39,11 +39,14 @@ writing generated `+page.svelte` files.
 2. Plan the Pages and transitions. Write each complete Page with
    `code-check`, then `code-set`, addressing it by `sourceFile`. A new Page has
    no revision. Existing Pages use their returned revision.
-3. Use `code-patch` only for focused later changes and `code-rg({ project,
-   kind:"source", pattern })` to search every canonical frontend source. The same
-   tools read and update the project application stylesheet when `sourceFile`
-   is `authoringContract.sources.applicationStyles`; do not search for or
-   guess that path.
+3. For focused later changes, call `code-rg({ project, kind:"source",
+   pattern })`. A unique contextual match already contains the `sourceFile` and
+   `revision` needed by the smallest `code-patch`; do not read the whole Page.
+   If the context is insufficient, use bounded `code-get` with the match range
+   and revision, then patch. Escalate to a full read only when the target stays
+   ambiguous or the change is broad. The same tools read and update the project
+   application stylesheet when `sourceFile` is
+   `authoringContract.sources.applicationStyles`; do not guess that path.
 4. Use one targeted tree/palette lookup only when the contract lacks a block,
    property or schema path. Apply returned picker mutations unchanged.
 5. For a freshly bootstrapped UI project, call the same `dev.ensure` action

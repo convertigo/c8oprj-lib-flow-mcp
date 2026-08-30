@@ -467,7 +467,7 @@ const _meta = {
 			} else if (name === "code-get") {
 				description = "Reads code addressed by qname, block or sourceFile; canonical sources support startLine/endLine, while pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
 			} else if (name === "code-rg") {
-				description = "Searches FlowScript, block code or canonical frontend sources. Use kind:\"source\" without sourceFile for project-wide Flow Svelte/CSS rg.";
+				description = "Searches FlowScript, block code or canonical frontend sources and returns revisioned contextual extracts. For a unique local match, patch directly with its revision; use bounded code-get only when more context is needed.";
 			}
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";

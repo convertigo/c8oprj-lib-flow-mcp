@@ -45,9 +45,11 @@ ad hoc frontend expression.
 6. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
 7. Use `flow-search` only after the first draft when the block/pattern is still unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
 8. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-9. Treat FlowScript, project blocks and canonical Flow Svelte files as code:
-   use `code-get({ pattern:"..." })` or `code-rg` for extracts, then
-   `code-get` and `code-patch` for edits. Address executable Flows with a
+9. Treat FlowScript, project blocks and canonical Flow Svelte files as code.
+   The fast path is `code-rg` followed directly by the smallest `code-patch`
+   when one revisioned contextual extract identifies the local change. Use a
+   bounded `code-get` range when more context is necessary, and a full
+   `code-get` only for ambiguity or broad edits. Address executable Flows with a
    real Convertigo DBO qname such as `qname:"Project.Flow"`, project-local
    blocks with `block:"namespace.name"`, and Flow Svelte/CSS with
    `sourceFile`. A `sourceFile` selects source code automatically; use
