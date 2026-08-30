@@ -260,9 +260,11 @@ mutations. A complete pass may write several Page sources:
    Page. `code-set({ project, sourceFile, code, revision })`
    persists it and can create a new canonical route source when no revision
    exists.
-5. Use `code-patch` for later focused changes and
-   `code-rg({ project, kind:"source", pattern })` to search all canonical
-   `*.flow.svelte` and `*.flow.css` sources.
+5. Use the light edit path for focused changes: `code-rg({ project,
+   kind:"source", pattern })` first, preserve its revision and contextual
+   match, then apply the smallest `code-patch`. Escalate to `code-get` only
+   when the match is absent, ambiguous, duplicated, or the change genuinely
+   needs the full source. Never replace a whole Page for a local edit.
 6. Immediately after the first frontend read of each turn, call
    `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`.
    Continue the focused repair passes while npm initializes. Do not poll: Vite and the Studio
@@ -283,6 +285,28 @@ required parameters come from `authoringContract.pages`, not URL guesses.
 Back controls use `GoBack` with a fallback. Read
 `flow://guide/frontend-svelte-routing` only for optional/rest parameters,
 matchers, nested layouts or route groups.
+
+### Named themes and display mode
+
+Treat palette and light/dark mode as two independent axes:
+
+- `theme.flow.css` is the canonical theme catalogue. Named palettes use
+  `:root[data-flow-palette="name"]`; their names are exposed at runtime as
+  `@theme.options`. If this file or named palettes are absent, the authoring
+  tree shows only the synthetic `Default` fallback.
+- The display mode uses `data-flow-theme="light"` or
+  `data-flow-theme="dark"`. System mode removes the forced attribute and lets
+  the media-query branch apply. Never invent `data-theme` or rely on
+  `html.dark` for Flow themes.
+- A `ThemeSwitch` is only a bindable UI control. It does not mutate the
+  document root by itself. Use the portable `BrowserPreference` block to read,
+  persist and apply `data-flow-theme` and `data-flow-palette`.
+- Populate a palette selector from `@theme.options`; do not hard-code a second
+  list of names in the Page. Inspect `authoring-tree` at
+  `frontends.svelte.theme` when the expected named themes are missing.
+- After changes, run `code-check` on the Page and theme source, then `dev.sync`.
+  Browser proof must verify the root attributes, a computed semantic token,
+  and restoration after reload.
 
 If `code-check` reports an unknown property, block, scope or
 picker candidate, inspect the exact node once, then call

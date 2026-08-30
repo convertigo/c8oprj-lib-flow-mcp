@@ -26,6 +26,16 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
   tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
   rules in `app.flow.css` and expose concise classes.
+- For a focused edit, prefer `code-rg` plus the smallest revision-checked
+  `code-patch`. Use `code-get` as the fallback for absent or ambiguous context,
+  not as the default way to read and replace an entire Page.
+- Model named visual palettes in `theme.flow.css` with
+  `data-flow-palette`; expose them in UI from `@theme.options`. Model light,
+  dark and system separately with `data-flow-theme`. `ThemeSwitch` only edits
+  bound state: use `BrowserPreference` to apply and persist both root
+  attributes. If the tree contains only `Themes > Default`, the named theme
+  catalogue was not authored or discovered; do not pretend the switch alone
+  created a theme.
 - Before creating a local component or mock, call `authoring-palette` once at
   the intended qualified `parentPath` with the business capability. The
   contextual palette searches project, references and workspace and returns
