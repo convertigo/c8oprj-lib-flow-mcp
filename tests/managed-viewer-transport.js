@@ -4,6 +4,11 @@ var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
 var mcp = eval(source);
 
+function readProjectFile(relativePath) {
+	return String(Packages.org.apache.commons.io.FileUtils.readFileToString(
+		new java.io.File(projectDir, relativePath), "UTF-8"));
+}
+
 function assertTrue(value, message) {
 	if (!value) {
 		throw new Error(message);
@@ -103,5 +108,14 @@ assertTrue(explicitNoReveal.reveal === false,
 	"An explicit reveal=false must override the managed reveal default");
 assertTrue(unmanagedReveal.reveal === undefined,
 	"Unmanaged transports must not change frontend source reveal behavior");
+
+[
+	"libs/flow/blocks/mcp/tool/frontend/svelte/code/set.block.js",
+	"libs/flow/blocks/mcp/tool/frontend/svelte/code/patch.block.js"
+].forEach(function (relativePath) {
+	var descriptor = readProjectFile(relativePath);
+	assertTrue(/"reveal"\s*:\s*\{[^}]*"type"\s*:\s*"boolean"/.test(descriptor),
+		"The private frontend write block must preserve reveal through dispatch: " + relativePath);
+});
 
 print("managed-viewer-transport OK");

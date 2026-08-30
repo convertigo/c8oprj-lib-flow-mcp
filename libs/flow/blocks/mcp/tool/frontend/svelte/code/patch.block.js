@@ -7,6 +7,7 @@ const _meta = {
     "sourceFile": { "kind": "text", "type": "string", "description": "Optional project-relative *.flow.svelte or *.flow.css path; defaults to the configured modelPath." },
     "revision": { "kind": "text", "type": "string", "description": "Revision from code-get; rejects stale patches." },
     "codepatch": { "kind": "text", "type": "string", "description": "Git-style unified diff against the retrieved source, with numbered @@ -old,count +new,count @@ hunk headers." },
+    "reveal": { "kind": "toggle", "type": "boolean", "default": false, "description": "Refresh and reveal the affected source in the Studio project tree." },
     "out": { "kind": "path", "mode": "write", "default": "local.response" }
   },
   "outputs": { "out": { "type": "object" } },
