@@ -451,6 +451,13 @@ the rendered computed style. For explicit hardening, execute all returned
 `acceptance.calls` unchanged and in order. Use safe Playwright only; never
 substitute an unsafe runner.
 
+Keep validation proportional. Check a representative pilot once, apply the
+proven pattern to repeated siblings with their own revisions, then run
+`code-check` once on each changed source in its final state. Do not recheck an
+unchanged pilot or repeatedly retry browser attachment. After one viewer
+readiness check, either run one compact browser pass or report the unavailable
+proof explicitly.
+
 Prefer the configured Browser or Chrome tool for the smoke. If neither is
 callable but `node_repl` exposes Playwright, launch the installed system Chrome
 directly with `channel:"chrome"`; do not first attempt Playwright's optional

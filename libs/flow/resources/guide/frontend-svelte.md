@@ -77,6 +77,11 @@ production. Do not copy files with shell commands, do not duplicate them under
 an absent project image. `flow-app-progress` is structural readiness, not
 browser/network proof; the final Playwright pass must still catch 404s.
 
+For repeated UI patterns, validate one pilot, propagate with revisioned small
+patches, then check every changed source once in its final state. Finish with
+one compact viewer proof. Do not repeat checks on unchanged sources or loop on
+browser attachment when one readiness check already proves it unavailable.
+
 Do not assemble an application with hundreds of tree mutations. Do not guess
 Ionic, NGX, CSS or HTML property names. Use semantic layout properties for
 structure, the source-backed `theme.flow.css` project theme, and the free-form `app.flow.css` application stylesheet plus explicit `class` names for

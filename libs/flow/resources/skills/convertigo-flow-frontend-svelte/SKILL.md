@@ -46,6 +46,11 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Prove one representative navigation/theme slice before repeating it. When
   the same pattern occurs more than once, prefer a reusable application block
   over duplicating Page markup and event wiring.
+- Keep validation proportional: check the pilot once, patch repeated siblings
+  with their own revisions, then check each changed source once in its final
+  state. Do not recheck an unchanged pilot or repeat browser setup attempts.
+  Run one compact browser pass after propagation; if the managed viewer is not
+  controllable after one readiness check, report that limitation and stop.
 - Consume palette colors in `app.flow.css` through semantic
   `var(--flow-color-*)` tokens. Literal colors are for deliberate artwork and
   local effects, not semantic surfaces, text or accents. Treat
