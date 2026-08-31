@@ -453,6 +453,15 @@ rebuild autocomplete with `Input`, `ForEach` and suggestion buttons. Resolve
 the existing-id/custom-label distinction in one backend Flow and reject empty
 labels before persistence.
 
+For CRUD applications, define the domain contract before multiplying Pages:
+entities, stable ids, relationships, required fields, timestamps and deletion
+semantics. Prefer one backend command per user intent over frontend branches
+that choose between several persistence Flows. Prove one representative
+relationship end to end, then extract repeated shells, forms or cards into an
+application block before instantiating siblings. Do not leave obsolete demo
+Flows beside the real command: parallel write paths make later agents select
+the wrong validation contract.
+
 For a POC, execute the bounded browser smoke and at most one focused interaction
 for the requested workflow. Verify every explicit user-visible requirement
 before reporting it. For a timer or live value, read it twice at least one

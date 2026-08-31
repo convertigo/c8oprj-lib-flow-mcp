@@ -82,6 +82,14 @@ source, including a structured literal for intentionally static content.
    surface active; never expose an empty downstream list or detail before its
    required selection. For dynamic segments, layouts or route groups, read
    `flow://guide/frontend-svelte-routing`.
+   Before multiplying CRUD Pages, write the smallest domain contract that can
+   answer the primary user intent: entities, stable ids, relationships,
+   required fields, create/update rules and deletion semantics. Model one user
+   command as one backend Flow. For example, `SaveOpportunity` should resolve
+   an existing company/contact or create a typed custom label itself; the Page
+   must not branch between several persistence Flows based on partially filled
+   ids. Use runtime timestamps or explicit inputs, never fixture dates in
+   production writes.
 3. Store structural service constants in project FlowEngine `config.*`, not in
    low-level block code. Keep internal builder config private; do not expose it
    as application configuration.
@@ -109,6 +117,12 @@ source, including a structured literal for intentionally static content.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a
    placeholder result before detailed refinement begins.
+   Prove one complete representative create/read relationship before copying
+   the pattern to sibling entities. If the shell, form, card or relation picker
+   repeats, turn the proven pattern into a reusable application block instead
+   of duplicating markup and action chains. Remove obsolete demo Flows once the
+   real command replaces them so agents cannot choose between parallel data
+   paths with different validation rules.
 8. On an existing project where dev mode was not started during bootstrap,
    start it after this first complete paperboard with `wait:false`. Continue
    the two allowed focused repair passes while dependencies install. Do not
