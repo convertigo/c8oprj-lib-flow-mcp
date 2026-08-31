@@ -249,6 +249,14 @@ This is a human-facing authoring model, not another JSON syntax for agents to
 hand-write. In Flow source, keep using intuitive `@source.path` references or a
 concise browser expression; let MCP lower and validate the representation.
 
+`Combobox` is the standard searchable choice control. Its default contract is
+closed: typing filters `options`, but only a proposed value is accepted. Set
+`allowCustomValue={true}` when the same field must also accept a new business
+label. In that mode `@event.value` is the selected option value or the typed
+text, so one backend Flow must resolve an existing id or create the custom
+value and must reject an empty label. Do not emulate this with a separate
+`Input`, a `ForEach` and suggestion buttons.
+
 ## Structure And Actions
 
 Pages, layouts, visible blocks, directives, events and actions remain visible

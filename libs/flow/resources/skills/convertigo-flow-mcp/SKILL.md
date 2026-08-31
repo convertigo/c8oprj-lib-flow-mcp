@@ -266,6 +266,9 @@ mutations. A complete pass may write several Page sources:
    call `code-get` with that `sourceFile`, `revision`, `startLine` and `endLine`.
    Request the full source only when a bounded read is still ambiguous or the
    change is genuinely broad. Never replace a whole Page for a local edit.
+   Call only the published tool names: `code-get` owns backend and frontend
+   source reads. Do not probe invented aliases such as `frontend-code-get`,
+   `svelte-code-get` or `frontend-svelte-code-get`.
 6. Immediately after the first frontend read of each turn, call
    `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`.
    Continue the focused repair passes while npm initializes. Do not poll: Vite and the Studio
@@ -442,6 +445,13 @@ composed binding transport JSON.
 Properties declare which SmartType intents they support. Do not put an `@`
 reference in a literal-only property. Validation should reject that shape; if
 it does not, use a clear literal and report the tooling gap.
+
+For a searchable field that may also create a domain value, use the standard
+`Combobox` with `allowCustomValue={true}`. Its single input returns an option
+value when a suggestion is selected and the typed string otherwise. Do not
+rebuild autocomplete with `Input`, `ForEach` and suggestion buttons. Resolve
+the existing-id/custom-label distinction in one backend Flow and reject empty
+labels before persistence.
 
 For a POC, execute the bounded browser smoke and at most one focused interaction
 for the requested workflow. Verify every explicit user-visible requirement

@@ -67,6 +67,13 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   generated application files.
 - Use schema-backed sources and report missing backend fields to the backend
   specialist instead of hard-coding around them.
+- Use the standard `Combobox` for searchable choices. Set
+  `allowCustomValue={true}` when the business field may accept a value absent
+  from `options`; the same input then emits the selected option value or the
+  typed text. Do not replace it with an `Input` plus suggestion buttons, and do
+  not infer free-text support from its placeholder or empty-state label. Keep
+  existing-id versus custom-label resolution in one backend Flow and reject
+  empty labels before persistence.
 - Prove the visible workflow through the host-managed Playwright connection to
   the current viewer. Do not open a separate browser or use raw CDP.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
