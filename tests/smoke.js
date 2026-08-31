@@ -2494,6 +2494,17 @@ assertTrue(frontendSourceUnknownBlock.result.result.structuredContent.ok === fal
 			diagnostic.create.arguments.targets[0] === "frontend";
 	}), "MCP frontend-svelte-code-check should suggest a palette block or explicit frontend mock: " +
 		JSON.stringify(frontendSourceUnknownBlock.result.result.structuredContent));
+var frontendDisplayModeLegacyClass = callTool(13823, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	code: [
+		"<FlowComponent id=\"home\" label=\"Home\">",
+		"  <Structure><DisplayModeControl id=\"mode\" class=\"theme-switch\" /></Structure>",
+		"</FlowComponent>"
+	].join("\n")
+});
+assertTrue(frontendDisplayModeLegacyClass.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FLOW_DISPLAY_MODE_LEGACY_CLASS";
+}), "MCP frontend-svelte-code-check should reject legacy wrapper styling on the standard display-mode control");
 var frontendPersistedSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8"));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"broken\" label=\"Broken\">",
@@ -2673,6 +2684,16 @@ var frontendCssSemanticTheme = callTool(138891, "frontend-svelte-code-check", {
 assertTrue(frontendCssSemanticTheme.result.result.structuredContent.ok === true &&
 	frontendCssSemanticTheme.result.result.structuredContent.warningCount === 0,
 	"MCP frontend-svelte-code-check should accept application CSS consuming Flow theme tokens");
+var frontendCssPrivateTheme = callTool(138892, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	code: ".shell { color: var(--crm-text); background: var(--crm-background); border-color: var(--crm-border); }\n" +
+		".card { color: var(--crm-secondary-text); background: var(--crm-surface); }\n"
+});
+assertTrue(frontendCssPrivateTheme.result.result.structuredContent.ok === true &&
+	frontendCssPrivateTheme.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FLOW_THEME_PRIVATE_TOKENS";
+	}), "MCP frontend-svelte-code-check should warn when private semantic variables isolate the app from standard Flow theme tokens");
 var unifiedFrontendCssRg = callTool(13890, "code-rg", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendCssRelative,

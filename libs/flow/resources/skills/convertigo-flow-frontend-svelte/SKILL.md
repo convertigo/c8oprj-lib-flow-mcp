@@ -31,9 +31,12 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   `startLine`, `endLine` and the current `revision`; read the complete source
   only after that remains ambiguous.
 - Model named visual palettes in `theme.flow.css` with `data-flow-palette`.
-  Insert `ThemePaletteControl` for the standard selector; it discovers the
+  Insert `ThemePaletteControl` for the standard selector only when at least two
+  named palettes exist; it discovers the
   catalogue and applies/persists the selection. Insert `DisplayModeControl`
-  for System/Light/Dark. Use low-level `ThemeSwitch` plus `BrowserPreference`
+  for the compact tactile System/Light/Dark control. It owns presentation and
+  persistence: never add a legacy `theme-switch` class or duplicate its event
+  wiring. Use low-level `ThemeSwitch` plus `BrowserPreference`
   only for a deliberately custom UI. If the tree contains only
   `Themes > Default`, the named catalogue was not authored or discovered; do
   not pretend a selector alone created a theme.
@@ -46,9 +49,10 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Consume palette colors in `app.flow.css` through semantic
   `var(--flow-color-*)` tokens. Literal colors are for deliberate artwork and
   local effects, not semantic surfaces, text or accents. Treat
-  `FLOW_THEME_TOKENS_UNUSED` as evidence that a technically working palette
+  `FLOW_THEME_TOKENS_UNUSED` or `FLOW_THEME_PRIVATE_TOKENS` as evidence that a technically working palette
   selector may have no visible effect. Prove every palette in light and dark
-  by checking both root attributes, a computed token and a visible change.
+  by checking both root attributes, a computed token, a standard widget and an
+  application surface. Prove one representative slice before repeating it.
 - Before creating a local component or mock, call `authoring-palette` once at
   the intended qualified `parentPath` with the business capability. The
   contextual palette searches project, references and workspace and returns

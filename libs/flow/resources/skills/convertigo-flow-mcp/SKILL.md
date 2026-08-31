@@ -302,8 +302,10 @@ Treat palette and light/dark mode as two independent axes:
   `data-flow-theme="dark"`. System mode removes the forced attribute and lets
   the media-query branch apply. Never invent `data-theme` or rely on
   `html.dark` for Flow themes.
-- Prefer `DisplayModeControl` for the standard System/Light/Dark selector and
-  `ThemePaletteControl` for named styles. They apply and persist the correct
+- Prefer `DisplayModeControl` for the standard compact, tactile System/Light/Dark
+  control. It owns its presentation and persistence: do not add a legacy
+  `theme-switch` class or duplicate event wiring. Add `ThemePaletteControl`
+  only when at least two named styles exist. They apply and persist the correct
   root attributes without event wiring. `ThemeSwitch` is only a bindable UI
   primitive; pair it with `BrowserPreference` only for a custom presentation.
 - `ThemePaletteControl` reads `@theme.options`; do not hard-code a second list
@@ -314,10 +316,12 @@ Treat palette and light/dark mode as two independent axes:
   local effects. A selector that changes `data-flow-palette` but leaves the
   computed tokens or visible UI unchanged is incomplete. `code-check` reports
   `FLOW_THEME_TOKENS_UNUSED` when a heavily literal application stylesheet
-  bypasses all semantic color tokens.
+  bypasses all semantic color tokens and `FLOW_THEME_PRIVATE_TOKENS` when
+  private semantic variables isolate the app from standard Flow widgets.
 - After changes, run `code-check` on the Page and theme source, then `dev.sync`.
   Browser proof must verify both root attributes, a changed computed semantic
-  token, a visible difference for every palette in light and dark, and
+  token, a visible difference on both a standard widget and an application
+  surface for every palette in light and dark, and
   restoration after reload.
 - Validate one Page and one palette/mode combination before multiplying the
   pattern. If the UI repeats, extract a reusable application block and then

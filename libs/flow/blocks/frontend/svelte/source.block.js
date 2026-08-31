@@ -595,6 +595,15 @@ const _meta = {
 			if (isApplicationStylesheet(path) && cssSource.trim() &&
 				!/var\(\s*--flow-color-/.test(cssSource)) {
 				var literalColors = cssSource.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\s*\(/g) || [];
+				var privateSemanticTokens = cssSource.match(/var\(\s*--(?!flow-color-)[\w-]*(?:background|surface|text|primary|secondary|accent|border)[\w-]*/gi) || [];
+				if (privateSemanticTokens.length >= 3) {
+					cssDiagnostics.push({
+						severity: "warning",
+						code: "FLOW_THEME_PRIVATE_TOKENS",
+						message: "Application CSS routes semantic colors through private variables but consumes no Flow semantic color token.",
+						hint: "Define or alias the palette through --flow-color-* and consume those tokens for shared surfaces, text, borders and accents. This keeps standard widgets and application CSS synchronized in Light and Dark."
+					});
+				}
 				if (literalColors.length >= 6) {
 					cssDiagnostics.push({
 						severity: "warning",
@@ -613,6 +622,14 @@ const _meta = {
 			};
 		}
 		var diagnostics = sourceDiagnostics(source, path);
+		if (/<DisplayModeControl\b[^>]*\bclass\s*=\s*["'][^"']*\btheme-switch\b/.test(String(source || ""))) {
+			diagnostics.push({
+				severity: "warning",
+				code: "FLOW_DISPLAY_MODE_LEGACY_CLASS",
+				message: "DisplayModeControl uses the legacy theme-switch wrapper class.",
+				hint: "Remove class=\"theme-switch\". DisplayModeControl already owns its compact tactile presentation and persistence."
+			});
+		}
 		if (!diagnostics.some(function (item) { return item.severity === "error"; })) {
 			if (isProviderComponent(path)) {
 				validateProviderComponent(ctx, props, path, source, diagnostics);

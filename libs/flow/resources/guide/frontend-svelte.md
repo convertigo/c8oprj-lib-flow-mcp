@@ -93,8 +93,10 @@ Theme palette and display mode are independent axes:
   values with the same selector plus `[data-flow-theme="dark"]`.
 - Insert `ThemePaletteControl` for the standard style selector. It reads
   `@theme.options`, applies `data-flow-palette` and persists the choice.
-- Insert `DisplayModeControl` for System/Light/Dark. System removes the forced
-  attribute; Light and Dark apply `data-flow-theme`. Use `ThemeSwitch` and
+- Insert `DisplayModeControl` for the standard compact, tactile
+  System/Light/Dark control. It owns its presentation and persistence: do not
+  add a legacy `theme-switch` class or duplicate event wiring. System removes
+  the forced attribute; Light and Dark apply `data-flow-theme`. Use `ThemeSwitch` and
   `BrowserPreference` only when a custom presentation is explicitly needed.
 - Consume semantic palette values from `app.flow.css` with
   `var(--flow-color-background)`, `var(--flow-color-surface)`,
@@ -126,11 +128,17 @@ Minimal end-to-end shape:
 
 `code-check` warns with `FLOW_THEME_TOKENS_UNUSED` when an application
 stylesheet contains many literal colors but consumes no semantic Flow color
-token. After `dev.sync`, test every named palette in both light and dark mode.
+token. It warns with `FLOW_THEME_PRIVATE_TOKENS` when private application
+variables isolate shared surfaces from the Flow theme. After `dev.sync`, test
+one representative standard widget and one application surface in System,
+Light and Dark before multiplying the pattern. Test every named palette in both light and dark mode.
 Browser proof must observe `data-flow-palette`, `data-flow-theme`, a changed
 computed semantic token, a visible change, and restoration after reload. If
 the tree contains only `Themes > Default`, the named palette catalogue was not
 authored or discovered.
+
+When only one palette exists, do not add `ThemePaletteControl`: display mode is
+still useful, but a named-style selector would be empty or misleading.
 
 `FlowComponent` is the non-visual source root and accepts only `id` and
 `label`. Its three authoring slots have distinct roles:
