@@ -1194,6 +1194,11 @@ assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
 	bootstrapDryRun.result.result.structuredContent.ok === true &&
 	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
 	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke" &&
+	bootstrapDryRun.result.result.structuredContent.studioTarget.project === "FlowBootstrapSmoke" &&
+	bootstrapDryRun.result.result.structuredContent.studioTarget.nodeId === "FlowBootstrapSmoke" &&
+	bootstrapDryRun.result.result.structuredContent.studioTarget.sourcePath ===
+		"libs/flow/frontbuilder/svelte/model/FlowBootstrapSmoke/src/routes/+page.flow.svelte" &&
+	bootstrapDryRun.result.result.structuredContent.studioTarget.reveal === true &&
 	bootstrapDryRun.result.result.structuredContent.wouldReference.indexOf("SharedStopwatchProvider") !== -1 &&
 	bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
 	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");

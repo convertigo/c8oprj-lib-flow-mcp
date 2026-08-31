@@ -54,7 +54,16 @@ const _meta = {
         "project": { "type": "string" },
         "imported": { "type": "boolean" },
         "createdFlowEngine": { "type": "boolean" },
-        "configuredSvelte": { "type": "boolean" }
+        "configuredSvelte": { "type": "boolean" },
+        "studioTarget": {
+          "type": "object",
+          "properties": {
+            "project": { "type": "string" },
+            "nodeId": { "type": "string" },
+            "sourcePath": { "type": "string" },
+            "reveal": { "type": "boolean" }
+          }
+        }
       }
     }
   },
@@ -379,13 +388,39 @@ const _meta = {
 		};
 	}
 
-	function refreshStudio(engine, project) {
+	function notifyStudioSelection(project, sourcePath) {
+		if (!sourcePath) {
+			return false;
+		}
+		try {
+			var Bridge = Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge;
+			if (typeof Bridge.notifySourceMutationWithReveal === "function") {
+				Bridge.notifySourceMutationWithReveal(
+					String(project.getDirPath()),
+					String(sourcePath),
+					true
+				);
+			} else {
+				Bridge.notifySourceMutation(
+					String(project.getDirPath()),
+					String(sourcePath),
+					true
+				);
+			}
+			return true;
+		} catch (_ignoreStudioSelection) {
+			return false;
+		}
+	}
+
+	function refreshStudio(engine, project, sourcePath) {
 		var projectName = String(project.getName());
 		try {
 			engine.theApp.schemaManager.clearCache(projectName);
 		} catch (_ignoreSchemaCache) {
 		}
 		try {
+			notifyStudioSelection(project, sourcePath);
 			if (engine.isStudioMode() !== true) {
 				return;
 			}
@@ -440,7 +475,13 @@ const _meta = {
 				existing: existing != null,
 				createdFlowEngine: false,
 				configuredSvelte: false,
-				saved: false
+				saved: false,
+				studioTarget: {
+					project: name,
+					nodeId: name,
+					sourcePath: ui ? svelteModelPath(name) : "",
+					reveal: ui
+				}
 			};
 			if (dryRun) {
 				result.wouldImport = shouldImport;
@@ -480,7 +521,7 @@ const _meta = {
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());
 			result.next = "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again.";
-			refreshStudio(engine, project);
+			refreshStudio(engine, project, ui ? model.path : "");
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
 		}
