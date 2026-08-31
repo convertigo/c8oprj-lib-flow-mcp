@@ -305,9 +305,16 @@ Treat palette and light/dark mode as two independent axes:
 - Populate a palette selector from `@theme.options`; do not hard-code a second
   list of names in the Page. Inspect `authoring-tree` at
   `frontends.svelte.theme` when the expected named themes are missing.
+- Application CSS must consume semantic palette values through
+  `var(--flow-color-*)`; reserve literal colors for deliberate artwork and
+  local effects. A selector that changes `data-flow-palette` but leaves the
+  computed tokens or visible UI unchanged is incomplete. `code-check` reports
+  `FLOW_THEME_TOKENS_UNUSED` when a heavily literal application stylesheet
+  bypasses all semantic color tokens.
 - After changes, run `code-check` on the Page and theme source, then `dev.sync`.
-  Browser proof must verify the root attributes, a computed semantic token,
-  and restoration after reload.
+  Browser proof must verify both root attributes, a changed computed semantic
+  token, a visible difference for every palette in light and dark, and
+  restoration after reload.
 
 If `code-check` reports an unknown property, block, scope or
 picker candidate, inspect the exact node once, then call

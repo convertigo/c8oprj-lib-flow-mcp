@@ -84,6 +84,53 @@ visual rules that do not belong in a component contract. Source wrapper tags
 such as `Children`, `Events`, `Actions`, `Params`, `Query`, `Then` and `Else`
 are exact.
 
+## Themes And Palettes
+
+Theme palette and display mode are independent axes:
+
+- Define each named palette in `theme.flow.css` under
+  `@layer flow.theme` with `:root[data-flow-palette="name"]`. Define its dark
+  values with the same selector plus `[data-flow-theme="dark"]`.
+- Populate the style selector from `@theme.options`. Apply and persist its
+  value with `BrowserPreference` and `rootAttribute="data-flow-palette"`.
+- Apply light or dark separately through `data-flow-theme`. `ThemeSwitch`
+  changes bound state only; it does not update the document root itself.
+- Consume semantic palette values from `app.flow.css` with
+  `var(--flow-color-background)`, `var(--flow-color-surface)`,
+  `var(--flow-color-text)`, `var(--flow-color-primary)` and related tokens.
+  Hard-coded colors are appropriate for deliberate artwork and local effects,
+  not for the application's semantic surfaces, text or accents. Otherwise the
+  selector can update `data-flow-palette` correctly while producing no visible
+  change.
+
+Minimal end-to-end shape:
+
+```css
+@layer flow.theme {
+  :root[data-flow-palette="ocean"] {
+    --flow-color-background: #eff6ff;
+    --flow-color-primary: #0369a1;
+  }
+  :root[data-flow-palette="ocean"][data-flow-theme="dark"] {
+    --flow-color-background: #082f49;
+    --flow-color-primary: #38bdf8;
+  }
+}
+
+.page {
+  background: var(--flow-color-background);
+  color: var(--flow-color-text);
+}
+```
+
+`code-check` warns with `FLOW_THEME_TOKENS_UNUSED` when an application
+stylesheet contains many literal colors but consumes no semantic Flow color
+token. After `dev.sync`, test every named palette in both light and dark mode.
+Browser proof must observe `data-flow-palette`, `data-flow-theme`, a changed
+computed semantic token, a visible change, and restoration after reload. If
+the tree contains only `Themes > Default`, the named palette catalogue was not
+authored or discovered.
+
 `FlowComponent` is the non-visual source root and accepts only `id` and
 `label`. Its three authoring slots have distinct roles:
 

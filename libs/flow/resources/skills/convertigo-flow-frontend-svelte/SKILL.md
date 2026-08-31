@@ -37,6 +37,12 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   attributes. If the tree contains only `Themes > Default`, the named theme
   catalogue was not authored or discovered; do not pretend the switch alone
   created a theme.
+- Consume palette colors in `app.flow.css` through semantic
+  `var(--flow-color-*)` tokens. Literal colors are for deliberate artwork and
+  local effects, not semantic surfaces, text or accents. Treat
+  `FLOW_THEME_TOKENS_UNUSED` as evidence that a technically working palette
+  selector may have no visible effect. Prove every palette in light and dark
+  by checking both root attributes, a computed token and a visible change.
 - Before creating a local component or mock, call `authoring-palette` once at
   the intended qualified `parentPath` with the business capability. The
   contextual palette searches project, references and workspace and returns

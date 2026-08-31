@@ -301,6 +301,10 @@ const _meta = {
 		return path && String(path.relative || "").endsWith("/theme.flow.css");
 	}
 
+	function isApplicationStylesheet(path) {
+		return path && String(path.relative || "").endsWith("/app.flow.css");
+	}
+
 	function isProviderComponent(path) {
 		var relative = path && String(path.relative || "").replace(/\\/g, "/");
 		return !!relative && relative.indexOf("libs/flow/frontbuilder/svelte/components/") === 0 &&
@@ -561,6 +565,7 @@ const _meta = {
 	function validate(ctx, props, path, source) {
 		if (isStylesheet(path)) {
 			var cssDiagnostics = [];
+			var cssSource = String(source || "");
 			var stripped = String(source || "")
 				.replace(/\/\*[\s\S]*?\*\//g, "")
 				.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, "");
@@ -587,12 +592,24 @@ const _meta = {
 					hint: "Wrap project theme selectors and variables in @layer flow.theme { ... }."
 				});
 			}
+			if (isApplicationStylesheet(path) && cssSource.trim() &&
+				!/var\(\s*--flow-color-/.test(cssSource)) {
+				var literalColors = cssSource.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\s*\(/g) || [];
+				if (literalColors.length >= 6) {
+					cssDiagnostics.push({
+						severity: "warning",
+						code: "FLOW_THEME_TOKENS_UNUSED",
+						message: "Application CSS defines many literal colors but consumes no Flow semantic color token.",
+						hint: "Use var(--flow-color-*) for semantic surfaces, text and accents so data-flow-palette changes remain visible. Keep literals only for deliberate artwork or local effects."
+					});
+				}
+			}
 			return {
-				ok: cssDiagnostics.length === 0,
+				ok: !cssDiagnostics.some(function (item) { return item.severity === "error"; }),
 				sourceFile: path.relative,
 				diagnostics: cssDiagnostics,
-				errorCount: cssDiagnostics.length,
-				warningCount: 0
+				errorCount: cssDiagnostics.filter(function (item) { return item.severity === "error"; }).length,
+				warningCount: cssDiagnostics.filter(function (item) { return item.severity === "warning"; }).length
 			};
 		}
 		var diagnostics = sourceDiagnostics(source, path);

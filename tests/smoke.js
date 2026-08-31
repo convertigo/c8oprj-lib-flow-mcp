@@ -2649,6 +2649,25 @@ assertTrue(frontendCssInvalid.result.result.structuredContent.ok === false &&
 	frontendCssInvalid.result.result.structuredContent.diagnostics.some(function (diagnostic) {
 		return diagnostic.code === "FRONTEND_CSS_UNBALANCED_BLOCK";
 	}), "MCP frontend-svelte-code-check should reject structurally invalid app CSS");
+var frontendCssLiteralTheme = callTool(13889, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	code: ".shell { color: #111827; background: #f8fafc; border-color: #cbd5e1; box-shadow: 0 0 1rem rgb(15 23 42 / .2); }\n" +
+		".action { color: #ffffff; background: #4f46e5; }\n"
+});
+assertTrue(frontendCssLiteralTheme.result.result.structuredContent.ok === true &&
+	frontendCssLiteralTheme.result.result.structuredContent.warningCount === 1 &&
+	frontendCssLiteralTheme.result.result.structuredContent.diagnostics.some(function (diagnostic) {
+		return diagnostic.code === "FLOW_THEME_TOKENS_UNUSED";
+	}), "MCP frontend-svelte-code-check should warn when application colors bypass Flow theme tokens");
+var frontendCssSemanticTheme = callTool(138891, "frontend-svelte-code-check", {
+	projectDir: targetProjectDir,
+	sourceFile: frontendCssRelative,
+	code: ".shell { color: var(--flow-color-text); background: var(--flow-color-background); }\n"
+});
+assertTrue(frontendCssSemanticTheme.result.result.structuredContent.ok === true &&
+	frontendCssSemanticTheme.result.result.structuredContent.warningCount === 0,
+	"MCP frontend-svelte-code-check should accept application CSS consuming Flow theme tokens");
 var unifiedFrontendCssRg = callTool(13890, "code-rg", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendCssRelative,
