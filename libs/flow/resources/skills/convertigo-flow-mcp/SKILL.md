@@ -281,6 +281,9 @@ mutations. A complete pass may write several Page sources:
 
 Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
 files or call `$app/navigation` directly. Static links use `LinkButton`.
+Set its `page` property for an internal Page. Use `~/path` only for an
+application-root fallback; a leading `/` targets the web origin and can escape
+the Convertigo deployment base path.
 Transitions use `<Navigate page="pageId"><Params>...</Params></Navigate>`;
 required parameters come from `authoringContract.pages`, not URL guesses.
 Back controls use `GoBack` with a fallback. Read
@@ -299,11 +302,12 @@ Treat palette and light/dark mode as two independent axes:
   `data-flow-theme="dark"`. System mode removes the forced attribute and lets
   the media-query branch apply. Never invent `data-theme` or rely on
   `html.dark` for Flow themes.
-- A `ThemeSwitch` is only a bindable UI control. It does not mutate the
-  document root by itself. Use the portable `BrowserPreference` block to read,
-  persist and apply `data-flow-theme` and `data-flow-palette`.
-- Populate a palette selector from `@theme.options`; do not hard-code a second
-  list of names in the Page. Inspect `authoring-tree` at
+- Prefer `DisplayModeControl` for the standard System/Light/Dark selector and
+  `ThemePaletteControl` for named styles. They apply and persist the correct
+  root attributes without event wiring. `ThemeSwitch` is only a bindable UI
+  primitive; pair it with `BrowserPreference` only for a custom presentation.
+- `ThemePaletteControl` reads `@theme.options`; do not hard-code a second list
+  of names in the Page. Inspect `authoring-tree` at
   `frontends.svelte.theme` when the expected named themes are missing.
 - Application CSS must consume semantic palette values through
   `var(--flow-color-*)`; reserve literal colors for deliberate artwork and
@@ -315,6 +319,9 @@ Treat palette and light/dark mode as two independent axes:
   Browser proof must verify both root attributes, a changed computed semantic
   token, a visible difference for every palette in light and dark, and
   restoration after reload.
+- Validate one Page and one palette/mode combination before multiplying the
+  pattern. If the UI repeats, extract a reusable application block and then
+  instantiate it; do not duplicate a large unproven slice.
 
 If `code-check` reports an unknown property, block, scope or
 picker candidate, inspect the exact node once, then call

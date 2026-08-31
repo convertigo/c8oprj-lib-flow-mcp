@@ -59,7 +59,9 @@ wrappers.
 
 ## Navigation
 
-Use `LinkButton` for a static Page link. When navigation follows an action such
+Use `LinkButton` for a static Page link and set its `page` property to the
+logical Page id. For an application-root fallback use `~/path`; do not use
+`/path` unless origin-root navigation is explicitly intended. When navigation follows an action such
 as `FullSyncGet`, `FullSyncView`, `SetValue` or `CallSequence`, place
 `Navigate` after that action in the same event chain. Target the Page by id and
 supply values through `Params` and `Query`:

@@ -91,10 +91,11 @@ Theme palette and display mode are independent axes:
 - Define each named palette in `theme.flow.css` under
   `@layer flow.theme` with `:root[data-flow-palette="name"]`. Define its dark
   values with the same selector plus `[data-flow-theme="dark"]`.
-- Populate the style selector from `@theme.options`. Apply and persist its
-  value with `BrowserPreference` and `rootAttribute="data-flow-palette"`.
-- Apply light or dark separately through `data-flow-theme`. `ThemeSwitch`
-  changes bound state only; it does not update the document root itself.
+- Insert `ThemePaletteControl` for the standard style selector. It reads
+  `@theme.options`, applies `data-flow-palette` and persists the choice.
+- Insert `DisplayModeControl` for System/Light/Dark. System removes the forced
+  attribute; Light and Dark apply `data-flow-theme`. Use `ThemeSwitch` and
+  `BrowserPreference` only when a custom presentation is explicitly needed.
 - Consume semantic palette values from `app.flow.css` with
   `var(--flow-color-background)`, `var(--flow-color-surface)`,
   `var(--flow-color-text)`, `var(--flow-color-primary)` and related tokens.
@@ -183,7 +184,10 @@ each parameter as `@route.params.<name>`. `Navigate.to` remains an expert
 compatibility escape hatch for an external or unmodelled route; prefer `page`.
 Use a visible Button with `GoBack` and a fallback for direct entry.
 
-Static links may use `LinkButton`. When navigation follows `SetValue`,
+Static links should use `<LinkButton page="product" />` for a known Page. The
+fallback syntax `~/help` is rooted at the deployed application base; `/help`
+is rooted at the web origin and is not portable across Convertigo deployment
+paths. When navigation follows `SetValue`,
 `FullSyncGet`, `FullSyncView`, `FullSyncSync` or `CallSequence`, place Navigate
 after that action in the same `Actions` slot.
 

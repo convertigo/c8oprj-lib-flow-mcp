@@ -30,13 +30,19 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   `code-patch`. When more context is needed, use bounded `code-get` with
   `startLine`, `endLine` and the current `revision`; read the complete source
   only after that remains ambiguous.
-- Model named visual palettes in `theme.flow.css` with
-  `data-flow-palette`; expose them in UI from `@theme.options`. Model light,
-  dark and system separately with `data-flow-theme`. `ThemeSwitch` only edits
-  bound state: use `BrowserPreference` to apply and persist both root
-  attributes. If the tree contains only `Themes > Default`, the named theme
-  catalogue was not authored or discovered; do not pretend the switch alone
-  created a theme.
+- Model named visual palettes in `theme.flow.css` with `data-flow-palette`.
+  Insert `ThemePaletteControl` for the standard selector; it discovers the
+  catalogue and applies/persists the selection. Insert `DisplayModeControl`
+  for System/Light/Dark. Use low-level `ThemeSwitch` plus `BrowserPreference`
+  only for a deliberately custom UI. If the tree contains only
+  `Themes > Default`, the named catalogue was not authored or discovered; do
+  not pretend a selector alone created a theme.
+- For internal links, set `LinkButton.page` to the logical Page id. If no Page
+  target is suitable, `~/path` means the deployed application root; `/path`
+  means the web origin and is usually wrong behind Convertigo's base path.
+- Prove one representative navigation/theme slice before repeating it. When
+  the same pattern occurs more than once, prefer a reusable application block
+  over duplicating Page markup and event wiring.
 - Consume palette colors in `app.flow.css` through semantic
   `var(--flow-color-*)` tokens. Literal colors are for deliberate artwork and
   local effects, not semantic surfaces, text or accents. Treat
