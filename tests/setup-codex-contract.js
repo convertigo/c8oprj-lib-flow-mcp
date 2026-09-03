@@ -14,7 +14,7 @@ var flowFile = new java.io.File(projectDir, "libs/flows/_setupCodex.flow.js");
 var flowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(flowFile, "UTF-8"));
 var setupBlockFile = new java.io.File(projectDir, "libs/flow/blocks/codex/setup.block.js");
 var setupBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(setupBlockFile, "UTF-8"));
-assertTrue(setupBlockSource.indexOf('"bearer_token_env_var":"CONVERTIGO_FLOW_MCP_TOKEN"') >= 0,
+assertTrue(setupBlockSource.indexOf('"bearer_token_env_var":"CONVERTIGO_MCP_TOKEN"') >= 0,
   "Flow Codex setup omitted the bearer token environment variable");
 var codexHome = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
   "convertigo-flow-codex-setup-contract");

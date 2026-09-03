@@ -18,21 +18,21 @@ also mapped to the same requestable. The legacy Convertigo MCP project keeps
 
 ## Authentication
 
-HTTP requests to `/api/flow-mcp` require an HS256 JWT in the
-`Authorization: Bearer <token>` header. Durable token metadata, revocation
-records and the signing key are kept below `<workspace>/jwt/flow-mcp`; raw
-durable tokens are returned only once. Short-lived managed tokens used by the
-integrated Assistant remain stateless and are only passed to Agent Bridge
-through an opaque in-memory handle.
+HTTP requests to `/api/flow-mcp` require the same HS256 JWT as the legacy MCP
+endpoint in the `Authorization: Bearer <token>` header. Durable token metadata,
+revocation records and the common signing key are kept below
+`<workspace>/jwt/mcp`; raw durable tokens are returned only once. Existing
+records below the former `<workspace>/mcp` location remain readable. Short-lived
+managed tokens used by the integrated Assistant remain stateless and are only
+passed to Agent Bridge through an opaque in-memory handle.
 
 The project root page provides a bootstrap token administration surface. It
 accepts the hidden `flow-token-status`, `flow-token-create`,
 `flow-token-list`, `flow-token-revoke` and `flow-token-managed-create` MCP
 operations only from a current `WEB_ADMIN` session. These operations are not
 advertised to agents by `tools/list`. Configure standalone clients with the
-`CONVERTIGO_FLOW_MCP_TOKEN` environment variable; this is intentionally
-separate from the legacy `CONVERTIGO_MCP_TOKEN` value so both MCP servers can
-coexist in one agent process.
+`CONVERTIGO_MCP_TOKEN` environment variable. The same raw token and environment
+variable authenticate both MCP servers in one agent process.
 
 Runtime shape:
 

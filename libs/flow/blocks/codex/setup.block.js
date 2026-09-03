@@ -118,7 +118,7 @@ function codex_setup({ input, config, result }) {
   const skillWrite = file.writeIfChanged({ id: "writeSkill", path: skillPath, content: skillMarkdown, dryRun: input.dryRun == true || input.dryRun == 'true' })
   const backendSkillWrite = file.writeIfChanged({ id: "writeBackendSkill", path: backendSkillPath, content: backendSkillMarkdown, dryRun: input.dryRun == true || input.dryRun == 'true' })
   const frontendSkillWrite = file.writeIfChanged({ id: "writeFrontendSkill", path: frontendSkillPath, content: frontendSkillMarkdown, dryRun: input.dryRun == true || input.dryRun == 'true' })
-  const configPatch = toml.ensureSection({ id: "patchConfig", path: configPath, section: "mcp_servers.convertigo-flow", values: {"url":"{{ local.mcpUrl }}","startup_timeout_sec":60,"enabled":true,"bearer_token_env_var":"CONVERTIGO_FLOW_MCP_TOKEN"}, dryRun: input.dryRun == true || input.dryRun == 'true' })
+  const configPatch = toml.ensureSection({ id: "patchConfig", path: configPath, section: "mcp_servers.convertigo-flow", values: {"url":"{{ local.mcpUrl }}","startup_timeout_sec":60,"enabled":true,"bearer_token_env_var":"CONVERTIGO_MCP_TOKEN"}, dryRun: input.dryRun == true || input.dryRun == 'true' })
   const setup = json.object({ id: "summary" }) {
     json.field({ id: "ok", key: "ok", value: true })
     json.field({ id: "skillName", key: "skillName", value: "ConvertigoFlowMCP" })

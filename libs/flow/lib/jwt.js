@@ -17,8 +17,9 @@
 	var SimpleDateFormat = Packages.java.text.SimpleDateFormat;
 	var TimeZone = Packages.java.util.TimeZone;
 
-	var ISSUER = "lib_flow_mcp";
-	var AUDIENCE = "ConvertigoFlowMCP";
+	var ISSUER = "lib_ConvertigoMCP";
+	var AUDIENCE = "ConvertigoMCP";
+	var TOKEN_ENVIRONMENT_VARIABLE = "CONVERTIGO_MCP_TOKEN";
 	var DEFAULT_DURABLE_DAYS = 365;
 	var MAX_DURABLE_DAYS = 3650;
 	var DEFAULT_MANAGED_SECONDS = 7200;
@@ -100,22 +101,37 @@
 	}
 
 	function rootDirectory() {
-		var override = trim(Packages.java.lang.System.getProperty("flow.mcp.jwt.path"));
+		var override = trim(Packages.java.lang.System.getProperty("convertigo.mcp.jwt.path")) ||
+			trim(Packages.java.lang.System.getProperty("flow.mcp.jwt.path"));
 		return override.length
 			? new File(override)
-			: new File(new File(String(Engine.USER_WORKSPACE_PATH), "jwt"), "flow-mcp");
+			: new File(new File(String(Engine.USER_WORKSPACE_PATH), "jwt"), "mcp");
 	}
 
-	function keysDirectory() {
-		return new File(rootDirectory(), "keys");
+	function legacyRootDirectory() {
+		var override = trim(Packages.java.lang.System.getProperty("convertigo.mcp.jwt.path")) ||
+			trim(Packages.java.lang.System.getProperty("flow.mcp.jwt.path"));
+		return override.length ? rootDirectory() : new File(String(Engine.USER_WORKSPACE_PATH), "mcp");
 	}
 
-	function activeDirectory() {
-		return new File(new File(rootDirectory(), "tokens"), "active");
+	function keysDirectory(root) {
+		return new File(root || rootDirectory(), "keys");
 	}
 
-	function revokedDirectory() {
-		return new File(new File(rootDirectory(), "tokens"), "revoked");
+	function activeDirectory(root) {
+		return new File(new File(root || rootDirectory(), "tokens"), "active");
+	}
+
+	function revokedDirectory(root) {
+		return new File(new File(root || rootDirectory(), "tokens"), "revoked");
+	}
+
+	function tokenRoots() {
+		var canonical = rootDirectory();
+		var legacy = legacyRootDirectory();
+		return String(canonical.getAbsolutePath()) === String(legacy.getAbsolutePath())
+			? [canonical]
+			: [canonical, legacy];
 	}
 
 	function ensureDirectory(directory) {
@@ -188,7 +204,16 @@
 			throw new Error("The Flow MCP signing key is invalid.");
 		}
 		ensureDirectory(keysDirectory());
-		var candidate = randomBase64Url(64);
+		var candidate = "";
+		var legacyFile = new File(keysDirectory(legacyRootDirectory()), "signing-current.key");
+		if (legacyFile.isFile()) {
+			candidate = trim(readText(legacyFile));
+			if (candidate.length < 32) {
+				throw new Error("The legacy MCP signing key is invalid.");
+			}
+		} else {
+			candidate = randomBase64Url(64);
+		}
 		try {
 			writeCreateOnly(file, candidate + "\n");
 			return candidate;
@@ -228,7 +253,7 @@
 			id: trim(record.id),
 			name: trim(record.name),
 			kind: trim(record.kind) || "durable",
-			scope: trim(record.scope) || "flow:mcp:full",
+			scope: trim(record.scope) || "mcp:full",
 			createdAt: trim(record.createdAt),
 			expiresAt: trim(record.expiresAt),
 			lastUsedAt: trim(record.lastUsedAt),
@@ -333,13 +358,13 @@
 			var nowMs = java.lang.System.currentTimeMillis();
 			var nowSeconds = Math.floor(nowMs / 1000);
 			var expiresSeconds = nowSeconds + days * 86400;
-			var tokenId = "flow_mcp_" + String(UUID.randomUUID()).replace(/-/g, "");
+			var tokenId = "mcp_" + String(UUID.randomUUID()).replace(/-/g, "");
 			var jti = String(UUID.randomUUID());
 			var record = {
 				id: tokenId,
 				name: label,
 				kind: "durable",
-				scope: "flow:mcp:full",
+				scope: "mcp:full",
 				jtiHash: sha256(jti),
 				createdAt: isoDate(nowMs),
 				expiresAt: isoDate(expiresSeconds * 1000),
@@ -356,7 +381,7 @@
 					sub: record.createdBy,
 					jti: jti,
 					kind: "durable",
-					scope: "flow:mcp:full",
+					scope: "mcp:full",
 					iat: nowSeconds,
 					nbf: nowSeconds,
 					exp: expiresSeconds
@@ -369,7 +394,7 @@
 				tokenInfo: publicRecord(record),
 				tokens: listRecords(),
 				mcpUrl: endpointUrl(ctx),
-				tokenEnvironmentVariable: "CONVERTIGO_FLOW_MCP_TOKEN",
+				tokenEnvironmentVariable: TOKEN_ENVIRONMENT_VARIABLE,
 				instructions: "Copy this token now. It will not be shown again."
 			};
 		} catch (error) {
@@ -382,7 +407,7 @@
 			requireWebAdmin(ctx);
 			var lifetime = boundedInteger(ttlSeconds, DEFAULT_MANAGED_SECONDS, MIN_MANAGED_SECONDS, MAX_MANAGED_SECONDS);
 			var nowSeconds = Math.floor(java.lang.System.currentTimeMillis() / 1000);
-			var tokenId = "flow_managed_" + String(UUID.randomUUID()).replace(/-/g, "");
+			var tokenId = "managed_" + String(UUID.randomUUID()).replace(/-/g, "");
 			var name = tokenLabel(label, "Convertigo Assistant");
 			var token = buildToken(
 				{ alg: "HS256", typ: "JWT", kid: tokenId },
@@ -393,7 +418,7 @@
 					jti: String(UUID.randomUUID()),
 					kind: "managed",
 					label: name,
-					scope: "flow:mcp:full",
+					scope: "mcp:full",
 					iat: nowSeconds,
 					nbf: nowSeconds,
 					exp: nowSeconds + lifetime
@@ -407,13 +432,13 @@
 					id: tokenId,
 					name: name,
 					kind: "managed",
-					scope: "flow:mcp:full",
+					scope: "mcp:full",
 					createdAt: isoDate(nowSeconds * 1000),
 					expiresAt: isoDate((nowSeconds + lifetime) * 1000),
 					status: "active"
 				},
 				mcpUrl: endpointUrl(ctx),
-				tokenEnvironmentVariable: "CONVERTIGO_FLOW_MCP_TOKEN"
+				tokenEnvironmentVariable: TOKEN_ENVIRONMENT_VARIABLE
 			};
 		} catch (error) {
 			return resultError(error.code || "managed_token_creation_failed", String(error.message || error));
@@ -438,17 +463,22 @@
 
 	function listRecords() {
 		var byId = {};
-		var directories = [activeDirectory(), revokedDirectory()];
+		var roots = tokenRoots();
+		var directories = [];
+		for (var rootIndex = 0; rootIndex < roots.length; rootIndex++) {
+			directories.push(activeDirectory(roots[rootIndex]));
+			directories.push(revokedDirectory(roots[rootIndex]));
+		}
 		for (var d = 0; d < directories.length; d++) {
 			var files = filesIn(directories[d]);
 			for (var i = 0; i < files.length; i++) {
 				try {
 					var record = parseJsonFile(files[i]);
-					if (d === 1 && !trim(record.revokedAt).length) {
+					if (d % 2 === 1 && !trim(record.revokedAt).length) {
 						record.revokedAt = isoDate(files[i].lastModified());
 					}
 					var item = publicRecord(record);
-					if (item.id.length && (!byId[item.id] || d === 1)) {
+					if (item.id.length && (!byId[item.id] || d % 2 === 1)) {
 						byId[item.id] = item;
 					}
 				} catch (_invalidRecord) {}
@@ -473,7 +503,7 @@
 			authorized: authorized,
 			storagePath: authorized ? String(rootDirectory().getAbsolutePath()) : "",
 			mcpUrl: endpointUrl(ctx),
-			tokenEnvironmentVariable: "CONVERTIGO_FLOW_MCP_TOKEN",
+			tokenEnvironmentVariable: TOKEN_ENVIRONMENT_VARIABLE,
 			tokens: authorized ? listRecords() : [],
 			error: authorized ? null : { code: "forbidden", message: "A WEB_ADMIN session is required." }
 		};
@@ -485,7 +515,7 @@
 			return {
 				status: "ok",
 				mcpUrl: endpointUrl(ctx),
-				tokenEnvironmentVariable: "CONVERTIGO_FLOW_MCP_TOKEN",
+				tokenEnvironmentVariable: TOKEN_ENVIRONMENT_VARIABLE,
 				tokens: listRecords()
 			};
 		} catch (error) {
@@ -496,10 +526,21 @@
 	function revoke(ctx, tokenId) {
 		try {
 			requireWebAdmin(ctx);
-			var active = tokenFile(activeDirectory(), tokenId);
-			if (!active.isFile()) {
-				var revokedExisting = tokenFile(revokedDirectory(), tokenId);
-				if (revokedExisting.isFile()) {
+			var roots = tokenRoots();
+			var active = null;
+			var revokedExisting = null;
+			for (var rootIndex = 0; rootIndex < roots.length; rootIndex++) {
+				var activeCandidate = tokenFile(activeDirectory(roots[rootIndex]), tokenId);
+				var revokedCandidate = tokenFile(revokedDirectory(roots[rootIndex]), tokenId);
+				if (active === null && activeCandidate.isFile()) {
+					active = activeCandidate;
+				}
+				if (revokedExisting === null && revokedCandidate.isFile()) {
+					revokedExisting = revokedCandidate;
+				}
+			}
+			if (active === null) {
+				if (revokedExisting !== null) {
 					return { status: "ok", tokenInfo: publicRecord(parseJsonFile(revokedExisting)), tokens: listRecords() };
 				}
 				return resultError("token_not_found", "Flow MCP token was not found.");
@@ -585,7 +626,7 @@
 				status: "ok",
 				authenticated: true,
 				kind: "managed",
-				scope: trim(payload.scope) || "flow:mcp:full",
+				scope: trim(payload.scope) || "mcp:full",
 				user: trim(payload.sub),
 				payload: payload
 			};
@@ -598,16 +639,22 @@
 		if (!tokenId.length || !jti.length) {
 			return invalid("missing_token_identifier", "The Flow MCP bearer token identifier is missing.");
 		}
-		var file;
+		var file = null;
 		try {
-			file = tokenFile(activeDirectory(), tokenId);
-			if (tokenFile(revokedDirectory(), tokenId).isFile()) {
-				return invalid("revoked_token", "The Flow MCP bearer token has been revoked.");
+			var roots = tokenRoots();
+			for (var rootIndex = 0; rootIndex < roots.length; rootIndex++) {
+				if (tokenFile(revokedDirectory(roots[rootIndex]), tokenId).isFile()) {
+					return invalid("revoked_token", "The Flow MCP bearer token has been revoked.");
+				}
+				var candidate = tokenFile(activeDirectory(roots[rootIndex]), tokenId);
+				if (file === null && candidate.isFile()) {
+					file = candidate;
+				}
 			}
 		} catch (identifierError) {
 			return invalid("invalid_token_identifier", String(identifierError.message || identifierError));
 		}
-		if (!file.isFile()) {
+		if (file === null) {
 			return invalid("revoked_or_unknown_token", "The Flow MCP bearer token is revoked or unknown.");
 		}
 		try {
@@ -627,7 +674,7 @@
 				status: "ok",
 				authenticated: true,
 				kind: "durable",
-				scope: trim(record.scope) || "flow:mcp:full",
+				scope: trim(record.scope) || "mcp:full",
 				user: trim(record.createdBy),
 				tokenId: tokenId,
 				payload: payload
@@ -660,10 +707,10 @@
 	function authenticateRequest(ctx, request) {
 		var contextObject = convertigoContext(ctx);
 		if (!contextObject || !contextObject.httpServletRequest) {
-			return { status: "ok", authenticated: true, kind: "internal", scope: "flow:mcp:internal", user: "internal" };
+			return { status: "ok", authenticated: true, kind: "internal", scope: "mcp:internal", user: "internal" };
 		}
 		if (isAdminToolRequest(request) && isWebAdmin(ctx)) {
-			return { status: "ok", authenticated: true, kind: "web-admin", scope: "flow:mcp:tokens", user: currentAdminUser(ctx) };
+			return { status: "ok", authenticated: true, kind: "web-admin", scope: "mcp:tokens", user: currentAdminUser(ctx) };
 		}
 		return validate(bearerToken(ctx));
 	}

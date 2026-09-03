@@ -85,7 +85,7 @@
       var result = await callAdminTool("flow-token-status");
       element("admin-content").hidden = false;
       element("endpoint").textContent = result.mcpUrl || endpointUrl();
-      element("environment-variable").textContent = result.tokenEnvironmentVariable || "CONVERTIGO_FLOW_MCP_TOKEN";
+      element("environment-variable").textContent = result.tokenEnvironmentVariable || "CONVERTIGO_MCP_TOKEN";
       renderTokens(result.tokens);
       var state = element("session-state");
       state.textContent = "WEB_ADMIN authenticated";

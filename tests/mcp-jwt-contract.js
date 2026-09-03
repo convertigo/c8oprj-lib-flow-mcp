@@ -18,12 +18,12 @@ try {
   var token = jwt._test.buildToken(
     { alg: "HS256", typ: "JWT", kid: "flow_managed_contract" },
     {
-      iss: "lib_flow_mcp",
-      aud: "ConvertigoFlowMCP",
+      iss: "lib_ConvertigoMCP",
+      aud: "ConvertigoMCP",
       sub: "contract-test",
       jti: "contract-test-jti",
       kind: "managed",
-      scope: "flow:mcp:full",
+      scope: "mcp:full",
       iat: now,
       nbf: now,
       exp: now + 300
