@@ -1,24 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flow MCP token administration</title>
+    <link rel="stylesheet" href="css/custom.css" />
+    <script src="js/custom.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">Convertigo Flow</p>
+          <h1>MCP access tokens</h1>
+          <p class="lede">Create and revoke bearer tokens for the Flow authoring endpoint.</p>
+        </div>
+        <span id="session-state" class="status-chip pending">Checking admin session…</span>
+      </header>
 
-<html>
-	<head>
-		<meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
-		<title>Index</title>
-		
-		<link type="text/css" rel="stylesheet" href="../../css/c8o.desktop.css"/>
-		<link type="text/css" rel="stylesheet" href="css/custom.css"/>
-        <script src="../../scripts/jquery.min.js"></script>
-        <script src="../../scripts/c8o.core.js"></script>
-        <script src="../../scripts/c8o.desktop.js"></script>
-<!--         <script src="../../scripts/ctf.core.js"></script> -->
-<!--         <script src="../../scripts/pouchdb.min.js"></script> -->
-<!--         <script src="../../scripts/c8o.fullsync.js"></script> -->
-        <script src="js/custom.js"></script>
-	</head>
-	<body>	
-		<div id="wait_div">
-			<div></div>
-			<img src="../../images/loading.gif"/>
-		</div>
-	</body>
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+
+      <section id="admin-content" class="admin-content" hidden>
+        <article class="panel endpoint-panel">
+          <div>
+            <h2>Endpoint</h2>
+            <code id="endpoint"></code>
+          </div>
+          <div>
+            <h2>Environment variable</h2>
+            <code id="environment-variable">CONVERTIGO_FLOW_MCP_TOKEN</code>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Create a durable token</h2>
+              <p>The raw token is displayed once. Its metadata remains revocable.</p>
+            </div>
+          </div>
+          <form id="create-form" class="create-form">
+            <label>
+              Label
+              <input id="token-name" name="name" maxlength="100" required placeholder="CI workstation" />
+            </label>
+            <label>
+              Validity (days)
+              <input id="token-days" name="expiresInDays" type="number" min="1" max="3650" value="365" required />
+            </label>
+            <button type="submit">Create token</button>
+          </form>
+        </article>
+
+        <article id="secret-panel" class="panel secret-panel" hidden>
+          <div class="section-heading">
+            <div>
+              <h2>Copy this token now</h2>
+              <p>It will not be shown again.</p>
+            </div>
+            <button id="dismiss-secret" class="secondary" type="button">Dismiss</button>
+          </div>
+          <div class="secret-row">
+            <code id="token-secret"></code>
+            <button id="copy-button" type="button">Copy</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Durable tokens</h2>
+              <p>Revocation takes effect on the next request.</p>
+            </div>
+            <span id="token-count" class="count">0</span>
+          </div>
+          <p id="empty-state" class="empty-state">No durable Flow MCP token exists yet.</p>
+          <div id="token-list" class="token-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <template id="token-template">
+      <div class="token-row">
+        <div class="token-main">
+          <div class="token-title-line">
+            <strong class="token-name"></strong>
+            <span class="token-status"></span>
+          </div>
+          <p class="token-meta"></p>
+        </div>
+        <button class="revoke-button danger" type="button">Revoke</button>
+      </div>
+    </template>
+  </body>
 </html>

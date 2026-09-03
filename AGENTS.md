@@ -25,6 +25,13 @@ Rules:
   custom JavaScript wrapper.
 - Use `/convertigo/api/flow-mcp` as the HTTP entry point. Do not use
   `/convertigo/api/mcp`, which belongs to the legacy Convertigo MCP project.
+- Require an HS256 bearer JWT for every external `/api/flow-mcp` request.
+  Keep Flow token state under `<workspace>/jwt/flow-mcp`, return durable raw
+  tokens only once, and never trace or expose managed token secrets.
+- Keep token administration operations private from `tools/list` and require
+  the current `WEB_ADMIN` session. Integrated agents receive only an opaque
+  server-memory handle; Agent Bridge injects `CONVERTIGO_FLOW_MCP_TOKEN` into
+  the child process.
 - For Git work on Flow library projects, treat
   `/Users/nicolas/git/c8oprj-lib-flow-process` and
   `/Users/nicolas/git/c8oprj-lib-flow-k8s` as canonical. The Studio runtime

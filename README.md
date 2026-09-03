@@ -16,6 +16,24 @@ The UrlMapper path is `/flow-mcp`; the trailing-slash variant `/flow-mcp/` is
 also mapped to the same requestable. The legacy Convertigo MCP project keeps
 `/mcp`.
 
+## Authentication
+
+HTTP requests to `/api/flow-mcp` require an HS256 JWT in the
+`Authorization: Bearer <token>` header. Durable token metadata, revocation
+records and the signing key are kept below `<workspace>/jwt/flow-mcp`; raw
+durable tokens are returned only once. Short-lived managed tokens used by the
+integrated Assistant remain stateless and are only passed to Agent Bridge
+through an opaque in-memory handle.
+
+The project root page provides a bootstrap token administration surface. It
+accepts the hidden `flow-token-status`, `flow-token-create`,
+`flow-token-list`, `flow-token-revoke` and `flow-token-managed-create` MCP
+operations only from a current `WEB_ADMIN` session. These operations are not
+advertised to agents by `tools/list`. Configure standalone clients with the
+`CONVERTIGO_FLOW_MCP_TOKEN` environment variable; this is intentionally
+separate from the legacy `CONVERTIGO_MCP_TOKEN` value so both MCP servers can
+coexist in one agent process.
+
 Runtime shape:
 
 ```text

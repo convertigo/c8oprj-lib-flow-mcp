@@ -3,7 +3,8 @@ const _meta = {
   "private": true,
   "icon": "mdi:code-json",
   "uses": [
-    "mcp"
+    "mcp",
+    "jwt"
   ],
   "description": "Parses an MCP JSON-RPC request payload.",
   "hooks": {
@@ -29,7 +30,9 @@ const _meta = {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var mcp = ctx.lib("mcp");
-			return mcp.parseRequest(mcp.requestValue(ctx, props.request), ctx);
+			var jwt = ctx.lib("jwt");
+			var request = mcp.parseRequest(mcp.requestValue(ctx, props.request), ctx);
+			return jwt.guardRequest(ctx, request);
 		}
 	};
 }())

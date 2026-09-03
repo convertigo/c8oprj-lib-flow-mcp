@@ -31,6 +31,9 @@ Every specialist must use the named `convertigo-flow` MCP server. Raw MCP over
 `curl`, handwritten JSON-RPC and direct edits to Convertigo YAML are
 configuration failures, not acceptable fallbacks. Browser proof must use the
 managed Playwright connection supplied by the host for the current viewer.
+The HTTP endpoint is bearer-protected. Standalone clients read the Flow token
+from `CONVERTIGO_FLOW_MCP_TOKEN`; Studio Assistant sessions receive it through
+their opaque managed-token handle and must never print or persist the secret.
 
 ## POC First
 

@@ -29,6 +29,12 @@ const _meta = {
 }
 
 function mcp_handle({ input, config, result }) {
+  if (input.request.__flowMcpAuthenticationError) {
+    const response = mcp.response.error({ id: "authenticationError", request: input.request, code: -32001, message: input.request.__flowMcpAuthenticationError.message, data: {
+      code: input.request.__flowMcpAuthenticationError.code
+    } })
+    return response
+  }
   if (input.request.method == "initialize") {
     const response = mcp.initialize({ id: "handleInitialize", request: input.request })
     return response
