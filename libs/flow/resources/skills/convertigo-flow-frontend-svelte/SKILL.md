@@ -13,6 +13,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.
 - Read `flow://guide/frontend-svelte` once. Read the routing or FullSync guide
   only when the application requires it.
+- Record every successfully read guide URI for the current turn and never read
+  that URI again, including after compaction or a repair pass.
 - Author Flow Svelte source and palette-backed blocks, never generated Svelte,
   Convertigo YAML or build output.
 - After the first `code-get` of every turn on an existing frontend, call the
@@ -29,6 +31,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   authored, and do not call `dev.open` when `dev.sync` already returned the
   viewer. `code-set` validates before its atomic write; use `code-check` only
   when a dry-run is deliberately needed.
+  Start `dev.ensure(wait:false)` immediately after bootstrap, before `code-get`,
+  so dependency preparation overlaps source inspection and authoring.
 - Import generated or supplied images with `frontend-svelte-asset-import`.
   Pass the local file and optionally a `resources/...` destination, then use
   the returned URL unchanged in Image properties or `app.flow.css`. Never copy

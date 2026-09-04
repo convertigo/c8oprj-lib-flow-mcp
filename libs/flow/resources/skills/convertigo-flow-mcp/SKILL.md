@@ -20,6 +20,8 @@ guide own the detailed workflow.
   `flow://guide/fullstack-paperboard` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
   feature needs them. Do not load every guide pre-emptively.
+- Record every successfully read guide URI for the current turn. Never read the
+  same URI again after a successful response, including after compaction.
 
 Keep one specialist role through repair passes. Do not spawn a replacement
 specialist merely to continue the same application.
@@ -55,6 +57,9 @@ flow-project-bootstrap(ui:true)
 -> frontend-svelte-action(dev.sync)
 -> one bounded browser proof when requested or materially useful
 ```
+
+Start `dev.ensure(wait:false)` immediately after bootstrap, before `code-get`,
+so dependency preparation overlaps source inspection and authoring.
 
 The bootstrap target and starter contract already identify `home`. Do not call
 `project-list`, `frontend-svelte-tree`, `flow-list`, `flow-search` or a catalog

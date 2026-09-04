@@ -655,9 +655,9 @@ const _meta = {
 					surface: "frontend",
 					builder: "svelte",
 					frontendSourceDrafts: drafts,
-					detail: "inspect",
-					maxDepth: 64,
-					includeDefinition: true,
+					detail: "compact",
+					maxDepth: 20,
+					includeDefinition: false,
 					includeBindings: false
 				});
 				var treeError = projectedError(tree);

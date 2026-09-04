@@ -6,6 +6,9 @@ var FileUtils = Packages.org.apache.commons.io.FileUtils;
 var MessageDigest = Packages.java.security.MessageDigest;
 var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
 var notificationRequests = [];
+var treeRequests = [];
+var treeResponse = null;
+var contractResponse = null;
 
 function assertTrue(condition, message) {
 	if (!condition) throw new Error(message);
@@ -40,10 +43,12 @@ function context(props) {
 				hunks: [{ oldStart: 1, newStart: 1 }]
 			};
 		},
-		authoringTreeSource: function () {
-			return { ok: true, diagnostics: [], children: [] };
+		authoringTreeSource: function (request) {
+			treeRequests.push(request);
+			return treeResponse || { ok: true, diagnostics: [], children: [] };
 		},
 		authoringContractSource: function (request) {
+			if (contractResponse) return contractResponse;
 			var drafts = request && request.frontendSourceDrafts || {};
 			var paths = Object.keys(drafts);
 			if (paths.length === 0) return { ok: true, items: [] };
@@ -99,6 +104,10 @@ var created = run({
 	code: first
 });
 assertTrue(created.written === true && created.code === first, "Creation without revision should succeed.");
+assertTrue(treeRequests.length === 1 && treeRequests[0].detail === "compact" &&
+	treeRequests[0].maxDepth === 20 && treeRequests[0].includeDefinition === false &&
+	treeRequests[0].includeBindings === false,
+	"Frontend validation should request the compact tree shape without hydrated definitions or bindings.");
 assertTrue(created.sourceFile === sourceFile, "Creation should report the written source.");
 assertTrue(notificationRequests.length === 1 &&
 	notificationRequests[0].projectDir === String(root.getAbsolutePath()) &&
@@ -221,6 +230,27 @@ try {
 assertTrue(String(FileUtils.readFileToString(source, "UTF-8")) === third,
 	"Failed atomic write truncated or replaced the existing source.");
 assertTrue(notificationRequests.length === 3, "Failed writes must not emit source mutation notifications.");
+
+treeResponse = {
+	ok: true,
+	diagnostics: [],
+	children: [{ type: "Card", nodeId: "card", path: "routes.test.structure.card", children: [] }]
+};
+contractResponse = {
+	ok: true,
+	items: [{ tag: "Card", properties: { label: { type: "string" } } }]
+};
+var compactPropertyCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	code: "<FlowComponent id=\"root\"><Structure><Card id=\"card\" bogus=\"x\" /></Structure></FlowComponent>\n"
+});
+assertTrue(compactPropertyCheck.ok === false && compactPropertyCheck.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "bogus";
+}), "Compact tree validation must keep rejecting properties absent from the canonical contract.");
+treeResponse = null;
+contractResponse = null;
 
 var componentSourceFile = "libs/flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
 var componentSource = [
