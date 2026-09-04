@@ -11,8 +11,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 ## Contract
 
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.
-- Read `flow://guide/frontend-svelte` once. Read the routing or FullSync guide
-  only when the application requires it.
+- Read `flow://guide/frontend-svelte` once from the server named exactly
+  `convertigo-flow`, never from the Legacy server named `convertigo`. Read the
+  routing or FullSync guide only when the application requires it.
 - Record every successfully read guide URI for the current turn and never read
   that URI again, including after compaction or a repair pass.
 - Author Flow Svelte source and palette-backed blocks, never generated Svelte,
@@ -23,13 +24,14 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   authoring during npm warm-up and synchronize after the atomic source write.
 - For a fresh simple Page, keep the best-case path linear:
   `bootstrap -> dev.ensure(wait:false) -> code-get -> code-set ->
-  dev.sync -> progress`. The bootstrap target and code-get contract already
+  dev.sync`. The bootstrap target and code-get contract already
   identify `home`; do not call a tree to rediscover it. Use the compact
   portable property contracts and recipes already returned by `code-get`. Use
   one exact-id palette lookup only when a needed contract is absent, at the
   qualified `...routes.<page-id>.events` path. Do not call a final tree for ids just
-  authored, and do not call `dev.open` when `dev.sync` already returned the
-  viewer. `code-set` validates before its atomic write; use `code-check` only
+  authored. When `dev.sync` returns both `browser` and `openUrl`, use that
+  viewer and do not call `dev.open`; otherwise call `dev.open` once. `code-set`
+  validates before its atomic write; use `code-check` only
   when a dry-run is deliberately needed.
   Start `dev.ensure(wait:false)` immediately after bootstrap, before `code-get`,
   so dependency preparation overlaps source inspection and authoring.
@@ -96,6 +98,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   the current viewer. Do not open a separate browser or use raw CDP.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
   also confirm that referenced images load without 404 responses.
+- Do not call `flow-app-progress` on the simple fast path unless a structural
+  question remains unresolved. Never claim visible or runtime readiness when
+  its proof says `runtime:false` or `browserRequired:true`.
 - For maps and other network-backed provider visualizations, verify their
   rendered resources too; a correctly sized container or attribution is not
   proof that tiles or remote content loaded.

@@ -15,7 +15,8 @@ guide own the detailed workflow.
   `skills/convertigo-flow-backend/SKILL.md`, then only the live guide it names.
 - Svelte pages, components, bindings, styling, assets or viewer work: read
   `skills/convertigo-flow-frontend-svelte/SKILL.md`, then
-  `flow://guide/frontend-svelte` once.
+  `flow://guide/frontend-svelte` once from the server named exactly
+  `convertigo-flow`, never from the Legacy server named `convertigo`.
 - Full-stack work: use both specialists and read
   `flow://guide/fullstack-paperboard` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
@@ -73,9 +74,11 @@ prerequisite. Preferred portable actions already include compact property
 contracts and recipes in `code-get`; use those directly without a palette call.
 
 `dev.sync` is the final generation barrier and may already return the viewer.
-Do not call `dev.open` when that viewer is present. `flow-app-progress` is
-optional on this fast path; call it only when a consolidated readiness report
-would answer an unresolved question.
+When its successful response contains `browser` and `openUrl`, use that viewer
+and do not call `dev.open`. Otherwise call `dev.open` once. `flow-app-progress`
+is optional on this fast path; call it only when a consolidated readiness
+report would answer an unresolved structural question. Never claim visible or
+runtime readiness when its proof says `runtime:false` or `browserRequired:true`.
 
 For a simple reactive browser proof, prefer one evaluation that captures the
 initial value, waits, and verifies the changed value. List/select tabs only
