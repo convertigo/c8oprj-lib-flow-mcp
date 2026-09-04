@@ -62,12 +62,21 @@ flow-project-bootstrap(ui:true)
 Start `dev.ensure(wait:false)` immediately after bootstrap, before `code-get`,
 so dependency preparation overlaps source inspection and authoring.
 
+Inspect bootstrap's `existing` flag before claiming a project was created. If
+it returns `existing:true`, the one successful `dev.ensure` also counts as the
+existing-project preflight. When that response is active (`pending:false`, with
+`browser` and `openUrl`) and `code-get` shows that the requested behavior is
+already present, stop and answer. Do not repeat `dev.ensure` or call
+`code-check`, `code-set`, `dev.sync` or `flow-app-progress` for this unchanged
+no-op path.
+
 The bootstrap target and starter contract already identify `home`. Do not call
 `project-list`, `frontend-svelte-tree`, `flow-list`, `flow-search` or a catalog
 to rediscover facts already returned by bootstrap or `code-get`.
 
 `code-set` validates before its atomic frontend write. Use `code-check` only
-for an intentional dry-run, not as a mandatory preflight. If a block or
+for an intentional dry-run or changed draft, never to revalidate an unchanged
+`code-get` result. If a block or
 property is absent from the starter contract, make one contextual, exact-id
 `authoring-palette` call at the qualified parent path; a tree call is not a
 prerequisite. Preferred portable actions already include compact property
@@ -111,7 +120,8 @@ Use Rhino only for Java integration or a genuinely low-level primitive.
 
 On an existing frontend, start with one `code-get`. Immediately call
 `dev.ensure` with `wait:false` so authoring overlaps dependency preparation and
-a Studio restart recovers the viewer. For later focused changes use
+a Studio restart recovers the viewer. Call it at most once per project per
+turn; a post-bootstrap call already counts. For later focused changes use
 `code-rg`, then the smallest revision-checked `code-patch`; request a bounded
 `code-get` range only when the match context is insufficient.
 

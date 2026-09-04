@@ -47,6 +47,15 @@ prerequisite. After a successful `code-set(reveal:true)`, use the authored id
 and source path as the final reveal target. Call `dev.open` only when
 `dev.sync` did not already return the active viewer.
 
+When bootstrap returns `existing:true`, treat the sequence as an existing
+project, not as a creation. If the one `dev.ensure` response is already active
+(`pending:false`, with `browser` and `openUrl`) and `code-get` proves that the
+source already satisfies the request, stop and answer: this is a successful
+no-op. Do not repeat `dev.ensure`, and do not call `code-check`, `code-set`,
+`dev.sync` or `flow-app-progress` for unchanged source. `code-check` is for an
+explicit dry-run or a changed draft; `dev.sync` follows a mutation or completes
+a pending preparation, never an unchanged active viewer.
+
 1. Call `code-get({ project, kind:"source" })` once. It returns the current
    source, revision, every Page (`id`, `path`, typed parameters and sourceFile),
    the compact canonical block contract, and the exact application stylesheet
@@ -54,7 +63,9 @@ and source path as the final reveal target. Call `dev.open` only when
    Immediately call `frontend-svelte-action({ project,
    actionId:"dev.ensure", wait:false })`. This idempotent preflight preserves a
    running viewer and restarts it after Studio was relaunched, so subsequent
-   mutations are visible live. Do not poll it.
+   mutations are visible live. Do not poll or repeat it during the turn. If
+   bootstrap already caused this call before `code-get`, it also satisfies this
+   existing-project preflight.
 2. Plan the Pages and transitions. Write each complete Page directly with
    `code-set`, addressing it by `sourceFile`; it validates before the atomic
    write and returns structured diagnostics on failure. Use `code-check` only

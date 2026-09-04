@@ -22,6 +22,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   idempotent `dev.ensure` with `wait:false` before the first mutation. It keeps
   an existing Vite viewer and restarts it after Studio was relaunched. Continue
   authoring during npm warm-up and synchronize after the atomic source write.
+  Call it at most once per project per turn; a call immediately after bootstrap
+  already satisfies this rule when bootstrap reports `existing:true`.
 - For a fresh simple Page, keep the best-case path linear:
   `bootstrap -> dev.ensure(wait:false) -> code-get -> code-set ->
   dev.sync`. The bootstrap target and code-get contract already
@@ -35,6 +37,13 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   when a dry-run is deliberately needed.
   Start `dev.ensure(wait:false)` immediately after bootstrap, before `code-get`,
   so dependency preparation overlaps source inspection and authoring.
+- Inspect bootstrap's `existing` flag before claiming a project was created.
+  For `existing:true`, if the single `dev.ensure` is active (`pending:false`,
+  with `browser` and `openUrl`) and `code-get` proves the request is already
+  satisfied, stop and answer. Do not repeat `dev.ensure`, and do not call
+  `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for unchanged
+  source. `code-check` is only for an explicit dry-run or changed draft;
+  `dev.sync` follows a mutation or completes pending preparation.
 - Import generated or supplied images with `frontend-svelte-asset-import`.
   Pass the local file and optionally a `resources/...` destination, then use
   the returned URL unchanged in Image properties or `app.flow.css`. Never copy
