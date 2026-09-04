@@ -109,6 +109,13 @@ var catalogFrontendTree = mcp.prepareToolArguments(null, {
 	}
 }, { resolveProject: false });
 
+var compactPalette = mcp.prepareToolArguments(null, {
+	params: {
+		name: "authoring-palette",
+		arguments: { project: "Clock", focusPath: "route.home.events.interval.actions" }
+	}
+}, { resolveProject: false });
+
 assertTrue(managed.browserDebugPort === 40811,
 	"The MCP transport header must override client-supplied viewer ports");
 assertTrue(unmanaged.browserDebugPort === undefined,
@@ -128,6 +135,8 @@ assertTrue(compactFrontendTree.includeFrontendCatalog === false &&
 assertTrue(catalogFrontendTree.includeFrontendCatalog === true &&
 	catalogFrontendTree.includeFlowCatalog === false,
 	"An explicit frontend catalog focus must include only that catalog");
+assertTrue(compactPalette.detail === "compact" && compactPalette.limit === 8,
+	"The MCP palette must default to a compact bounded response");
 
 [
 	"libs/flow/blocks/mcp/tool/frontend/svelte/code/set.block.js",

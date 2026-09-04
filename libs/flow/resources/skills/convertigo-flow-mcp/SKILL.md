@@ -62,9 +62,10 @@ to rediscover facts already returned by bootstrap or `code-get`.
 
 `code-set` validates before its atomic frontend write. Use `code-check` only
 for an intentional dry-run, not as a mandatory preflight. If a block or
-property is absent from the starter contract, make one contextual
+property is absent from the starter contract, make one contextual, exact-id
 `authoring-palette` call at the qualified parent path; a tree call is not a
-prerequisite.
+prerequisite. Preferred portable actions already include compact property
+contracts and recipes in `code-get`; use those directly without a palette call.
 
 `dev.sync` is the final generation barrier and may already return the viewer.
 Do not call `dev.open` when that viewer is present. `flow-app-progress` is

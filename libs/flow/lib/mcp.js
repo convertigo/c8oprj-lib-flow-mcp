@@ -1911,6 +1911,12 @@
 			if (!args.position) {
 				args.position = "inside";
 			}
+			if (!args.detail) {
+				args.detail = "compact";
+			}
+			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
+				args.limit = 8;
+			}
 		} else if (name === "authoring-mutate") {
 			if (!args.surface) {
 				args.surface = "frontend";

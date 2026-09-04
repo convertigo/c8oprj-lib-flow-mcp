@@ -358,9 +358,14 @@ For clocks and stopwatches, read wall-clock timestamps and compute from them.
 The compact `authoringContract.portableBlocks` advertises the typed Flow actions
 available to source authoring. Prefer `DateNow`, `DateFormat`, `NumberAdd`,
 `NumberSubtract`, `NumberChoose` and `DurationFormat` over one opaque browser
-expression when they match the intent. Perform one exact palette lookup for the
-chosen tag when its properties are needed. A typical refresh chain reads now,
-formats or subtracts it, then publishes the typed result with `SetValue`.
+expression when they match the intent. Common portable actions include their
+compact property contracts directly; use the supplied `wallClock` recipe as the
+KISS baseline for a live clock. Perform one exact-id palette lookup such as
+`date.now` only when the chosen block's properties are absent. A portable
+action's `target` is optional: omit it and bind its result as `@actionId`, or
+write to an existing `local.name`; never invent a bare result target. A typical
+refresh chain reads now, formats or subtracts it, then publishes the typed
+result to an existing state.
 
 Keep `Derived` and `DerivedBy` for small pure projections of already typed
 state. Do not implement a stopwatch by incrementing a counter on every

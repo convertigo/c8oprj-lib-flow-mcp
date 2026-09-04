@@ -22,9 +22,10 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - For a fresh simple Page, keep the best-case path linear:
   `bootstrap -> dev.ensure(wait:false) -> code-get -> code-set ->
   dev.sync -> progress`. The bootstrap target and code-get contract already
-  identify `home`; do not call a tree to rediscover it. Use one palette lookup
-  only for a missing portable block property contract, at the qualified
-  `...routes.<page-id>.events` path. Do not call a final tree for ids just
+  identify `home`; do not call a tree to rediscover it. Use the compact
+  portable property contracts and recipes already returned by `code-get`. Use
+  one exact-id palette lookup only when a needed contract is absent, at the
+  qualified `...routes.<page-id>.events` path. Do not call a final tree for ids just
   authored, and do not call `dev.open` when `dev.sync` already returned the
   viewer. `code-set` validates before its atomic write; use `code-check` only
   when a dry-run is deliberately needed.

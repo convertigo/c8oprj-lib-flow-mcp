@@ -32,8 +32,11 @@ const normalized = text.trim({ text: input.name })
 Flow Svelte uses the direct palette tag generated from that id:
 
 ```svelte
-<TextTrim id="normalizeName" text={event.value} target="normalizedName" />
+<TextTrim id="normalizeName" text="@event.value" />
 ```
+
+With no `target`, consume the result as `@normalizeName`. Set `target` only to
+an existing `local.name` when the action must update that state.
 
 Never author `RunAxiom`; it exists only as a legacy migration input. The Svelte
 compiler lowers a direct portable tag to a static import and bundles only used

@@ -30,7 +30,8 @@ var result = block.run({
 			{ id: "svelte.text", tag: "Text", properties: { text: { type: "string", intents: ["literal", "source"] } }, slots: {} },
 			{ id: "frontbuilder.svelte.callSequence", tag: "CallSequence", properties: {}, slots: {} },
 			{ id: "svelte.futurePanel", tag: "FuturePanel", properties: { title: { type: "string", intents: ["literal"] } }, slots: { children: {} } },
-			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text" },
+			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text", properties: { text: { type: "string", intents: ["literal", "source"] } } },
+			{ id: "flow.block.date.now", tag: "DateNow", description: "Current time", properties: { target: { type: "string", intents: ["literal"] } } },
 			{ id: "project.privateWidget", tag: "PrivateWidget", properties: {}, slots: {} }
 		] };
 	},
@@ -47,9 +48,16 @@ assertTrue(result.authoringContract.detail === "starter" &&
 	result.authoringContract.omittedBlockCount === 1 &&
 	result.authoringContract.availableBlockCount === 3,
 	"The starter contract did not report its omitted descriptors");
-assertTrue(result.authoringContract.portableBlocks.length === 1 &&
-	result.authoringContract.portableBlocks[0].id === "text.trim",
+assertTrue(result.authoringContract.portableBlocks.length === 2 &&
+	result.authoringContract.portableBlocks.some(function (item) {
+		return item.id === "text.trim" && item.properties === undefined;
+	}) && result.authoringContract.portableBlocks.some(function (item) {
+		return item.id === "date.now" && item.properties.target === "string:literal";
+	}),
 	"Portable blocks were not kept in their dedicated contract section");
+assertTrue(result.authoringContract.recipes.wallClock.indexOf('<DateNow id="now" />') !== -1 &&
+	result.authoringContract.recipes.wallClock.indexOf('target="local.clock" value="@now"') !== -1,
+	"The starter contract must expose a valid no-repair wall-clock recipe");
 assertTrue(written === result, "The source block did not write the contract result");
 
 props.contractDetail = "full";

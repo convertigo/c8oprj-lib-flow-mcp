@@ -721,6 +721,15 @@ const _meta = {
 		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable",
 		"CallSequence"
 	];
+	var PREFERRED_PORTABLE_PROPERTIES = {
+		"date.now": true,
+		"date.format": true,
+		"duration.format": true,
+		"number.add": true,
+		"number.subtract": true,
+		"number.choose": true,
+		"value.toText": true
+	};
 
 	function standardStarterItems(items, includeAll) {
 		var byTag = {};
@@ -855,11 +864,15 @@ const _meta = {
 				var tag = String(item.tag || item.insert && item.insert.tag || "");
 				if (id.indexOf("flow.block.") !== 0 || !tag || seenPortable[id]) return;
 				seenPortable[id] = true;
-				portableBlocks.push({
+				var portable = {
 					id: id.substring("flow.block.".length),
 					tag: tag,
 					description: String(item.description || "")
-				});
+				};
+				if (contractDetail === "full" || PREFERRED_PORTABLE_PROPERTIES[portable.id]) {
+					portable.properties = compactProperties(item.properties);
+				}
+				portableBlocks.push(portable);
 			});
 			portableBlocks.sort(function (left, right) {
 				return left.id.localeCompare(right.id);
@@ -893,6 +906,9 @@ const _meta = {
 					query: '<Query><Variable name="tab" value="details" /></Query>',
 					back: '<GoBack id="back" fallback="/" />'
 				},
+				recipes: {
+					wallClock: '<Variables><State id="clock" type="string" value="--:--:--" /></Variables><Events><Interval id="clockTick" milliseconds={1000} immediate={true}><Actions><DateNow id="now" /><DateFormat id="formatClock" target="local.clock" value="@now" locale="fr-FR" options={{ hour: "2-digit", minute: "2-digit", second: "2-digit" }} fallback="--:--:--" /></Actions></Interval></Events>'
+				},
 				blocks: blocks,
 				portableBlocks: portableBlocks,
 				actionPattern: "FlowComponent > Events > OnMount|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
@@ -907,6 +923,7 @@ const _meta = {
 					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Prefer a typed portableBlocks action over an equivalent browser expression; inspect the exact palette item once when its properties are needed.",
+					"A portable action target is optional: omit it and bind the result as @actionId, or set it to an existing local.name. Never invent a bare result target.",
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
 					"Write one complete source pass with code-set; it validates before the atomic write. Use code-check only for an intentional dry-run.",
 					"The starter contract intentionally omits uncommon blocks. Inspect the contextual palette only for a missing block or property.",
