@@ -505,6 +505,15 @@ assertTrue(frontendSvelteActionTool.inputSchema.properties.wait &&
 	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean" &&
 	frontendSvelteActionTool.inputSchema.properties.browserDebugPort === undefined,
 	"MCP frontend-svelte-action did not expose the non-blocking dev start option");
+assertTrue(frontendSvelteActionTool.description.indexOf("Never call build while Dev is active") !== -1 &&
+	frontendSvelteActionTool.description.indexOf("stopping Dev automatically rebuilds") !== -1,
+	"MCP frontend-svelte-action should keep production compilation out of the live Dev memory envelope");
+var projectBootstrapTool = list.result.result.tools.filter(function (tool) {
+	return tool.name === "flow-project-bootstrap";
+})[0];
+assertTrue(projectBootstrapTool.description.indexOf("exact named project") !== -1 &&
+	projectBootstrapTool.description.indexOf("never substitute an ambient Studio selection") !== -1,
+	"MCP flow-project-bootstrap should make a new project authoritative over ambient Studio context");
 assertTrue(["frontend-svelte-code-get", "frontend-svelte-code-check", "frontend-svelte-code-set", "frontend-svelte-code-patch", "frontend-svelte-code-rg"].every(function (name) {
 	return !list.result.result.tools.some(function (tool) { return tool.name === name; });
 }), "MCP Flow tools/list should expose canonical sources only through code-* tools");

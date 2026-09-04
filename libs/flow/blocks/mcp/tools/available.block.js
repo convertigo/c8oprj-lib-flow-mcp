@@ -488,7 +488,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Before Playwright, call dev.open and require browserControlReady:true. Build is a separate production or deployment check.";
+			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Before Playwright, call dev.open and require browserControlReady:true. Never call build while Dev is active: stopping Dev automatically rebuilds dirty production output; build is only for deployment or an explicit production check outside Dev.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
@@ -506,7 +506,7 @@ const _meta = {
 		} else if (name === "flow-node-output-schema") {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
-			description = "Imports or customizes a project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs.";
+			description = "Imports or customizes the exact named project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs. For a new-project request, call this before any project-local read/write and use the returned studioTarget as the authoritative project; never substitute an ambient Studio selection.";
 		} else if (name === "flow-library-search") {
 			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {

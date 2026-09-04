@@ -120,6 +120,13 @@ flow-project-bootstrap({ project })
 flow-project-bootstrap({ project, ui:true })  # backend plus Svelte
 ```
 
+When the user asks for a **new Flow project**, especially from a conversation
+started without a project, the requested project name is the only target.
+Bootstrap it before any project-local read or write. Never substitute the
+Studio selection, `defaultProject`, or another ambient project. The successful
+bootstrap response and its `studioTarget` become authoritative for every
+following tool call, viewer action and final reveal.
+
 Call bootstrap once. If it succeeds, continue directly; do not probe or call it
 again. After `ui:true`, immediately call `dev.ensure` with `wait:false`, then
 continue backend and frontend authoring while dependencies initialize. For
@@ -283,8 +290,12 @@ mutations. A complete pass may write several Page sources:
 7. Call `flow-app-progress({ project, qname, mode:"poc" })` once. This proves
    structural readiness only; prove the requested visible and interactive
    behavior in the dev viewer and confirm asset requests do not return 404. Call
-   `frontend-svelte-action` with `build` only for deployment or an explicit
-   production check; production build already generates the sources.
+   Do not call `build` while Dev is starting or running: it is deliberately
+   rejected to keep Vite, the agent and a production compiler from overlapping
+   in memory. Stopping Dev publishes dirty production output automatically.
+   Outside Dev, call `frontend-svelte-action` with `build` only for deployment
+   or an explicit production check; production build already generates the
+   sources.
 
 Flow Pages map to SvelteKit routes, but authors do not edit generated SvelteKit
 files or call `$app/navigation` directly. Static links use `LinkButton`.
