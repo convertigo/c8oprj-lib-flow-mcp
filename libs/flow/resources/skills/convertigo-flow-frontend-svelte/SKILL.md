@@ -19,6 +19,14 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   idempotent `dev.ensure` with `wait:false` before the first mutation. It keeps
   an existing Vite viewer and restarts it after Studio was relaunched. Continue
   authoring during npm warm-up and synchronize only after a successful check.
+- For a fresh simple Page, keep the best-case path linear:
+  `bootstrap -> dev.ensure(wait:false) -> code-get -> code-check -> code-set ->
+  dev.sync -> progress`. The bootstrap target and code-get contract already
+  identify `home`; do not call a tree to rediscover it. Use one palette lookup
+  only for a missing portable block property contract, at the qualified
+  `...routes.<page-id>.events` path. Do not call a final tree for ids just
+  authored, and do not call `dev.open` when `dev.sync` already returned the
+  viewer.
 - Import generated or supplied images with `frontend-svelte-asset-import`.
   Pass the local file and optionally a `resources/...` destination, then use
   the returned URL unchanged in Image properties or `app.flow.css`. Never copy

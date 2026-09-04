@@ -53,6 +53,14 @@ acceptance campaign.
   existing project, call the same idempotent action immediately after the
   first frontend read of every turn; it recovers the viewer after Studio was
   restarted without disturbing an already running Vite process. Do not poll.
+- Keep a fresh single-Page frontend on the short path: bootstrap once,
+  `dev.ensure(wait:false)`, `code-get`, one final `code-check`/`code-set`, one
+  `dev.sync`, one progress check, and at most one `dev.open`. Bootstrap and the
+  code contract identify `home`; do not spend a tree call rediscovering it or
+  validating ids you just authored. If a portable action's properties are not
+  present in the contract, call the palette directly at
+  `<project>::frontends.svelte.routes.<page-id>.events` without a preliminary
+  tree.
 - Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
   work. Pass `qname` only when the application really has a backend Flow;
   never create a synthetic backend Flow to satisfy progress. Synchronize and

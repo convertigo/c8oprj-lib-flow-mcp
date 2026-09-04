@@ -28,6 +28,25 @@ writing generated `+page.svelte` files.
 
 ## Authoring Loop
 
+For a fresh, simple single-Page application, use this fast path and do not add
+inspection calls between its steps:
+
+```text
+flow-project-bootstrap(ui:true) -> dev.ensure(wait:false) -> code-get
+-> code-check -> code-set(reveal:true) -> app.flow.css check/set if needed
+-> dev.sync once -> flow-app-progress once -> dev.open once if no viewer was returned
+```
+
+The bootstrap `studioTarget` and `code-get.authoringContract` are sufficient to
+address the initial `home` Page. Do not call `frontend-svelte-tree` merely to
+rediscover that Page, derive its parent path, or verify a node id that the agent
+just authored. When an exact portable block property contract is missing, make
+one focused `authoring-palette` call at
+`<project>::frontends.svelte.routes.<page-id>.events`; a tree lookup is not a
+prerequisite. After a successful `code-set(reveal:true)`, use the authored id
+and source path as the final reveal target. Call `dev.open` only when
+`dev.sync` did not already return the active viewer.
+
 1. Call `code-get({ project, kind:"source" })` once. It returns the current
    source, revision, every Page (`id`, `path`, typed parameters and sourceFile),
    the compact canonical block contract, and the exact application stylesheet
@@ -47,8 +66,10 @@ writing generated `+page.svelte` files.
    ambiguous or the change is broad. The same tools read and update the project
    application stylesheet when `sourceFile` is
    `authoringContract.sources.applicationStyles`; do not guess that path.
-4. Use one targeted tree/palette lookup only when the contract lacks a block,
-   property or schema path. Apply returned picker mutations unchanged.
+4. Use one targeted palette lookup only when the contract lacks a block,
+   property or schema path. Use a focused tree only when an existing source
+   target is genuinely unknown; never pair a tree and palette by default.
+   Apply returned picker mutations unchanged.
 5. For a freshly bootstrapped UI project, call the same `dev.ensure` action
    immediately after bootstrap so npm initializes while you author. Do not
    poll or retry it: Vite and the Studio viewer open automatically
