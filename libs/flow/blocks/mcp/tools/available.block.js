@@ -361,6 +361,11 @@ const _meta = {
 				}
 			}
 			if (toolName === "code-get") {
+				schema.properties.contractDetail = {
+					type: "string",
+					enum: ["starter", "full"],
+					description: "Canonical frontend source only: starter (default) returns the common authoring vocabulary; full returns every standard block descriptor for explicit diagnostics."
+				};
 					schema.properties.revision = {
 						type: "string",
 						description: "For a bounded canonical source read, optionally require this current revision."
@@ -464,11 +469,11 @@ const _meta = {
 			description = "Checks FlowScript, a canonical source selected by sourceFile, or a project block implementation.";
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
-			} else if (name === "code-get") {
-				description = "Reads code addressed by qname, block or sourceFile; canonical sources support startLine/endLine, while pattern/query/q returns small extracts like code-rg. Do not use for flow:// resources.";
-			} else if (name === "code-rg") {
-				description = "Searches FlowScript, block code or canonical frontend sources and returns revisioned contextual extracts. For a unique local match, patch directly with its revision; use bounded code-get only when more context is needed.";
-			}
+		} else if (name === "code-get") {
+			description = "Reads code by qname, block or sourceFile. Frontend sources return a bounded starter contract; use contractDetail:'full' only for diagnostics. Supports bounded line reads and code-rg extracts.";
+		} else if (name === "code-rg") {
+			description = "Searches FlowScript, block code or canonical frontend sources and returns revisioned contextual extracts. For a unique local match, patch directly with its revision; use bounded code-get only when more context is needed.";
+		}
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
 		} else if (name === "authoring-tree") {
@@ -488,7 +493,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Shortcuts include generate, build, openBuilt, dev.start, dev.stop, dev.open and dev.sync. Use dev.start with wait:false immediately after UI bootstrap or the first frontend read: it generates the starter app, overlaps npm setup with authoring, then starts Vite and opens the Studio viewer automatically. One final dev.sync regenerates the completed source. Before Playwright, call dev.open and require browserControlReady:true. Never call build while Dev is active: stopping Dev automatically rebuilds dirty production output; build is only for deployment or an explicit production check outside Dev.";
+			description = "Runs one Svelte frontend action. Never call build while Dev is active: stopping Dev automatically rebuilds dirty output. Use dev.start with wait:false to overlap setup, dev.sync once after authoring, and dev.open only when no managed viewer was returned.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {
@@ -506,7 +511,7 @@ const _meta = {
 		} else if (name === "flow-node-output-schema") {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
-			description = "Imports or customizes the exact named project for Flow authoring from the sequence template, then adds FlowEngine via DBO APIs. For a new-project request, call this before any project-local read/write and use the returned studioTarget as the authoritative project; never substitute an ambient Studio selection.";
+			description = "Imports or customizes the exact named project for Flow authoring; never substitute an ambient Studio selection. Adds FlowEngine via DBO APIs and returns the authoritative studioTarget.";
 		} else if (name === "flow-library-search") {
 			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {

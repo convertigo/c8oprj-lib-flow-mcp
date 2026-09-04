@@ -33,8 +33,8 @@ inspection calls between its steps:
 
 ```text
 flow-project-bootstrap(ui:true) -> dev.ensure(wait:false) -> code-get
--> code-check -> code-set(reveal:true) -> app.flow.css check/set if needed
--> dev.sync once -> flow-app-progress once -> dev.open once if no viewer was returned
+-> code-set(reveal:true) -> app.flow.css set if needed
+-> dev.sync once -> one browser proof -> dev.open only if no viewer was returned
 ```
 
 The bootstrap `studioTarget` and `code-get.authoringContract` are sufficient to
@@ -55,9 +55,11 @@ and source path as the final reveal target. Call `dev.open` only when
    actionId:"dev.ensure", wait:false })`. This idempotent preflight preserves a
    running viewer and restarts it after Studio was relaunched, so subsequent
    mutations are visible live. Do not poll it.
-2. Plan the Pages and transitions. Write each complete Page with
-   `code-check`, then `code-set`, addressing it by `sourceFile`. A new Page has
-   no revision. Existing Pages use their returned revision.
+2. Plan the Pages and transitions. Write each complete Page directly with
+   `code-set`, addressing it by `sourceFile`; it validates before the atomic
+   write and returns structured diagnostics on failure. Use `code-check` only
+   for an intentional dry-run. A new Page has no revision. Existing Pages use
+   their returned revision.
 3. For focused later changes, call `code-rg({ project, kind:"source",
    pattern })`. A unique contextual match already contains the `sourceFile` and
    `revision` needed by the smallest `code-patch`; do not read the whole Page.
@@ -76,10 +78,13 @@ and source path as the final reveal target. Call `dev.open` only when
    when setup completes. Call `dev.sync` once after the final repair pass to
    regenerate the completed source; use `dev.open` only to reveal an already
    running viewer.
-6. Call `flow-app-progress({ project, mode:"poc" })` once for frontend-only
-   work. Add `qname` only when a real backend Flow is part of the application.
-   Use the live dev viewer to prove the requested visible and interactive
-   behavior and confirm referenced images load without 404 responses. Build
+6. On the fast path, `flow-app-progress` is optional after successful
+   `code-set` and `dev.sync`; call it only when a consolidated readiness report
+   answers an unresolved question. Add `qname` only when a real backend Flow is
+   part of the application. Use the live dev viewer to prove the requested
+   visible and interactive behavior and confirm referenced images load without
+   404 responses. For a simple reactive value, prefer one browser evaluation
+   that captures the initial value, waits, and verifies the update. Build
    production only for deployment or an explicit production check. Never claim
    a color, layout, timer, navigation or viewer state that was not observed.
 

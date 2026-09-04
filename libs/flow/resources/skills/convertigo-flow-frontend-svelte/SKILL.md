@@ -18,15 +18,16 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - After the first `code-get` of every turn on an existing frontend, call the
   idempotent `dev.ensure` with `wait:false` before the first mutation. It keeps
   an existing Vite viewer and restarts it after Studio was relaunched. Continue
-  authoring during npm warm-up and synchronize only after a successful check.
+  authoring during npm warm-up and synchronize after the atomic source write.
 - For a fresh simple Page, keep the best-case path linear:
-  `bootstrap -> dev.ensure(wait:false) -> code-get -> code-check -> code-set ->
+  `bootstrap -> dev.ensure(wait:false) -> code-get -> code-set ->
   dev.sync -> progress`. The bootstrap target and code-get contract already
   identify `home`; do not call a tree to rediscover it. Use one palette lookup
   only for a missing portable block property contract, at the qualified
   `...routes.<page-id>.events` path. Do not call a final tree for ids just
   authored, and do not call `dev.open` when `dev.sync` already returned the
-  viewer.
+  viewer. `code-set` validates before its atomic write; use `code-check` only
+  when a dry-run is deliberately needed.
 - Import generated or supplied images with `frontend-svelte-asset-import`.
   Pass the local file and optionally a `resources/...` destination, then use
   the returned URL unchanged in Image properties or `app.flow.css`. Never copy
@@ -59,6 +60,10 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   state. Do not recheck an unchanged pilot or repeat browser setup attempts.
   Run one compact browser pass after propagation; if the managed viewer is not
   controllable after one readiness check, report that limitation and stop.
+- For a simple reactive proof, use one browser evaluation that records the
+  initial value, waits, and verifies the updated value. List/select tabs only
+  when the viewer is ambiguous; do not split one assertion across a find and
+  several evaluations.
 - Consume palette colors in `app.flow.css` through semantic
   `var(--flow-color-*)` tokens. Literal colors are for deliberate artwork and
   local effects, not semantic surfaces, text or accents. Treat

@@ -1930,6 +1930,15 @@
 				}
 			}
 			if (name === "frontend-svelte-tree") {
+				var frontendTreeFocusPath = String(args.focusPath || args.rootPath || args.path || "");
+				var frontendTreeCatalogFocus = frontendTreeFocusPath === "catalog" ||
+					frontendTreeFocusPath.indexOf(".catalog") >= 0;
+				if (args.includeFrontendCatalog === undefined || args.includeFrontendCatalog === null) {
+					args.includeFrontendCatalog = frontendTreeCatalogFocus;
+				}
+				if (args.includeFlowCatalog === undefined || args.includeFlowCatalog === null) {
+					args.includeFlowCatalog = false;
+				}
 				if (!args.detail && !args.mode) {
 					args.detail = "compact";
 				}

@@ -34,6 +34,12 @@ const _meta = {
       "type": "integer",
       "description": "Last inclusive one-based line for a bounded get; requires startLine, maximum 500 lines."
     },
+    "contractDetail": {
+      "kind": "literal",
+      "type": "string",
+      "default": "starter",
+      "description": "Authoring contract detail for a full source get: starter (default) or full."
+    },
     "codepatch": {
       "kind": "text",
       "type": "string",
@@ -712,10 +718,11 @@ const _meta = {
 		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If",
 		"State", "Derived", "DerivedBy",
 		"OnMount", "OnDestroy", "Effect", "PreEffect", "Interval", "Timeout",
-		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable"
+		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable",
+		"CallSequence"
 	];
 
-	function standardStarterItems(items) {
+	function standardStarterItems(items, includeAll) {
 		var byTag = {};
 		(items || []).forEach(function (item) {
 			var id = String(item.id || "");
@@ -726,11 +733,13 @@ const _meta = {
 			}
 		});
 		var orderedTags = PREFERRED_STARTER_TAGS.filter(function (tag) { return !!byTag[tag]; });
-		Object.keys(byTag).filter(function (tag) {
-			return PREFERRED_STARTER_TAGS.indexOf(tag) === -1;
-		}).sort().forEach(function (tag) {
-			orderedTags.push(tag);
-		});
+		if (includeAll === true) {
+			Object.keys(byTag).filter(function (tag) {
+				return PREFERRED_STARTER_TAGS.indexOf(tag) === -1;
+			}).sort().forEach(function (tag) {
+				orderedTags.push(tag);
+			});
+		}
 		return orderedTags.map(function (tag) { return byTag[tag]; });
 	}
 
@@ -823,8 +832,15 @@ const _meta = {
 				surface: "frontend",
 				builder: "svelte"
 			});
+			var contractDetail = String(props.contractDetail || "starter").toLowerCase() === "full"
+				? "full"
+				: "starter";
+			var allStandardItems = standardStarterItems(contract.items, true);
+			var selectedStandardItems = contractDetail === "full"
+				? allStandardItems
+				: standardStarterItems(contract.items, false);
 			var blocks = [];
-			standardStarterItems(contract.items).forEach(function (item) {
+			selectedStandardItems.forEach(function (item) {
 				var tag = String(item.tag || item.insert && item.insert.tag || "");
 				blocks.push({
 					tag: tag,
@@ -850,6 +866,10 @@ const _meta = {
 			});
 			return {
 				version: 2,
+				detail: contractDetail,
+				blockCount: blocks.length,
+				availableBlockCount: allStandardItems.length,
+				omittedBlockCount: Math.max(0, allStandardItems.length - blocks.length),
 				root: {
 					tag: "FlowComponent",
 					properties: {
@@ -888,7 +908,8 @@ const _meta = {
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
 					"Prefer a typed portableBlocks action over an equivalent browser expression; inspect the exact palette item once when its properties are needed.",
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
-					"Use one complete code-check after the first source pass; inspect palette only for a missing block or property.",
+					"Write one complete source pass with code-set; it validates before the atomic write. Use code-check only for an intentional dry-run.",
+					"The starter contract intentionally omits uncommon blocks. Inspect the contextual palette only for a missing block or property.",
 					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."
 				]
 			};
@@ -907,7 +928,7 @@ const _meta = {
 					code: "",
 					revision: null,
 					contentLength: 0,
-						next: "Create this canonical Flow stylesheet with code-check, then code-set without a revision."
+					next: "Create this canonical Flow stylesheet directly with code-set without a revision; it validates before writing."
 				};
 			}
 			throw new Error("Unknown Flow Svelte source: " + path.relative);

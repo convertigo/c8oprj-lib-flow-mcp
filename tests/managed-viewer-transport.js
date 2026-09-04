@@ -95,6 +95,20 @@ var unmanagedReveal = mcp.prepareToolArguments(requestContext(40811, false), {
 	}
 }, { resolveProject: false });
 
+var compactFrontendTree = mcp.prepareToolArguments(null, {
+	params: {
+		name: "frontend-svelte-tree",
+		arguments: { project: "Clock" }
+	}
+}, { resolveProject: false });
+
+var catalogFrontendTree = mcp.prepareToolArguments(null, {
+	params: {
+		name: "frontend-svelte-tree",
+		arguments: { project: "Clock", focusPath: "catalog" }
+	}
+}, { resolveProject: false });
+
 assertTrue(managed.browserDebugPort === 40811,
 	"The MCP transport header must override client-supplied viewer ports");
 assertTrue(unmanaged.browserDebugPort === undefined,
@@ -108,6 +122,12 @@ assertTrue(explicitNoReveal.reveal === false,
 	"An explicit reveal=false must override the managed reveal default");
 assertTrue(unmanagedReveal.reveal === undefined,
 	"Unmanaged transports must not change frontend source reveal behavior");
+assertTrue(compactFrontendTree.includeFrontendCatalog === false &&
+	compactFrontendTree.includeFlowCatalog === false,
+	"The default frontend tree must omit both catalogs");
+assertTrue(catalogFrontendTree.includeFrontendCatalog === true &&
+	catalogFrontendTree.includeFlowCatalog === false,
+	"An explicit frontend catalog focus must include only that catalog");
 
 [
 	"libs/flow/blocks/mcp/tool/frontend/svelte/code/set.block.js",

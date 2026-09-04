@@ -530,6 +530,10 @@ assertTrue(["code-get", "code-check", "code-set", "code-patch", "code-rg"].every
 }) && !list.result.result.tools.some(function (tool) {
 	return tool.name === "frontend-svelte-code-rg";
 }), "Unified code tools should expose canonical sources and keep project-wide rg out of the specialized public aliases");
+assertTrue(unifiedCodeTools["code-get"].inputSchema.properties.contractDetail &&
+	unifiedCodeTools["code-get"].inputSchema.properties.contractDetail.enum.indexOf("starter") !== -1 &&
+	unifiedCodeTools["code-get"].inputSchema.properties.contractDetail.enum.indexOf("full") !== -1,
+	"MCP code-get did not expose bounded frontend authoring contract detail");
 assertTrue(unifiedCodeTools["code-set"].inputSchema.properties.code &&
 	unifiedCodeTools["code-patch"].inputSchema.properties.revision &&
 	unifiedCodeTools["code-patch"].inputSchema.properties.codepatch &&
@@ -1420,6 +1424,15 @@ var frontendSvelteInspectStructure = findCompactNode(frontendSvelteInspectTree, 
 });
 assertTrue(frontendSvelteInspectStructure !== null && frontendSvelteInspectStructure.path,
 	"MCP frontend-svelte-tree detail=inspect should expose a frontend structure focus path");
+var frontendSvelteDefaultTree = callTool(13920, "frontend-svelte-tree", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource
+}).result.result.structuredContent;
+assertTrue(frontendSvelteDefaultTree.ok === true &&
+	findCompactNode(frontendSvelteDefaultTree, function (node) {
+		return node.kind === "frontendBlockCatalog" || node.kind === "catalog";
+	}) === null && JSON.stringify(frontendSvelteDefaultTree).length < 100000,
+	"MCP frontend-svelte-tree should omit frontend and Flow catalogs by default");
 var frontendSvelteBoundedFull = callTool(13921, "frontend-svelte-tree", {
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,

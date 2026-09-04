@@ -39,17 +39,38 @@ var result = block.run({
 
 var tags = result.authoringContract.blocks.map(function (item) { return item.tag; });
 assertTrue(tags.indexOf("Text") !== -1 && tags.indexOf("CallSequence") !== -1 &&
-	tags.indexOf("FuturePanel") !== -1,
-	"The compact source contract did not project every standard Svelte descriptor: " + tags.join(", "));
+	tags.indexOf("FuturePanel") === -1,
+	"The starter source contract should keep common descriptors and omit uncommon ones: " + tags.join(", "));
 assertTrue(tags.indexOf("PrivateWidget") === -1 && tags.indexOf("TextTrim") === -1,
 	"The compact source contract leaked project or portable descriptors into standard blocks");
-assertTrue(result.authoringContract.blocks.filter(function (item) { return item.tag === "FuturePanel"; })[0]
-	.slots[0] === "Children",
-	"The dynamically projected standard descriptor lost its source wrapper contract");
+assertTrue(result.authoringContract.detail === "starter" &&
+	result.authoringContract.omittedBlockCount === 1 &&
+	result.authoringContract.availableBlockCount === 3,
+	"The starter contract did not report its omitted descriptors");
 assertTrue(result.authoringContract.portableBlocks.length === 1 &&
 	result.authoringContract.portableBlocks[0].id === "text.trim",
 	"Portable blocks were not kept in their dedicated contract section");
 assertTrue(written === result, "The source block did not write the contract result");
+
+props.contractDetail = "full";
+var fullResult = block.run({
+	props: function () { return props; },
+	resourceGet: function () {
+		return { content: source, hash: "revision", contentLength: source.length };
+	},
+	authoringContractSource: function () {
+		return { items: [
+			{ id: "svelte.text", tag: "Text", properties: { text: { type: "string", intents: ["literal", "source"] } }, slots: {} },
+			{ id: "frontbuilder.svelte.callSequence", tag: "CallSequence", properties: {}, slots: {} },
+			{ id: "svelte.futurePanel", tag: "FuturePanel", properties: { title: { type: "string", intents: ["literal"] } }, slots: { children: {} } },
+			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text" }
+		] };
+	},
+	write: function () {}
+}, {});
+var futurePanel = fullResult.authoringContract.blocks.filter(function (item) { return item.tag === "FuturePanel"; })[0];
+assertTrue(fullResult.authoringContract.detail === "full" && futurePanel && futurePanel.slots[0] === "Children",
+	"The explicit full contract lost an uncommon standard descriptor");
 
 Packages.org.apache.commons.io.FileUtils.deleteQuietly(projectDir);
 print(JSON.stringify({ ok: true, tags: tags }));
