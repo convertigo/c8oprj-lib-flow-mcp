@@ -39,7 +39,7 @@ specialist merely to continue the same application.
   owning Flow capability or report the configuration problem.
 - External `/api/flow-mcp` calls use the shared Legacy/Flow bearer token from
   `CONVERTIGO_MCP_TOKEN`. Never print, persist or copy that secret.
-- Treat Flow as available only when Convertigo is at least 8.4.0 and both
+- Treat Flow as available only when Convertigo is at least 8.5.0 and both
   `lib_flow_engine` and `lib_flow_mcp` are loaded.
 
 ## Fast POC Path
