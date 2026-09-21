@@ -1,5 +1,5 @@
 .DS_Store
 _private/
-libs/flow/icons/
-libs/flow/**/icons/iconify/
-libs/flow/schemas/
+_flow/icons/
+_flow/**/icons/iconify/
+_flow/schemas/
