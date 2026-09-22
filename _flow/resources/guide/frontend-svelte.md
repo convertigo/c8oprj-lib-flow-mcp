@@ -108,7 +108,7 @@ inside the project's `resources/` directory, synchronizes the dev projection,
 and returns the canonical `resources/...` URL. Use that URL unchanged in an
 Image property or in `app.flow.css`; the generator resolves it in both dev and
 production. Do not copy files with shell commands, do not duplicate them under
-`libs/flow/resources`, and do not edit `_private/svelte/static`.
+`_flow/resources`, and do not edit `_private/svelte/static`.
 
 `code-check` reports `FRONTEND_ASSET_MISSING` when a canonical source refers to
 an absent project image. `flow-app-progress` is structural readiness, not
@@ -385,7 +385,7 @@ state. Do not implement a stopwatch by incrementing a counter on every
 ### Shared Project Components
 
 Reusable Svelte components live in the provider project's canonical
-`libs/flow/frontbuilder/svelte/components` directory. Before creating a local
+`_flow/frontbuilder/svelte/components` directory. Before creating a local
 component or mock, call the same contextual palette used by Studio:
 
 ```text

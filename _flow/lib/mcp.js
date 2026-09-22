@@ -153,7 +153,7 @@
 	}
 
 	function shortenKnownSuffix(path) {
-		var markers = ["/libs/flow/", "/libs/flows/", "/_c8oProject/"];
+		var markers = ["/_flow/", "/_c8oProject/"];
 		for (var i = 0; i < markers.length; i++) {
 			var marker = markers[i];
 			var index = path.indexOf(marker);
@@ -1214,7 +1214,7 @@
 	}
 
 	function flowScriptsDir(project) {
-		return new File(new File(String(project.getDirPath())), "libs/flows");
+		return new File(new File(String(project.getDirPath())), "_flow/flows");
 	}
 
 	function readUtf8(file) {
@@ -2156,7 +2156,7 @@
 		if (!projectRoot) {
 			return "";
 		}
-		var engineFile = new File(projectRoot, "libs/flow/engine.yaml");
+		var engineFile = new File(projectRoot, "_flow/engine.yaml");
 		if (!engineFile.isFile()) {
 			return "";
 		}
@@ -2332,10 +2332,10 @@
 		}
 		var relative = relativeProjectPath(projectRoot, file);
 		var builderSafe = safeFileName(builderName);
-		if (relative.indexOf("libs/flow/frontbuilder/" + builderSafe + "/model/") !== 0) {
+		if (relative.indexOf("_flow/frontbuilder/" + builderSafe + "/model/") !== 0) {
 			return null;
 		}
-		var engineFile = new File(projectRoot, "libs/flow/engine.yaml");
+		var engineFile = new File(projectRoot, "_flow/engine.yaml");
 		if (!engineFile.isFile()) {
 			return null;
 		}
@@ -2402,7 +2402,7 @@
 		if (targetNamespace) {
 			baseId = targetNamespace + "." + frontendSourceLocalName(baseId);
 		}
-		var rootDir = new File(projectRoot, "libs/flow/frontbuilder/" + safeFileName(builderName)).getCanonicalFile();
+		var rootDir = new File(projectRoot, "_flow/frontbuilder/" + safeFileName(builderName)).getCanonicalFile();
 		var rootPath = String(rootDir.getCanonicalPath());
 		var file = null;
 		var blockId = baseId;

@@ -8,7 +8,7 @@ metadata, then manage the browser function with `code-*` and
 `target:"frontend"`; do not hide it in generated Svelte output.
 
 For project-local FlowScript blocks, the canonical source lives under
-`libs/flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
+`_flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
 the visible contract and either one FlowScript function or one Rhino IIFE for
 the implementation. Legacy YAML descriptors are still accepted only as migration
 fallbacks for older blocks.
@@ -32,7 +32,7 @@ Use `input.*` inside Flow implementations and `local.*` for scratch state. `flow
 
 Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property. For `kind: "template"` properties, call `ctx.template(props.key)`; for expression properties, call `ctx.expr(props.key)`; use `ctx.input(props, fallback)` only for generic `value`-style properties. If Rhino code calls `ctx.lib("name")`, declare that library in `_meta.uses` so the dependency is visible in the catalog.
 
-Types live under `libs/flow/types/*.type.yaml` and may point to HTML editors under `libs/flow/types/editors/*.html`.
+Types live under `_flow/types/*.type.yaml` and may point to HTML editors under `_flow/types/editors/*.html`.
 
 Use `code-set` for project-local blocks with `block:"namespace.name"` or `kind:"block", name:"namespace.name"`. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. FlowScript code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `code-get`. Rhino code must be a complete `_meta` with `runtime: "rhino"` followed by an IIFE returning `{ run: function (ctx, node) { ... } }`. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
 

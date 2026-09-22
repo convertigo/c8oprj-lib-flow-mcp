@@ -40,7 +40,7 @@ function mcp_resources_list({ input, config, result }) {
   resource.list({
     $$id: "listResourceFiles",
     $$out: "local.resourceList",
-    rootDir: "libs/flow/resources",
+    rootDir: "_flow/resources",
     pattern: "**/*.md",
     out: "local.resourceList",
   })

@@ -89,7 +89,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
   { op:"setEnabled", path:sourceMutationPath, enabled:false } })`. Set
   `enabled:true` to restore it. Disabled nodes are ignored by execution and
   schema/data-flow analysis; absence of the disabled state means enabled.
-- For source resources (`libs/flow/blocks`, `libs/flow/types`, type editors), use search/get/patch instead of replacing whole files.
+- For source resources (`_flow/blocks`, `_flow/types`, type editors), use search/get/patch instead of replacing whole files.
 - Custom Rhino blocks are for missing low-level primitives only. They must not do HTTP or Convertigo requestable calls directly; use visible `http.get`/`http.request` and `requestable.call` nodes.
 - Enumerating JSON object keys or reading a dynamic key is not a reason for a
   project Rhino block; use the standard `object.keys`, `object.get` and

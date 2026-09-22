@@ -283,8 +283,8 @@ const _meta = {
 
   function projectLibrary(projectName, root, loaded, consumerName, references, tokens, target) {
     root = root.getCanonicalFile();
-    var backendRoot = new File(root, "libs/flow/blocks");
-    var frontendRoot = new File(root, "libs/flow/frontbuilder/svelte/components");
+    var backendRoot = new File(root, "_flow/blocks");
+    var frontendRoot = new File(root, "_flow/frontbuilder/svelte/components");
     var backendFiles = [];
     var frontendFiles = [];
     if (target !== "frontend") {

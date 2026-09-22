@@ -150,7 +150,7 @@ Svelte-only frontend work, read
 `frontend-svelte-actions` and `frontend-svelte-action`. These tools reuse the
 same authoring contract as the Studio tree and palette; do not edit generated
 Svelte output directly. Flow Svelte source follows SvelteKit routes under
-`libs/flow/frontbuilder/svelte/model/<App>/src/routes`, and generated output
+`_flow/frontbuilder/svelte/model/<App>/src/routes`, and generated output
 must stay under `_private/svelte/src/routes`.
 Read optional `flow://guide/frontend-svelte-routing` only for dynamic Page
 segments, parameters, matchers, nested layouts or route groups.

@@ -261,7 +261,7 @@ const _meta = {
 					staged.push(entry);
 				});
 				staged.sort(function (left, right) {
-					return left.path === "libs/flow/Engine.js" ? 1 : right.path === "libs/flow/Engine.js" ? -1 : left.path.localeCompare(right.path);
+					return left.path === "_flow/Engine.js" ? 1 : right.path === "_flow/Engine.js" ? -1 : left.path.localeCompare(right.path);
 				}).forEach(function (entry) {
 					moveReplacing(Files, entry.staged, entry.target);
 					entry.staged = null;

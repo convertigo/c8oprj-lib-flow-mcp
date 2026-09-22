@@ -176,7 +176,7 @@ const _meta = {
 	}
 
 	function svelteModelPath(name) {
-		return "libs/flow/frontbuilder/svelte/model/" + name + "/src/routes/+page.flow.svelte";
+		return "_flow/frontbuilder/svelte/model/" + name + "/src/routes/+page.flow.svelte";
 	}
 
 	function ensureParent(file) {
@@ -357,7 +357,7 @@ const _meta = {
 	}
 
 	function svelteResourceRoot() {
-		return "libs/flow/frontbuilder/svelte";
+		return "_flow/frontbuilder/svelte";
 	}
 
 	function ensureFrontbuilderReference(engine, project) {

@@ -297,7 +297,7 @@ const _meta = {
 		if (!parts.length || parts.some(function (part) { return !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(part); })) {
 			throw new Error("Frontend mock block names must use dot-separated identifiers.");
 		}
-		var relative = "libs/flow/blocks/" + parts.join("/") + ".browser.js";
+		var relative = "_flow/blocks/" + parts.join("/") + ".browser.js";
 		var root = new File(String(projectDir || "")).getCanonicalFile();
 		var file = new File(root, relative).getCanonicalFile();
 		if (file.exists() && !overwrite) throw new Error("Frontend mock implementation already exists: " + relative);

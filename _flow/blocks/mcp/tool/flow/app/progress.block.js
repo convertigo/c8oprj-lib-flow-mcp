@@ -177,7 +177,7 @@ const _meta = {
 	function projectBlockSources(projectDir) {
 		var File = Packages.java.io.File;
 		var FileUtils = Packages.org.apache.commons.io.FileUtils;
-		var root = new File(String(projectDir || ""), "libs/flow/blocks");
+		var root = new File(String(projectDir || ""), "_flow/blocks");
 		var sources = [];
 		function visit(directory, prefix) {
 			var files = directory && directory.listFiles();

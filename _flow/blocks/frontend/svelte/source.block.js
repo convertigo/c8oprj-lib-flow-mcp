@@ -135,8 +135,8 @@ const _meta = {
 			throw new Error("Frontend sourceFile must stay inside the target project and end with .flow.svelte or .flow.css.");
 		}
 		var relative = filePath.substring(rootPath.length + 1).replace(/\\/g, "/");
-		if (relative.indexOf("libs/flow/frontbuilder/") !== 0) {
-			throw new Error("Flow Svelte sourceFile must be under libs/flow/frontbuilder/.");
+		if (relative.indexOf("_flow/frontbuilder/") !== 0) {
+			throw new Error("Flow Svelte sourceFile must be under _flow/frontbuilder/.");
 		}
 		return { root: root, file: file, relative: relative, absolute: filePath };
 	}
@@ -167,7 +167,7 @@ const _meta = {
 		if (!root.isDirectory()) {
 			throw new Error("Flow Svelte source tools require a valid projectDir.");
 		}
-		var relativeRoot = "libs/flow/frontbuilder/svelte/model";
+		var relativeRoot = "_flow/frontbuilder/svelte/model";
 		var modelRoot = new File(root, relativeRoot).getCanonicalFile();
 		var rootPath = String(root.getCanonicalPath());
 		var modelPath = String(modelRoot.getCanonicalPath());
@@ -314,7 +314,7 @@ const _meta = {
 
 	function isProviderComponent(path) {
 		var relative = path && String(path.relative || "").replace(/\\/g, "/");
-		return !!relative && relative.indexOf("libs/flow/frontbuilder/svelte/components/") === 0 &&
+		return !!relative && relative.indexOf("_flow/frontbuilder/svelte/components/") === 0 &&
 			relative.endsWith(".flow.svelte");
 	}
 
