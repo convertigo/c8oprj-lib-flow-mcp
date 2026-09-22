@@ -8,98 +8,98 @@ const _meta = {
       "label": "codexHome",
       "kind": "template",
       "type": "string",
-      "description": "Optional Codex home directory. Defaults to ~/.codex.",
+      "description": "Optional Codex home directory. Defaults to ~/.codex."
     },
     "mcpUrl": {
       "label": "mcpUrl",
       "kind": "template",
       "type": "string",
-      "description": "Optional Flow MCP endpoint URL. Defaults to the local /convertigo/api/flow-mcp endpoint.",
+      "description": "Optional Flow MCP endpoint URL. Defaults to the local /convertigo/api/flow-mcp endpoint."
     },
     "dryRun": {
       "label": "dryRun",
       "kind": "expression",
       "type": "boolean",
       "default": false,
-      "description": "Preview the generated skill and config patch without writing files.",
+      "description": "Preview the generated skill and config patch without writing files."
     },
     "out": {
       "label": "out",
       "kind": "path",
       "mode": "write",
       "default": "local.setup",
-      "description": "Scope path receiving the setup result.",
-    },
+      "description": "Scope path receiving the setup result."
+    }
   },
   "outputs": {
     "out": {
       "type": "object",
       "properties": {
         "ok": {
-          "type": "boolean",
+          "type": "boolean"
         },
         "skillName": {
-          "type": "string",
+          "type": "string"
         },
         "skillDirectoryName": {
-          "type": "string",
+          "type": "string"
         },
         "skillStatus": {
-          "type": "string",
+          "type": "string"
         },
         "backendSkillStatus": {
-          "type": "string",
+          "type": "string"
         },
         "frontendSkillStatus": {
-          "type": "string",
+          "type": "string"
         },
         "configStatus": {
-          "type": "string",
+          "type": "string"
         },
         "configServerName": {
-          "type": "string",
+          "type": "string"
         },
         "resolvedCodexHome": {
-          "type": "string",
+          "type": "string"
         },
         "resolvedMcpUrl": {
-          "type": "string",
+          "type": "string"
         },
         "skillPath": {
-          "type": "string",
+          "type": "string"
         },
         "backendSkillPath": {
-          "type": "string",
+          "type": "string"
         },
         "frontendSkillPath": {
-          "type": "string",
+          "type": "string"
         },
         "configPath": {
-          "type": "string",
+          "type": "string"
         },
         "dryRun": {
-          "type": "boolean",
+          "type": "boolean"
         },
         "warnings": {
           "type": "array",
           "items": {
-            "type": "string",
-          },
+            "type": "string"
+          }
         },
         "nextSteps": {
           "type": "array",
           "items": {
-            "type": "string",
-          },
-        },
-      },
-    },
+            "type": "string"
+          }
+        }
+      }
+    }
   },
   "private": true,
   "tags": [
     "codex",
-    "setup",
-  ],
+    "setup"
+  ]
 }
 
 // c8o: FlowScript spike. Function calls are Flow blocks; named arguments are block properties.
@@ -157,19 +157,19 @@ function codex_setup({ input, config, result }) {
   asset.read({
     $$id: "skillAsset",
     $$out: "local.skillTemplate",
-    path: "libs/flow/resources/skills/convertigo-flow-mcp/SKILL.md",
+    path: "_flow/resources/skills/convertigo-flow-mcp/SKILL.md",
     out: "local.skillTemplate",
   })
   asset.read({
     $$id: "backendSkillAsset",
     $$out: "local.backendSkillTemplate",
-    path: "libs/flow/resources/skills/convertigo-flow-backend/SKILL.md",
+    path: "_flow/resources/skills/convertigo-flow-backend/SKILL.md",
     out: "local.backendSkillTemplate",
   })
   asset.read({
     $$id: "frontendSkillAsset",
     $$out: "local.frontendSkillTemplate",
-    path: "libs/flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md",
+    path: "_flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md",
     out: "local.frontendSkillTemplate",
   })
   template.render({
