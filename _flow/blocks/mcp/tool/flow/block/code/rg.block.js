@@ -45,5 +45,4 @@ function mcp_tool_flow_block_code_rg({ input, config, result }) {
     request: input.request,
     target: "block.code.rg",
   })
-  return result
 }

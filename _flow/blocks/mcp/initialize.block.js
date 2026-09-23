@@ -52,5 +52,4 @@ function mcp_initialize({ input, config, result }) {
       },
     },
   })
-  return result
 }

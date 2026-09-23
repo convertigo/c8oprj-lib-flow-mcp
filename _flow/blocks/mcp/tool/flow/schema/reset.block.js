@@ -42,5 +42,4 @@ function mcp_tool_flow_schema_reset({ input, config, result }) {
     request: input.request,
     target: "flow.schema.reset",
   })
-  return result
 }

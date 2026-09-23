@@ -42,5 +42,4 @@ function mcp_tool_flow_type_create({ input, config, result }) {
     request: input.request,
     target: "type.create",
   })
-  return result
 }

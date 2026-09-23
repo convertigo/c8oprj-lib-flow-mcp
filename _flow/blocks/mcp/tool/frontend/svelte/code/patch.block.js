@@ -66,5 +66,4 @@ function mcp_tool_frontend_svelte_code_patch({ input, config, result }) {
       reveal: input.reveal,
     },
   })
-  return result
 }

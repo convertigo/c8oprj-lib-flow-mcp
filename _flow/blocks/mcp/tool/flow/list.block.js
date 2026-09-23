@@ -42,5 +42,4 @@ function mcp_tool_flow_list({ input, config, result }) {
     request: input.request,
     target: "flow.list",
   })
-  return result
 }

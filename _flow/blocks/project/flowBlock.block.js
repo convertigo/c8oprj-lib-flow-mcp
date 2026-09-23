@@ -22,5 +22,4 @@ const _flow = {
 }
 
 function project_flowBlock({ input, config, result }) {
-  return result
 }

@@ -42,5 +42,4 @@ function mcp_tool_flow_test({ input, config, result }) {
     request: input.request,
     target: "flow.test",
   })
-  return result
 }

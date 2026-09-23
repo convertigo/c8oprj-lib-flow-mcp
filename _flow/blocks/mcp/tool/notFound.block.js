@@ -37,9 +37,8 @@ const _flow = {
 }
 
 function mcp_tool_notFound({ input, config, result }) {
-  mcp.response.error({
+  local.response = mcp.response.error({
     $$id: "error",
-    $$out: "local.response",
     request: input.request,
     code: -32000,
     message: "Unknown Flow MCP tool: " + ((input.request.params && input.request.params.name) || ""),

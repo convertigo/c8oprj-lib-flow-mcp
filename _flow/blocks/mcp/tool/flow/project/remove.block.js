@@ -43,5 +43,4 @@ function mcp_tool_flow_project_remove({ input, config, result }) {
     target: "project.remove",
     resolveProject: false,
   })
-  return result
 }

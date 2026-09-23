@@ -39,5 +39,4 @@ function mcp_tool_code_get({ input, config, result }) {
     request: input.request,
     operation: "get",
   })
-  return result
 }

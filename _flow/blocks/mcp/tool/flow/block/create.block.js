@@ -42,5 +42,4 @@ function mcp_tool_flow_block_create({ input, config, result }) {
     request: input.request,
     target: "block.create",
   })
-  return result
 }

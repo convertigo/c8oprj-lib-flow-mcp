@@ -42,5 +42,4 @@ function mcp_tool_flow_block_list({ input, config, result }) {
     request: input.request,
     target: "block.list",
   })
-  return result
 }

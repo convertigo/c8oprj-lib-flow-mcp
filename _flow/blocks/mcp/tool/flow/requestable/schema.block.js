@@ -44,5 +44,4 @@ function mcp_tool_flow_requestable_schema({ input, config, result }) {
     request: input.request,
     target: "requestable.schema",
   })
-  return result
 }

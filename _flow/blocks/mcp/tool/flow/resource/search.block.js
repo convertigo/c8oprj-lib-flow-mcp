@@ -42,5 +42,4 @@ function mcp_tool_flow_resource_search({ input, config, result }) {
     request: input.request,
     target: "resource.search",
   })
-  return result
 }

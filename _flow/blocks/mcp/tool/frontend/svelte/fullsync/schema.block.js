@@ -40,5 +40,4 @@ function mcp_tool_frontend_svelte_fullsync_schema({ input, config, result }) {
     request: input.request,
     target: "frontend.fullsync.schema.attach",
   })
-  return result
 }

@@ -39,5 +39,4 @@ function mcp_tool_code_set({ input, config, result }) {
     request: input.request,
     operation: "set",
   })
-  return result
 }

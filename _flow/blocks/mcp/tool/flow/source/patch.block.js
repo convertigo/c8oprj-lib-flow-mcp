@@ -43,5 +43,4 @@ function mcp_tool_flow_source_patch({ input, config, result }) {
     request: input.request,
     target: "flow.source.patch",
   })
-  return result
 }

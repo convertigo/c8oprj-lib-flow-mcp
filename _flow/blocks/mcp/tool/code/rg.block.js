@@ -40,5 +40,4 @@ function mcp_tool_code_rg({ input, config, result }) {
     request: input.request,
     operation: "rg",
   })
-  return result
 }

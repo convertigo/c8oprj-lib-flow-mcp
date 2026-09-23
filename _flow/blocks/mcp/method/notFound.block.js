@@ -37,9 +37,8 @@ const _flow = {
 }
 
 function mcp_method_notFound({ input, config, result }) {
-  mcp.response.error({
+  local.response = mcp.response.error({
     $$id: "error",
-    $$out: "local.response",
     request: input.request,
     code: -32601,
     message: "Method not found: " + (input.request.method || ""),

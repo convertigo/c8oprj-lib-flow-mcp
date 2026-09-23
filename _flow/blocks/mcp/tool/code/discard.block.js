@@ -39,5 +39,4 @@ function mcp_tool_code_discard({ input, config, result }) {
     request: input.request,
     operation: "discard",
   })
-  return result
 }

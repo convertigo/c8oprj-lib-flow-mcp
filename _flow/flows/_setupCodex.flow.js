@@ -30,9 +30,8 @@ const _flow = {
 }
 
 function _setupCodex({ input, config, result }) {
-  codex.setup({
+  local.setup = codex.setup({
     $$id: "setup",
-    $$out: "local.setup",
     codexHome: input.codexHome,
     mcpUrl: input.mcpUrl,
     dryRun: input.dryRun,

@@ -42,5 +42,4 @@ function mcp_tool_frontend_svelte_action({ input, config, result }) {
     request: input.request,
     target: "authoring.action",
   })
-  return result
 }

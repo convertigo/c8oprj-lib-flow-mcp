@@ -40,5 +40,4 @@ function mcp_tool_code_run({ input, config, result }) {
     request: input.request,
     operation: "run",
   })
-  return result
 }

@@ -44,5 +44,4 @@ function mcp_tool_flow_code_run({ input, config, result }) {
     request: input.request,
     target: "flow.code.run",
   })
-  return result
 }

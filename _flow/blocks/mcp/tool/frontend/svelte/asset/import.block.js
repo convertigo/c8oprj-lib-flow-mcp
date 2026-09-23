@@ -40,5 +40,4 @@ function mcp_tool_frontend_svelte_asset_import({ input, config, result }) {
     request: input.request,
     target: "frontend.asset.import",
   })
-  return result
 }

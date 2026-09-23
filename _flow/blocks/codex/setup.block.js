@@ -110,113 +110,82 @@ const _flow = {
 }
 
 function codex_setup({ input, config, result }) {
-  endpoint.current({
+  local.endpoint = endpoint.current({
     $$id: "endpoint",
-    $$out: "local.endpoint",
-    out: "local.endpoint",
   })
   set({
     $$id: "mcpUrl",
     path: "local.mcpUrl",
     value: startsWith(input.mcpUrl, '{{') ? local.endpoint.flowMcpUrl : default(input.mcpUrl, local.endpoint.flowMcpUrl),
   })
-  path.resolveHome({
+  local.codexHome = path.resolveHome({
     $$id: "codexHome",
-    $$out: "local.codexHome",
     path: startsWith(input.codexHome, '{{') ? '~/.codex' : default(input.codexHome, '~/.codex'),
-    out: "local.codexHome",
   })
-  path.resolveHome({
+  local.skillPath = path.resolveHome({
     $$id: "skillPath",
-    $$out: "local.skillPath",
     path: local.codexHome,
     suffix: "skills/convertigo-flow-mcp/SKILL.md",
-    out: "local.skillPath",
   })
-  path.resolveHome({
+  local.backendSkillPath = path.resolveHome({
     $$id: "backendSkillPath",
-    $$out: "local.backendSkillPath",
     path: local.codexHome,
     suffix: "skills/convertigo-flow-backend/SKILL.md",
-    out: "local.backendSkillPath",
   })
-  path.resolveHome({
+  local.frontendSkillPath = path.resolveHome({
     $$id: "frontendSkillPath",
-    $$out: "local.frontendSkillPath",
     path: local.codexHome,
     suffix: "skills/convertigo-flow-frontend-svelte/SKILL.md",
-    out: "local.frontendSkillPath",
   })
-  path.resolveHome({
+  local.configPath = path.resolveHome({
     $$id: "configPath",
-    $$out: "local.configPath",
     path: local.codexHome,
     suffix: "config.toml",
-    out: "local.configPath",
   })
-  asset.read({
+  local.skillTemplate = asset.read({
     $$id: "skillAsset",
-    $$out: "local.skillTemplate",
     path: "_flow/resources/skills/convertigo-flow-mcp/SKILL.md",
-    out: "local.skillTemplate",
   })
-  asset.read({
+  local.backendSkillTemplate = asset.read({
     $$id: "backendSkillAsset",
-    $$out: "local.backendSkillTemplate",
     path: "_flow/resources/skills/convertigo-flow-backend/SKILL.md",
-    out: "local.backendSkillTemplate",
   })
-  asset.read({
+  local.frontendSkillTemplate = asset.read({
     $$id: "frontendSkillAsset",
-    $$out: "local.frontendSkillTemplate",
     path: "_flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md",
-    out: "local.frontendSkillTemplate",
   })
-  template.render({
+  local.skillMarkdown = template.render({
     $$id: "skillMarkdown",
-    $$out: "local.skillMarkdown",
     template: "{{ local.skillTemplate }}",
-    out: "local.skillMarkdown",
   })
-  template.render({
+  local.backendSkillMarkdown = template.render({
     $$id: "backendSkillMarkdown",
-    $$out: "local.backendSkillMarkdown",
     template: "{{ local.backendSkillTemplate }}",
-    out: "local.backendSkillMarkdown",
   })
-  template.render({
+  local.frontendSkillMarkdown = template.render({
     $$id: "frontendSkillMarkdown",
-    $$out: "local.frontendSkillMarkdown",
     template: "{{ local.frontendSkillTemplate }}",
-    out: "local.frontendSkillMarkdown",
   })
-  file.writeIfChanged({
+  local.skillWrite = file.writeIfChanged({
     $$id: "writeSkill",
-    $$out: "local.skillWrite",
     path: local.skillPath,
     content: local.skillMarkdown,
     dryRun: input.dryRun == true || input.dryRun == 'true',
-    out: "local.skillWrite",
   })
-  file.writeIfChanged({
+  local.backendSkillWrite = file.writeIfChanged({
     $$id: "writeBackendSkill",
-    $$out: "local.backendSkillWrite",
     path: local.backendSkillPath,
     content: local.backendSkillMarkdown,
     dryRun: input.dryRun == true || input.dryRun == 'true',
-    out: "local.backendSkillWrite",
   })
-  file.writeIfChanged({
+  local.frontendSkillWrite = file.writeIfChanged({
     $$id: "writeFrontendSkill",
-    $$out: "local.frontendSkillWrite",
     path: local.frontendSkillPath,
     content: local.frontendSkillMarkdown,
     dryRun: input.dryRun == true || input.dryRun == 'true',
-    out: "local.frontendSkillWrite",
   })
-  toml.ensureSection({
+  local.configPatch = toml.ensureSection({
     $$id: "patchConfig",
-    $$out: "local.configPatch",
     path: local.configPath,
     section: "mcp_servers.convertigo-flow",
     values: {
@@ -226,12 +195,9 @@ function codex_setup({ input, config, result }) {
       bearer_token_env_var: "CONVERTIGO_MCP_TOKEN",
     },
     dryRun: input.dryRun == true || input.dryRun == 'true',
-    out: "local.configPatch",
   })
-  json.object({
+  local.setup = json.object({
     $$id: "summary",
-    $$out: "local.setup",
-    out: "local.setup",
     $$fields: function () {
       json.field({
         $$id: "ok",

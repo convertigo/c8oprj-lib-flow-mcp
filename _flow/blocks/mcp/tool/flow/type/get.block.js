@@ -42,5 +42,4 @@ function mcp_tool_flow_type_get({ input, config, result }) {
     request: input.request,
     target: "type.get",
   })
-  return result
 }

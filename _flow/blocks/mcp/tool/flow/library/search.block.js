@@ -42,5 +42,4 @@ function mcp_tool_flow_library_search({ input, config, result }) {
     request: input.request,
     target: "project.library.search",
   })
-  return result
 }

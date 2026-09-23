@@ -49,9 +49,8 @@ function mcp_batch({ input, config, result }) {
     $$id: "eachRequest",
     items: input.request,
     $$nodes: function () {
-      mcp.handle({
+      local.response = mcp.handle({
         $$id: "handleRequest",
-        $$out: "local.response",
         request: current,
         out: "local.response",
       })

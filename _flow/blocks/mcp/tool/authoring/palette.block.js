@@ -42,5 +42,4 @@ function mcp_tool_authoring_palette({ input, config, result }) {
     request: input.request,
     target: "authoring.palette",
   })
-  return result
 }

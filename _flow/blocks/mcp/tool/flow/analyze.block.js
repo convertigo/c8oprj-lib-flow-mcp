@@ -42,5 +42,4 @@ function mcp_tool_flow_analyze({ input, config, result }) {
     request: input.request,
     target: "flow.analyze",
   })
-  return result
 }

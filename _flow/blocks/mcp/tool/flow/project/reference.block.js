@@ -43,5 +43,4 @@ function mcp_tool_flow_project_reference({ input, config, result }) {
     target: "project.reference",
     resolveProject: false,
   })
-  return result
 }

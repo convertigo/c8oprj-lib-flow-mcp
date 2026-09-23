@@ -45,5 +45,4 @@ function mcp_tool_frontend_svelte_code_rg({ input, config, result }) {
       operation: "rg",
     },
   })
-  return result
 }

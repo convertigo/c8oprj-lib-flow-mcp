@@ -54,5 +54,4 @@ function mcp_tool_frontend_svelte_code_check({ input, config, result }) {
       operation: "check",
     },
   })
-  return result
 }

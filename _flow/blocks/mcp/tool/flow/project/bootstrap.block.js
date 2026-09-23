@@ -43,5 +43,4 @@ function mcp_tool_flow_project_bootstrap({ input, config, result }) {
     target: "project.bootstrap",
     resolveProject: false,
   })
-  return result
 }

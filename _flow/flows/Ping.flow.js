@@ -15,5 +15,4 @@ function Ping({ input, config, result }) {
       endpoint: "/flow-mcp",
     },
   })
-  return result
 }

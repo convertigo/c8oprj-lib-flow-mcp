@@ -43,5 +43,4 @@ function mcp_tool_flow_fullsync_scaffold({ input, config, result }) {
     target: "project.fullsync.scaffold",
     resolveProject: false,
   })
-  return result
 }

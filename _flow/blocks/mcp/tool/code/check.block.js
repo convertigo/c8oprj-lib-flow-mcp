@@ -39,5 +39,4 @@ function mcp_tool_code_check({ input, config, result }) {
     request: input.request,
     operation: "check",
   })
-  return result
 }

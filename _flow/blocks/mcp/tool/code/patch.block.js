@@ -40,5 +40,4 @@ function mcp_tool_code_patch({ input, config, result }) {
     request: input.request,
     operation: "patch",
   })
-  return result
 }

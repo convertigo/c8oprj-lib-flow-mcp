@@ -44,5 +44,4 @@ function mcp_tool_flow_block_code_set({ input, config, result }) {
     request: input.request,
     target: "block.code.set",
   })
-  return result
 }

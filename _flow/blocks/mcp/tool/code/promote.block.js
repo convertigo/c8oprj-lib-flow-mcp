@@ -39,5 +39,4 @@ function mcp_tool_code_promote({ input, config, result }) {
     request: input.request,
     operation: "promote",
   })
-  return result
 }

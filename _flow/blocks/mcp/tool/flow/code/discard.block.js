@@ -44,5 +44,4 @@ function mcp_tool_flow_code_discard({ input, config, result }) {
     request: input.request,
     target: "flow.code.discard",
   })
-  return result
 }

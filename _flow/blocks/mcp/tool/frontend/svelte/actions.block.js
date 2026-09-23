@@ -42,5 +42,4 @@ function mcp_tool_frontend_svelte_actions({ input, config, result }) {
     request: input.request,
     target: "authoring.menu",
   })
-  return result
 }

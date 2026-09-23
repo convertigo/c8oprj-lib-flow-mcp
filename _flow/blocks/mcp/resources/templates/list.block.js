@@ -37,10 +37,8 @@ const _flow = {
 }
 
 function mcp_resources_templates_list({ input, config, result }) {
-  json.object({
+  local.payload = json.object({
     $$id: "payload",
-    $$out: "local.payload",
-    out: "local.payload",
     $$fields: function () {
       json.field({
         $$id: "resourceTemplates",
@@ -49,12 +47,10 @@ function mcp_resources_templates_list({ input, config, result }) {
       })
     },
   })
-  mcp.response.result({
+  local.response = mcp.response.result({
     $$id: "wrapResult",
-    $$out: "local.response",
     request: input.request,
     result: local.payload,
     out: "local.response",
   })
-  return result
 }

@@ -42,5 +42,4 @@ function mcp_tool_flow_apply({ input, config, result }) {
     request: input.request,
     target: "flow.apply",
   })
-  return result
 }

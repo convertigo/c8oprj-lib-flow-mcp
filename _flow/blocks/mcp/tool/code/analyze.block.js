@@ -39,5 +39,4 @@ function mcp_tool_code_analyze({ input, config, result }) {
     request: input.request,
     operation: "analyze",
   })
-  return result
 }

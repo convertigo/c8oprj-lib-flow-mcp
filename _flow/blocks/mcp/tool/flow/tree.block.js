@@ -42,5 +42,4 @@ function mcp_tool_flow_tree({ input, config, result }) {
     request: input.request,
     target: "flow.tree",
   })
-  return result
 }

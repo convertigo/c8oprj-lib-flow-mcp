@@ -43,5 +43,4 @@ function mcp_tool_flow_requestable_list({ input, config, result }) {
     request: input.request,
     target: "requestable.list",
   })
-  return result
 }

@@ -42,5 +42,4 @@ function mcp_tool_flow_context({ input, config, result }) {
     request: input.request,
     target: "flow.context",
   })
-  return result
 }

@@ -38,5 +38,4 @@ function mcp_tool_flow_cache_info({ input, config, result }) {
     request: input.request,
     target: "cache.info",
   })
-  return result
 }

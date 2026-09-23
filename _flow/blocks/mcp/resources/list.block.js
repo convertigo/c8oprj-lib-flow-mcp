@@ -37,12 +37,10 @@ const _flow = {
 }
 
 function mcp_resources_list({ input, config, result }) {
-  resource.list({
+  local.resourceList = resource.list({
     $$id: "listResourceFiles",
-    $$out: "local.resourceList",
     rootDir: "_flow/resources",
     pattern: "**/*.md",
-    out: "local.resourceList",
   })
   set({
     $$id: "resources",
@@ -92,10 +90,8 @@ function mcp_resources_list({ input, config, result }) {
       })
     },
   })
-  json.object({
+  local.payload = json.object({
     $$id: "payload",
-    $$out: "local.payload",
-    out: "local.payload",
     $$fields: function () {
       json.field({
         $$id: "resources",
@@ -109,5 +105,4 @@ function mcp_resources_list({ input, config, result }) {
     request: input.request,
     result: local.payload,
   })
-  return result
 }

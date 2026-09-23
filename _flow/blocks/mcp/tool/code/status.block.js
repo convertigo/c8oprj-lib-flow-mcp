@@ -39,5 +39,4 @@ function mcp_tool_code_status({ input, config, result }) {
     request: input.request,
     operation: "status",
   })
-  return result
 }

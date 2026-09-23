@@ -114,7 +114,9 @@ keeps files on disk. Use `action:"delete"` only after the plan reports
 `safe:true`; dirty, linked, Git-backed and referenced projects are protected by
 default. Never use `force:true` without reviewing every returned blocker.
 
-In `definition.nodes[]`, node properties are direct fields, for example `{id:"call", block:"requestable.call", requestable:".GetFeed", out:"local.feed"}`. Do not nest graph fields under `props` or `properties` in a complete definition. `properties` is only an MCP argument for `flow-node-add/edit` when mutating an existing Flow.
+Write result captures as `local.feed = requestable.call({ requestable: ".GetFeed" })`, with multiline named arguments when useful. In source version 2, `$$out` is the explicit metadata spelling of the same capture, not a business parameter; the canonical writer emits the assignment. A plain `out` is only valid when it is a declared business property. Arithmetic and comparisons can remain expressions.
+
+When debugging `definition.nodes[]`, version 2 keeps business properties in `props`: `{id:"call", block:"requestable.call", props:{requestable:".GetFeed"}, out:"local.feed"}`. The structural AST `out` is distinct from `props.out`. Prefer FlowScript over raw definitions for normal authoring.
 
 When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.
 

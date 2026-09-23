@@ -38,5 +38,4 @@ function mcp_tool_flow_cache_clear({ input, config, result }) {
     request: input.request,
     target: "cache.clear",
   })
-  return result
 }

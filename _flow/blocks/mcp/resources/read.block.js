@@ -31,27 +31,22 @@ const _flow = {
 }
 
 function mcp_resources_read({ input, config, result }) {
-  resource.list({
+  local.resourceList = resource.list({
     $$id: "listResourceFiles",
-    $$out: "local.resourceList",
     rootDir: "_flow/resources",
     pattern: "**/*.md",
-    out: "local.resourceList",
   })
-  list.filter({
+  local.matches = list.filter({
     $$id: "filterUri",
-    $$out: "local.matches",
     items: local.resourceList.resources,
     where: current.uri == input.request.params.uri,
-    out: "local.matches",
   })
   if({
     $$id: "if4",
     condition: length(local.matches) == 0,
     $$then: function () {
-      mcp.response.error({
+      local.response = mcp.response.error({
         $$id: "error",
-        $$out: "local.response",
         request: input.request,
         code: -32000,
         message: "Unknown Flow MCP resource: " + (input.request.params.uri || ""),
@@ -66,16 +61,12 @@ function mcp_resources_read({ input, config, result }) {
       })
     },
   })
-  resource.get({
+  local.resource = resource.get({
     $$id: "readResource",
-    $$out: "local.resource",
     path: "{{ local.matches.0.path }}",
-    out: "local.resource",
   })
-  json.object({
+  local.content = json.object({
     $$id: "content",
-    $$out: "local.content",
-    out: "local.content",
     $$fields: function () {
       json.field({
         $$id: "uri",
@@ -94,10 +85,8 @@ function mcp_resources_read({ input, config, result }) {
       })
     },
   })
-  json.object({
+  local.payload = json.object({
     $$id: "payload",
-    $$out: "local.payload",
-    out: "local.payload",
     $$fields: function () {
       json.field({
         $$id: "contents",
@@ -113,5 +102,4 @@ function mcp_resources_read({ input, config, result }) {
     request: input.request,
     result: local.payload,
   })
-  return result
 }

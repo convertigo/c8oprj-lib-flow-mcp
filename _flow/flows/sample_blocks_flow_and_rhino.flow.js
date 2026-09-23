@@ -32,18 +32,16 @@ const _flow = {
 }
 
 function sample_blocks_flow_and_rhino({ input, config, result }) {
-  sample.formatGreeting({
+  local.greeting = sample.formatGreeting({
     $$id: "greeting",
     $$comment: "Only call Flow blocks with one object containing named parameters.",
-    $$out: "local.greeting",
     name: input.name,
     city: input.city,
     prefix: "Hello",
   })
-  sample.sha256({
+  local.hash = sample.sha256({
     $$id: "hash",
     $$comment: "Rhino is reserved for one small Java bridge or primitive, not a full feature.",
-    $$out: "local.hash",
     text: local.greeting,
   })
   set({
@@ -64,19 +62,15 @@ function sample_blocks_flow_and_rhino({ input, config, result }) {
       },
     ],
   })
-  list.filter({
+  local.hotCities = list.filter({
     $$id: "hotCities",
-    $$out: "local.hotCities",
     items: local.cities,
     where: current.temperature >= input.minTemperature,
-    out: "local.hotCities",
   })
-  list.map({
+  local.hotCityNames = list.map({
     $$id: "hotCityNames",
-    $$out: "local.hotCityNames",
     items: local.hotCities,
     select: current.name,
-    out: "local.hotCityNames",
   })
   set({
     $$id: "greeting",
@@ -98,5 +92,4 @@ function sample_blocks_flow_and_rhino({ input, config, result }) {
     path: "result.count",
     value: local.hotCityNames.length,
   })
-  return result
 }

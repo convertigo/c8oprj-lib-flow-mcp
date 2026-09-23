@@ -42,5 +42,4 @@ function mcp_tool_flow_block_edit({ input, config, result }) {
     request: input.request,
     target: "block.edit",
   })
-  return result
 }

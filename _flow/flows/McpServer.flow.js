@@ -20,9 +20,8 @@ const _flow = {
 }
 
 function McpServer({ input, config, result }) {
-  mcp.request({
+  local.request = mcp.request({
     $$id: "parseRequest",
-    $$out: "local.request",
     request: input.request,
     out: "local.request",
   })
@@ -30,9 +29,8 @@ function McpServer({ input, config, result }) {
     $$id: "if3",
     condition: length(local.request) > 0,
     $$then: function () {
-      mcp.batch({
+      local.response = mcp.batch({
         $$id: "handleBatch",
-        $$out: "local.response",
         request: local.request,
         out: "local.response",
       })
@@ -42,9 +40,8 @@ function McpServer({ input, config, result }) {
       })
     },
   })
-  mcp.handle({
+  local.response = mcp.handle({
     $$id: "handleSingle",
-    $$out: "local.response",
     request: local.request,
     out: "local.response",
   })

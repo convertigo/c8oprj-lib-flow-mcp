@@ -64,5 +64,4 @@ function mcp_tool_frontend_svelte_code_get({ input, config, result }) {
       operation: "get",
     },
   })
-  return result
 }

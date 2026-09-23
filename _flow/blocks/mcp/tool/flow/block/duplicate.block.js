@@ -42,5 +42,4 @@ function mcp_tool_flow_block_duplicate({ input, config, result }) {
     request: input.request,
     target: "block.duplicate",
   })
-  return result
 }

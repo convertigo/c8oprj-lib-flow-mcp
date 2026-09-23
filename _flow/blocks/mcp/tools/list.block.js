@@ -37,15 +37,12 @@ const _flow = {
 }
 
 function mcp_tools_list({ input, config, result }) {
-  mcp.tools.available({
+  local.tools = mcp.tools.available({
     $$id: "availableTools",
-    $$out: "local.tools",
     out: "local.tools",
   })
-  json.object({
+  local.payload = json.object({
     $$id: "payload",
-    $$out: "local.payload",
-    out: "local.payload",
     $$fields: function () {
       json.field({
         $$id: "tools",
@@ -59,5 +56,4 @@ function mcp_tools_list({ input, config, result }) {
     request: input.request,
     result: local.payload,
   })
-  return result
 }

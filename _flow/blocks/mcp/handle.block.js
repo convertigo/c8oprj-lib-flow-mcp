@@ -41,9 +41,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if2",
     condition: input.request.__flowMcpAuthenticationError,
     $$then: function () {
-      mcp.response.error({
+      local.response = mcp.response.error({
         $$id: "authenticationError",
-        $$out: "local.response",
         request: input.request,
         code: -32001,
         message: input.request.__flowMcpAuthenticationError.message,
@@ -62,9 +61,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if8",
     condition: input.request.method == "initialize",
     $$then: function () {
-      mcp.initialize({
+      local.response = mcp.initialize({
         $$id: "handleInitialize",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -78,9 +76,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if12",
     condition: input.request.method == "tools/list",
     $$then: function () {
-      mcp.tools.list({
+      local.response = mcp.tools.list({
         $$id: "handleToolsList",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -94,9 +91,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if16",
     condition: input.request.method == "tools/call",
     $$then: function () {
-      mcp.tools.call({
+      local.response = mcp.tools.call({
         $$id: "handleToolsCall",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -110,9 +106,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if20",
     condition: input.request.method == "resources/list",
     $$then: function () {
-      mcp.resources.list({
+      local.response = mcp.resources.list({
         $$id: "handleResourcesList",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -126,9 +121,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if24",
     condition: input.request.method == "resources/templates/list",
     $$then: function () {
-      mcp.resources.templates.list({
+      local.response = mcp.resources.templates.list({
         $$id: "handleResourceTemplatesList",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -142,9 +136,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if28",
     condition: input.request.method == "resources/read",
     $$then: function () {
-      mcp.resources.read({
+      local.response = mcp.resources.read({
         $$id: "handleResourcesRead",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -158,9 +151,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if32",
     condition: input.request.method == "notifications/initialized",
     $$then: function () {
-      mcp.notification({
+      local.response = mcp.notification({
         $$id: "handleInitializedNotification",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -174,9 +166,8 @@ function mcp_handle({ input, config, result }) {
     $$id: "if36",
     condition: startsWith(input.request.method, "notifications/"),
     $$then: function () {
-      mcp.notification({
+      local.response = mcp.notification({
         $$id: "handleNotification",
-        $$out: "local.response",
         request: input.request,
         out: "local.response",
       })
@@ -186,9 +177,8 @@ function mcp_handle({ input, config, result }) {
       })
     },
   })
-  mcp.method.notFound({
+  local.response = mcp.method.notFound({
     $$id: "methodNotFound",
-    $$out: "local.response",
     request: input.request,
     out: "local.response",
   })

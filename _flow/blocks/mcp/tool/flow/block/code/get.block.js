@@ -44,5 +44,4 @@ function mcp_tool_flow_block_code_get({ input, config, result }) {
     request: input.request,
     target: "block.code.get",
   })
-  return result
 }
