@@ -32,7 +32,7 @@ const _meta = {
 
 (function () {
 	var ENGINE_PROJECT = "lib_flow_engine";
-	var ENGINE_RESOURCE_PATTERN = /^libs\/flow\/(?:Engine\.js|modules\/[A-Za-z0-9_.-]+\.js)$/;
+	var ENGINE_RESOURCE_PATTERN = /^_flow\/(?:Engine\.js|modules\/[A-Za-z0-9_.-]+\.js)$/;
 	var MAX_FILES = 16;
 	var MAX_FILE_BYTES = 1024 * 1024;
 	var MAX_TOTAL_BYTES = 4 * 1024 * 1024;
