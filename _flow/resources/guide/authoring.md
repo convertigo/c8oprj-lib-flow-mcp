@@ -4,7 +4,7 @@ For pure blocks shared by backend FlowScript and Flow Svelte, read
 `flow://guide/portable-blocks`. The block id, properties and outputs stay
 canonical while backend and frontend implementations remain explicit targets.
 
-Prefer natural assignments in source version 2. Keep named arguments multiline
+Prefer natural assignments. Keep named arguments multiline
 for readable Git diffs and focused patches:
 
 ```javascript
@@ -29,7 +29,7 @@ Create or modify a Flow sidecar with the smallest loop that proves behavior:
 - `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
 - `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
 - For a new Flow, write compact FlowScript first with `code-set`, patch the working copy with `code-patch`, run it with `code-run`, then call `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, the Flow is still a draft: call `code-promote` before stopping. Use `code-status` when you need dirty/revision state and `code-discard` to cancel the buffer. Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user explicitly asks for low-level debugging.
-- Use raw `definition.nodes[]` only when debugging the compiler/model conversion. In source version 2, business properties are in `props`, while identity and capture are structural: `{id:"call", block:"requestable.call", props:{requestable:".GetFeed"}, out:"local.feed"}`. Prefer a FlowScript assignment, as illustrated above, for authoring.
+- Use raw `definition.nodes[]` only when debugging the compiler/model conversion. Business properties are in `props`, while identity and capture are structural: `{id:"call", block:"requestable.call", props:{requestable:".GetFeed"}, out:"local.feed"}`. Prefer a FlowScript assignment, as illustrated above, for authoring.
 - Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`. Expression arrays/objects can contain scope expressions, for example `args: [command]` or `select: { title: current.title }`.
 - For array projections, prefer `var mapped = list.map({ items, select: {
   field: current.field } }); result.mapped = mapped`. Do not hard-code

@@ -251,8 +251,8 @@ Flow Svelte preserves the three NGX SmartType intents:
 
 The quoted/expression distinction matters. A schema-backed value always starts
 with `@`. Use the canonical bindable property of each block:
-`Text.text`, `Button.label`, `Image.src`, and `ForEach.source`. The old
-`source` property on Text, Button and Image is a hidden migration alias, not
+`Text.text`, `Button.label`, `Image.src`, and `ForEach.source`. The hidden
+`source` property on Text, Button and Image is a compatibility alias, not
 authoring syntax.
 Common sources are:
 
@@ -357,8 +357,7 @@ Use `SetValue`, `UpdateList` and `UpdateNumber` for explicit client state.
 Their values are literals or schema-backed sources, not arbitrary browser
 expressions. Use `Derived`/`DerivedBy` for pure computation from state, or a
 typed frontend Flow block for reusable browser behavior. Pure dual-target Flow
-blocks are inserted directly by their palette tag. `RunAxiom` is legacy
-migration syntax, not authoring syntax.
+blocks are inserted directly by their palette tag; never write `RunAxiom`.
 
 ### Clocks And Timers
 

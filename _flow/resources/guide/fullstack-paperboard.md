@@ -51,7 +51,7 @@ schema-backed sources. For a computation shared with backend FlowScript, use a
 dual-target portable block rather than duplicating subtly different Rhino and
 browser expressions.
 
-In hardening mode, every legacy, invalid or unknown action/schema-path warning
+In hardening mode, every plain-string, invalid or unknown action/schema-path warning
 must be fixed before progress can reach 100%. Execute
 `frontend.bindingWarnings[].fix` directly when present; for a
 missing binding, execute its `inspect` call and select a returned schema-backed

@@ -1046,7 +1046,7 @@ const _meta = {
 					example: summary.arrayPaths.length
 						? { forEachBinding: sourceBinding(source, summary.arrayPaths[0]), statusActionId: executionId }
 						: { binding: sourceBinding(source, summary.leafPaths[0] || ""), statusActionId: executionId },
-					note: "Pass one returned binding or mutation unchanged. String paths are migration input only."
+					note: "Pass one returned binding or mutation unchanged. String paths are not accepted as bindings."
 				});
 			} catch (e) {
 				frontend.bindingSuggestions.push({
@@ -1456,8 +1456,8 @@ const _meta = {
 					message: intuitiveSource
 						? "This intuitive source reference does not match a known action or iterator."
 						: descriptor
-						? "Replace this legacy string path with the schema-backed binding descriptor."
-						: "This bindable property still uses a legacy string path; select a picker candidate."
+						? "Replace this plain string path with the schema-backed binding descriptor."
+						: "This bindable property still uses a plain string path; select a picker candidate."
 			};
 			if (descriptor && binding.sourceFile && (binding.sourcePropertyMutationPath || binding.sourceMutationPath)) {
 				var direct = String(binding.sourcePropertyMutationPath || "");

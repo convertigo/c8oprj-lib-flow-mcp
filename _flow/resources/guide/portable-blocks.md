@@ -38,7 +38,7 @@ Flow Svelte uses the direct palette tag generated from that id:
 With no `target`, consume the result as `@normalizeName`. Set `target` only to
 an existing `local.name` when the action must update that state.
 
-Never author `RunAxiom`; it exists only as a legacy migration input. The Svelte
+Never author `RunAxiom`; insert the portable tag directly. The Svelte
 compiler lowers a direct portable tag to a static import and bundles only used
 browser functions.
 

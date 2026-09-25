@@ -10,8 +10,7 @@ metadata, then manage the browser function with `code-*` and
 For project-local FlowScript blocks, the canonical source lives under
 `_flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
 the visible contract and either one FlowScript function or one Rhino IIFE for
-the implementation. Legacy YAML descriptors are still accepted only as migration
-fallbacks for older blocks.
+the implementation.
 
 Before creating a new block, inspect real samples:
 

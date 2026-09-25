@@ -38,23 +38,23 @@ Runtime shape:
 
 ```text
 lib_flow_mcp.McpServer
-  -> libs/flows/McpServer.flow.yaml
+  -> _flow/flows/McpServer.flow.js
   -> high-level MCP graph blocks (mcp.batch, mcp.handle, mcp.tools.call)
   -> visible tools/call families (inspect, source, author, runtime)
   -> private mcp.* blocks
   -> reusable core/project blocks via ctx.callBlock(...)
-  -> explicit low-level libraries in libs/flow/lib/*.js, declared with uses
+  -> explicit low-level libraries in _flow/lib/*.js, declared with uses
   -> lib_flow_engine.Engine
 ```
 
 The flow graph owns the visible protocol routing. Reusable protocol branches
 that deserve a palette/catalog item are composite graph blocks in
-`libs/flow/blocks/*.block.js`; for example `mcp.handle` routes one JSON-RPC
+`_flow/blocks/*.block.js`; for example `mcp.handle` routes one JSON-RPC
 request, and `mcp.tools.call` is implemented with `mcp.tool.identify` and one
 branch per tool family. Private native `mcp.*` blocks keep the low-level
 JSON-RPC/Convertigo glue small. When reusable behavior has a clear contract,
 expose it as a block and call it with `ctx.callBlock(...)`; keep
-`libs/flow/lib/mcp.js` only for local algorithmic helpers that would add noise
+`_flow/lib/mcp.js` only for local algorithmic helpers that would add noise
 to the Flow catalog, and declare that dependency with `uses: [mcp]`.
 
 Scope naming convention for new Flow sources:
@@ -295,8 +295,7 @@ Prefer `flow-code-*` for normal agent work:
 
 The engine parses and validates the FlowScript, returns line-based diagnostics
 when a block/property is invalid, and writes the canonical FlowScript sidecar
-after validation succeeds. Legacy YAML sidecars are only fallback inputs during
-the spike migration.
+after validation succeeds.
 
 Keep `flow-source-*` for compiler/debug work where canonical definitions, YAML
 or full analysis are intentionally needed.
@@ -312,9 +311,9 @@ flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unifi
 ```
 
 The patch API is limited to Flow resources such as
-`libs/flow/blocks/**/*.block.js`, `libs/flow/fragments/**/*.fragment.yaml`,
-`libs/flow/lib/**/*.js`, `libs/flow/types/**/*.{type.yaml,js}` and
-`libs/flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
+`_flow/blocks/**/*.block.js`, `_flow/fragments/**/*.fragment.yaml`,
+`_flow/lib/**/*.js`, `_flow/types/**/*.{type.yaml,js}` and
+`_flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
 resources and parses Flow/fragment YAML by default.
 Unified diff line numbers may be approximate when the surrounding context is
 unique.

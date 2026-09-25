@@ -12,11 +12,11 @@ Rules:
   `lib_flow_engine` when it is not MCP-specific.
 - Keep high-level JSON-RPC routing visible in the public `McpServer` Flow and
   promote reusable branches to FlowScript blocks in
-  `libs/flow/blocks/**/*.block.js` whenever possible. Keep shared JavaScript helpers in
-  `libs/flow/lib/mcp.js` only for low-level local details that are not useful as
+  `_flow/blocks/**/*.block.js` whenever possible. Keep shared JavaScript helpers in
+  `_flow/lib/mcp.js` only for low-level local details that are not useful as
   Flow blocks, and declare those helpers with `uses` on each block that calls
   `ctx.lib(...)`.
-- Keep the single-request router in `mcp.handle.block.js` once migrated, so batch and
+- Keep the single-request router in `mcp.handle.block.js`, so batch and
   request routing both expose their Flow implementation in the catalog tree.
 - Keep `tools/call` routing visible too: `mcp.tools.call.block.js` should
   group tools by intent before delegating to small private blocks.
