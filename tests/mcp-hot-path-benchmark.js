@@ -1,11 +1,11 @@
-var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/libs/flow";
+var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
 var iterations = arguments.length > 2 ? Math.max(3, Number(arguments[2])) : 7;
 var profileMode = arguments.length > 3 && String(arguments[3]) === "deep" ? true : "envelope";
 var engineSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(engineDir, "Engine.js"), "UTF-8"));
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/flows/McpServer.flow.js"), "UTF-8"));
 var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
 var engine = eval(engineSource);

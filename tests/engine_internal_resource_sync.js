@@ -39,10 +39,10 @@ function errorMessage(response) {
 }
 
 try {
-	Files.createDirectories(projectRoot.resolve("libs/flow/modules"));
+	Files.createDirectories(projectRoot.resolve("_flow/modules"));
 	Files.createDirectories(workspaceRoot);
-	var enginePath = projectRoot.resolve("libs/flow/Engine.js");
-	var modulePath = projectRoot.resolve("libs/flow/modules/example.js");
+	var enginePath = projectRoot.resolve("_flow/Engine.js");
+	var modulePath = projectRoot.resolve("_flow/modules/example.js");
 	var originalEngine = "(function () { return { version: 'old' }; }())\n";
 	var targetEngine = "(function () { return { version: 'new' }; }())\n";
 	var originalModule = "(function () { return { value: 1 }; }())\n";
@@ -51,7 +51,7 @@ try {
 	Files.writeString(modulePath, originalModule, StandardCharsets.UTF_8);
 
 	var blockFile = new java.io.File(projectDir,
-		"libs/flow/blocks/mcp/tool/flow/resource/patch.block.js");
+		"_flow/blocks/mcp/tool/flow/resource/patch.block.js");
 	var blockSource = String(FileUtils.readFileToString(blockFile, "UTF-8"));
 	var runtimeSource = blockSource.substring(blockSource.indexOf("(function ()"));
 	var realPackages = Packages;
@@ -110,12 +110,12 @@ try {
 	};
 
 	var syncFiles = [{
-		path: "libs/flow/Engine.js",
+		path: "_flow/Engine.js",
 		content: targetEngine,
 		baseHash: sha256(originalEngine),
 		sha256: sha256(targetEngine)
 	}, {
-		path: "libs/flow/modules/example.js",
+		path: "_flow/modules/example.js",
 		content: targetModule,
 		baseHash: sha256(originalModule),
 		sha256: sha256(targetModule)
@@ -137,7 +137,7 @@ try {
 		revision: "9bb744e",
 		dryRun: false,
 		files: [syncFiles[0], {
-			path: "libs/flow/modules/example.js",
+			path: "_flow/modules/example.js",
 			content: "(function () {",
 			baseHash: sha256(originalModule),
 			sha256: sha256("(function () {")
@@ -176,7 +176,7 @@ try {
 		scope: "engine-internal",
 		revision: "9bb744e",
 		files: [{
-			path: "libs/flow/blocks/forbidden.js",
+			path: "_flow/blocks/forbidden.js",
 			content: targetEngine,
 			baseHash: sha256(targetEngine),
 			sha256: sha256(targetEngine)

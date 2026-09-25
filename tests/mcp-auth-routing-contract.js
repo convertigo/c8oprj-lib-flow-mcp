@@ -1,4 +1,4 @@
-var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/libs/flow";
+var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
 var engineSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
   new java.io.File(engineDir, "Engine.js"), "UTF-8"));
@@ -6,7 +6,7 @@ var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
 var engine = eval(engineSource);
 var flowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-  new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
+  new java.io.File(projectDir, "_flow/flows/McpServer.flow.js"), "UTF-8"));
 
 function assertTrue(condition, message) {
   if (!condition) throw new Error(message);

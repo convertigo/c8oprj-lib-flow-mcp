@@ -1,5 +1,5 @@
 var projectDir = String(arguments[0] || "");
-var blockFile = new java.io.File(projectDir, "libs/flow/blocks/frontend/svelte/source.block.js");
+var blockFile = new java.io.File(projectDir, "_flow/blocks/frontend/svelte/source.block.js");
 var blockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(blockFile, "UTF-8"));
 var block = eval(blockSource.substring(blockSource.indexOf("(function")));
 var FileUtils = Packages.org.apache.commons.io.FileUtils;
@@ -91,7 +91,7 @@ function expectError(props, code) {
 }
 
 var root = Packages.java.nio.file.Files.createTempDirectory("flow-source-write-safety").toFile();
-var sourceFile = "libs/flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte";
+var sourceFile = "_flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte";
 var source = new java.io.File(root, sourceFile);
 var first = "<FlowComponent id=\"first\"><Structure /></FlowComponent>\n";
 var second = "<FlowComponent id=\"second\"><Structure /></FlowComponent>\n";
@@ -252,7 +252,7 @@ assertTrue(compactPropertyCheck.ok === false && compactPropertyCheck.diagnostics
 treeResponse = null;
 contractResponse = null;
 
-var componentSourceFile = "libs/flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
+var componentSourceFile = "_flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
 var componentSource = [
 	"<script module>",
 	"  export const _meta = {",
@@ -306,7 +306,7 @@ assertTrue(brokenComponentCheck.ok === false &&
 	brokenComponentCheck.diagnostics[0].code === "FRONTEND_COMPONENT_PARSE_FAILED",
 	"Provider component drafts must be parsed by the frontbuilder before writes.");
 
-var modelWithoutRoot = "libs/flow/frontbuilder/svelte/model/Test/src/routes/raw.flow.svelte";
+var modelWithoutRoot = "_flow/frontbuilder/svelte/model/Test/src/routes/raw.flow.svelte";
 var modelCheck = run({
 	operation: "check",
 	projectDir: String(root.getAbsolutePath()),

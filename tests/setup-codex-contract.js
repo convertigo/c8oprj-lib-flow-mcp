@@ -1,4 +1,4 @@
-var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/libs/flow";
+var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
 var engineFile = new java.io.File(engineDir, "Engine.js");
 var engineSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(engineFile, "UTF-8"));
@@ -10,17 +10,17 @@ function assertTrue(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-var flowFile = new java.io.File(projectDir, "libs/flows/_setupCodex.flow.js");
+var flowFile = new java.io.File(projectDir, "_flow/flows/_setupCodex.flow.js");
 var flowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(flowFile, "UTF-8"));
-var setupBlockFile = new java.io.File(projectDir, "libs/flow/blocks/codex/setup.block.js");
+var setupBlockFile = new java.io.File(projectDir, "_flow/blocks/codex/setup.block.js");
 var setupBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(setupBlockFile, "UTF-8"));
 var routerSkillSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-  new java.io.File(projectDir, "libs/flow/resources/skills/convertigo-flow-mcp/SKILL.md"), "UTF-8"));
+  new java.io.File(projectDir, "_flow/resources/skills/convertigo-flow-mcp/SKILL.md"), "UTF-8"));
 var frontendSkillSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-  new java.io.File(projectDir, "libs/flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md"), "UTF-8"));
+  new java.io.File(projectDir, "_flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md"), "UTF-8"));
 var frontendGuideSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-  new java.io.File(projectDir, "libs/flow/resources/guide/frontend-svelte.md"), "UTF-8"));
-assertTrue(setupBlockSource.indexOf('"bearer_token_env_var":"CONVERTIGO_MCP_TOKEN"') >= 0,
+  new java.io.File(projectDir, "_flow/resources/guide/frontend-svelte.md"), "UTF-8"));
+assertTrue(setupBlockSource.indexOf('bearer_token_env_var: "CONVERTIGO_MCP_TOKEN"') >= 0,
   "Flow Codex setup omitted the bearer token environment variable");
 var codexHome = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
   "convertigo-flow-codex-setup-contract");

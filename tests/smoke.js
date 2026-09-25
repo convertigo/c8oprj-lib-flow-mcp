@@ -1,4 +1,4 @@
-var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/libs/flow";
+var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
 var engineFile = new java.io.File(engineDir, "Engine.js");
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(engineFile, "UTF-8"));
@@ -21,7 +21,7 @@ function assertTrue(condition, message) {
 }
 
 var fullSyncSchemaAttachSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/frontend/fullsync/schema.attach.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/frontend/fullsync/schema.attach.block.js"), "UTF-8"));
 var isolatedFullSyncSchemaAttach = eval(fullSyncSchemaAttachSource.substring(fullSyncSchemaAttachSource.indexOf("(function")));
 var normalizedFullSyncSchema = isolatedFullSyncSchemaAttach.normalizeFullSyncSchema({
 	type: "object",
@@ -49,7 +49,7 @@ assertTrue(normalizedFullSyncSchema.properties.rows.type === "array" &&
 	normalizedFullSyncSchema.properties._c8oMeta === undefined,
 	"FullSync schema attachment did not normalize the XML transaction envelope to the PouchDB client contract");
 var assetImportSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/frontend/asset/import.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/frontend/asset/import.block.js"), "UTF-8"));
 var isolatedAssetImport = eval(assetImportSource.substring(assetImportSource.indexOf("(function")));
 var assetImportRoot = Packages.java.nio.file.Files.createTempDirectory("flow-asset-import-");
 var assetImportInput = assetImportRoot.resolve("generated.png");
@@ -149,7 +149,7 @@ isolatedFullSyncSchemaAttach.run({
 assertTrue(capturedFullSyncSchemaRequest.input._use_docid === "product-42",
 	"FullSync schema attachment did not map sampleDocId to the safe Get request variable");
 var fullSyncScaffoldSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/project/fullsync/scaffold.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/project/fullsync/scaffold.block.js"), "UTF-8"));
 var isolatedFullSyncScaffold = eval(fullSyncScaffoldSource.substring(fullSyncScaffoldSource.indexOf("(function")));
 assertTrue(isolatedFullSyncScaffold.canonicalVariableName("getView", "include_docs") === "_use_include_docs" &&
 	isolatedFullSyncScaffold.canonicalVariableName("getView", "_use_startkey") === "_use_startkey" &&
@@ -216,7 +216,7 @@ assertTrue(fullSyncViewWarnings.length === 1 &&
 	"FullSync scaffold did not flag view keys that collapse multi-valued relations");
 
 var mcpLibSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/lib/mcp.js"), "UTF-8"));
 var mcpLib = eval(mcpLibSource);
 var leanAuthoringTreeArgs = mcpLib.prepareToolArguments(null, {
 	params: { name: "authoring-tree", arguments: { projectDir: projectDir } }
@@ -263,9 +263,9 @@ assertTrue(proxyAwareFrontendArgs.publicBaseUrl === "https://convertigo.goodnet.
 	proxyAwareFrontendArgs.browserDebugPort === 40811,
 	"MCP frontend actions should derive their public origin and managed CDP port from the server request");
 var sanitizedCodePaths = mcpLib.sanitizeForMcp({
-	codeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
-	workingCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath(),
-	officialCodeFile: new java.io.File(projectDir, "libs/flows/Smoke.flow.js").getAbsolutePath()
+	codeFile: new java.io.File(projectDir, "_flow/flows/Smoke.flow.js").getAbsolutePath(),
+	workingCodeFile: new java.io.File(projectDir, "_flow/flows/Smoke.flow.js").getAbsolutePath(),
+	officialCodeFile: new java.io.File(projectDir, "_flow/flows/Smoke.flow.js").getAbsolutePath()
 }, {
 	scopes: {
 		request: {
@@ -273,9 +273,9 @@ var sanitizedCodePaths = mcpLib.sanitizeForMcp({
 		}
 	}
 });
-assertTrue(sanitizedCodePaths.codeFile === "libs/flows/Smoke.flow.js" &&
-	sanitizedCodePaths.workingCodeFile === "libs/flows/Smoke.flow.js" &&
-	sanitizedCodePaths.officialCodeFile === "libs/flows/Smoke.flow.js",
+assertTrue(sanitizedCodePaths.codeFile === "_flow/flows/Smoke.flow.js" &&
+	sanitizedCodePaths.workingCodeFile === "_flow/flows/Smoke.flow.js" &&
+	sanitizedCodePaths.officialCodeFile === "_flow/flows/Smoke.flow.js",
 	"MCP should not expose absolute executable Flow working-copy paths");
 var cleanFastSaveProject = { hasChanged: true };
 var cleanFastSaveFlow = {
@@ -333,7 +333,7 @@ var enrichedQualifiedPalette = mcpLib._enrichSveltePaletteMutations({
 		insert: { id: "chart", kind: "line" },
 		targetSlot: {
 			sourceMutationPath: "frontAst.slots.structure.children",
-			sourcePath: "libs/flow/frontbuilder/svelte/model/Consumer/src/routes/+page.flow.svelte"
+			sourcePath: "_flow/frontbuilder/svelte/model/Consumer/src/routes/+page.flow.svelte"
 		}
 	}]
 });
@@ -342,17 +342,17 @@ assertTrue(enrichedQualifiedPalette.items[0].apply.tool === "frontend-svelte-mut
 	"Qualified authoring palettes should expose an executable Svelte apply mutation");
 
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/flows/McpServer.flow.js"), "UTF-8"));
 var batchBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/batch.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/batch.block.js"), "UTF-8"));
 var handleBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/handle.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/handle.block.js"), "UTF-8"));
 var toolsCallBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/call.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/tools/call.block.js"), "UTF-8"));
 var toolsAvailableBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/tools/available.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/tools/available.block.js"), "UTF-8"));
 var toolIdentifyBlockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/tool/identify.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/tool/identify.block.js"), "UTF-8"));
 assertTrue(mcpFlowSource.indexOf("fragment.use(") === -1 &&
 	mcpFlowSource.indexOf("mcp.flow(") === -1 &&
 	mcpFlowSource.indexOf("mcp.batch(") !== -1 &&
@@ -641,7 +641,7 @@ assertTrue(typeResponsePayload.indexOf("/Users/") === -1 &&
 	"MCP Flow type response leaked absolute paths");
 assertTrue(typeResponsePayload.indexOf("\"mode\":\"\"") === -1,
 	"MCP Flow type response leaked empty mode metadata");
-assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "libs/flow/types/editors/expression.html",
+assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "_flow/types/editors/expression.html",
 	"MCP Flow type response did not shorten type resource paths");
 var traceContent = String(Packages.org.apache.commons.io.FileUtils.readFileToString(traceFile, "UTF-8"));
 assertTrue(traceContent.indexOf("\"direction\":\"request\"") !== -1 &&
@@ -888,11 +888,11 @@ var guideResourceSearch = JSON.parse(engine.run(JSON.stringify({
 	}
 })));
 assertTrue(guideResourceSearch.result.result.structuredContent.resources.some(function (resource) {
-	return resource.path === "libs/flow/resources/guide/authoring.md";
+	return resource.path === "_flow/resources/guide/authoring.md";
 }), "MCP Flow guides should be searchable as project resources");
 
 var mcpToolRunSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/mcp/tool/run.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/mcp/tool/run.block.js"), "UTF-8"));
 var isolatedMcpToolRun = eval(mcpToolRunSource.substring(mcpToolRunSource.indexOf("(function ()")));
 var writtenToolResponse = null;
 var providerMutationArgs = null;
@@ -1096,7 +1096,7 @@ var targetFlowCode = [
 	"}",
 	""
 ].join("\n");
-var targetFlowsDir = new java.io.File(targetDir, "libs/flows");
+var targetFlowsDir = new java.io.File(targetDir, "_flow/flows");
 targetFlowsDir.mkdirs();
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(
 	new java.io.File(targetFlowsDir, "TargetSmoke.flow.js"), targetFlowCode, "UTF-8");
@@ -1210,7 +1210,7 @@ assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
 	bootstrapDryRun.result.result.structuredContent.studioTarget.project === "FlowBootstrapSmoke" &&
 	bootstrapDryRun.result.result.structuredContent.studioTarget.nodeId === "FlowBootstrapSmoke" &&
 	bootstrapDryRun.result.result.structuredContent.studioTarget.sourcePath ===
-		"libs/flow/frontbuilder/svelte/model/FlowBootstrapSmoke/src/routes/+page.flow.svelte" &&
+		"_flow/frontbuilder/svelte/model/FlowBootstrapSmoke/src/routes/+page.flow.svelte" &&
 	bootstrapDryRun.result.result.structuredContent.studioTarget.reveal === true &&
 	bootstrapDryRun.result.result.structuredContent.wouldReference.indexOf("SharedStopwatchProvider") !== -1 &&
 	bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
@@ -1268,11 +1268,11 @@ var frontendEngineSource = [
 	"    svelte:",
 	"      target: svelte5",
 	"      resourceRoot: " + frontendSvelteResourceRoot(),
-	"      modelPath: libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	"      modelPath: _flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
 	""
 ].join("\n");
 var frontendPageFile = new java.io.File(targetDir,
-	"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
+	"_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte");
 frontendPageFile.getParentFile().mkdirs();
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	"<FlowComponent id=\"home\" label=\"Home\">",
@@ -1287,7 +1287,6 @@ var frontendSvelteMutate = callTool(139, "frontend-svelte-mutate", {
 	mutation: {
 		op: "insert",
 		path: "frontAst.slots.structure.children",
-		index: "end",
 		value: {
 			id: "smokeText",
 			kind: "text",
@@ -1337,7 +1336,7 @@ assertTrue(frontendSvelteImplicitProps.result.result.structuredContent.ok === tr
 	frontendSvelteImplicitProps.result.result.structuredContent.debug.propertyPathNormalized === true &&
 	String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendPageFile, "UTF-8")).indexOf("Smoke text edited") !== -1,
 	"MCP frontend-svelte-mutate should normalize property payloads when .props is omitted");
-var frontendSvelteLegacyBinding = callTool(13902, "frontend-svelte-mutate", {
+var frontendSvelteStringBinding = callTool(13902, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	sourceFile: String(frontendPageFile.getAbsolutePath()),
 	mutation: {
@@ -1346,10 +1345,10 @@ var frontendSvelteLegacyBinding = callTool(13902, "frontend-svelte-mutate", {
 		value: "target"
 	}
 });
-assertTrue(frontendSvelteLegacyBinding.result.error &&
-	frontendSvelteLegacyBinding.result.error.data.code === "FRONTEND_BINDING_REQUIRED",
+assertTrue(frontendSvelteStringBinding.result.error &&
+	frontendSvelteStringBinding.result.error.data.code === "FRONTEND_BINDING_REQUIRED",
 	"MCP frontend-svelte-mutate should reject new string bindings with a structured diagnostic: " +
-		JSON.stringify(frontendSvelteLegacyBinding));
+		JSON.stringify(frontendSvelteStringBinding));
 var frontendSvelteStructuredBinding = callTool(13903, "frontend-svelte-mutate", {
 	projectDir: targetProjectDir,
 	sourceFile: String(frontendPageFile.getAbsolutePath()),
@@ -1371,21 +1370,21 @@ function frontendSvelteResourceRoot() {
 	if (explicitRoot && new java.io.File(explicitRoot, "src-builder/frontDocumentCli.ts").isFile()) {
 		return explicitRoot;
 	}
-	var root = new java.io.File(projectDir).getParentFile();
-	var engineProject = new java.io.File(engineDir).getParentFile().getParentFile();
+	var root = new java.io.File(projectDir).getAbsoluteFile().getParentFile();
+	var engineProject = new java.io.File(engineDir).getAbsoluteFile().getParentFile();
 	var engineSiblings = engineProject ? engineProject.getParentFile() : null;
 	var candidates = [
-		new java.io.File(engineSiblings, "c8oprj-lib-flow-frontbuilder-svelte/libs/flow/frontbuilder/svelte"),
-		new java.io.File(root, "c8oprj-lib-flow-frontbuilder-svelte/libs/flow/frontbuilder/svelte"),
-		new java.io.File(root, "lib_flow_frontbuilder_svelte/libs/flow/frontbuilder/svelte"),
-		new java.io.File(projectDir, "libs/flow/frontbuilder/svelte")
+		new java.io.File(engineSiblings, "c8oprj-lib-flow-frontbuilder-svelte/_flow/frontbuilder/svelte"),
+		new java.io.File(root, "c8oprj-lib-flow-frontbuilder-svelte/_flow/frontbuilder/svelte"),
+		new java.io.File(root, "lib_flow_frontbuilder_svelte/_flow/frontbuilder/svelte"),
+		new java.io.File(projectDir, "_flow/frontbuilder/svelte")
 	];
 	for (var i = 0; i < candidates.length; i++) {
 		if (new java.io.File(candidates[i], "src-builder/frontDocumentCli.ts").isFile()) {
 			return String(candidates[i].getAbsolutePath());
 		}
 	}
-	return "libs/flow/frontbuilder/svelte";
+	return "_flow/frontbuilder/svelte";
 }
 function findCompactNode(node, predicate) {
 	if (!node) {
@@ -1471,7 +1470,7 @@ var frontendSvelteTextPaletteItem = frontendSvelteMultiQueryPalette.result.resul
 assertTrue(frontendSvelteTextPaletteItem.apply &&
 	frontendSvelteTextPaletteItem.apply.tool === "frontend-svelte-mutate" &&
 	frontendSvelteTextPaletteItem.apply.arguments.sourceFile ===
-		"libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
+		"_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.op === "append" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.path.indexOf("frontAst") === 0 &&
 	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteTextPaletteItem.insert),
@@ -2051,12 +2050,12 @@ var frontendSvelteCreate = callTool(140, "frontend-svelte-mutate", {
 	}
 });
 var frontendCreatedFile = new java.io.File(targetDir,
-	"libs/flow/frontbuilder/svelte/components/project/SmokeFlowUi.flow.svelte");
+	"_flow/frontbuilder/svelte/components/project/SmokeFlowUi.flow.svelte");
 assertTrue(frontendSvelteCreate.result.result.structuredContent.created === true &&
 	frontendSvelteCreate.result.result.structuredContent.written === true &&
 	frontendCreatedFile.isFile(),
 	"MCP frontend-svelte-mutate should create source-backed frontend blocks from palette payloads");
-var frontendRouteRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svelte/model/Smoke/src/routes");
+var frontendRouteRoot = new java.io.File(targetDir, "_flow/frontbuilder/svelte/model/Smoke/src/routes");
 var headlessRouteCreate = callTool(1401, "frontend-svelte-mutate", {
 	project: "target",
 	projectDir: targetProjectDir,
@@ -2084,7 +2083,7 @@ var headlessRouteCreate = callTool(1401, "frontend-svelte-mutate", {
 		}
 	}
 });
-var headlessSourceFile = "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/headless/+page.flow.svelte";
+var headlessSourceFile = "_flow/frontbuilder/svelte/model/Smoke/src/routes/headless/+page.flow.svelte";
 assertTrue(headlessRouteCreate.result.result.structuredContent.created === true &&
 	headlessRouteCreate.result.result.structuredContent.written === true,
 	"MCP headless fixture should create its canonical frontend source through MCP");
@@ -2114,7 +2113,6 @@ var headlessInsertLoop = callTool(1404, "frontend-svelte-mutate", {
 	mutation: {
 		op: "insert",
 		path: "frontAst.slots.structure.children",
-		index: "end",
 		value: {
 			id: "componentLoop",
 			kind: "each",
@@ -2315,12 +2313,12 @@ assertTrue(findCompactNode(frontendTreeAfterRouteCreation.result.result.structur
 }) !== null,
 	"MCP frontend document cache should invalidate when a sibling route is created: " +
 		JSON.stringify(frontendTreeAfterRouteCreation.result.result.structuredContent));
-var targetEngineFile = new java.io.File(targetDir, "libs/flow/engine.yaml");
+var targetEngineFile = new java.io.File(targetDir, "_flow/engine.yaml");
 targetEngineFile.getParentFile().mkdirs();
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(targetEngineFile, frontendEngineSource, "UTF-8");
 var frontendSourceGet = callTool(1381, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir,
-	sourceFile: "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte"
+	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte"
 });
 var frontendSourceRevision = frontendSourceGet.result.result.structuredContent.revision;
 assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
@@ -2369,7 +2367,7 @@ var frontendRootSourceCheck = callTool(13811, "frontend-svelte-code-check", {
 });
 var frontendDetailSourceGet = callTool(13812, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir,
-	sourceFile: "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/[projectId]/+page.flow.svelte"
+	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/[projectId]/+page.flow.svelte"
 });
 var frontendDetailSourceCheck = callTool(13813, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
@@ -2638,7 +2636,7 @@ var frontendStarterTags = frontendSourceImplicit.result.result.structuredContent
 	return block.tag;
 });
 assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
-	frontendSourceImplicit.result.result.structuredContent.sourceFile === "libs/flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
+	frontendSourceImplicit.result.result.structuredContent.sourceFile === "_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.tag === "FlowComponent" &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.properties.class === undefined &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.slots.join(",") === "Variables,Events,Structure" &&
@@ -2648,11 +2646,11 @@ assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
 		return frontendStarterTags.indexOf(tag) !== -1;
 	}) &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.sources.applicationTheme ===
-		"libs/flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css" &&
+		"_flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css" &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.sources.applicationStyles ===
-		"libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css",
+		"_flow/frontbuilder/svelte/model/Smoke/src/app.flow.css",
 	"MCP frontend-svelte-code-get should expose reactive state, lifecycle, action and visual root contracts");
-var frontendCssRelative = "libs/flow/frontbuilder/svelte/model/Smoke/src/app.flow.css";
+var frontendCssRelative = "_flow/frontbuilder/svelte/model/Smoke/src/app.flow.css";
 var frontendCssMissing = callTool(13861, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendCssRelative
@@ -2729,7 +2727,7 @@ assertTrue(unifiedFrontendCssRg.result.result.structuredContent.totalTargets ===
 	unifiedFrontendCssRg.result.result.structuredContent.extracts[0].sourceFile === frontendCssRelative,
 	"Unified code-rg should search a canonical app.flow.css source explicitly");
 
-var frontendThemeRelative = "libs/flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css";
+var frontendThemeRelative = "_flow/frontbuilder/svelte/model/Smoke/src/theme.flow.css";
 var frontendThemeMissing = callTool(138901, "code-get", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendThemeRelative
@@ -2893,7 +2891,7 @@ assertTrue(unifiedFrontendSourceGet.result.result.structuredContent.ok === true 
 	unifiedFrontendSourceRg.result.result.structuredContent.matchCount === 1 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.totalTargets === 4 &&
 	unifiedFrontendSourceRg.result.result.structuredContent.extracts.every(function (extract) {
-		return extract.sourceFile.indexOf("libs/flow/frontbuilder/svelte/model/") === 0 &&
+		return extract.sourceFile.indexOf("_flow/frontbuilder/svelte/model/") === 0 &&
 			extract.sourceFile.indexOf("_private/") === -1 &&
 			(extract.sourceFile.indexOf(".flow.svelte") !== -1 || extract.sourceFile.indexOf(".flow.css") !== -1);
 	}) &&
@@ -3015,7 +3013,7 @@ debugPrint(JSON.stringify(codePromote));
 assertTrue(codePromote.result.result.structuredContent.ok === true,
 	"MCP Flow code-promote did not save the working copy");
 
-var targetFile = new java.io.File(targetDir, "libs/flows/TargetSmoke.flow.js");
+var targetFile = new java.io.File(targetDir, "_flow/flows/TargetSmoke.flow.js");
 assertTrue(targetFile.isFile(), "MCP Flow code-promote did not write the target FlowScript");
 
 var codeGet = callTool(7, "code-get", {
@@ -3230,7 +3228,7 @@ var removedTargetCode = callTool(105, "code-get", {
 assertTrue(removedTargetCode.result.result.structuredContent.code.indexOf("outputs") === -1,
 	"MCP Flow flow-output-schema remove left outputs in FlowScript metadata");
 
-var targetSchemaDir = new java.io.File(targetDir, "libs/flow/schemas/TargetSmoke");
+var targetSchemaDir = new java.io.File(targetDir, "_flow/schemas/TargetSmoke");
 targetSchemaDir.mkdirs();
 var targetLearnedResultFile = new java.io.File(targetSchemaDir, "result.out.schema.json");
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(targetLearnedResultFile, JSON.stringify({
@@ -3287,7 +3285,7 @@ var blockSet = callTool(12, "code-set", {
 });
 debugPrint(JSON.stringify(blockSet));
 assertTrue(blockSet.result.result.structuredContent.name === "smoke.echo" &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke/echo.block.js").isFile(),
+	new java.io.File(targetDir, "_flow/blocks/smoke/echo.block.js").isFile(),
 	"MCP Flow code-set did not write a canonical project-local block");
 
 var candidateDecisionSet = callTool(135, "code-set", {
@@ -3359,7 +3357,7 @@ debugPrint(JSON.stringify(mockSet));
 var mockStructured = mockSet.result.result.structuredContent;
 assertTrue(mockStructured.ok === true &&
 	mockStructured.mock === true &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke/todoWeather.block.js").isFile(),
+	new java.io.File(targetDir, "_flow/blocks/smoke/todoWeather.block.js").isFile(),
 	"MCP Flow flow-block-mock did not write a canonical project-local mock block");
 assertTrue((mockStructured.warnings || []).some(function (warning) {
 	return warning.code === "FLOW_BLOCK_MOCK_CREATED";
@@ -3379,11 +3377,11 @@ var frontendMockSet = callTool(1321, "flow-block-mock", {
 var frontendMockStructured = frontendMockSet.result.result.structuredContent;
 assertTrue(frontendMockStructured.ok === true &&
 	frontendMockStructured.targets.length === 1 && frontendMockStructured.targets[0] === "frontend" &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.block.js").isFile() &&
-	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.browser.js").isFile(),
+	new java.io.File(targetDir, "_flow/blocks/smoke/normalizeLabel.block.js").isFile() &&
+	new java.io.File(targetDir, "_flow/blocks/smoke/normalizeLabel.browser.js").isFile(),
 	"MCP flow-block-mock should create a canonical frontend block and browser implementation: " + JSON.stringify(frontendMockStructured));
 var frontendMockDescriptor = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(targetDir, "libs/flow/blocks/smoke/normalizeLabel.block.js"), "UTF-8"));
+	new java.io.File(targetDir, "_flow/blocks/smoke/normalizeLabel.block.js"), "UTF-8"));
 assertTrue(frontendMockDescriptor.indexOf('"targets": [\n    "frontend"') !== -1 &&
 	frontendMockDescriptor.indexOf('"file": "normalizeLabel.browser.js"') !== -1,
 	"Frontend mock descriptor should expose the frontend target and adjacent implementation.");
@@ -3463,7 +3461,7 @@ var resourceSearch = callTool(14, "flow-resource-search", {
 	hints: false
 });
 assertTrue(resourceSearch.result.result.structuredContent.resources.some(function (resource) {
-	return resource.path === "libs/flow/blocks/smoke/echo.block.js";
+	return resource.path === "_flow/blocks/smoke/echo.block.js";
 }), "MCP Flow flow-resource-search did not find the custom block source");
 
 print("lib_flow_mcp smoke tests passed");

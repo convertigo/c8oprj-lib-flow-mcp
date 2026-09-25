@@ -1,7 +1,7 @@
 var projectDir = String(new java.io.File(arguments.length > 0 ? arguments[0] : ".").getAbsolutePath());
 var __flowProjectDir = projectDir;
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/lib/mcp.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/lib/mcp.js"), "UTF-8"));
 var mcp = eval(source);
 
 function readProjectFile(relativePath) {
@@ -73,7 +73,7 @@ var ensured = mcp.prepareToolArguments(requestContext(40811), {
 var managedReveal = mcp.prepareToolArguments(requestContext(40811, true), {
 	params: {
 		name: "code-set",
-		arguments: { project: "Clock", sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
+		arguments: { project: "Clock", sourceFile: "_flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
 	}
 }, { resolveProject: false });
 
@@ -82,7 +82,7 @@ var explicitNoReveal = mcp.prepareToolArguments(requestContext(40811, true), {
 		name: "code-patch",
 		arguments: {
 			project: "Clock",
-			sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte",
+			sourceFile: "_flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte",
 			reveal: false
 		}
 	}
@@ -91,7 +91,7 @@ var explicitNoReveal = mcp.prepareToolArguments(requestContext(40811, true), {
 var unmanagedReveal = mcp.prepareToolArguments(requestContext(40811, false), {
 	params: {
 		name: "code-set",
-		arguments: { project: "Clock", sourceFile: "libs/flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
+		arguments: { project: "Clock", sourceFile: "_flow/frontbuilder/svelte/model/Clock/src/routes/+page.flow.svelte" }
 	}
 }, { resolveProject: false });
 
@@ -139,8 +139,8 @@ assertTrue(compactPalette.detail === "compact" && compactPalette.limit === 8,
 	"The MCP palette must default to a compact bounded response");
 
 [
-	"libs/flow/blocks/mcp/tool/frontend/svelte/code/set.block.js",
-	"libs/flow/blocks/mcp/tool/frontend/svelte/code/patch.block.js"
+	"_flow/blocks/mcp/tool/frontend/svelte/code/set.block.js",
+	"_flow/blocks/mcp/tool/frontend/svelte/code/patch.block.js"
 ].forEach(function (relativePath) {
 	var descriptor = readProjectFile(relativePath);
 	assertTrue(/"reveal"\s*:\s*\{[^}]*"type"\s*:\s*"boolean"/.test(descriptor),
@@ -151,7 +151,7 @@ assertTrue(compactPalette.detail === "compact" && compactPalette.limit === 8,
 		"The private frontend write block must forward reveal to the source operation: " + relativePath);
 });
 assertTrue(/reveal\s*:\s*internalArgs\.reveal/.test(readProjectFile(
-	"libs/flow/blocks/mcp/tool/code/dispatch.block.js")),
+	"_flow/blocks/mcp/tool/code/dispatch.block.js")),
 	"The unified code dispatcher must bind reveal on the private frontend write block");
 
 print("managed-viewer-transport OK");

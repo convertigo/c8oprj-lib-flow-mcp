@@ -1,6 +1,6 @@
 var projectDir = String(new java.io.File(arguments.length > 0 ? arguments[0] : ".").getAbsolutePath());
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flow/blocks/frontend/asset/import.block.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/blocks/frontend/asset/import.block.js"), "UTF-8"));
 var assetImport = eval(source.substring(source.indexOf("(function")));
 
 function assertTrue(value, message) {

@@ -1,4 +1,4 @@
-var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/libs/flow";
+var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
 var engineFile = new java.io.File(engineDir, "Engine.js");
 var engineSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(engineFile, "UTF-8"));
@@ -6,12 +6,12 @@ var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
 var engine = eval(engineSource);
 var mcpFlowSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-	new java.io.File(projectDir, "libs/flows/McpServer.flow.js"), "UTF-8"));
+	new java.io.File(projectDir, "_flow/flows/McpServer.flow.js"), "UTF-8"));
 var targetDir = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
 	"lib_flow_mcp_authoring_" + java.lang.System.currentTimeMillis());
 targetDir.mkdirs();
 var targetProjectDir = String(targetDir.getAbsolutePath());
-var routeRoot = new java.io.File(targetDir, "libs/flow/frontbuilder/svelte/model/Headless/src/routes");
+var routeRoot = new java.io.File(targetDir, "_flow/frontbuilder/svelte/model/Headless/src/routes");
 var resourceRoot = String(java.lang.System.getenv("FLOW_FRONTBUILDER_RESOURCE_ROOT") || "");
 
 function assertTrue(condition, message) {
@@ -61,7 +61,7 @@ function findNode(node, predicate) {
 }
 
 try {
-	var requestedSourceFile = "libs/flow/frontbuilder/svelte/model/Headless/src/routes/authoring/+page.flow.svelte";
+	var requestedSourceFile = "_flow/frontbuilder/svelte/model/Headless/src/routes/authoring/+page.flow.svelte";
 	var definition = engineDefinition(requestedSourceFile);
 	var created = callTool(1, "frontend-svelte-mutate", {
 		project: "target",
@@ -150,7 +150,6 @@ try {
 		mutation: {
 			op: "insert",
 			path: "frontAst.slots.structure.children",
-			index: "end",
 			value: {
 				id: "componentLoop",
 				kind: "each",

@@ -12,7 +12,7 @@ function assertTrue(condition, message) {
 
 try {
   var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-    new File(projectDir, "libs/flow/lib/jwt.js"), "UTF-8"));
+    new File(projectDir, "_flow/lib/jwt.js"), "UTF-8"));
   var jwt = eval(source);
   var now = Math.floor(System.currentTimeMillis() / 1000);
   var token = jwt._test.buildToken(

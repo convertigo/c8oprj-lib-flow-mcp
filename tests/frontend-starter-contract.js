@@ -1,6 +1,6 @@
 var projectDir = java.nio.file.Files.createTempDirectory("flow-svelte-contract-").toFile();
 var sourceFile = new java.io.File(projectDir,
-	"libs/flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte");
+	"_flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte");
 sourceFile.getParentFile().mkdirs();
 var source = '<FlowComponent id="home" label="Home"><Structure /></FlowComponent>\n';
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(sourceFile, source, "UTF-8");
@@ -10,13 +10,13 @@ function assertTrue(condition, message) {
 }
 
 var blockFile = new java.io.File(arguments.length > 0 ? arguments[0] : ".",
-	"libs/flow/blocks/frontend/svelte/source.block.js");
+	"_flow/blocks/frontend/svelte/source.block.js");
 var blockSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(blockFile, "UTF-8"));
 var block = eval(blockSource.substring(blockSource.indexOf("(function")));
 var props = {
 	operation: "get",
 	projectDir: String(projectDir.getCanonicalPath()),
-	sourceFile: "libs/flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte",
+	sourceFile: "_flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte",
 	out: "local.source"
 };
 var written = null;
