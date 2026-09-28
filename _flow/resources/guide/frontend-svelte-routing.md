@@ -1,5 +1,7 @@
 # Flow Svelte Routing
 
+Optional Flow Svelte routing: dynamic, optional, rest and matched segments, nested layouts and route groups.
+
 Read this optional guide only when a Flow Svelte application needs dynamic
 segments, optional or rest parameters, matchers, nested layouts, route groups
 or layout resets. The main `flow://guide/frontend-svelte` guide is sufficient
@@ -22,15 +24,26 @@ source.
 
 ## Paths And Parameters
 
-The project-relative Flow source path mirrors the SvelteKit route:
+The Flow source path below `_flow/frontbuilder/svelte/model/<App>/src/routes/`
+mirrors the SvelteKit route. Pages and Layouts outside `src/routes` are refused
+(`FLOW_ROUTES_ROOT_REQUIRED`).
 
-| Route intent | Flow source directory | URL example |
+| Route intent | Source under `<App>/src/routes/` | URL example |
 | --- | --- | --- |
 | static | `products/+page.flow.svelte` | `/products` |
 | required | `product/[id]/+page.flow.svelte` | `/product/42` |
 | optional | `[[lang]]/home/+page.flow.svelte` | `/home`, `/fr/home` |
 | rest | `files/[...path]/+page.flow.svelte` | `/files/a/b.txt` |
 | matcher | `item/[id=integer]/+page.flow.svelte` | `/item/42` |
+
+A directory that is only a route node (segment, group `(x)` or parameter
+`[x]` without its own Page) carries a `.flow-route.json` marker; the Studio
+route palette creates it, do not hand-write it.
+
+Known limit: bracketed parameter routes currently answer HTTP 400 in the dev
+viewer behind the Studio gateway. For a POC, prefer a static Page such as
+`product/+page.flow.svelte`, pass the id in the `Navigate` `Query`, and read
+`@route.query.id`.
 
 Required parameters match one segment. Optional parameters use double brackets.
 Rest parameters match zero or more segments and should be validated before use.
@@ -39,7 +52,7 @@ palette-provided matchers and typed parameter sources; do not create matcher
 code outside Flow authoring.
 
 The Page source path defines its route. Give the Page a stable logical
-`_flow.page.id`; `code-get` returns that value in `authoringContract.pages` with its
+`_flow.page.id` next to `sourceVersion: 2` in its header; `code-get` returns that value in `authoringContract.pages` with its
 id, path, parameters and source file. Every parameter is exposed on the target
 Page as `@route.params.<name>`. If that source is absent, stop rather than
 reading `$app/state` or the URL directly.
@@ -67,11 +80,14 @@ as `FullSyncGet`, `FullSyncView`, `SetValue` or `CallSequence`, place
 supply values through `Params` and `Query`:
 
 ```svelte
-<Navigate id="openProduct" page="product">
+<Navigate $$id="openProduct" page="product">
   <Params><Variable name="id" value="@item.id" /></Params>
   <Query><Variable name="tab" value="details" /></Query>
 </Navigate>
 ```
+
+Write the target Page before the Page that navigates to it; a `Navigate` to a
+Page that does not exist yet fails with `FRONTEND_NAVIGATE_PAGE_UNKNOWN`.
 
 The generator resolves and encodes the URL. Do not interpolate paths.
 

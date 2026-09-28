@@ -1,5 +1,7 @@
 # FlowScript Samples
 
+Real executable samples to read with `code-get` when FlowScript syntax or modeling is unclear.
+
 When syntax or modeling is unclear, read real executable samples before opening
 the full palette. Samples are small, private or internal examples that exercise
 the same MCP tools used for normal authoring.
@@ -24,11 +26,24 @@ What they demonstrate:
 - one Rhino block limited to a small Java bridge;
 - comments that explain non-obvious DSL rules;
 - the rule that Flow block calls use one object of named parameters:
-  `block.name({ key: value })`.
+  `block.name({ key: value })`, one statement per line;
 - positional JavaScript-style calls are invalid; if diagnostics suggest a
-  canonical object form, patch the source to that exact form.
-- list projection style: `var rows = list.map({ items, select: { field:
-  current.field } }); result.rows = rows`.
+  canonical object form, patch the source to that exact form;
+- assignment captures and list projection, as in
+  `sample_list_filter_sort_map`:
+
+```javascript
+local.hotCities = list.filter({
+  $$id: "keepHotCities",
+  items: input.cities,
+  where: current.temperature >= 35,
+})
+result.cities = list.map({
+  $$id: "names",
+  items: local.hotCities,
+  select: current.city,
+})
+```
 
 Use samples as patterns, not as templates to copy blindly. Keep new executable
 Flows readable and move only reusable or low-level behavior into project blocks.

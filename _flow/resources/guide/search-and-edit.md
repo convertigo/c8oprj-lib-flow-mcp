@@ -1,26 +1,57 @@
 # Search And Edit
 
-`flow-search` is the Flow equivalent of `rg` for Flow authoring. Project scope also searches visible library samples, and sample matches are scored token by token so a partial pattern can still be useful.
+Locate existing Flow code with `flow-search` and `code-rg`, then change it with the smallest revision-checked `code-patch`.
 
-Samples are private executable Flows whose name starts with `sample_`. They are indexed as `kind:"sample"` and should be opened first when they match the requested feature.
+## Find
 
-Useful arguments: `query`, `kinds:["sample","node"]`, `context:1`, `limit`, `cursor`.
+`flow-search` is the Flow equivalent of `rg` over one project. Project scope
+also searches visible library samples, and matches are scored token by token,
+so `GetFeed requestable call` finds a `requestable.call` node whose
+requestable is `.GetFeed`. Useful arguments: `query`, `kinds:["sample","node"]`,
+`context:1`, `limit`, `cursor`. Samples are private executable Flows named
+`sample_*` (`kind:"sample"`); open the matching one first.
 
-Each node match returns `flowQName`, `flow`, `nodeId`, canonical JSON Pointer `path`, `summary` and `snippet`.
+Each node match returns `flowQName`, `flow`, `nodeId` (the node `$$id`), a
+canonical JSON Pointer `path`, `summary` and `snippet`. Reuse `path` as
+`nodePointer` in `flow-node-output-schema` when a `nodeId` is ambiguous.
 
-Use `flow-tree` for a compact structural overview. It is compact by default through MCP; pass `detail:"full"` only for UI/debug-level details.
+`code-rg({ project, qname | block | sourceFile | kind:"source", pattern })`
+searches the code itself and returns revisioned contextual extracts.
+`flow-resource-search` covers other project resources (types, editors,
+libraries, fragments).
 
-Preferred mutations:
+## Edit
 
-- Change a node property: `{op:"replace", nodeId:"setMessage", property:"value", value:"Hello"}`.
-- Merge node properties: `{op:"merge", nodeId:"setMessage", value:{comment:"..."}}`.
-- Insert near a node: `{op:"insert", afterNodeId:"setMessage", value:{id:"log", block:"log", message:"done"}}`.
-- Insert in a container: `{op:"append", parentNodeId:"loopItems", slot:"nodes", value:{id:"push", block:"json.push"}}`.
+1. `code-rg` for the phrase, property or `$$id` to change.
+2. When one extract identifies the change, apply the smallest `code-patch`
+   (unified diff in `codepatch`, with the extract's `revision`).
+3. When context is missing, read only that range with `code-get({ ...,
+   revision, startLine, endLine })`; read a whole source only for an
+   ambiguous or broad change.
+4. For an executable Flow, `code-run` then `code-promote`; blocks and Flow
+   Svelte sources are saved by `code-patch` itself.
 
-Common MCP tools wrap those mutations: `flow-node-add`, `flow-node-edit`, `flow-node-move`, `flow-node-delete`, `flow-node-duplicate`.
+Typical source edits:
 
-`flow-node-add` requires a stable id and a block id. Send node fields as `properties`, for example `{name:"MyFlow",id:"setMessage",block:"set",properties:{path:"result.message",value:"Hello"}}`.
+- change a value: patch the property line inside the call identified by its
+  `$$id`;
+- skip a node: add `$$disabled: true` (FlowScript) or `$$disabled={true}`
+  (Flow Svelte); remove it to restore the node;
+- insert a node: add the new call on its own line next to its sibling, with a
+  new unique `$$id`;
+- move a node into a slot: cut its call into the `$$then`, `$$else`,
+  `$$nodes` or `$$fields` function (FlowScript) or the slot tag (Flow Svelte).
 
-`flow-node-edit` can either replace one property with `property` + `value`, or merge several fields with `properties`. `flow-node-duplicate` requires `newId` or `properties.id`.
+Renaming a `$$id` is a Rename: references in the same file must follow.
+Studio refuses a rename whose root is referenced from another file
+(`FLOW_RENAME_REFERENCE_CONFLICT`).
 
-Use `path` only for low-level mutations or when no stable `nodeId` exists.
+## Structure and palette
+
+`authoring-tree` gives a compact structural view of a project's Flow and
+frontend surfaces; `frontend-svelte-tree` does the same for the Svelte
+builder, with `detail:"inspect"` for one property picker. `authoring-palette`
+lists the blocks accepted at one qualified `parentPath`; execute an item's
+`apply` unchanged. `authoring-mutate` and `frontend-svelte-mutate` apply
+structured mutations returned by the palette or picker; prefer source patches
+for everything else.

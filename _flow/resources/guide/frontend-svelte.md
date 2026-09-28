@@ -1,8 +1,10 @@
 # Flow Svelte Frontend
 
+Flow Svelte frontends: source documents, the authoring loop, bindings, actions, components, themes and known limits.
+
 Use Flow Svelte like FlowScript: write a small number of readable source files,
 let MCP validate them, and never edit generated Svelte. For full-stack work,
-read `flow://guide/fullstack-paperboard` instead. Read
+read `flow://guide/fullstack-paperboard` first. Read
 `flow://guide/frontend-svelte-routing` only for optional/rest/matched segments,
 route groups or advanced layouts.
 
@@ -13,18 +15,66 @@ transient state may remain in the current Page only when `If` makes the
 surfaces mutually exclusive. One business Page is active at a time, including
 in POC mode.
 
+Sources live in `_flow/frontbuilder/svelte/model/<App>/src/`:
+
 | Flow source | SvelteKit projection |
 | --- | --- |
 | `src/routes/+page.flow.svelte` | `/`, generated `+page.svelte` |
 | `src/routes/products/+page.flow.svelte` | `/products` |
-| `src/routes/product/[id]/+page.flow.svelte` | `/product/[id]` |
 | `src/routes/+layout.flow.svelte` | inherited root `+layout.svelte` |
 | `src/routes/(app)/...` | layout group, absent from the URL |
+| `src/lib/components/<Name>.flow.svelte` | application component `<Name>` |
+| `src/theme.flow.css`, `src/app.flow.css`, `src/i18n/<locale>.json` | theme, free CSS, translations |
 | `Navigate`, `GoBack` | `goto` and browser history |
 
-Knowing SvelteKit helps understand this projection but does not permit editing
-`_private/svelte`, calling `$app/navigation`, reading the URL manually, or
-writing generated `+page.svelte` files.
+Pages and Layouts outside `src/routes` are refused
+(`FLOW_ROUTES_ROOT_REQUIRED`). Knowing SvelteKit helps, but never edit
+`_private/svelte`, call `$app/navigation`, read the URL manually or write
+generated `+page.svelte` files.
+
+## Source Documents
+
+A Page, Layout or component is one `.flow.svelte` file: a module header, then
+one `<FlowComponent>` root whose children are the slots `Variables` (typed
+state), `Events` (lifecycle) and `Structure` (visible UI only):
+
+```svelte
+<script module>
+  export const _flow = {
+    sourceVersion: 2,
+    page: { id: "product", title: "Product" }
+  };
+</script>
+
+<FlowComponent $$id="product" label="Product">
+  <Structure>
+    <Text $$id="tab" text="@route.query.tab" />
+  </Structure>
+</FlowComponent>
+```
+
+- Every file declares `sourceVersion: 2` in its `_flow` (or `_meta`) header,
+  otherwise `FLOW_SOURCE_VERSION_REQUIRED`. Headers hold static literals only;
+  writers update the existing `<script module>` and never add a second one.
+- `$$id` is the node identity (Name). `$$comment` is a note and
+  `$$disabled={true}` removes the node and its subtree from rendering and
+  execution; enabled nodes omit it. Plain attributes are widget or business
+  properties: `<Input $$id="editor" id="customer-field" disabled={true} />`
+  has identity `editor`, DOM id `customer-field` and a disabled widget.
+- One `$$id` namespace per document: a component cannot reuse the `$$id` of a
+  `State`. Rename changes `$$id` only.
+- A Page root may carry `label`; a component keeps its label in its header.
+- Put `class` and layout properties on the first visible child of
+  `Structure`, usually `PageShell`. Lifecycle blocks never go in `Structure`.
+- Wrapper tags such as `Children`, `Events`, `Actions`, `Params`, `Query`,
+  `Then` and `Else` are exact. Spreads, directives and unknown children are
+  rejected, never dropped silently.
+- Canonical formatting is one attribute per line: `$$` attributes first, then
+  business attributes sorted alphabetically. The first write of a compact or
+  unsorted file reorders all of it; expect that diff and continue from the
+  returned revision (use `code-rg` extracts afterwards). A property edited
+  back to its default (a literal equal to the default included) is removed
+  from the source; absent means default.
 
 ## Authoring Loop
 
@@ -37,15 +87,15 @@ flow-project-bootstrap(ui:true) -> dev.ensure(wait:false) -> code-get
 -> dev.sync once -> one browser proof -> dev.open only if no viewer was returned
 ```
 
-The bootstrap `studioTarget` and `code-get.authoringContract` are sufficient to
-address the initial `home` Page. Do not call `frontend-svelte-tree` merely to
-rediscover that Page, derive its parent path, or verify a node id that the agent
-just authored. When an exact portable block property contract is missing, make
-one focused `authoring-palette` call at
-`<project>::frontends.svelte.routes.<page-id>.events`; a tree lookup is not a
-prerequisite. After a successful `code-set(reveal:true)`, use the authored id
-and source path as the final reveal target. Call `dev.open` only when
-`dev.sync` did not already return the active viewer.
+`dev.ensure`, `dev.sync` and `dev.open` are `actionId` values of
+`frontend-svelte-action`. The bootstrap `studioTarget` and
+`code-get.authoringContract` are sufficient to address the initial Page. Do
+not call `frontend-svelte-tree` merely to rediscover it. When a portable block
+property contract is missing, make one focused `authoring-palette` call with
+the exact qualified `parentPath` returned by `code-get` or `authoring-tree`;
+never compose that path from the logical Page id. After a successful
+`code-set(reveal:true)`, use the authored `$$id` and source path as the reveal
+target.
 
 When bootstrap returns `existing:true`, treat the sequence as an existing
 project, not as a creation. If the one `dev.ensure` response is already active
@@ -57,98 +107,72 @@ explicit dry-run or a changed draft; `dev.sync` follows a mutation or completes
 a pending preparation, never an unchanged active viewer.
 
 1. Call `code-get({ project, kind:"source" })` once. It returns the current
-   source, revision, every Page (`id`, `path`, typed parameters and sourceFile),
-   the compact canonical block contract, and the exact application stylesheet
-   path in `authoringContract.sources.applicationStyles`.
-   Immediately call `frontend-svelte-action({ project,
-   actionId:"dev.ensure", wait:false })`. This idempotent preflight preserves a
-   running viewer and restarts it after Studio was relaunched, so subsequent
-   mutations are visible live. Do not poll or repeat it during the turn. If
-   bootstrap already caused this call before `code-get`, it also satisfies this
-   existing-project preflight.
-2. Plan the Pages and transitions. Write each complete Page directly with
-   `code-set`, addressing it by `sourceFile`; it validates before the atomic
-   write and returns structured diagnostics on failure. Use `code-check` only
-   for an intentional dry-run. A new Page has no revision. Existing Pages use
-   their returned revision.
-3. For focused later changes, call `code-rg({ project, kind:"source",
-   pattern })`. A unique contextual match already contains the `sourceFile` and
-   `revision` needed by the smallest `code-patch`; do not read the whole Page.
-   If the context is insufficient, use bounded `code-get` with the match range
-   and revision, then patch. Escalate to a full read only when the target stays
-   ambiguous or the change is broad. The same tools read and update the project
-   application stylesheet when `sourceFile` is
+   source, revision, every Page (`id`, `path`, typed parameters, sourceFile),
+   the compact block contract and the application stylesheet path in
+   `authoringContract.sources.applicationStyles`. Then call
+   `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`
+   once: it preserves a running viewer and restarts it after a Studio
+   relaunch. Do not poll or repeat it.
+2. Plan the Pages and transitions. Write each complete Page with `code-set`
+   and `sourceFile`; it validates before the atomic write. Write target Pages
+   before the Pages that navigate to them (`FRONTEND_NAVIGATE_PAGE_UNKNOWN`
+   otherwise). A new Page has no revision; existing Pages use theirs.
+3. For later changes, `code-rg({ project, kind:"source", pattern })`: a unique
+   match carries the `sourceFile` and `revision` for the smallest
+   `code-patch`. Use a bounded `code-get` range only when context is missing.
+   The same tools edit the stylesheet at
    `authoringContract.sources.applicationStyles`; do not guess that path.
 4. Use one targeted palette lookup only when the contract lacks a block,
-   property or schema path. Use a focused tree only when an existing source
-   target is genuinely unknown; never pair a tree and palette by default.
-   Apply returned picker mutations unchanged.
-5. For a freshly bootstrapped UI project, call the same `dev.ensure` action
-   immediately after bootstrap so npm initializes while you author. Do not
-   poll or retry it: Vite and the Studio viewer open automatically
-   when setup completes. Call `dev.sync` once after the final repair pass to
-   regenerate the completed source; use `dev.open` only to reveal an already
-   running viewer.
-6. On the fast path, `flow-app-progress` is optional after successful
-   `code-set` and `dev.sync`; call it only when a consolidated readiness report
-   answers an unresolved question. Add `qname` only when a real backend Flow is
-   part of the application. Use the live dev viewer to prove the requested
-   visible and interactive behavior and confirm referenced images load without
-   404 responses. For a simple reactive value, prefer one browser evaluation
-   that captures the initial value, waits, and verifies the update. Build
-   production only for deployment or an explicit production check. Never claim
-   a color, layout, timer, navigation or viewer state that was not observed.
+   property or schema path, and a focused tree only when a source target is
+   genuinely unknown. Apply returned picker mutations unchanged.
+5. For a freshly bootstrapped UI project, `dev.ensure` right after bootstrap
+   lets npm initialize while you author; Vite and the Studio viewer open when
+   setup completes. Call `dev.sync` once after the final repair pass; use
+   `dev.open` only to reveal an already running viewer.
+6. `flow-app-progress` is optional on the fast path; add `qname` only when a
+   real backend Flow is part of the application. Prove the requested visible
+   and interactive behavior in the live viewer, including images without 404.
+   Build production only for deployment or an explicit production check.
+   Never claim a color, layout, timer, navigation or viewer state that was
+   not observed.
+
+MCP writes files on disk; Studio edits are drafts until **Save project**. If
+the user has unsaved Studio edits on a source, ask them to save before
+writing it.
 
 ## Assets
 
-Import each supplied or generated image once with
-`frontend-svelte-asset-import({ project, sourceFile,
-assetPath:"resources/<name>" })`. The tool validates the file, writes it only
-inside the project's `resources/` directory, synchronizes the dev projection,
-and returns the canonical `resources/...` URL. Use that URL unchanged in an
-Image property or in `app.flow.css`; the generator resolves it in both dev and
-production. Do not copy files with shell commands, do not duplicate them under
-`_flow/resources`, and do not edit `_private/svelte/static`.
+Import each image once with `frontend-svelte-asset-import({ project,
+sourceFile, assetPath:"resources/<name>" })`. It writes inside the project's
+`resources/` directory and returns the canonical `resources/...` URL; use it
+unchanged in an Image property or in `app.flow.css`. Do not shell-copy files,
+duplicate them under `_flow`, or edit `_private/svelte/static`. `code-check`
+reports `FRONTEND_ASSET_MISSING` for an absent image; the final browser pass
+must still catch 404s.
 
-`code-check` reports `FRONTEND_ASSET_MISSING` when a canonical source refers to
-an absent project image. `flow-app-progress` is structural readiness, not
-browser/network proof; the final Playwright pass must still catch 404s.
-
-For repeated UI patterns, validate one pilot, propagate with revisioned small
-patches, then check every changed source once in its final state. Finish with
-one compact viewer proof. Do not repeat checks on unchanged sources or loop on
-browser attachment when one readiness check already proves it unavailable.
-
-Do not assemble an application with hundreds of tree mutations. Do not guess
-Ionic, NGX, CSS or HTML property names. Use semantic layout properties for
-structure, the source-backed `theme.flow.css` project theme, and the free-form `app.flow.css` application stylesheet plus explicit `class` names for
-visual rules that do not belong in a component contract. Source wrapper tags
-such as `Children`, `Events`, `Actions`, `Params`, `Query`, `Then` and `Else`
-are exact.
+For repeated UI patterns, validate one pilot, propagate with small
+revisioned patches, then check each changed source once. Do not assemble an
+application with hundreds of tree mutations, and do not guess Ionic, NGX,
+CSS or HTML property names.
 
 ## Themes And Palettes
 
-Theme palette and display mode are independent axes:
+Use semantic layout properties for structure, the source-backed
+`theme.flow.css` for tokens and the free-form `app.flow.css` plus explicit
+`class` names for visual rules. Palette and display mode are independent:
 
-- Define each named palette in `theme.flow.css` under
-  `@layer flow.theme` with `:root[data-flow-palette="name"]`. Define its dark
-  values with the same selector plus `[data-flow-theme="dark"]`.
-- Insert `ThemePaletteControl` for the standard style selector. It reads
-  `@theme.options`, applies `data-flow-palette` and persists the choice.
-- Insert `DisplayModeControl` for the standard compact, tactile
-  System/Light/Dark control. It owns its presentation and persistence: do not
-  add a legacy `theme-switch` class or duplicate event wiring. System removes
-  the forced attribute; Light and Dark apply `data-flow-theme`. Use `ThemeSwitch` and
-  `BrowserPreference` only when a custom presentation is explicitly needed.
-- Consume semantic palette values from `app.flow.css` with
-  `var(--flow-color-background)`, `var(--flow-color-surface)`,
-  `var(--flow-color-text)`, `var(--flow-color-primary)` and related tokens.
-  Hard-coded colors are appropriate for deliberate artwork and local effects,
-  not for the application's semantic surfaces, text or accents. Otherwise the
-  selector can update `data-flow-palette` correctly while producing no visible
-  change.
-
-Minimal end-to-end shape:
+- Define each named palette in `theme.flow.css` under `@layer flow.theme`
+  with `:root[data-flow-palette="name"]`, and its dark values with the same
+  selector plus `[data-flow-theme="dark"]`.
+- `ThemePaletteControl` is the standard style selector (it reads
+  `@theme.options`); omit it when only one palette exists.
+- `DisplayModeControl` is the standard System/Light/Dark control and owns its
+  persistence. Use `ThemeSwitch` and `BrowserPreference` only for a custom
+  presentation.
+- Consume semantic values in `app.flow.css` with `var(--flow-color-background)`,
+  `var(--flow-color-surface)`, `var(--flow-color-text)`,
+  `var(--flow-color-primary)` and related tokens; hard-coded colors are for
+  artwork and local effects only.
 
 ```css
 @layer flow.theme {
@@ -168,265 +192,239 @@ Minimal end-to-end shape:
 }
 ```
 
-`code-check` warns with `FLOW_THEME_TOKENS_UNUSED` when an application
-stylesheet contains many literal colors but consumes no semantic Flow color
-token. It warns with `FLOW_THEME_PRIVATE_TOKENS` when private application
-variables isolate shared surfaces from the Flow theme. After `dev.sync`, test
-one representative standard widget and one application surface in System,
-Light and Dark before multiplying the pattern. Test every named palette in both light and dark mode.
-Browser proof must observe `data-flow-palette`, `data-flow-theme`, a changed
-computed semantic token, a visible change, and restoration after reload. If
-the tree contains only `Themes > Default`, the named palette catalogue was not
-authored or discovered.
+`code-check` warns with `FLOW_THEME_TOKENS_UNUSED` (many literal colors, no
+semantic token) and `FLOW_THEME_PRIVATE_TOKENS`. Test every named palette in
+light and dark mode: browser proof must observe `data-flow-palette`,
+`data-flow-theme`, a changed computed token, a visible change and restoration
+after reload. A tree with only `Themes > Default` means no named palette was
+authored.
 
-When only one palette exists, do not add `ThemePaletteControl`: display mode is
-still useful, but a named-style selector would be empty or misleading.
-
-`FlowComponent` is the non-visual source root and accepts only `id` and
-`label`. Its three authoring slots have distinct roles:
-
-```text
-FlowComponent
-  Variables  -> page-local typed state
-  Events     -> page lifecycle such as OnMount and Interval
-  Structure  -> visible UI only
-```
-
-Put `class` and visual layout properties on the first visible child in
-`Structure`, usually `PageShell`. Lifecycle blocks never belong in
-`Structure`.
+Custom fonts are project sources in `_flow/fonts/<provider>/<family>/`
+(`font.json` with its license, plus `*.woff2`). A theme token such as
+`--c8o-font-family: "Inter", system-ui, sans-serif;` naming a carried family
+makes generation embed the files. No tool downloads fonts yet. Icons are SVG
+sources under `_flow/icons/iconify/<set>/` (see
+`flow://guide/custom-blocks`).
 
 ## Pages And Navigation
 
-Give each Page a stable logical id in its metadata:
+Give each Page a stable logical id in `_flow.page.id` and navigate by that id,
+never by constructing a URL:
 
 ```svelte
-<script module>
-  export const _flow = {
-    page: { id: "product", title: "Product" }
-  };
-</script>
-```
-
-Navigate by Page id, never by constructing its URL:
-
-```svelte
-<Navigate id="openProduct" page="product">
-  <Params>
-    <Variable name="id" value="@item.id" />
-  </Params>
+<Navigate $$id="openProduct" page="product">
   <Query>
+    <Variable name="id" value="@item.id" />
     <Variable name="tab" value="details" />
   </Query>
 </Navigate>
 ```
 
-The generator resolves the Page path, checks required parameters, encodes
-segments and builds the query. The target Page reads:
+The generator resolves the Page path, checks required parameters and encodes
+segments and query. `Params` fills route parameters of a `[param]` Page
+(`flow://guide/frontend-svelte-routing`). The target Page reads
+`@route.query.<name>` (and `@route.params.<name>`):
 
 ```svelte
-<FullSyncGet id="readProduct" database="retailstore"
-  docid="@route.params.id" />
+<FullSyncGet $$id="readProduct" database="retailstore" docid="@route.query.id" />
 ```
 
-The `authoringContract.pages` returned by `code-get` is authoritative. It exposes
-each parameter as `@route.params.<name>`. `Navigate.to` remains an expert
-compatibility escape hatch for an external or unmodelled route; prefer `page`.
-Use a visible Button with `GoBack` and a fallback for direct entry.
-
-Static links should use `<LinkButton page="product" />` for a known Page. The
-fallback syntax `~/help` is rooted at the deployed application base; `/help`
-is rooted at the web origin and is not portable across Convertigo deployment
-paths. When navigation follows `SetValue`,
-`FullSyncGet`, `FullSyncView`, `FullSyncSync` or `CallSequence`, place Navigate
-after that action in the same `Actions` slot.
+`authoringContract.pages` from `code-get` is authoritative for ids, paths and
+parameters. `Navigate.to` is an expert escape hatch for an external route.
+Use a visible Button with `GoBack` and a fallback for direct entry. Static
+links use `<LinkButton $$id="toProduct" label="Product" page="product" />`;
+the fallback syntax `~/help` is rooted at the deployed application base,
+`/help` at the web origin. When navigation follows `SetValue`,
+`FullSyncGet`, `FullSyncView`, `FullSyncSync` or `CallSequence`, place
+`Navigate` after that action in the same `Actions` slot.
 
 ## Values And Bindings
 
-Flow Svelte preserves the three NGX SmartType intents:
+A bindable property has three human modes, as in the Studio picker:
 
-- `property="News"`: literal value (TXT);
-- `property={count + " items"}`: browser expression (JS);
-- `property="@loadNews.news"`: typed schema-backed source (picker).
+- **Literal:** `label="News"` (or `value={true}` for non-strings);
+- **Source:** `text="@loadNews.news"`, a schema-backed reference that always
+  starts with `@`;
+- **Compose:** ordered literal, source and expression parts
+  (`expression.parts`) such as `index + 1 + " / " + total`; a source framed by
+  text is Compose, not Source.
 
-The quoted/expression distinction matters. A schema-backed value always starts
-with `@`. Use the canonical bindable property of each block:
-`Text.text`, `Button.label`, `Image.src`, and `ForEach.source`. The hidden
-`source` property on Text, Button and Image is a compatibility alias, not
-authoring syntax.
-Common sources are:
+A raw `{expression}` stays available for advanced browser-only logic. Write
+`@source.path` references or concise expressions in source; never hand-write
+the internal `FlowValueBinding` JSON, and apply `suggestedBinding` or an exact
+picker mutation when validation returns one. A source path can always be
+typed; schema paths are suggestions. Use the canonical bindable property of
+each block: `Text.text`, `Button.label`, `Image.src`, `ForEach.source`.
 
-- `@action.path`: action, requestable or FullSync result;
-- `@local.name`: a typed page-local Variable;
-- `@item.path`, `@index`: lexical aliases inside ForEach;
-- `@loop.item.path`, `@loop.index`: explicit iterator forms;
-- `@event.value`, `.checked`, `.key`, `.name`: normalized event;
-- `@route.params.id`, `@route.query.tab`: current Page route.
+Sources:
+
+- `@<actionId>.path`: an action, requestable or FullSync result;
+- `@local.name`: a page variable (`State`, `Derived`, `Translations`),
+  including variables of ancestor Layouts;
+- `@<context>.path` and `@index` inside a `ForEach` (`@row.name` under
+  `context="row"`), or the explicit `@<forEachId>.item.path` and
+  `@<forEachId>.index`;
+- `@event.value`, `.checked`, `.key`, `.name`: the normalized event;
+- `@route.path`, `@route.params.id`, `@route.query.tab`: current route;
+- `@props.<name>`: a component input (inside a component);
+- `@theme.available`, `@theme.options`, `@theme.default`: application themes.
 
 ```svelte
-<ForEach id="news" source="@loadNews.news" context="item" index="index">
+<ForEach $$id="news" source="@loadNews.news" context="item" index="index">
   <Children>
-    <Image id="image" src="@item.imageUrl" />
-    <Text id="title" text="@item.title" />
-    <Text id="position" text="@index" />
+    <Image $$id="image" src="@item.imageUrl" />
+    <Text $$id="title" text="@item.title" />
+    <Text $$id="position" text="@news.index" />
   </Children>
 </ForEach>
 ```
 
-MCP compiles these references to internal `FlowValueBinding` objects. Humans
-and agents should not author those objects. Client action parameters reject
-free browser expressions; use a source, a literal, or a portable dual-target
-block for computation. Apply `suggestedBinding` or an exact picker mutation
-when validation returns one.
+Client action parameters reject free browser expressions; use a source, a
+literal or a portable block for computation.
 
-Studio may compose a bindable value from ordered literal, source and explicit
-code parts. This supports displays such as `index + 1 + " / " + total`, wrappers
-such as `[index]`, and nullish defaults while preserving each picked source.
-This is a human-facing authoring model, not another JSON syntax for agents to
-hand-write. In Flow source, keep using intuitive `@source.path` references or a
-concise browser expression; let MCP lower and validate the representation.
-
-`Combobox` is the standard searchable choice control. Its default contract is
-closed: typing filters `options`, but only a proposed value is accepted. Set
-`allowCustomValue={true}` when the same field must also accept a new business
-label. In that mode `@event.value` is the selected option value or the typed
-text, so one backend Flow must resolve an existing id or create the custom
-value and must reject an empty label. Do not emulate this with a separate
-`Input`, a `ForEach` and suggestion buttons.
+`Combobox` is the standard searchable choice. Its default contract is closed:
+typing filters `options`, but only a proposed value is accepted. Set
+`allowCustomValue={true}` when the field must also accept a new business
+label; `@event.value` is then the selected value or the typed text, so one
+backend Flow must resolve an existing id or create the value and reject an
+empty label. Do not emulate this with `Input`, `ForEach` and buttons.
 
 ## Structure And Actions
 
-Pages, layouts, visible blocks, directives, events and actions remain visible
-in treeview and properties. Typical structures are:
-
 ```text
-FlowComponent -> Variables -> State / Derived / DerivedBy
+FlowComponent -> Variables -> State / Derived / DerivedBy / Translations
 FlowComponent -> Events -> OnMount / OnDestroy / Effect / PreEffect / Interval / Timeout
 FlowComponent -> Structure -> PageShell
 Button -> Events -> OnClick -> Actions -> CallSequence -> Variables
+Input -> Events -> OnChange -> Actions -> portable block
 ForEach -> Children -> Card
 If -> Then / Else
 Layout -> PageContent
 ```
 
-Temporarily skip an existing block with
-`frontend-svelte-mutate({ project, sourceFile, mutation:
-{ op:"setEnabled", path:sourceMutationPath, enabled:false } })`, using the
-`sourceMutationPath` returned by the tree. Set `enabled:true` to restore it.
-A disabled frontend block and its subtree remain authorable but are omitted
-from generated Svelte, including their actions and imports.
-
 Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
-`GridLayout`, `Card`), display, forms and navigation. Do not hide behavior in
-page CSS, generated code or browser globals. A layout must contain
-`PageContent`.
+`GridLayout`, `Card`), display, forms and navigation. A Layout must contain
+`PageContent`. Do not hide behavior in CSS, generated code or browser
+globals. To skip a block temporarily, patch `$$disabled={true}` onto it;
+remove the attribute to restore it.
 
-Use `OnMount`, `OnDestroy`, `Effect`, `PreEffect`, `Interval` or `Timeout` in
-the root `Events` slot for page lifecycle. `Interval` and `Timeout` register
-when the component mounts and clean their timer up automatically on teardown;
-nest them under `OnMount` only when their creation is part of a larger explicit
-mount chain.
+Page lifecycle goes in the root `Events` slot. `Interval` and `Timeout`
+register on mount and clean up on teardown; nest them under `OnMount` only
+inside a larger explicit mount chain. `OnMount once={true}` survives route
+round trips but not a full reload.
 
-Declare mutable page-local state with `State`, and computed state with
-`Derived` or `DerivedBy`, in the root `Variables` slot. Write mutable state
-with an action `target="local.name"` and read it through `@local.name`; the
-picker exposes the declared schema. `Variable` remains the argument block for
-action variables, route Params and Query values, not page-local state.
-Initialize local state before long network actions. Keep provisioning,
-synchronization and the first local query separate so progress and errors
-remain observable. `OnMount once={true}` survives route round-trips but not a
-full browser reload.
-
-For FullSync, read `flow://guide/fullsync` and use `FullSyncGet`,
-`FullSyncView`, `FullSyncSync` and `FullSyncReset`; never hand-write PouchDB or
-`fs://` calls. Give Status the exact `actionId` it displays.
-
-CallSequence identity remains stable:
+Declare mutable state with `State` and computed state with `Derived` or
+`DerivedBy` in `Variables`. Write state with an action `target="local.name"`
+(`<SetValue $$id="setLanguage" target="local.language" value="fr" />`) and
+read it with `@local.name`. `Variable` is the argument block of actions,
+Params and Query, not page state. Initialize local state before long network
+actions, and keep provisioning, synchronization and the first query separate
+so progress and errors remain observable.
 
 ```svelte
-<CallSequence id="getDetail" requestable=".GetDetail" marker="cardDetail">
+<CallSequence $$id="getDetail" marker="cardDetail" requestable=".GetDetail">
   <Variables><Variable name="id" value="@item.id" /></Variables>
 </CallSequence>
 ```
 
-`marker` is optional static NGX-compatible identity, not a business parameter.
-Per-item results remain scoped to the iterator. Put business values in
-Variables.
-
-Use `SetValue`, `UpdateList` and `UpdateNumber` for explicit client state.
-Their values are literals or schema-backed sources, not arbitrary browser
-expressions. Use `Derived`/`DerivedBy` for pure computation from state, or a
-typed frontend Flow block for reusable browser behavior. Pure dual-target Flow
-blocks are inserted directly by their palette tag; never write `RunAxiom`.
+`marker` is an optional static NGX-compatible identity, not a business
+parameter; per-item results stay scoped to the iterator. Use `SetValue`,
+`UpdateList` and `UpdateNumber` for explicit client state, `Derived` /
+`DerivedBy` for pure projections, and portable blocks (inserted by their
+palette tag, never `RunAxiom`) for reusable browser logic. For FullSync, read
+`flow://guide/fullsync`. `Status` displays the action named by its `actionId`.
 
 ### Clocks And Timers
 
-`Interval` and `Timeout` are schedulers. Their callback count is not elapsed
-time: browser throttling, a busy UI or a suspended tab can delay callbacks.
-For clocks and stopwatches, read wall-clock timestamps and compute from them.
+`Interval` and `Timeout` are schedulers: their callback count is not elapsed
+time. For clocks and stopwatches, read wall-clock timestamps and compute from
+them with `DateNow`, `DateFormat`, `NumberAdd`, `NumberSubtract`,
+`NumberChoose` and `DurationFormat`; `authoringContract.portableBlocks` lists
+their properties and a `wallClock` recipe. Look up one exact block (for
+example `date.now`) in the palette only when its properties are absent. A
+portable action's `target` is optional: omit it and bind `@<$$id>`, or write
+an existing `local.name`. Never implement a stopwatch by counting `Interval`
+callbacks.
 
-The compact `authoringContract.portableBlocks` advertises the typed Flow actions
-available to source authoring. Prefer `DateNow`, `DateFormat`, `NumberAdd`,
-`NumberSubtract`, `NumberChoose` and `DurationFormat` over one opaque browser
-expression when they match the intent. Common portable actions include their
-compact property contracts directly; use the supplied `wallClock` recipe as the
-KISS baseline for a live clock. Perform one exact-id palette lookup such as
-`date.now` only when the chosen block's properties are absent. A portable
-action's `target` is optional: omit it and bind its result as `@actionId`, or
-write to an existing `local.name`; never invent a bare result target. A typical
-refresh chain reads now, formats or subtracts it, then publishes the typed
-result to an existing state.
+## Components And Inputs
 
-Keep `Derived` and `DerivedBy` for small pure projections of already typed
-state. Do not implement a stopwatch by incrementing a counter on every
-`Interval` callback.
+A reusable Flow component is a `<FlowComponent>` whose header declares
+`kind: "component"` and its inputs in `props`; inside it, `@props.<name>`
+reads an input:
 
-### Shared Project Components
+```svelte
+<script module>
+  export const _flow = {
+    sourceVersion: 2,
+    kind: "component",
+    id: "greeting",
+    label: "Greeting",
+    props: {
+      title: { label: "Title", type: "string", default: "Hi", description: "Heading text." }
+    }
+  };
+</script>
 
-Reusable Svelte components live in the provider project's canonical
-`_flow/frontbuilder/svelte/components` directory. Before creating a local
-component or mock, call the same contextual palette used by Studio:
-
-```text
-authoring-palette({ parentPath:"MyProject::frontends.svelte.routes...", query:"chart" })
+<FlowComponent $$id="greeting">
+  <Structure>
+    <Text $$id="text" text="@props.title" />
+  </Structure>
+</FlowComponent>
 ```
 
-Use the actual business capability as `query` and a `parentPath` returned by
-`authoring-tree`. Execute the matching item's `apply` mutation unchanged. The
-palette searches the current project, references and workspace and adds a
-required project reference atomically. Otherwise keep a typed, visibly
-incomplete mock until the missing reusable capability is implemented; do not
-silently replace a requested chart with a table, summary numbers or fake data.
+Saved as `src/lib/components/Greeting.flow.svelte`, it is used by its tag;
+each input is a bindable property: `<Greeting $$id="hello" title="@route.path" />`.
+Its label lives in the header (no `label` attribute on its root), and each
+instance owns its own state. An unknown input path gives
+`FRONTEND_BINDING_PATH_UNKNOWN`.
 
-`authoring-tree` omits the frontend and Flow block catalogs by default so the
-initial project structure stays fast. Use `authoring-palette` for contextual
-block discovery. Set `includeFrontendCatalog:true` or `includeFlowCatalog:true`
-only for an explicit catalog inspection.
+Shared components live in the builder root
+`_flow/frontbuilder/svelte/components/<namespace>/<Tag>.flow.svelte` of the
+defining project (older libraries stay flat under `components/`). Studio shows
+them under **Catalog > Components** in two forms:
 
-Add an explicit Convertigo project reference from the consumer with
-`flow-project-reference`, or pass `references` while bootstrapping a new
-project.
+- **Flow UI block:** a `<FlowComponent>` with an `_flow` header, edited as a
+  tree (Variables / Events / Structure) like the example above;
+- **Svelte UI block:** Svelte code described by an `export const _meta`
+  header (`sourceVersion: 2`, `id: "<namespace>.<name>"`, `tag`, `kind`,
+  `runtime: "flow-svelte"`, `props`, `slots`, `targetKinds`, `icon`,
+  `description`), edited through Open source. Read an existing one with
+  `code-get` before writing a new one.
 
-Referenced components join the consumer palette as read-only library blocks.
-Use them in pages and components exactly like local palette blocks. Edit the
-definition in its provider project; do not copy or patch the referenced source
-inside consumers. Each component instance owns its page/component-local state
-unless its public contract explicitly shares state.
+A `<Tag>.flow.css` beside a component is its CSS. A provider may declare
+exact npm versions in `_meta.implementation.dependencies`; `dev.sync`
+installs them. Never run npm manually or edit the generated `package.json`.
 
-A provider may declare exact npm versions in
-`_meta.implementation.dependencies`. The generator merges those dependencies
-and rejects incompatible versions. `dev.sync` installs a changed application
-dependency contract and restarts Vite only in that exceptional case. Authors
-must never run npm manually or edit the generated `package.json`.
+Before creating a local component or mock, query the contextual palette:
+`authoring-palette({ project, parentPath, query:"chart" })` with a
+`parentPath` returned by `authoring-tree` and the business capability as
+`query`. Execute the matching item's `apply` unchanged; the palette searches
+the project, its references and the workspace and adds a required project
+reference. `flow-project-reference` adds a reference explicitly, or pass
+`references` to `flow-project-bootstrap`. Referenced components are read-only
+library blocks: edit them in their provider project. Otherwise keep a typed,
+visibly incomplete mock; never replace a requested chart with a table or fake
+data. `authoring-tree` omits the catalogs by default; use the palette for
+discovery.
+
+## Known Limits
+
+- Dynamic routes such as `product/[id]` fail with HTTP 400 in the dev viewer
+  behind the Studio gateway. Use a static Page, pass the id with
+  `Navigate` `Query`, and read `@route.query.id`.
+- `Await` announces a `pending` slot that the model refuses (`Undeclared slot
+  "pending"`); show progress with `Status` instead.
+- A literal containing braces was reported to break project-wide validation
+  without naming the file; keep braces inside `{expression}` values.
 
 ## Diagnostics
 
-`code-check` must reject unknown blocks/properties, duplicate
-ids, invalid slots, unresolved sources, unknown Page ids and missing required
-Page parameters with a direct correction or one focused lookup. Do not work
-around these errors with filesystem edits or raw Svelte APIs.
+`code-check` rejects unknown blocks or properties, duplicate `$$id`s, invalid
+slots, unresolved sources, unknown Page ids and missing required Page
+parameters with a direct correction or one focused lookup. Do not work around
+them with filesystem edits or raw Svelte APIs.
 
-For a property lookup, use:
+For one property picker, use:
 
 ```text
 frontend-svelte-tree({
@@ -439,27 +437,21 @@ frontend-svelte-tree({
 })
 ```
 
-Set `property` to the exact bindable property returned by the block contract;
-for example `text`, `label`, `src`, or `source`.
-
-Use `authoring-palette` only at the intended qualified `parentPath` and execute
-its `apply` payload unchanged. Create a typed frontend mock only when no
+Set `property` to the exact bindable property of the block contract (`text`,
+`label`, `src`, `source`). Create a typed frontend mock only when no
 canonical block expresses the requirement; a POC is unfinished while the mock
 remains.
 
 ## POC Acceptance
 
-A POC proves the requested path, including its Page transitions and explicitly
-requested content. It may defer exhaustive history, offline restoration,
-responsive coverage and polish. It may not stack downstream business steps in
-one scrolling Page.
+A POC proves the requested path, including its Page transitions and requested
+content. It may defer exhaustive history, offline restoration, responsive
+coverage and polish. It may not stack downstream business steps in one
+scrolling Page.
 
 Execute the build-provided safe Playwright plan. Prefer roles, visible text,
-images and documented `data-*` attributes; low-code ids are not guaranteed DOM
-ids. On failure, allow one focused browser diagnostic instead of starting an
-exploratory test campaign.
-
-Do not infer that a network-backed component works from its container size or
-attribution alone. For maps, confirm that at least one rendered tile image has
-`naturalWidth > 0` and report any failed tile request. Apply the equivalent
-resource-level check to other provider visualizations before claiming success.
+images and documented `data-*` attributes; `$$id`s are not DOM ids. On
+failure, allow one focused browser diagnostic instead of an exploratory test
+campaign. Do not infer that a network-backed component works from its
+container size: for maps, confirm one tile image has `naturalWidth > 0`, and
+apply the equivalent resource check to other visualizations.

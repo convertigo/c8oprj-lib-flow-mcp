@@ -1,5 +1,7 @@
 # Flow FullSync
 
+FullSync in two explicit layers: server DBO provisioning with `flow-fullsync-scaffold`, then client-local Svelte actions.
+
 Use FullSync in two explicit layers: server provisioning and client-local
 actions. Do not hide either layer in YAML, raw CouchDB calls or handwritten SDK
 code.
@@ -58,7 +60,7 @@ The Svelte palette exposes operation-aware action blocks under an event:
 
 ```svelte
 <FullSyncView
-  id="readItems"
+  $$id="readItems"
   database="mydb"
   ddoc="catalog"
   view="items"
@@ -70,11 +72,12 @@ The Svelte palette exposes operation-aware action blocks under an event:
 </FullSyncView>
 ```
 
-- `FullSyncGet`: local document read; `docid` is a `FlowValueBinding`.
-- `FullSyncView`: local design-document view; query options are Variable child
-  blocks whose values are `FlowValueBinding` values.
+- `FullSyncGet`: local document read; `docid` is a bindable value such as
+  `docid="@route.query.id"`.
+- `FullSyncView`: local design-document view; query options are `Variable`
+  children whose values are literals or `@` sources.
 - `FullSyncSync`: `mode` is `sync`, `pull` or `push`; progress is retained in
-  runtime state under the action id.
+  runtime state under the action `$$id`.
 - `FullSyncReset`: resets the local database. Set a stable migration `marker`
   so the reset runs once per browser and marker value; changing the marker
   explicitly schedules a new one-time reset.
@@ -100,10 +103,13 @@ request from the operation-aware block.
 FullSync results use the same intuitive source syntax as requestables:
 
 ```svelte
-<ForEach id="rows" source="@readItems.rows" context="row">
-  <Children><Text id="title" text="@row.doc.title" /></Children>
+<ForEach $$id="rows" source="@readItems.rows" context="row">
+  <Children><Text $$id="title" text="@row.doc.title" /></Children>
 </ForEach>
 ```
+
+Inside the loop, `@row.…` (the `context` name) and `@rows.item.…` (the
+explicit form naming the ForEach `$$id`) are equivalent.
 
 When the schema path is unknown, use the binding/mutation returned by the
 palette or `flow-app-progress` unchanged. Do not construct its internal
@@ -125,7 +131,8 @@ Use the learned schema for exact domain paths; do not copy a server envelope
 path into a client FullSync binding.
 
 Action parameter bindings can reference requestable results, prior FullSync
-results or the lexical item/index of an enclosing `ForEach`. The generated
+results or the lexical item/index of an enclosing `ForEach` (`@row.doc._id`,
+`@index`). The generated
 button invocation carries the lexical iteration scope; no string interpolation
 is needed.
 
