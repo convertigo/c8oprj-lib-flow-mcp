@@ -2355,7 +2355,11 @@
 			} else if (rawQName.indexOf(".") < 0 && projectName) {
 				rawQName = projectName + "." + rawQName;
 			}
-			args.flowQName = rawQName;
+			// The engine reads the first flowQName segment as the project: a bare Flow name
+			// (standalone, no project) would address the working copy of another qname.
+			if (rawQName.indexOf(".") > 0) {
+				args.flowQName = rawQName;
+			}
 		}
 		var hasDefinition = args.definition !== undefined && args.definition !== null;
 		if (!hasDefinition && (args.flowSource === undefined || args.flowSource === null || String(args.flowSource).trim() === "") && args.name) {
