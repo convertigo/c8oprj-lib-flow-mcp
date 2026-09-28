@@ -1978,7 +1978,6 @@
 		if (!workspaceSearch && options.resolveProject !== false) {
 			args = resolveProjectDir(args);
 		}
-		args = inferFrontendMutationSourceFile(name, args);
 		if ((name === "flow-resource-patch" || name === "flow-resource-delete") && args.path) {
 			assertNoWorkingCopy(args, String(args.path), name);
 		}
@@ -1987,6 +1986,7 @@
 			args = withSourceDrafts(args, name === "authoring-mutate" || name === "frontend-svelte-mutate" ||
 				name === "frontend-svelte-fullsync-schema");
 		}
+		args = inferFrontendMutationSourceFile(name, args);
 		return args;
 	}
 
@@ -2272,16 +2272,18 @@
 		return text;
 	}
 
-	function frontendBuilderModelPath(projectRoot, builderName) {
-		if (!projectRoot) {
-			return "";
-		}
-		var engineFile = new File(projectRoot, "_flow/engine.yaml");
-		if (!engineFile.isFile()) {
-			return "";
+	// engineSource: the Engine source of the request (a loaded FlowEngine working copy), else engine.yaml.
+	function frontendBuilderModelPath(projectRoot, builderName, engineSource) {
+		var source = engineSource !== undefined && engineSource !== null && String(engineSource).trim() ? String(engineSource) : "";
+		if (!source) {
+			var engineFile = projectRoot ? new File(projectRoot, "_flow/engine.yaml") : null;
+			if (!engineFile || !engineFile.isFile()) {
+				return "";
+			}
+			source = readUtf8(engineFile);
 		}
 		var builderSafe = safeFileName(builderName || "svelte");
-		var lines = readUtf8(engineFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+		var lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
 		var builderLine = -1;
 		var builderPattern = new RegExp("^    " + builderSafe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ":\\s*$");
 		for (var i = 0; i < lines.length; i++) {
@@ -2347,7 +2349,7 @@
 			}
 		}
 		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
-		var modelPath = frontendBuilderModelPath(projectRoot, args.builder || "svelte");
+		var modelPath = frontendBuilderModelPath(projectRoot, args.builder || "svelte", args.engineSource);
 		if (!modelPath) {
 			throw new Error(name + " requires sourceFile or config.frontbuilder.svelte.modelPath.");
 		}
