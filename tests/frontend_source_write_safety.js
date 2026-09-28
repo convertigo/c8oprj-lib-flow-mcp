@@ -93,9 +93,9 @@ function expectError(props, code) {
 var root = Packages.java.nio.file.Files.createTempDirectory("flow-source-write-safety").toFile();
 var sourceFile = "_flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte";
 var source = new java.io.File(root, sourceFile);
-var first = "<FlowComponent id=\"first\"><Structure /></FlowComponent>\n";
-var second = "<FlowComponent id=\"second\"><Structure /></FlowComponent>\n";
-var third = "<FlowComponent id=\"third\"><Structure /></FlowComponent>\n";
+var first = "<FlowComponent $$id=\"first\"><Structure /></FlowComponent>\n";
+var second = "<FlowComponent $$id=\"second\"><Structure /></FlowComponent>\n";
+var third = "<FlowComponent $$id=\"third\"><Structure /></FlowComponent>\n";
 
 var created = run({
 	operation: "set",
@@ -244,7 +244,7 @@ var compactPropertyCheck = run({
 	operation: "check",
 	projectDir: String(root.getAbsolutePath()),
 	sourceFile: sourceFile,
-	code: "<FlowComponent id=\"root\"><Structure><Card id=\"card\" bogus=\"x\" /></Structure></FlowComponent>\n"
+	code: "<FlowComponent $$id=\"root\"><Structure><Card $$id=\"card\" bogus=\"x\" /></Structure></FlowComponent>\n"
 });
 assertTrue(compactPropertyCheck.ok === false && compactPropertyCheck.diagnostics.some(function (diagnostic) {
 	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "bogus";

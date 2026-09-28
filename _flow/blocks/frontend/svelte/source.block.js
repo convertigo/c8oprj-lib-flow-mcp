@@ -113,6 +113,30 @@ const _meta = {
 		return node && node.props && node.props[key] !== undefined ? node.props[key] : node && node[key];
 	}
 
+	function sha256Hex(text) {
+		var digest = Packages.java.security.MessageDigest.getInstance("SHA-256")
+			.digest(new Packages.java.lang.String(String(text || "")).getBytes("UTF-8"));
+		var out = "";
+		for (var i = 0; i < digest.length; i++) {
+			var value = digest[i] < 0 ? digest[i] + 256 : digest[i];
+			out += (value < 16 ? "0" : "") + value.toString(16);
+		}
+		return out;
+	}
+
+	// Working copies of a loaded project (FlowEngine drafts), or the files on disk.
+	function sourceStore(ctx, props) {
+		if (typeof ctx.lib === "function") {
+			return ctx.lib("mcp").sourceStore(props);
+		}
+		return {
+			drafts: false,
+			sourceDrafts: function () { return {}; },
+			exists: function (file) { return file.isFile(); },
+			dirty: function () { return false; }
+		};
+	}
+
 	function sourcePath(props) {
 		var root = new File(String(props.projectDir || "")).getCanonicalFile();
 		if (!root.isDirectory()) {
@@ -154,11 +178,12 @@ const _meta = {
 		return Math.max(min, Math.min(max, number));
 	}
 
-	function sourceSearchPaths(props) {
+	function sourceSearchPaths(ctx, props) {
+		var sources = sourceStore(ctx, props);
 		if (String(props.sourceFile || "").trim()) {
 			var selected = sourcePath(props);
 			return {
-				paths: selected.file.isFile() ? [selected] : [],
+				paths: sources.exists(selected.file) ? [selected] : [],
 				truncated: false,
 				sourceRoot: selected.relative
 			};
@@ -167,7 +192,7 @@ const _meta = {
 		if (!root.isDirectory()) {
 			throw new Error("Flow Svelte source tools require a valid projectDir.");
 		}
-		var relativeRoot = "_flow/frontbuilder/svelte/model";
+		var relativeRoot = "_flow/frontbuilder/svelte";
 		var modelRoot = new File(root, relativeRoot).getCanonicalFile();
 		var rootPath = String(root.getCanonicalPath());
 		var modelPath = String(modelRoot.getCanonicalPath());
@@ -206,6 +231,19 @@ const _meta = {
 			});
 		}
 		if (modelRoot.isDirectory()) visit(modelRoot);
+		// Sources created in the working copy only.
+		var drafts = sources.drafts ? sources.sourceDrafts() : {};
+		Object.keys(drafts).sort().forEach(function (key) {
+			var file = new File(String(key)).getCanonicalFile();
+			var absolute = String(file.getCanonicalPath());
+			var relative = absolute.indexOf(rootPath + String(File.separator)) === 0
+				? absolute.substring(rootPath.length + 1).replace(/\\/g, "/") : "";
+			if (!relative || absolute.indexOf(modelPath + String(File.separator)) !== 0 || file.isFile() ||
+					(!relative.endsWith(".flow.svelte") && !relative.endsWith(".flow.css")) || paths.length >= 500) {
+				return;
+			}
+			paths.push({ root: root, file: file, relative: relative, absolute: absolute });
+		});
 		return {
 			paths: paths,
 			truncated: truncated,
@@ -246,17 +284,24 @@ const _meta = {
 			}
 		}
 		var needle = caseSensitive ? pattern : pattern.toLowerCase();
-		var selection = sourceSearchPaths(props);
+		var selection = sourceSearchPaths(ctx, props);
+		var sources = sourceStore(ctx, props);
 		var extracts = [];
 		var matchedTargets = 0;
 		var matchCount = 0;
 		selection.paths.forEach(function (path) {
-			var resource = ctx.resourceGet({
-				projectDir: props.projectDir,
-				path: path.relative,
-				allowLarge: true,
-				maxBytes: 5000000
-			});
+			var resource;
+			if (sources.drafts) {
+				var draftContent = sources.read(path.file);
+				resource = { content: draftContent, hash: sha256Hex(draftContent) };
+			} else {
+				resource = ctx.resourceGet({
+					projectDir: props.projectDir,
+					path: path.relative,
+					allowLarge: true,
+					maxBytes: 5000000
+				});
+			}
 			var lines = String(resource.content || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
 			var matched = false;
 			lines.forEach(function (line, index) {
@@ -318,6 +363,14 @@ const _meta = {
 			relative.endsWith(".flow.svelte");
 	}
 
+	// A Catalog component is a Svelte UI block (_meta and a Svelte implementation)
+	// or a Flow UI block (_flow header and a FlowComponent tree, validated like a Page).
+	function isSvelteUiBlock(path, source) {
+		if (!isProviderComponent(path)) return false;
+		var moduleSource = providerModuleSource(source);
+		return !(/<FlowComponent\b/.test(String(source || "")) && /export\s+const\s+_flow\s*=/.test(moduleSource));
+	}
+
 	function providerComponentName(path) {
 		return String(path && path.file && path.file.getName() || "")
 			.replace(/\.flow\.svelte$/, "");
@@ -346,7 +399,8 @@ const _meta = {
 		var diagnostics = [];
 		var seen = {};
 		var match;
-		var idPattern = /<([A-Z][A-Za-z0-9_.]*)\b[^>]*\bid="([^"]+)"/g;
+		// $$id is the node identity; a plain id is a business (DOM) property.
+		var idPattern = /<([A-Z][A-Za-z0-9_.]*)\b[^>]*?\$\$id="([^"]+)"/g;
 		while ((match = idPattern.exec(source)) !== null) {
 			var id = String(match[2]);
 			var occurrence = { tag: String(match[1]), line: lineNumber(source, match.index) };
@@ -354,10 +408,10 @@ const _meta = {
 				diagnostics.push({
 					severity: "error",
 					code: "FRONTEND_DUPLICATE_ID",
-					message: "Duplicate Flow Svelte id '" + id + "' on <" + occurrence.tag + ">.",
+					message: "Duplicate $$id '" + id + "' on <" + occurrence.tag + ">.",
 					line: occurrence.line,
 					firstLine: seen[id].line,
-					hint: "Give every low-code node a stable unique id; update scopeId/actionId references with the renamed owner."
+					hint: "Give every node a unique $$id in the document; update references (@<$$id>, scopeId, actionId) to the renamed node."
 				});
 			} else {
 				seen[id] = occurrence;
@@ -375,7 +429,7 @@ const _meta = {
 				hint: "Replace source with value and keep the same intuitive @reference."
 			});
 		}
-		if (isProviderComponent(path)) {
+		if (isSvelteUiBlock(path, source)) {
 			var moduleSource = providerModuleSource(source);
 			if (!moduleSource || !/export\s+const\s+_meta\s*=/.test(moduleSource)) {
 				diagnostics.push({
@@ -518,7 +572,7 @@ const _meta = {
 			var fallback = "";
 			while ((match = matcher.exec(source)) !== null) {
 				var attributes = openingTagAttributes(matcher.lastIndex);
-				if (!id || (new RegExp("\\bid\\s*=\\s*([\\\"'])" + regexpEscape(id) + "\\1")).test(attributes)) {
+				if (!id || (new RegExp("\\$\\$id\\s*=\\s*([\\\"'])" + regexpEscape(id) + "\\1")).test(attributes)) {
 					fallback = attributes;
 					break;
 				}
@@ -551,7 +605,8 @@ const _meta = {
 			}));
 			if (hasCatalog && accepted.length > 0) {
 				Object.keys(props).forEach(function (name) {
-					if (accepted.indexOf(name) !== -1) return;
+					// $$ attributes are engine attributes, checked by the engine.
+					if (name.indexOf("$$") === 0 || accepted.indexOf(name) !== -1) return;
 					diagnostics.push({
 						severity: "error",
 						code: "FRONTEND_PROPERTY_UNKNOWN",
@@ -638,7 +693,7 @@ const _meta = {
 			});
 		}
 		if (!diagnostics.some(function (item) { return item.severity === "error"; })) {
-			if (isProviderComponent(path)) {
+			if (isSvelteUiBlock(path, source)) {
 				validateProviderComponent(ctx, props, path, source, diagnostics);
 				return {
 					ok: !diagnostics.some(function (item) { return item.severity === "error"; }),
@@ -753,53 +808,70 @@ const _meta = {
 		return orderedTags.map(function (tag) { return byTag[tag]; });
 	}
 
-	function routeSources(props) {
+	// Pages as the frontbuilder names them: _flow.page.id, otherwise the route path.
+	function routeSources(ctx, props) {
+		var sources = sourceStore(ctx, props);
 		var root = new File(String(props.projectDir || "")).getCanonicalFile();
+		var rootPath = String(root.getCanonicalPath());
 		var model = String(props.sourceFile || "").replace(/\\/g, "/");
 		var marker = "/src/routes/";
 		var markerIndex = model.indexOf(marker);
 		var routesRelative = markerIndex >= 0 ? model.substring(0, markerIndex + marker.length - 1) : "";
-		var routes = routesRelative ? new File(root, routesRelative) : null;
-		var pages = [];
+		var routes = routesRelative ? new File(root, routesRelative).getCanonicalFile() : null;
+		if (!routes) return [];
+		var routesPath = String(routes.getCanonicalPath());
+		var files = {};
 		function visit(directory) {
-			var files = directory && directory.listFiles();
-			if (!files) return;
-			Array.prototype.slice.call(files).sort(function (left, right) {
-				return String(left.getName()).localeCompare(String(right.getName()));
-			}).forEach(function (file) {
+			var children = directory && directory.listFiles();
+			if (!children) return;
+			Array.prototype.slice.call(children).forEach(function (file) {
 				if (file.isDirectory()) {
 					visit(file);
-					return;
+				} else if (String(file.getName()) === "+page.flow.svelte") {
+					files[String(file.getCanonicalPath())] = true;
 				}
-				if (String(file.getName()) !== "+page.flow.svelte") return;
-				var relative = String(file.getCanonicalPath()).substring(String(root.getCanonicalPath()).length + 1).replace(/\\/g, "/");
-				var routeDir = String(file.getParentFile().getCanonicalPath()).substring(String(routes.getCanonicalPath()).length).replace(/\\/g, "/");
-				var routeParts = routeDir.split("/").filter(function (part) { return part && !/^\(.+\)$/.test(part); });
-				var path = routeParts.length ? "/" + routeParts.join("/") : "/";
-				var parameters = [];
-				routeParts.forEach(function (part) {
-					var match = part.match(/^\[\[?(\.\.\.)?([^=\]]+)(?:=([^\]]+))?\]?\]$/);
-					if (!match) return;
-					parameters.push({
-						name: match[2],
-						required: part.indexOf("[[") !== 0,
-						rest: !!match[1],
-						matcher: match[3] || "",
-						source: "@route.params." + match[2]
-					});
-				});
-				var content = FileUtils.readFileToString(file, "UTF-8");
-				var idMatch = content.match(/\bpage\s*:\s*\{[\s\S]*?\bid\s*:\s*["']([^"']+)["']/);
-				pages.push({
-					id: idMatch ? String(idMatch[1]) : path === "/" ? "home" : path.replace(/^\/+/, "").replace(/[^A-Za-z0-9]+(.)/g, function (_, next) { return String(next).toUpperCase(); }),
-					path: path,
-					parameters: parameters,
-					sourceFile: relative
-				});
 			});
 		}
-		if (routes && routes.isDirectory()) visit(routes);
-		return pages;
+		if (routes.isDirectory()) visit(routes);
+		var drafts = sources.drafts ? sources.sourceDrafts() : {};
+		Object.keys(drafts).forEach(function (key) {
+			var file = new File(String(key)).getCanonicalFile();
+			if (String(file.getName()) === "+page.flow.svelte" && String(file.getCanonicalPath()).indexOf(routesPath + String(File.separator)) === 0) {
+				files[String(file.getCanonicalPath())] = true;
+			}
+		});
+		function safeId(value) {
+			return String(value || "node").replace(/[^A-Za-z0-9_]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "") || "node";
+		}
+		return Object.keys(files).sort().map(function (absolute) {
+			var file = new File(absolute);
+			var relative = absolute.substring(rootPath.length + 1).replace(/\\/g, "/");
+			var routeDir = String(file.getParentFile().getCanonicalPath()).substring(routesPath.length).replace(/\\/g, "/");
+			var routeParts = routeDir.split("/").filter(function (part) { return part && !/^\(.+\)$/.test(part); });
+			var parameters = [];
+			routeParts.forEach(function (part) {
+				var match = part.match(/^\[\[?(\.\.\.)?([^=\]]+)(?:=([^\]]+))?\]?\]$/);
+				if (!match) return;
+				parameters.push({
+					name: match[2],
+					required: part.indexOf("[[") !== 0,
+					rest: !!match[1],
+					matcher: match[3] || "",
+					source: "@route.params." + match[2]
+				});
+			});
+			var content = sources.drafts ? sources.read(file) : String(FileUtils.readFileToString(file, "UTF-8"));
+			var header = content.match(/\bpage\s*:\s*\{([\s\S]*?)\}/);
+			var idMatch = header && header[1].match(/\bid\s*:\s*["']([^"']+)["']/);
+			var routeMatch = header && header[1].match(/\broute\s*:\s*["']([^"']+)["']/);
+			var path = routeMatch ? String(routeMatch[1]) : routeParts.length ? "/" + routeParts.join("/") : "/";
+			return {
+				id: idMatch ? String(idMatch[1]) : safeId(path === "/" ? "home" : path.replace(/^\/+/, "")),
+				path: path,
+				parameters: parameters,
+				sourceFile: relative
+			};
+		});
 	}
 
 	function relatedSources(props) {
@@ -884,49 +956,58 @@ const _meta = {
 				blockCount: blocks.length,
 				availableBlockCount: allStandardItems.length,
 				omittedBlockCount: Math.max(0, allStandardItems.length - blocks.length),
+				header: "<script module>\n  export const _flow = { sourceVersion: 2 };\n</script>",
 				root: {
 					tag: "FlowComponent",
 					properties: {
-						id: "string:literal!",
+						"$$id": "identity:literal!",
 						label: "string:literal"
 					},
 					slots: ["Variables", "Events", "Structure"],
-					example: '<FlowComponent id="home" label="Home"><Variables><State id="ready" type="boolean" value={false} /></Variables><Events>...</Events><Structure>...</Structure></FlowComponent>'
+					example: '<FlowComponent $$id="home" label="Home"><Variables><State $$id="ready" type="boolean" value={false} /></Variables><Events>...</Events><Structure>...</Structure></FlowComponent>'
 				},
 				valueSyntax: {
 					literal: 'property="literal"',
-					expression: "property={browserExpression}",
 					source: 'property="@producer.path"',
-					local: 'property="@local.name"'
+					local: 'property="@local.name"',
+					iteration: 'property="@<ForEach $$id>.item.field" (or the ForEach context name)',
+					route: 'property="@route.params.name"',
+					props: 'property="@props.name" (component inputs declared in _flow.props)',
+					theme: 'property="@theme.token"',
+					compose: "text mixed with sources is one concise expression (Compose); never hand-write binding JSON",
+					expression: "property={browserExpression} for advanced browser-only logic"
 				},
-				pages: routeSources(props),
+				pages: routeSources(ctx, props),
 				sources: relatedSources(props),
 				navigation: {
-					open: '<Navigate id="openProduct" page="product"><Params><Variable name="id" value="@item.id" /></Params></Navigate>',
+					open: '<Navigate $$id="openProduct" page="product"><Params><Variable name="id" value="@item.id" /></Params></Navigate>',
 					readParameter: "@route.params.id",
 					query: '<Query><Variable name="tab" value="details" /></Query>',
-					back: '<GoBack id="back" fallback="/" />'
+					back: '<GoBack $$id="back" fallback="/" />'
 				},
 				recipes: {
-					wallClock: '<Variables><State id="clock" type="string" value="--:--:--" /></Variables><Events><Interval id="clockTick" milliseconds={1000} immediate={true}><Actions><DateNow id="now" /><DateFormat id="formatClock" target="local.clock" value="@now" locale="fr-FR" options={{ hour: "2-digit", minute: "2-digit", second: "2-digit" }} fallback="--:--:--" /></Actions></Interval></Events>'
+					wallClock: '<Variables><State $$id="clock" type="string" value="--:--:--" /></Variables><Events><Interval $$id="clockTick" milliseconds={1000} immediate={true}><Actions><DateNow $$id="now" /><DateFormat $$id="formatClock" target="local.clock" value="@now" locale="fr-FR" options={{ hour: "2-digit", minute: "2-digit", second: "2-digit" }} fallback="--:--:--" /></Actions></Interval></Events>'
 				},
 				blocks: blocks,
 				portableBlocks: portableBlocks,
 				actionPattern: "FlowComponent > Events > OnMount|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
 				rules: [
+					"Every source starts with the header module declaring sourceVersion: 2; headers hold static literals only.",
+					"$$id is the node identity, unique in the document; plain attributes are widget or business properties (id= is a DOM/business id, not the identity).",
 					"FlowComponent is a non-visual source root; put class and layout properties on its visible children.",
-					"Declare mutable page-local state with State, and computed state with Derived or DerivedBy, under the root Variables slot; bind them with @local.id.",
+					"Declare mutable page-local state with State, and computed state with Derived or DerivedBy, under the root Variables slot; bind them with @local.<$$id>.",
 					"Variable is for action, route Params and Query arguments; do not use it as page-local state.",
 					"Put lifecycle blocks in the root Events slot, never in visual Structure. Interval and Timeout register on mount and clean themselves up on teardown.",
 					"Use SetValue, UpdateList or UpdateNumber for explicit state changes. Free browser expressions are not portable action values; use a source, literal, Derived value or typed frontend Flow block.",
-					"Use only listed properties on these standard blocks.",
-					"Property contracts use type:intent|intent; bindable properties accept @local.name, @action.path, @item.path and @event.path.",
-					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name.",
+					"Use only listed properties on these standard blocks. A property equal to its default is omitted from the source.",
+					"Property contracts use type:intent|intent; bindable properties accept the valueSyntax sources (@local, @<requestable or action>, @<ForEach $$id>.item, @event, @route, @props, @theme).",
+					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name. Write target Pages before the Pages that navigate to them.",
 					"Slots are exact Flow Svelte wrapper tags; wrap children in the listed tag.",
+					"A component declares its inputs in its _flow.props header and reads them as @props.name.",
 					"Prefer a typed portableBlocks action over an equivalent browser expression; inspect the exact palette item once when its properties are needed.",
 					"A portable action target is optional: omit it and bind the result as @actionId, or set it to an existing local.name. Never invent a bare result target.",
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
-					"Write one complete source pass with code-set; it validates before the atomic write. Use code-check only for an intentional dry-run.",
+					"Write one complete source pass with code-set; it validates before writing. The first write reorders attributes canonically ($$ attributes first); continue from the returned revision.",
 					"The starter contract intentionally omits uncommon blocks. Inspect the contextual palette only for a missing block or property.",
 					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."
 				]
@@ -937,7 +1018,8 @@ const _meta = {
 	}
 
 	function read(ctx, props, path, includeContract) {
-		if (!path.file.isFile()) {
+		var sources = sourceStore(ctx, props);
+		if (!sources.exists(path.file)) {
 			if (isStylesheet(path)) {
 				return {
 					ok: true,
@@ -951,12 +1033,18 @@ const _meta = {
 			}
 			throw new Error("Unknown Flow Svelte source: " + path.relative);
 		}
-		var resource = ctx.resourceGet({
-			projectDir: props.projectDir,
-			path: path.relative,
-			allowLarge: true,
-			maxBytes: 5000000
-		});
+		var resource;
+		if (sources.drafts) {
+			var draftContent = sources.read(path.file);
+			resource = { content: draftContent, hash: sha256Hex(draftContent), contentLength: draftContent.length };
+		} else {
+			resource = ctx.resourceGet({
+				projectDir: props.projectDir,
+				path: path.relative,
+				allowLarge: true,
+				maxBytes: 5000000
+			});
+		}
 		var hasStartLine = props.startLine !== undefined && props.startLine !== null && String(props.startLine) !== "";
 		var hasEndLine = props.endLine !== undefined && props.endLine !== null && String(props.endLine) !== "";
 		if (hasStartLine !== hasEndLine) {
@@ -1002,6 +1090,9 @@ const _meta = {
 			revision: resource.hash,
 			contentLength: code.length
 		};
+		if (sources.drafts) {
+			result.dirty = sources.dirty(path.file);
+		}
 		if (hasStartLine) {
 			result.startLine = startLine;
 			result.endLine = endLine;
@@ -1025,7 +1116,7 @@ const _meta = {
 	}
 
 	function assertSetRevision(ctx, props, path) {
-		var exists = path.file.isFile();
+		var exists = sourceStore(ctx, props).exists(path.file);
 		var supplied = props.revision !== undefined && props.revision !== null && String(props.revision) !== "";
 		if (exists && !supplied) {
 			throw sourceWriteError(
@@ -1101,10 +1192,21 @@ const _meta = {
 		}
 	}
 
+	function persist(ctx, props, path, source) {
+		var sources = sourceStore(ctx, props);
+		if (sources.drafts) {
+			var update = {};
+			update[String(path.file.getAbsolutePath())] = source;
+			sources.write(update);
+		} else {
+			atomicWrite(path, source);
+		}
+	}
+
 	function write(ctx, props, path, source) {
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
-		atomicWrite(path, source);
+		persist(ctx, props, path, source);
 		notifySourceMutation(ctx, props, path);
 		var saved = read(ctx, props, path, false);
 		saved.diagnostics = validation.diagnostics;
@@ -1129,7 +1231,7 @@ const _meta = {
 					? String(props.code)
 					: String(read(ctx, props, path, false).code);
 				result = validate(ctx, props, path, source);
-				result.revision = path.file.isFile() ? read(ctx, props, path, false).revision : null;
+				result.revision = sourceStore(ctx, props).exists(path.file) ? read(ctx, props, path, false).revision : null;
 			} else if (operation === "set") {
 				if (props.code === undefined || props.code === null) {
 					throw new Error("code-set requires code for a Flow Svelte source.");
@@ -1148,7 +1250,7 @@ const _meta = {
 				sourceWriteLock.lock();
 				try {
 					assertSetRevision(ctx, props, path);
-					var preview = ctx.resourcePatch({
+					var patchRequest = {
 						projectDir: props.projectDir,
 						path: path.relative,
 						baseHash: props.revision,
@@ -1156,10 +1258,15 @@ const _meta = {
 						dryRun: true,
 						validate: false,
 						includeContent: true
-					});
+					};
+					var sources = sourceStore(ctx, props);
+					if (sources.drafts && sources.dirty(path.file)) {
+						patchRequest.baseContent = sources.read(path.file);
+					}
+					var preview = ctx.resourcePatch(patchRequest);
 					var validation = validate(ctx, props, path, String(preview.content));
 					requireValid(validation);
-					atomicWrite(path, String(preview.content));
+					persist(ctx, props, path, String(preview.content));
 					notifySourceMutation(ctx, props, path);
 					result = read(ctx, props, path, false);
 					result.hunks = preview.hunks;

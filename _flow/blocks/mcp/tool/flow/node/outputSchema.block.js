@@ -21,7 +21,7 @@ const _meta = {
     "name": {
       "kind": "text",
       "type": "string",
-      "description": "Project Flow sidecar name.",
+      "description": "Project Flow name.",
     },
     "nodeId": {
       "kind": "text",

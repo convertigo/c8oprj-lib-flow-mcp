@@ -834,6 +834,17 @@
 		} catch (_ignoreProjectChanged) {
 		}
 		var name = String(args.name || "");
+		var saveProject = boolArg(args.saveProject, false) === true ||
+			boolArg(args.exportProject, false) === true ||
+			boolArg(args.autoSave, false) === true;
+		if (saveProject && boolArg(args.saveStudioDrafts, false) !== true) {
+			var pending = pendingStudioDrafts(project, name);
+			if (pending.length) {
+				throw new Error("Saving project " + args.project + " would also save unsaved Studio work (" +
+					pending.slice(0, 10).join(", ") + (pending.length > 10 ? ", ..." : "") +
+					"). Let the user save the project, or omit saveProject.");
+			}
+		}
 		var sequence = projectSequenceByName(project, name);
 		var flow = null;
 		var flowWasChanged = false;
@@ -870,16 +881,11 @@
 			project.hasChanged = true;
 		} catch (_ignoreDirtyFlags) {
 		}
-		var saveProject = boolArg(args.saveProject, false) === true ||
-			boolArg(args.exportProject, false) === true ||
-			boolArg(args.autoSave, false) === true;
 		if (saveProject) {
 			result.saveMode = "project";
-			var flowScriptSidecars = snapshotFlowScriptSidecars(project, writeResult);
 			Engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectSaved = true;
-			result.flowScriptSidecarsRestored = restoreFlowScriptSidecars(project, writeResult, flowScriptSidecars, name);
 		} else {
 			result.saved = true;
 			result.flowDeclarationSaved = saveFlowDeclaration(project, flow, name, args, writeResult);
@@ -1209,14 +1215,6 @@
 		});
 	}
 
-	function isFlowScriptWrite(writeResult) {
-		return writeResult && String(writeResult.format || "") === "flowscript";
-	}
-
-	function flowScriptsDir(project) {
-		return new File(new File(String(project.getDirPath())), "_flow/flows");
-	}
-
 	function readUtf8(file) {
 		return String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
 	}
@@ -1229,47 +1227,36 @@
 		Files.write(file.toPath(), new Packages.java.lang.String(String(content)).getBytes(StandardCharsets.UTF_8));
 	}
 
-	function snapshotFlowScriptSidecars(project, writeResult) {
-		if (!isFlowScriptWrite(writeResult)) {
-			return null;
-		}
-		var dir = flowScriptsDir(project);
-		var files = dir.isDirectory() ? dir.listFiles() : null;
-		var snapshot = [];
-		if (!files) {
-			return snapshot;
-		}
-		var list = Packages.java.util.Arrays.asList(files).toArray();
-		for (var i = 0; i < list.length; i++) {
-			var file = list[i];
-			var name = String(file.getName());
-			if (file.isFile() && name.endsWith(".flow.js")) {
-				snapshot.push({
-					name: name,
-					content: readUtf8(file)
-				});
+	// Unsaved Studio work a project export would write along with the MCP change:
+	// other Flow working copies, FlowEngine source drafts and the Engine source.
+	function pendingStudioDrafts(project, flowName) {
+		var pending = [];
+		try {
+			var sequences = project.getSequencesList().toArray();
+			for (var i = 0; i < sequences.length; i++) {
+				var sequence = sequences[i];
+				if (isFlowDbo(sequence) && String(sequence.getName()) !== String(flowName || "") &&
+						sequence.isFlowSourceDirty() === true) {
+					pending.push("flow " + String(sequence.getName()));
+				}
 			}
+		} catch (_ignoreFlowDrafts) {
 		}
-		return snapshot;
-	}
-
-	function restoreFlowScriptSidecars(project, writeResult, snapshot, flowName) {
-		if (!isFlowScriptWrite(writeResult)) {
-			return 0;
-		}
-		var dir = flowScriptsDir(project);
-		var restored = 0;
-		if (snapshot) {
-			for (var i = 0; i < snapshot.length; i++) {
-				writeUtf8(new File(dir, snapshot[i].name), snapshot[i].content);
-				restored++;
+		try {
+			var flowEngine = project.getFlowEngine();
+			if (flowEngine != null) {
+				if (flowEngine.isEngineSourceDirty() === true) {
+					pending.push("_flow/engine.yaml");
+				}
+				var root = new File(String(project.getDirPath()));
+				var drafts = flowEngine.getSourceDrafts().keySet().toArray();
+				for (var j = 0; j < drafts.length; j++) {
+					pending.push(relativeProjectPath(root, new File(String(drafts[j]))));
+				}
 			}
+		} catch (_ignoreSourceDrafts) {
 		}
-		if (writeResult.code !== undefined && writeResult.code !== null && flowName) {
-			writeUtf8(new File(dir, String(flowName) + ".flow.js"), writeResult.code);
-			restored++;
-		}
-		return restored;
+		return pending;
 	}
 
 	function loadedProjectTargets() {
@@ -1529,7 +1516,6 @@
 
 	function toolResponse(request, value, ctx) {
 		request = request || {};
-		value = enrichSvelteBootstrapPalette(request, value);
 		value = enrichSveltePaletteMutations(request, value);
 		value = compactToolValue(request, value);
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
@@ -1546,31 +1532,90 @@
 					|| parentPath.indexOf("::frontends.svelte.") !== -1));
 	}
 
+	function cleanInsertValue(insert) {
+		var value = {};
+		Object.keys(insert || {}).forEach(function (key) {
+			if (key.indexOf("__") !== 0) {
+				value[key] = insert[key];
+			}
+		});
+		return value;
+	}
+
+	// Each palette item gets the authoring-mutate call the Studio would make for it:
+	// creation recipes and virtual prototypes as an engine action (sourceChanges),
+	// engine config items as an engine mutation, source items as a frontAst mutation
+	// at the requested position.
 	function enrichSveltePaletteMutationsForArgs(args, value) {
 		if (!value || typeof value !== "object" || !Array.isArray(value.items)) {
 			return value;
 		}
 		args = args || {};
 		var focus = value.focus || {};
+		var focusPath = String(focus.path !== undefined ? focus.path : args.focusPath || "");
+		var project = String(args.project || "");
 		value.items.forEach(function (item) {
-			if (!item || typeof item !== "object" || !item.insert || item.mutation || item.apply) {
+			if (!item || typeof item !== "object" || item.apply) {
 				return;
 			}
 			var slot = item.targetSlot || {};
-			var path = String(slot.sourceMutationPath || focus.insertMutationPath || focus.sourceMutationPath || "");
-			var sourceFile = String(slot.sourcePath || focus.insertSourcePath || focus.sourcePath || "");
+			if (item.authoringAction) {
+				var action = {
+					id: String(item.authoringAction.id || item.id || ""),
+					surface: String(item.authoringAction.surface || args.surface || "frontend"),
+					targetPath: focusPath,
+					position: String(args.position || "inside")
+				};
+				if (item.authoringAction.builder || args.builder) {
+					action.builder = String(item.authoringAction.builder || args.builder);
+				}
+				if (slot.id) {
+					action.targetSlotId = String(slot.id);
+				}
+				item.apply = {
+					tool: "authoring-mutate",
+					arguments: { project: project, surface: action.surface, builder: action.builder || "", action: action }
+				};
+				return;
+			}
+			if (!item.insert || item.mutation) {
+				return;
+			}
+			var insert = item.insert;
+			if (insert.__engineMutationPath) {
+				item.mutation = { value: insert };
+				item.apply = {
+					tool: "authoring-mutate",
+					arguments: {
+						project: project,
+						parentPath: qualifyAuthoringPath(args, focusPath),
+						surface: String(args.surface || "frontend"),
+						builder: String(args.builder || "svelte"),
+						mutation: item.mutation
+					}
+				};
+				return;
+			}
+			var path = String(insert.__frontendMutationPath || slot.sourceMutationPath || focus.insertMutationPath || focus.sourceMutationPath || "");
+			var sourceFile = String(insert.__frontendSourcePath || slot.sourcePath || focus.insertSourcePath || focus.sourcePath || "");
 			if (!path || path.indexOf("frontAst") !== 0 || !sourceFile) {
 				return;
 			}
-			item.mutation = {
-				op: "append",
-				path: path,
-				value: item.insert
-			};
+			var cleaned = cleanInsertValue(insert);
+			if (insert.__frontendPropertyDefinition === true) {
+				var propertyName = String(insert.name || insert.id || "property");
+				delete cleaned.name;
+				delete cleaned.id;
+				item.mutation = { op: "replace", path: path + "." + propertyName, value: cleaned };
+			} else if (slot.index !== undefined && slot.index !== null) {
+				item.mutation = { op: "insert", path: path, index: Math.max(0, Number(slot.index) || 0), value: cleaned };
+			} else {
+				item.mutation = { op: String(insert.__frontendMutationOp || "append"), path: path, value: cleaned };
+			}
 			item.apply = {
 				tool: "frontend-svelte-mutate",
 				arguments: {
-					project: String(args.project || ""),
+					project: project,
 					sourceFile: sourceFile,
 					mutation: item.mutation
 				}
@@ -1583,127 +1628,6 @@
 		return isSveltePaletteRequest(request)
 			? enrichSveltePaletteMutationsForArgs(toolArguments(request) || {}, value)
 			: value;
-	}
-
-	function bootstrapFrontendDescriptor(kind) {
-		var page = kind === "page";
-		var label = page ? "Page" : "Layout";
-		var fileName = page ? "+page.flow.svelte" : "+layout.flow.svelte";
-		var baseId = page ? "page" : "layout";
-		var source = page
-			? [
-				"<script module>",
-				"  export const _meta = {",
-				"    version: 1,",
-				"    id: \"project.${localName}\",",
-				"    name: \"${LocalName}\",",
-				"    label: \"${LocalName}\",",
-				"    kind: \"page\",",
-				"    tag: \"FlowComponent\",",
-				"    runtime: \"flow-svelte\"",
-				"  };",
-				"</script>",
-				"",
-				"<FlowComponent id=\"${localName}\" title=\"${LocalName}\">",
-				"  <Structure />",
-				"</FlowComponent>",
-				""
-			].join("\n")
-			: [
-				"<script module>",
-				"  export const _meta = {",
-				"    version: 1,",
-				"    id: \"project.${localName}Layout\",",
-				"    name: \"${LocalName}Layout\",",
-				"    label: \"${LocalName} layout\",",
-				"    kind: \"layout\",",
-				"    tag: \"FlowComponent\",",
-				"    runtime: \"flow-svelte\"",
-				"  };",
-				"</script>",
-				"",
-				"<FlowComponent id=\"${localName}Layout\" title=\"${LocalName} layout\">",
-				"  <Structure>",
-				"    <PageShell id=\"pageShell\" maxWidth=\"1120px\" padding=\"24px\" gap=\"16px\" align=\"stretch\">",
-				"      <Children>",
-				"        <PageContent id=\"pageContent\" />",
-				"      </Children>",
-				"    </PageShell>",
-				"  </Structure>",
-				"</FlowComponent>",
-				""
-			].join("\n");
-		return {
-			id: "frontbuilder.svelte.bootstrap." + kind,
-			name: label,
-			localName: baseId,
-			label: label,
-			category: "Frontend route definitions",
-			kind: page ? "frontendPageDefinition" : "frontendRouteLayoutDefinition",
-			icon: page ? "mdi:file-outline" : "mdi:page-layout-outline",
-			description: "Creates the initial Flow Svelte " + label.toLowerCase() + " model and wires config.frontbuilder.svelte.modelPath.",
-			provider: "frontbuilder.svelte",
-			namespace: "frontbuilder.svelte",
-			sourceBacked: true,
-			descriptorKind: "create",
-			sourceWritable: true,
-			traits: [page ? "definition.routePage" : "definition.routeLayout"],
-			slots: {},
-			targetKinds: ["frontendBuilder"],
-			acceptedPositions: ["inside"],
-			targetSlot: {
-				id: "catalog",
-				label: "Catalog",
-				accepts: ["definition.routePage", "definition.routeLayout", "definition.routeFolder", "definition.uiBlock"],
-				sourceMutationPath: "",
-				sourcePath: "",
-				sourceWritable: true,
-				position: "inside",
-				mode: "inside"
-			},
-			insert: {
-				__frontendCreateSource: {
-					builder: "svelte",
-					baseId: baseId,
-					directory: "model/svelte/src/routes",
-					fileName: fileName,
-					source: source,
-					__setAsModelPath: true
-				}
-			}
-		};
-	}
-
-	function enrichSvelteBootstrapPalette(request, value) {
-		if (!value || typeof value !== "object" || !isSveltePaletteRequest(request)) {
-			return value;
-		}
-		var args = toolArguments(request);
-		var focus = value.focus || {};
-		var focusPath = String(args.focusPath || args.targetPath || args.target || focus.path || "");
-		var isBuilder = focusPath === "frontends.svelte" || (focus.kind === "frontendBuilder" && String(focus.type || "") === "svelte");
-		if (!isBuilder || focus.sourceWritable !== false || focus.sourcePath) {
-			return value;
-		}
-		var query = String(args.query || args.q || "").toLowerCase();
-		var additions = [];
-		if (!query || "page".indexOf(query) !== -1 || query.indexOf("page") !== -1) {
-			additions.push(bootstrapFrontendDescriptor("page"));
-		}
-		if (!query || "layout".indexOf(query) !== -1 || query.indexOf("layout") !== -1) {
-			additions.push(bootstrapFrontendDescriptor("layout"));
-		}
-		if (!additions.length) {
-			return value;
-		}
-		value.items = (value.items || []).concat(additions);
-		value.eligibleCount = Number(value.eligibleCount || 0) + additions.length;
-		value.candidateCount = Number(value.candidateCount || 0) + additions.length;
-		value.bootstrap = {
-			modelPathMissing: true,
-			next: "Insert Page or Layout to create the initial Flow Svelte model; the MCP will set config.frontbuilder.svelte.modelPath automatically."
-		};
-		return value;
 	}
 
 	function toolError(request, error, ctx) {
@@ -1946,7 +1870,10 @@
 				}
 				if (args.allowLarge !== true) {
 					args.maxDepth = Math.min(argInt(args.maxDepth, 8, 0, 20), 8);
-					args.includeDefinition = false;
+					// The binding picker reads the current value from the node definition.
+					if (!args.property) {
+						args.includeDefinition = false;
+					}
 				}
 				if (/^(?:full|debug)$/i.test(String(args.detail || args.mode || "")) && args.allowLarge !== true) {
 					args.detail = "inspect";
@@ -2052,6 +1979,10 @@
 			args = resolveProjectDir(args);
 		}
 		args = inferFrontendMutationSourceFile(name, args);
+		if (/^(?:authoring|frontend-svelte)-/.test(name) || name === "flow-app-progress") {
+			args = withSourceDrafts(args, name === "authoring-mutate" || name === "frontend-svelte-mutate" ||
+				name === "frontend-svelte-fullsync-schema");
+		}
 		return args;
 	}
 
@@ -2066,38 +1997,218 @@
 
 	function persistSourceMutationResult(request, args, result) {
 		var name = toolName(request || {});
-		var frontendMutate = name === "frontend-svelte-mutate"
-			|| name === "frontend-svelte-fullsync-schema"
-			|| (name === "authoring-mutate" && String(args && args.surface || "") === "frontend"
-				&& String(args && args.builder || "") === "svelte");
-		if (!frontendMutate || !result || result.ok !== true || typeof result.source !== "string" || !result.sourceFile) {
+		if (!result || result.ok !== true || (name !== "authoring-mutate" && name !== "frontend-svelte-mutate" &&
+				name !== "frontend-svelte-fullsync-schema")) {
 			return result;
 		}
-		if (args && (boolArg(args.dryRun, false) === true || boolArg(args.persist, true) === false || boolArg(args.write, true) === false)) {
+		var engineTarget = String(result.target || "") === "engine";
+		var sourceChanges = result.sourceChanges && typeof result.sourceChanges === "object" ? result.sourceChanges : null;
+		var frontendSource = !engineTarget && typeof result.source === "string" && !!result.sourceFile &&
+			(name !== "authoring-mutate" || String(args && args.surface || "") === "frontend");
+		if (!sourceChanges && !frontendSource && !engineTarget) {
+			return result;
+		}
+		var persist = args && args.__persist !== undefined ? args.__persist === true
+			: !(args && (boolArg(args.dryRun, false) === true || boolArg(args.persist, true) === false || boolArg(args.write, true) === false));
+		if (!persist) {
 			result.written = false;
 			return result;
 		}
-		var projectRoot = args && args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
-		var sourceFile = new File(String(result.sourceFile));
-		if (!sourceFile.isAbsolute() && projectRoot) {
-			sourceFile = new File(projectRoot, String(result.sourceFile));
-		}
-		sourceFile = sourceFile.getCanonicalFile();
-		if (projectRoot) {
-			var rootPath = String(projectRoot.getCanonicalPath());
-			var filePath = String(sourceFile.getCanonicalPath());
-			if (filePath !== rootPath && filePath.indexOf(rootPath + String(File.separator)) !== 0) {
-				throw new Error("Refusing to write frontend source outside projectDir: " + filePath);
+		var store = sourceStore(args);
+		if (engineTarget) {
+			// Standalone, the engine wrote engine.yaml itself; a loaded FlowEngine keeps it as its working copy.
+			if (store.drafts && typeof result.source === "string") {
+				store.project.getFlowEngine().setEngineSource(String(result.source));
+				result.written = true;
+				result.draft = true;
+			}
+			if (!sourceChanges) {
+				return result;
 			}
 		}
-		writeUtf8(sourceFile, result.source);
-		result.sourceFile = String(sourceFile.getAbsolutePath());
+		if (!args || !args.projectDir) {
+			throw new Error("Persisting Flow sources requires projectDir.");
+		}
+		var projectRoot = new File(String(args.projectDir)).getCanonicalFile();
+		var flowRoot = String(new File(projectRoot, "_flow").getCanonicalPath());
+		function projectFile(path) {
+			var file = new File(String(path));
+			if (!file.isAbsolute()) {
+				file = new File(projectRoot, String(path));
+			}
+			file = file.getCanonicalFile();
+			if (String(file.getCanonicalPath()).indexOf(flowRoot + String(File.separator)) !== 0) {
+				throw new Error("Refusing to write a Flow source outside the project _flow: " + String(path));
+			}
+			return file;
+		}
+		var sources = {};
+		var files = [];
+		Object.keys(sourceChanges || {}).forEach(function (path) {
+			if (typeof sourceChanges[path] !== "string") {
+				throw new Error("Flow source change must contain text: " + path);
+			}
+			var file = projectFile(path);
+			sources[String(file.getAbsolutePath())] = sourceChanges[path];
+			files.push(file);
+		});
+		if (frontendSource) {
+			var sourceFile = projectFile(result.sourceFile);
+			sources[String(sourceFile.getAbsolutePath())] = result.source;
+			files.push(sourceFile);
+			result.sourceFile = String(sourceFile.getAbsolutePath());
+			result.writtenBytes = String(result.source).length;
+		}
+		var written = store.write(sources);
 		result.written = true;
-		result.writtenFile = projectRoot ? relativeProjectPath(projectRoot, sourceFile) : String(sourceFile.getAbsolutePath());
-		result.writtenBytes = String(result.source).length;
+		result.draft = written.draft;
+		result.writtenFiles = files.map(function (file) {
+			return relativeProjectPath(projectRoot, file);
+		});
+		result.writtenFile = result.writtenFiles[result.writtenFiles.length - 1];
+		if (written.draft) {
+			result.dirty = true;
+			notifySourceMutations(args, projectRoot, files);
+		}
 		result.studioRefresh = studioRefreshFlowEngine(args, "frontend-source-mutation");
 		result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
 		return result;
+	}
+
+	// Studio and admin listeners (tree, web Studio, frontend dev sync in the Studio) follow the working copies.
+	function notifySourceMutations(args, projectRoot, files) {
+		var Bridge = Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge;
+		files.forEach(function (file) {
+			try {
+				Bridge.notifySourceMutationWithReveal(String(projectRoot.getAbsolutePath()), String(file.getAbsolutePath()),
+					boolArg(args && args.reveal, false));
+			} catch (_ignoreNotify) {
+			}
+		});
+	}
+
+
+	// The FlowEngine of a project loaded in this Convertigo owns the working copies
+	// of its sources, as in the Studio: reads see the drafts, writes become drafts,
+	// and only the project Save writes them. Without a loaded project (standalone
+	// runtime, projectDir only), sources are read and written on disk.
+	function loadedFlowEngineProject(args) {
+		args = args || {};
+		if (typeof Packages === "undefined") {
+			return null;
+		}
+		try {
+			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+			if (Engine.theApp == null || Engine.theApp.databaseObjectsManager == null) {
+				return null;
+			}
+			var projectDir = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
+			var name = String(args.project || (projectDir ? projectDir.getName() : "") || "");
+			if (!name) {
+				return null;
+			}
+			var project = Engine.theApp.databaseObjectsManager.getLoadedProjectByName(name);
+			if (project == null || project.getFlowEngine() == null) {
+				return null;
+			}
+			if (projectDir && String(project.getDirFile().getCanonicalPath()) !== String(projectDir.getCanonicalPath())) {
+				return null;
+			}
+			return project;
+		} catch (_ignoreLoadedProject) {
+			return null;
+		}
+	}
+
+	function collectSourceDrafts(project, drafts, visited) {
+		if (project == null || visited[String(project.getName())]) {
+			return drafts;
+		}
+		visited[String(project.getName())] = true;
+		var flowEngine = project.getFlowEngine();
+		if (flowEngine != null) {
+			var entries = flowEngine.getSourceDrafts().entrySet().toArray();
+			for (var i = 0; i < entries.length; i++) {
+				drafts[String(entries[i].getKey())] = String(entries[i].getValue());
+			}
+		}
+		var references = project.getReferenceList().toArray();
+		for (var j = 0; j < references.length; j++) {
+			try {
+				var referencedName = references[j].getParser ? String(references[j].getParser().getProjectName() || "") : "";
+				if (referencedName) {
+					collectSourceDrafts(Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager
+						.getLoadedProjectByName(referencedName), drafts, visited);
+				}
+			} catch (_ignoreReferenceDrafts) {
+			}
+		}
+		return drafts;
+	}
+
+	function sourceStore(args) {
+		var project = loadedFlowEngineProject(args);
+		var flowEngine = project == null ? null : project.getFlowEngine();
+		function absolute(file) {
+			return String(file.getCanonicalPath());
+		}
+		return {
+			drafts: flowEngine != null,
+			project: project,
+			sourceDrafts: function () {
+				return project == null ? {} : collectSourceDrafts(project, {}, {});
+			},
+			exists: function (file) {
+				return flowEngine != null ? flowEngine.hasSource(absolute(file)) === true : file.isFile();
+			},
+			dirty: function (file) {
+				return flowEngine != null && flowEngine.isSourceDirty(absolute(file)) === true;
+			},
+			read: function (file) {
+				return flowEngine != null ? String(flowEngine.getSource(absolute(file))) : readUtf8(file);
+			},
+			// sources: { absolutePath: text }. Validated as a whole by the FlowEngine.
+			write: function (sources) {
+				var paths = Object.keys(sources || {});
+				if (flowEngine == null) {
+					paths.forEach(function (path) {
+						writeUtf8(new File(path), sources[path]);
+					});
+					return { paths: paths, draft: false };
+				}
+				var map = new Packages.java.util.LinkedHashMap();
+				paths.forEach(function (path) {
+					map.put(path, String(sources[path]));
+				});
+				flowEngine.setSources(map);
+				Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.invalidateDataCaches();
+				Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(flowEngine);
+				return { paths: paths, draft: true };
+			}
+		};
+	}
+
+	// Engine requests of a loaded project see its working copies, like Studio requests.
+	// A mutation then returns sources instead of writing them: persistSourceMutationResult
+	// hands them to the FlowEngine, as FlowEngineBridge.authoringMutate does.
+	function withSourceDrafts(args, mutating) {
+		var store = sourceStore(args);
+		if (!store.drafts) {
+			return args;
+		}
+		var drafts = store.sourceDrafts();
+		Object.keys(args.frontendSourceDrafts || {}).forEach(function (key) {
+			drafts[key] = args.frontendSourceDrafts[key];
+		});
+		args.frontendSourceDrafts = drafts;
+		args.engineSource = String(store.project.getFlowEngine().getEngineSource());
+		if (mutating) {
+			args.__persist = !(boolArg(args.dryRun, false) === true || boolArg(args.persist, true) === false ||
+				boolArg(args.write, true) === false);
+			args.write = false;
+			args.persist = false;
+		}
+		return args;
 	}
 
 	function relativeProjectPath(projectRoot, file) {
@@ -2120,10 +2231,6 @@
 		var mutation = args.mutation || {};
 		var value = mutation.value || args.insert || args.value || {};
 		return args.createSource || args.creation || mutation.__frontendCreateSource || value.__frontendCreateSource || null;
-	}
-
-	function isFrontendSourceCreation(args) {
-		return frontendCreateSourceSpec(args) !== null;
 	}
 
 	function yamlPlainScalar(value) {
@@ -2193,7 +2300,7 @@
 
 	function inferFrontendMutationSourceFile(name, args) {
 		args = args || {};
-		if (args.sourceFile || args.sourcePath || isFrontendSourceCreation(args)) {
+		if (args.sourceFile || args.sourcePath || frontendCreateSourceSpec(args) !== null) {
 			return args;
 		}
 		var isFrontendCode = /^frontend-svelte-code-(?:get|check|set|patch)$/.test(String(name || ""));
@@ -2227,228 +2334,6 @@
 	function safeFileName(value) {
 		var safe = String(value || "").replace(/[^A-Za-z0-9_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
 		return safe || "project";
-	}
-
-	function frontendComponentTag(value) {
-		var parts = String(value || "").split(/[^A-Za-z0-9]+/);
-		var out = "";
-		parts.forEach(function (part) {
-			if (part) {
-				out += part.substring(0, 1).toUpperCase() + part.substring(1);
-			}
-		});
-		return out || "Component";
-	}
-
-	function lowerFirst(value) {
-		value = String(value || "");
-		return value ? value.substring(0, 1).toLowerCase() + value.substring(1) : "component";
-	}
-
-	function frontendSourceLocalName(blockId) {
-		blockId = String(blockId || "item");
-		var dot = blockId.lastIndexOf(".");
-		return dot < 0 ? blockId : blockId.substring(dot + 1);
-	}
-
-	function frontendNamespaceFromFocus(args) {
-		var focusPath = String(args && (args.focusPath || args.targetPath || args.target || "") || "");
-		var parts = focusPath.split(".");
-		for (var i = 0; i < parts.length; i++) {
-			if (parts[i] === "catalog" && i + 2 < parts.length) {
-				return parts[i + 2];
-			}
-		}
-		return "";
-	}
-
-	function frontendSourceTemplateValues(builderName, blockId) {
-		var dot = String(blockId || "").lastIndexOf(".");
-		var namespace = dot < 0 ? "" : String(blockId).substring(0, dot);
-		var localName = dot < 0 ? String(blockId || "") : String(blockId).substring(dot + 1);
-		var tag = frontendComponentTag(localName);
-		return {
-			builder: builderName,
-			id: blockId,
-			namespace: namespace,
-			namespacePath: namespace.replace(/\./g, "/"),
-			localName: localName,
-			LocalName: tag,
-			tag: tag,
-			actionName: lowerFirst(tag)
-		};
-	}
-
-	function applyTemplate(template, values) {
-		var out = String(template || "");
-		Object.keys(values || {}).forEach(function (key) {
-			out = out.split("${" + key + "}").join(String(values[key]));
-		});
-		return out;
-	}
-
-	function frontendSourceTargetDirectory(projectRoot, rootDir, create, args) {
-		create = create || {};
-		args = args || {};
-		var targetSourcePath = String(args.sourcePath || args.sourceFile || args.focusSourcePath ||
-			create.targetSourcePath || create.__targetSourcePath || create.focusSourcePath || "");
-		if (!targetSourcePath) {
-			return String(create.fallbackDirectory || "");
-		}
-		var target = new File(targetSourcePath);
-		if (!target.isAbsolute()) {
-			target = new File(projectRoot, targetSourcePath);
-		}
-		target = target.getCanonicalFile();
-		if (target.isFile() || String(target.getName()).indexOf("+") === 0) {
-			target = target.getParentFile().getCanonicalFile();
-		}
-		var rootPath = String(rootDir.getCanonicalPath());
-		var targetPath = String(target.getCanonicalPath());
-		if (targetPath !== rootPath && targetPath.indexOf(rootPath + String(File.separator)) !== 0) {
-			throw new Error("Frontend source target escapes builder root: " + targetPath);
-		}
-		if (targetPath === rootPath) {
-			return "";
-		}
-		return targetPath.substring(rootPath.length + 1).replace(/\\/g, "/");
-	}
-
-	function ensureFrontendBuilderModelPath(projectRoot, builderName, file) {
-		var fileName = String(file && file.getName ? file.getName() : "");
-		if (!/^\+(?:page|layout)\.flow\.svelte$/.test(fileName)) {
-			return null;
-		}
-		var relative = relativeProjectPath(projectRoot, file);
-		var builderSafe = safeFileName(builderName);
-		if (relative.indexOf("_flow/frontbuilder/" + builderSafe + "/model/") !== 0) {
-			return null;
-		}
-		var engineFile = new File(projectRoot, "_flow/engine.yaml");
-		if (!engineFile.isFile()) {
-			return null;
-		}
-		var original = readUtf8(engineFile).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-		var lines = original.split("\n");
-		var builderLine = -1;
-		var builderPattern = new RegExp("^    " + builderSafe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ":\\s*$");
-		for (var i = 0; i < lines.length; i++) {
-			if (builderPattern.test(lines[i])) {
-				builderLine = i;
-				break;
-			}
-		}
-		if (builderLine < 0) {
-			return null;
-		}
-		var end = lines.length;
-		for (var j = builderLine + 1; j < lines.length; j++) {
-			if (/^    \S/.test(lines[j]) || /^  \S/.test(lines[j]) || /^\S/.test(lines[j])) {
-				end = j;
-				break;
-			}
-		}
-		for (var k = builderLine + 1; k < end; k++) {
-			if (/^      modelPath:/.test(lines[k])) {
-				return {
-					changed: false,
-					modelPath: relative,
-					file: relativeProjectPath(projectRoot, engineFile)
-				};
-			}
-		}
-		var insertAt = builderLine + 1;
-		for (var l = builderLine + 1; l < end; l++) {
-			if (/^      target:/.test(lines[l])) {
-				insertAt = l + 1;
-				break;
-			}
-		}
-		lines.splice(insertAt, 0, "      modelPath: " + yamlScalar(relative));
-		writeUtf8(engineFile, lines.join("\n").replace(/\n+$/g, "") + "\n");
-		return {
-			changed: true,
-			modelPath: relative,
-			file: relativeProjectPath(projectRoot, engineFile)
-		};
-	}
-
-	function createFrontendSource(args) {
-		args = args || {};
-		var create = frontendCreateSourceSpec(args);
-		if (!create || typeof create !== "object") {
-			throw new Error("frontend source creation requires a __frontendCreateSource payload from the palette.");
-		}
-		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
-		if (!projectRoot) {
-			throw new Error("frontend source creation requires project or projectDir.");
-		}
-		var builderName = String(create.builder || args.builder || "svelte");
-		var mutation = args.mutation || {};
-		var definition = args.definition && typeof args.definition === "object" ? args.definition : {};
-		var baseId = String(args.localName || mutation.localName || definition.localName || create.localName || create.baseId || "project.item");
-		var targetNamespace = String(args.namespace || args.targetNamespace || create.__targetNamespace || frontendNamespaceFromFocus(args) || "");
-		if (targetNamespace) {
-			baseId = targetNamespace + "." + frontendSourceLocalName(baseId);
-		}
-		var rootDir = new File(projectRoot, "_flow/frontbuilder/" + safeFileName(builderName)).getCanonicalFile();
-		var rootPath = String(rootDir.getCanonicalPath());
-		var file = null;
-		var blockId = baseId;
-		var source = "";
-		var targetRouteDirectory = frontendSourceTargetDirectory(projectRoot, rootDir, create, args);
-		var directoryOnly = create.directoryOnly === true || String(create.directoryOnly) === "true";
-		for (var attempt = 0; attempt < 100; attempt++) {
-			var candidateId = attempt === 0 ? baseId : baseId + (attempt + 1);
-			var values = frontendSourceTemplateValues(builderName, candidateId);
-			values.targetRouteDirectory = targetRouteDirectory;
-			var directory = applyTemplate(create.directory, values);
-			var fileName = applyTemplate(create.fileName || "", values);
-			values.fileName = fileName;
-			source = applyTemplate(create.source, values);
-			var candidate = directoryOnly
-				? new File(rootDir, directory).getCanonicalFile()
-				: new File(new File(rootDir, directory), fileName).getCanonicalFile();
-			var candidatePath = String(candidate.getCanonicalPath());
-			if (candidatePath !== rootPath && candidatePath.indexOf(rootPath + String(File.separator)) !== 0) {
-				throw new Error("Frontend source path escapes builder root: " + candidatePath);
-			}
-			if (directoryOnly ? !candidate.exists() : !candidate.isFile()) {
-				file = candidate;
-				blockId = candidateId;
-				break;
-			}
-		}
-		if (!file) {
-			throw new Error("Unable to allocate a unique frontend source for " + baseId);
-		}
-		if (directoryOnly) {
-			file.mkdirs();
-			var markerName = String(create.markerFile || "");
-			if (markerName) {
-				var marker = new File(file, markerName).getCanonicalFile();
-				writeUtf8(marker, applyTemplate(create.markerSource || "", frontendSourceTemplateValues(builderName, blockId)));
-				file = marker;
-				source = String(create.markerSource || "");
-			}
-		} else {
-			writeUtf8(file, source);
-		}
-		var result = {
-			ok: true,
-			target: "frontendSource",
-			created: true,
-			written: true,
-			builder: builderName,
-			sourceId: blockId,
-			sourceFile: String(file.getAbsolutePath()),
-			writtenFile: relativeProjectPath(projectRoot, file),
-			writtenBytes: String(source).length
-		};
-		result.modelPath = ensureFrontendBuilderModelPath(projectRoot, builderName, file);
-		result.studioRefresh = studioRefreshFlowEngine(args, "frontend-source-create");
-		result.refreshed = result.studioRefresh && (result.studioRefresh.refreshed === true || result.studioRefresh.scheduled === true);
-		return result;
 	}
 
 	function withNamedFlowSource(ctx, args) {
@@ -2516,99 +2401,6 @@
 			return ctx.expr(value) || {};
 		}
 		return value;
-	}
-
-	function nodeFromArgs(args) {
-		var node = copyJson(args.node || {});
-		if (args.id !== undefined && args.id !== null && String(args.id) !== "") {
-			node.id = String(args.id);
-		}
-		if (args.block !== undefined && args.block !== null && String(args.block) !== "") {
-			node.block = String(args.block);
-		}
-		Object.keys(args.properties || {}).forEach(function (key) {
-			node[key] = args.properties[key];
-		});
-		if (!node.block) {
-			throw new Error("flow-node-add requires block or node.block.");
-		}
-		if (!node.id) {
-			throw new Error("flow-node-add requires id or node.id for stable future edits.");
-		}
-		return node;
-	}
-
-	function copyPositionArgs(args, mutation) {
-		["beforeNodeId", "afterNodeId", "parentNodeId", "slot", "index"].forEach(function (key) {
-			if (args[key] !== undefined && args[key] !== null && String(args[key]) !== "") {
-				mutation[key] = args[key];
-			}
-		});
-		return mutation;
-	}
-
-	function nodeAddMutation(args) {
-		return copyPositionArgs(args, {
-			op: "insert",
-			value: nodeFromArgs(args)
-		});
-	}
-
-	function nodeEditMutation(args) {
-		if (args.property !== undefined && args.property !== null && String(args.property) !== "") {
-			return {
-				op: "replace",
-				nodeId: args.nodeId,
-				property: args.property,
-				value: args.value
-			};
-		}
-		var patch = args.properties;
-		if (!patch || typeof patch !== "object") {
-			throw new Error("flow-node-edit requires property+value or properties.");
-		}
-		return {
-			op: "merge",
-			nodeId: args.nodeId,
-			value: patch
-		};
-	}
-
-	function nodeMoveMutation(args) {
-		if (!args.beforeNodeId && !args.afterNodeId && !args.parentNodeId && args.index === undefined) {
-			throw new Error("flow-node-move requires beforeNodeId, afterNodeId, parentNodeId or index.");
-		}
-		return copyPositionArgs(args, {
-			op: "move",
-			fromNodeId: args.nodeId
-		});
-	}
-
-	function nodeDuplicateMutation(args) {
-		var patch = copyJson(args.properties || {});
-		if (args.newId || args.newNodeId) {
-			patch.id = String(args.newId || args.newNodeId);
-		}
-		if (!patch.id) {
-			throw new Error("flow-node-duplicate requires newId or properties.id to avoid duplicate node ids.");
-		}
-		return copyPositionArgs(args, {
-			op: "copy",
-			fromNodeId: args.nodeId,
-			patch: patch
-		});
-	}
-
-	function applyNodeMutation(ctx, args, mutation) {
-		args = args || {};
-		var request = {};
-		Object.keys(args).forEach(function (key) {
-			request[key] = args[key];
-		});
-		request.mutation = mutation;
-		delete request.node;
-		delete request.properties;
-		return applyNamedFlowMutation(ctx, request);
 	}
 
 	function searchWorkspace(ctx, args) {
@@ -2866,7 +2658,7 @@
 		} else if (value.block) {
 			out.next = "Project-local block source is saved. Validate it through an executable Flow using code-run; do not call flow-test for FlowScript drafts.";
 		} else if (value.registration && value.registration.saveMode === "fast") {
-			out.next = "Fast save done. Studio refresh is attempted by default; pass refresh:false only when UI refresh must be skipped. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. Pass saveProject:true only for full Convertigo export.";
+			out.next = "Fast save done. Studio refresh is attempted by default; pass refresh:false only when UI refresh must be skipped. If code-run already proved the result, stop. Use flow-test only when a saved-flow validation is still needed. saveProject:true exports the whole project and is refused while other unsaved Studio work exists.";
 		} else {
 			out.next = "Saved. If code-run already proved the result, stop; otherwise use flow-test for one validation.";
 		}
@@ -3205,7 +2997,7 @@
 		}
 		var out = {};
 		["requested", "registered", "created", "updated", "saved", "projectSaved", "flowDeclarationSaved",
-			"saveMode", "refreshed", "schemaCacheCleared", "flowScriptSidecarsRestored",
+			"saveMode", "refreshed", "schemaCacheCleared",
 			"qname", "message"].forEach(function (key) {
 			if (registration[key] !== undefined && registration[key] !== null && registration[key] !== "") {
 				out[key] = registration[key];
@@ -3343,7 +3135,8 @@
 		}
 		var out = {};
 		["ok", "title", "message", "sourceFile", "revision", "oldRevision", "contentLength",
-			"hunks", "errorCount", "warningCount", "written", "writtenFile", "writtenBytes",
+			"hunks", "errorCount", "warningCount", "written", "writtenFile", "writtenFiles", "writtenBytes",
+			"draft", "dirty", "sourceId", "selectionSourcePath",
 			"created", "mutationCount", "refreshed", "schemaRequestable", "schemaLearned"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") out[key] = value[key];
 		});
@@ -3363,8 +3156,9 @@
 			out.devSync = compactJsonPreview(value.devSync, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		}
 		out.responseDetail = "summary";
-		var readTool = "code-get";
-		out.next = "Source omitted after validation. Use " + readTool + " to read it again, or detail:'full' only for debugging.";
+		out.next = value.draft === true
+			? "Written as working copies of the loaded project, like Studio edits: they are used by the tree, checks and dev preview, and written to disk when the project is saved. Use code-get to read them again."
+			: "Source omitted after validation. Use code-get to read it again, or detail:'full' only for debugging.";
 		return out;
 	}
 
@@ -3484,13 +3278,14 @@
 		syncFlowInputsDbo: syncFlowInputsDbo,
 		_markFastSavedClean: markFastSavedClean,
 		applyNamedFlowMutation: applyNamedFlowMutation,
-		applyNodeMutation: applyNodeMutation,
 		toolResponse: toolResponse,
 		toolError: toolError,
 		toolResult: toolResult,
 		persistSourceMutationResult: persistSourceMutationResult,
-		isFrontendSourceCreation: isFrontendSourceCreation,
-		createFrontendSource: createFrontendSource,
+		sourceStore: sourceStore,
+		withSourceDrafts: withSourceDrafts,
+		pendingStudioDrafts: pendingStudioDrafts,
+		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
 		finalizeResponse: finalizeResponse,

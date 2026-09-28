@@ -92,6 +92,10 @@ const _meta = {
 				String(args.surface || "") !== "frontend" || String(args.builder || "") !== "svelte") {
 			return result;
 		}
+		// In the Studio, the working copy notification already synchronizes the dev server.
+		if (result.draft === true && Packages.com.twinsoft.convertigo.engine.Engine.isStudioMode()) {
+			return result;
+		}
 		try {
 			var sourcePath = String(result.writtenFile || result.sourceFile || "");
 			var sync = ctx.callBlock("authoring.action", {
@@ -99,6 +103,7 @@ const _meta = {
 				builder: "svelte",
 				projectDir: args.projectDir,
 				browserDebugPort: args.browserDebugPort,
+				frontendSourceDrafts: result.draft === true ? ctx.lib("mcp").sourceStore(args).sourceDrafts() : {},
 				action: {
 					id: "frontbuilder.svelte.dev.sync",
 					payload: { sourcePath: sourcePath }
@@ -303,9 +308,9 @@ const _meta = {
 				if (target === "authoring.mutate") {
 					if (args.mutation && String(args.mutation.op || "") === "insertProvider") {
 						result = insertProvider(ctx, mcp, args);
-					} else if (mcp.isFrontendSourceCreation(args)) {
-						result = mcp.createFrontendSource(args);
-						ctx.cacheClear();
+					} else if (mcp.frontendCreateSourceSpec(args) !== null) {
+						throw new Error("Source creation recipes run in the engine: call authoring-mutate with the apply arguments " +
+							"of the authoring-palette item (action), not with its insert value.");
 					} else {
 						result = ctx.authoringMutateSource(args);
 					}

@@ -61,47 +61,67 @@ function findNode(node, predicate) {
 }
 
 try {
-	var requestedSourceFile = "_flow/frontbuilder/svelte/model/Headless/src/routes/authoring/+page.flow.svelte";
-	var definition = engineDefinition(requestedSourceFile);
-	var created = callTool(1, "frontend-svelte-mutate", {
+	// The initial page is a fixture, as flow-project-bootstrap writes it.
+	var sourceFile = "_flow/frontbuilder/svelte/model/Headless/src/routes/+page.flow.svelte";
+	var absoluteSourceFile = String(new java.io.File(targetDir, sourceFile).getAbsolutePath());
+	Packages.org.apache.commons.io.FileUtils.writeStringToFile(new java.io.File(absoluteSourceFile), [
+		"<script module>",
+		"  export const _flow = { sourceVersion: 2 };",
+		"</script>",
+		"",
+		"<FlowComponent",
+		"  $$id=\"authoring\"",
+		"  label=\"Authoring\"",
+		">",
+		"  <Variables />",
+		"  <Structure />",
+		"</FlowComponent>",
+		""
+	].join("\n"), "UTF-8");
+	var definition = engineDefinition(sourceFile);
+
+	// Sources are created by the engine recipe of a palette item (sourceChanges), never from a client template.
+	function createFromPalette(id, parentPath, query, itemId) {
+		var palette = callTool(id, "authoring-palette", {
+			project: "target",
+			projectDir: targetProjectDir,
+			engineSource: definition,
+			parentPath: parentPath,
+			query: query
+		});
+		var item = (palette.items || []).filter(function (candidate) {
+			return candidate.id === itemId;
+		})[0];
+		assertTrue(item && item.apply && item.apply.tool === "authoring-mutate" && item.apply.arguments.action,
+			itemId + " did not expose its engine creation action: " + JSON.stringify(palette));
+		var args = JSON.parse(JSON.stringify(item.apply.arguments));
+		args.projectDir = targetProjectDir;
+		args.engineSource = definition;
+		var created = callTool(id + 100, "authoring-mutate", args);
+		assertTrue(created.written === true && created.draft === false && (created.writtenFiles || []).length === 1,
+			"MCP did not persist the sourceChanges of " + itemId + ": " + JSON.stringify(created));
+		return String(created.writtenFiles[0]);
+	}
+	var segmentMarker = createFromPalette(20, "target::frontends.svelte.routes", "Segment", "frontbuilder.svelte.routeSegment");
+	assertTrue(segmentMarker === "_flow/frontbuilder/svelte/model/Headless/src/routes/segment/.flow-route.json" &&
+		new java.io.File(targetDir, segmentMarker).isFile(),
+		"The route segment was not created in the selected routes directory: " + segmentMarker);
+	var routesTree = callTool(21, "authoring-tree", {
 		project: "target",
 		projectDir: targetProjectDir,
 		engineSource: definition,
-		focusPath: "frontends.svelte.routes",
-		mutation: {
-			op: "insert",
-			value: {
-				__frontendCreateSource: {
-					baseId: "authoring",
-					directory: "${targetRouteDirectory}/${localName}",
-					fileName: "+page.flow.svelte",
-					targetSourcePath: String(routeRoot.getAbsolutePath()),
-					source: [
-						"<script module>",
-						"  export const _flow = {",
-						"    app: { id: \"Headless\", title: \"Headless\" },",
-						"    page: { id: \"authoring\", route: \"/authoring\", title: \"Authoring\" },",
-						"    builder: { id: \"lib_flow_frontbuilder_svelte\", generatedRoot: \"generated\", buildOutput: \"DisplayObjects/mobile\" }",
-						"  };",
-						"</script>",
-						"",
-						"<FlowComponent id=\"authoring\" label=\"Authoring\">",
-						"  <Variables />",
-						"  <Structure />",
-						"</FlowComponent>",
-						""
-					].join("\n")
-				}
-			}
-		}
+		detail: "compact",
+		maxDepth: 5
 	});
-	assertTrue(created.created === true && created.written === true,
-		"MCP did not create the headless source");
-	var sourceFile = String(created.sourceFile || requestedSourceFile);
-	var absoluteSourceFile = String(new java.io.File(targetDir, sourceFile).getAbsolutePath());
-	definition = engineDefinition(sourceFile);
-	assertTrue(sourceFile.indexOf("model/Headless/src/routes/authoring/+page.flow.svelte") !== -1,
-		"MCP ignored the selected route target: " + sourceFile);
+	var segmentNode = findNode(routesTree, function (node) {
+		return node.kind === "frontendRouteSegment";
+	});
+	assertTrue(segmentNode && segmentNode.parentPath, "The created route segment is missing from the tree: " + JSON.stringify(routesTree));
+	var segmentPage = createFromPalette(22, segmentNode.parentPath, "Page", "frontbuilder.svelte.page");
+	var segmentPageSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(targetDir, segmentPage), "UTF-8"));
+	assertTrue(segmentPage === "_flow/frontbuilder/svelte/model/Headless/src/routes/segment/+page.flow.svelte" &&
+		segmentPageSource.indexOf("sourceVersion: 2") !== -1 && segmentPageSource.indexOf("$$id=") !== -1,
+		"The created page is not a v2 source in the selected segment: " + segmentPage + "\n" + segmentPageSource);
 	var initialTree = callTool(2, "frontend-svelte-tree", {
 		project: "target",
 		projectDir: targetProjectDir,
@@ -234,9 +254,11 @@ try {
 		sourceFile: absoluteSourceFile
 	});
 	var code = String(canonical.code || "");
-	assertTrue(code.indexOf('"parts"') !== -1 &&
-		code.indexOf('"value":"index["') !== -1 &&
-		code.indexOf('"value":"]"') !== -1 &&
+	// The canonical formatter writes one JSON member per line.
+	var compactCode = code.replace(/\s+/g, "");
+	assertTrue(compactCode.indexOf('"parts":[') !== -1 &&
+		compactCode.indexOf('"value":"index["') !== -1 &&
+		compactCode.indexOf('"value":"]"') !== -1 &&
 		code.indexOf("deleteMe") === -1 &&
 		code.indexOf("String(item.description)") !== -1 &&
 		code.indexOf("componentIcon") !== -1,
@@ -274,7 +296,7 @@ try {
 		pickerJson.indexOf('"path":"icon"') !== -1 &&
 		pickerJson.indexOf('"path":"description"') !== -1 &&
 		pickerJson.indexOf('"type":"integer","scalar":true') !== -1,
-		"Picker did not restore the Source selection or expose typed item fields and numeric index");
+		"Picker did not restore the Source selection or expose typed item fields and numeric index: " + pickerJson);
 
 	var generated = callTool(11, "frontend-svelte-action", {
 		project: "target",

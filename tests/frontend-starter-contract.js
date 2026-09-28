@@ -2,7 +2,7 @@ var projectDir = java.nio.file.Files.createTempDirectory("flow-svelte-contract-"
 var sourceFile = new java.io.File(projectDir,
 	"_flow/frontbuilder/svelte/model/Test/src/routes/+page.flow.svelte");
 sourceFile.getParentFile().mkdirs();
-var source = '<FlowComponent id="home" label="Home"><Structure /></FlowComponent>\n';
+var source = '<script module>\n  export const _flow = { sourceVersion: 2 };\n</script>\n\n<FlowComponent $$id="home" label="Home"><Structure /></FlowComponent>\n';
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(sourceFile, source, "UTF-8");
 
 function assertTrue(condition, message) {
@@ -55,10 +55,19 @@ assertTrue(result.authoringContract.portableBlocks.length === 2 &&
 		return item.id === "date.now" && item.properties.target === "string:literal";
 	}),
 	"Portable blocks were not kept in their dedicated contract section");
-assertTrue(result.authoringContract.recipes.wallClock.indexOf('<DateNow id="now" />') !== -1 &&
+assertTrue(result.authoringContract.recipes.wallClock.indexOf('<DateNow $$id="now" />') !== -1 &&
 	result.authoringContract.recipes.wallClock.indexOf('target="local.clock" value="@now"') !== -1,
 	"The starter contract must expose a valid no-repair wall-clock recipe");
 assertTrue(written === result, "The source block did not write the contract result");
+var contractJson = JSON.stringify(result.authoringContract);
+assertTrue(result.authoringContract.header.indexOf("sourceVersion: 2") !== -1 &&
+	result.authoringContract.root.properties["$$id"] && !result.authoringContract.root.properties.id &&
+	!/<[A-Z][A-Za-z]* id=/.test(contractJson) &&
+	result.authoringContract.valueSyntax.props.indexOf("@props.") !== -1,
+	"The starter contract must teach the v2 dialect ($$id identity, sourceVersion 2 header, @props): " + contractJson);
+assertTrue(result.authoringContract.pages.length === 1 && result.authoringContract.pages[0].id === "home" &&
+	result.authoringContract.pages[0].path === "/",
+	"The starter contract must name Pages like the frontbuilder: " + JSON.stringify(result.authoringContract.pages));
 
 props.contractDetail = "full";
 var fullResult = block.run({

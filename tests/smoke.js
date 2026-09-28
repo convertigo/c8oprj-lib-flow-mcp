@@ -881,7 +881,7 @@ var fakeMcp = {
 	toolError: function (_request, error) { throw error; },
 	_enrichSveltePaletteMutations: function (_args, value) { return value; },
 	persistSourceMutationResult: function (_request, _args, value) { return value; },
-	isFrontendSourceCreation: function () { return false; }
+	frontendCreateSourceSpec: function () { return null; }
 };
 var fakeRunCtx = {
 	props: function () { return { request: { params: { name: "authoring-palette" } }, target: "authoring.palette", out: "local.response" }; },
@@ -1163,25 +1163,28 @@ assertTrue(appProgressFullQName.result.result.structuredContent.ok === true &&
 	}) && appProgressFullQName.result.result.structuredContent.backend.debt.unusedProjectBlocks.indexOf("smoke.unused") !== -1 &&
 	appProgressFullQName.result.result.structuredContent.recommendedCalls.length === 0,
 	"MCP flow-app-progress should normalize full executable Flow qnames");
-var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
-	project: "FlowBootstrapSmoke",
-	dryRun: true,
-	ui: true,
-	references: ["SharedStopwatchProvider"]
-});
-assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
-	bootstrapDryRun.result.id === 13911 &&
-	bootstrapDryRun.result.result.structuredContent.ok === true &&
-	bootstrapDryRun.result.result.structuredContent.dryRun === true &&
-	bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke" &&
-	bootstrapDryRun.result.result.structuredContent.studioTarget.project === "FlowBootstrapSmoke" &&
-	bootstrapDryRun.result.result.structuredContent.studioTarget.nodeId === "FlowBootstrapSmoke" &&
-	bootstrapDryRun.result.result.structuredContent.studioTarget.sourcePath ===
-		"_flow/frontbuilder/svelte/model/FlowBootstrapSmoke/src/routes/+page.flow.svelte" &&
-	bootstrapDryRun.result.result.structuredContent.studioTarget.reveal === true &&
-	bootstrapDryRun.result.result.structuredContent.wouldReference.indexOf("SharedStopwatchProvider") !== -1 &&
-	bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
-	"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
+// flow-project-bootstrap needs a running Convertigo (Engine.theApp); standalone runs skip it.
+if (Packages.com.twinsoft.convertigo.engine.Engine.theApp != null) {
+	var bootstrapDryRun = callTool(13911, "flow-project-bootstrap", {
+		project: "FlowBootstrapSmoke",
+		dryRun: true,
+		ui: true,
+		references: ["SharedStopwatchProvider"]
+	});
+	assertTrue(bootstrapDryRun.result.jsonrpc === "2.0" &&
+		bootstrapDryRun.result.id === 13911 &&
+		bootstrapDryRun.result.result.structuredContent.ok === true &&
+		bootstrapDryRun.result.result.structuredContent.dryRun === true &&
+		bootstrapDryRun.result.result.structuredContent.project === "FlowBootstrapSmoke" &&
+		bootstrapDryRun.result.result.structuredContent.studioTarget.project === "FlowBootstrapSmoke" &&
+		bootstrapDryRun.result.result.structuredContent.studioTarget.nodeId === "FlowBootstrapSmoke" &&
+		bootstrapDryRun.result.result.structuredContent.studioTarget.sourcePath ===
+			"_flow/frontbuilder/svelte/model/FlowBootstrapSmoke/src/routes/+page.flow.svelte" &&
+		bootstrapDryRun.result.result.structuredContent.studioTarget.reveal === true &&
+		bootstrapDryRun.result.result.structuredContent.wouldReference.indexOf("SharedStopwatchProvider") !== -1 &&
+		bootstrapDryRun.result.result.structuredContent.next.indexOf("once") !== -1,
+		"MCP flow-project-bootstrap should preserve the JSON-RPC envelope instead of overwriting result scope");
+}
 var fullSyncScaffoldDryRun = callTool(139111, "flow-fullsync-scaffold", {
 	project: "FlowFullSyncSmoke",
 	connector: { name: "retaildb", anonymousReplication: "deny" },
@@ -2202,73 +2205,30 @@ assertTrue(headlessGenerate.result.result.structuredContent.ok === true &&
 		return step.ok === true;
 	}), "MCP headless fixture should regenerate Svelte through the public authoring action: " +
 	JSON.stringify(headlessGenerate.result.result.structuredContent));
-var frontendRouteSegment = mcpLib.createFrontendSource({
-	projectDir: targetProjectDir,
-	definition: {
-		localName: "[projectId]"
-	},
-	mutation: {
-		value: {
-			__frontendCreateSource: {
-				baseId: "segment",
-				directory: "${targetRouteDirectory}/${localName}",
-				directoryOnly: true,
-				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
-				markerFile: ".flow-route.json",
-				markerSource: "{\n  \"kind\": \"segment\"\n}\n"
-			}
-		}
-	}
-});
+// Route folders and pages are created by engine recipes (authoring-headless covers that path);
+// this fixture writes the resulting v2 sources to check cache invalidation and the page contract.
 var frontendDetailDir = new java.io.File(frontendRouteRoot, "[projectId]");
-assertTrue(frontendRouteSegment.created === true &&
-	frontendRouteSegment.written === true &&
-	new java.io.File(frontendDetailDir, ".flow-route.json").isFile(),
-	"MCP frontend source creation should apply a dynamic localName to route segment folders");
-var frontendRoutePage = mcpLib.createFrontendSource({
-	projectDir: targetProjectDir,
-	sourcePath: String(new java.io.File(frontendDetailDir, ".flow-route.json").getAbsolutePath()),
-	mutation: {
-		value: {
-			__frontendCreateSource: {
-				baseId: "projectDetail",
-				directory: "${targetRouteDirectory}",
-				fileName: "+page.flow.svelte",
-				targetSourcePath: String(frontendRouteRoot.getAbsolutePath()),
-				source: [
-					"<script module>",
-					"  export const _flow = {",
-					"    page: {",
-					"      id: \"${localName}\",",
-					"      title: \"${LocalName}\"",
-					"    }",
-					"  };",
-					"</script>",
-					"",
-					"<FlowComponent id=\"${localName}\" label=\"${LocalName}\">",
-					"  <Events>",
-					"    <OnMount id=\"projectMount\"><Actions>",
-					"      <CallSequence id=\"loadProject\" target=\"projectDetailData\" requestable=\".TargetSmoke\"><Variables /></CallSequence>",
-					"    </Actions></OnMount>",
-					"  </Events>",
-					"  <Structure>",
-					"    <Text id=\"projectId\" text=\"@route.params.projectId\" />",
-					"    <Text id=\"projectName\" text=\"@projectDetailData.target\" />",
-					"  </Structure>",
-					"</FlowComponent>",
-					""
-				].join("\n")
-			}
-		}
-	}
-});
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(new java.io.File(frontendDetailDir, ".flow-route.json"),
+	"{\n  \"kind\": \"segment\"\n}\n", "UTF-8");
 var frontendDetailPageFile = new java.io.File(frontendDetailDir, "+page.flow.svelte");
-var frontendDetailPageSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(frontendDetailPageFile, "UTF-8"));
-assertTrue(frontendRoutePage.created === true &&
-	frontendRoutePage.written === true &&
-	frontendDetailPageFile.isFile() &&
-	frontendDetailPageSource.indexOf("route:") === -1,
-	"MCP frontend source creation should create route pages in the selected route folder without hard-coded route metadata");
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendDetailPageFile, [
+	"<script module>",
+	"  export const _flow = { sourceVersion: 2, page: { id: \"projectDetail\", title: \"Project detail\" } };",
+	"</script>",
+	"",
+	"<FlowComponent $$id=\"projectDetail\" label=\"Project detail\">",
+	"  <Events>",
+	"    <OnMount $$id=\"projectMount\"><Actions>",
+	"      <CallSequence $$id=\"loadProject\" target=\"projectDetailData\" requestable=\".TargetSmoke\"><Variables /></CallSequence>",
+	"    </Actions></OnMount>",
+	"  </Events>",
+	"  <Structure>",
+	"    <Text $$id=\"projectId\" text=\"@route.params.projectId\" />",
+	"    <Text $$id=\"projectName\" text=\"@projectDetailData.target\" />",
+	"  </Structure>",
+	"</FlowComponent>",
+	""
+].join("\n"), "UTF-8");
 var frontendTreeAfterRouteCreation = callTool(13931, "frontend-svelte-tree", {
 	projectDir: targetProjectDir,
 	engineSource: frontendEngineSource,
@@ -2974,7 +2934,8 @@ assertTrue(draftNodeSchema.result.result.structuredContent.schema.type === "arra
 
 var codePromote = callTool(6, "code-promote", {
 	projectDir: targetProjectDir,
-	name: "TargetSmoke"
+	name: "TargetSmoke",
+	revision: codeSet.result.result.structuredContent.revision
 });
 debugPrint(JSON.stringify(codePromote));
 assertTrue(codePromote.result.result.structuredContent.ok === true,

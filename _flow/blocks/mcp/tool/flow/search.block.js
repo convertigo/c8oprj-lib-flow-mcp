@@ -6,7 +6,7 @@ const _meta = {
   "uses": [
     "mcp",
   ],
-  "description": "Searches Flow sidecars, nodes, catalog entries and learned schemas.",
+  "description": "Searches project Flows, their nodes, Catalog entries and learned schemas.",
   "hooks": {
     "file": "search.hooks.js",
   },
