@@ -1200,23 +1200,26 @@ const _meta = {
 		}
 	}
 
+	// Returns true when the source became a working copy of the loaded project.
 	function persist(ctx, props, path, source) {
 		var sources = sourceStore(ctx, props);
 		if (sources.drafts) {
 			var update = {};
 			update[String(path.file.getAbsolutePath())] = source;
 			sources.write(update);
-		} else {
-			atomicWrite(path, source);
+			return true;
 		}
+		atomicWrite(path, source);
+		return false;
 	}
 
 	function write(ctx, props, path, source) {
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
-		persist(ctx, props, path, source);
+		var draft = persist(ctx, props, path, source);
 		notifySourceMutation(ctx, props, path);
 		var saved = read(ctx, props, path, false);
+		saved.draft = draft;
 		saved.diagnostics = validation.diagnostics;
 		saved.errorCount = validation.errorCount;
 		saved.warningCount = validation.warningCount;
@@ -1274,9 +1277,10 @@ const _meta = {
 					var preview = ctx.resourcePatch(patchRequest);
 					var validation = validate(ctx, props, path, String(preview.content));
 					requireValid(validation);
-					persist(ctx, props, path, String(preview.content));
+					var patchedDraft = persist(ctx, props, path, String(preview.content));
 					notifySourceMutation(ctx, props, path);
 					result = read(ctx, props, path, false);
+					result.draft = patchedDraft;
 					result.hunks = preview.hunks;
 					result.oldRevision = String(props.revision);
 					result.diagnostics = validation.diagnostics;

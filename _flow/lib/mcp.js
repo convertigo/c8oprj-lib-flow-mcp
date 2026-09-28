@@ -834,17 +834,7 @@
 		} catch (_ignoreProjectChanged) {
 		}
 		var name = String(args.name || "");
-		var saveProject = boolArg(args.saveProject, false) === true ||
-			boolArg(args.exportProject, false) === true ||
-			boolArg(args.autoSave, false) === true;
-		if (saveProject && boolArg(args.saveStudioDrafts, false) !== true) {
-			var pending = pendingStudioDrafts(project, name);
-			if (pending.length) {
-				throw new Error("Saving project " + args.project + " would also save unsaved Studio work (" +
-					pending.slice(0, 10).join(", ") + (pending.length > 10 ? ", ..." : "") +
-					"). Let the user save the project, or omit saveProject.");
-			}
-		}
+		var saveProject = assertProjectSaveAllowed(args, name);
 		var sequence = projectSequenceByName(project, name);
 		var flow = null;
 		var flowWasChanged = false;
@@ -1227,6 +1217,31 @@
 		Files.write(file.toPath(), new Packages.java.lang.String(String(content)).getBytes(StandardCharsets.UTF_8));
 	}
 
+	// Called before any write: a requested project save is refused while other unsaved
+	// Studio work exists, so the MCP change is not applied half-way. Returns whether a
+	// project save was requested.
+	function assertProjectSaveAllowed(args, flowName) {
+		args = args || {};
+		var saveProject = boolArg(args.saveProject, false) === true ||
+			boolArg(args.exportProject, false) === true ||
+			boolArg(args.autoSave, false) === true;
+		if (!saveProject || boolArg(args.saveStudioDrafts, false) === true || !args.project || typeof Packages === "undefined") {
+			return saveProject;
+		}
+		var name = String(flowName || args.name || String(args.qname || "").split(".").pop() || "");
+		var project = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager
+			.getOriginalProjectByName(String(args.project), false);
+		var pending = project == null ? [] : pendingStudioDrafts(project, name);
+		if (pending.length) {
+			var error = new Error("Saving project " + args.project + " would also save unsaved Studio work (" +
+				pending.slice(0, 10).join(", ") + (pending.length > 10 ? ", ..." : "") + "). Nothing was changed.");
+			error.code = "PROJECT_HAS_STUDIO_DRAFTS";
+			error.hint = "Let the user save the project, or retry without saveProject.";
+			throw error;
+		}
+		return saveProject;
+	}
+
 	// Unsaved Studio work a project export would write along with the MCP change:
 	// other Flow working copies, FlowEngine source drafts and the Engine source.
 	function pendingStudioDrafts(project, flowName) {
@@ -1553,7 +1568,12 @@
 		args = args || {};
 		var focus = value.focus || {};
 		var focusPath = String(focus.path !== undefined ? focus.path : args.focusPath || "");
-		var project = String(args.project || "");
+		// The project may only be carried by the qualified parentPath (Project::path).
+		var parent = splitAuthoringParentPath(args.parentPath);
+		var project = String(args.project || parent && parent.project || "");
+		if (!args.project && project) {
+			args = Object.assign({}, args, { project: project });
+		}
 		value.items.forEach(function (item) {
 			if (!item || typeof item !== "object" || item.apply) {
 				return;
@@ -2075,6 +2095,9 @@
 			return relativeProjectPath(projectRoot, file);
 		});
 		result.writtenFile = result.writtenFiles[result.writtenFiles.length - 1];
+		if (result.selectionSourcePath) {
+			result.selectionSourcePath = relativeProjectPath(projectRoot, new File(String(result.selectionSourcePath)));
+		}
 		if (written.draft) {
 			result.dirty = true;
 			notifySourceMutations(args, projectRoot, files);
@@ -2679,9 +2702,9 @@
 			} else if (value.blockAlreadySaved) {
 				out.next = value.next || "Project-local block source is already saved by code-set/code-patch. Run an executable Flow that uses the block.";
 			} else if (value.draft && value.written) {
-				out.next = "UNSAVED WORKING COPY: code-set updated and checked only the draft. Run with code-run without sending code, then call code-promote to save; do not stop after draft-only success.";
+				out.next = "UNSAVED WORKING COPY: code-set updated and checked only the draft. Run with code-run without sending code, then call code-promote with this revision to save; do not stop after draft-only success.";
 			} else if (value.draft) {
-				out.next = "UNSAVED WORKING COPY: check passed only for the draft. Run with code-run without sending code, then call code-promote to save; do not stop after draft-only success.";
+				out.next = "UNSAVED WORKING COPY: check passed only for the draft. Run with code-run without sending code, then call code-promote with this revision to save; do not stop after draft-only success.";
 			} else if (name === "flow-code-check" || name === "code-check") {
 				out.next = "Check passed.";
 		} else if (value.promoted) {
@@ -3320,6 +3343,7 @@
 		sourceStore: sourceStore,
 		withSourceDrafts: withSourceDrafts,
 		pendingStudioDrafts: pendingStudioDrafts,
+		assertProjectSaveAllowed: assertProjectSaveAllowed,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
