@@ -1576,6 +1576,11 @@
 					tool: "authoring-mutate",
 					arguments: { project: project, surface: action.surface, builder: action.builder || "", action: action }
 				};
+				// The engine resolves the action target in a tree built without the Catalog
+				// unless asked: a Catalog creation carries the option its palette used.
+				if (focusPath === "catalog" || focusPath.indexOf(".catalog") >= 0) {
+					item.apply.arguments.includeFrontendCatalog = true;
+				}
 				return;
 			}
 			if (!item.insert || item.mutation) {
