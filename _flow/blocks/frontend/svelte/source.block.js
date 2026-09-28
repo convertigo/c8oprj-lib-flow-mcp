@@ -450,10 +450,19 @@ const _meta = {
 		return diagnostics;
 	}
 
+	// The checked draft is keyed under the canonical path and under the projectDir spelling:
+	// the provider matches the files it reads from projectDir (for example /var vs /private/var
+	// on macOS), so a canonical-only key would validate the persisted source instead.
+	function checkedDrafts(props, path, source) {
+		var drafts = {};
+		drafts[path.absolute] = source;
+		drafts[String(new File(String(props.projectDir), path.relative).getAbsolutePath())] = source;
+		return drafts;
+	}
+
 	function validateProviderComponent(ctx, props, path, source, diagnostics) {
 		try {
-			var drafts = {};
-			drafts[path.absolute] = source;
+			var drafts = checkedDrafts(props, path, source);
 			var contract = ctx.authoringContractSource({
 				projectDir: String(props.projectDir),
 				surface: "frontend",
@@ -704,8 +713,7 @@ const _meta = {
 				};
 			}
 			try {
-				var drafts = {};
-				drafts[path.absolute] = source;
+				var drafts = checkedDrafts(props, path, source);
 				var tree = ctx.authoringTreeSource({
 					projectDir: String(props.projectDir),
 					surface: "frontend",
