@@ -136,9 +136,9 @@ a pending preparation, never an unchanged active viewer.
    Never claim a color, layout, timer, navigation or viewer state that was
    not observed.
 
-MCP writes files on disk; Studio edits are drafts until **Save project**. If
-the user has unsaved Studio edits on a source, ask them to save before
-writing it.
+On a project loaded in Convertigo, MCP writes are working copies like Studio
+edits (`draft:true`, `dirty:true`): they are previewed and checked at once and
+written to disk by **Save project**. Standalone runs write the files.
 
 ## Assets
 

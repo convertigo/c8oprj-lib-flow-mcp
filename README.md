@@ -210,9 +210,11 @@ When omitted, tools operate on `lib_flow_mcp` itself. Agents should pass
   implementation (`target:"frontend"`).
 - `code-run({ qname, input? })` runs the current working copy without resending
   code; `code-status`, `code-discard` and `code-analyze` inspect or cancel it.
-- `code-promote({ qname, revision? })` saves the working copy to the official
-  Flow (`_flow/flows/<Name>.flow.js`). Blocks and frontend sources are saved by
-  `code-set`/`code-patch` directly.
+- `code-promote({ qname, revision })` saves the working copy to the official
+  Flow (`_flow/flows/<Name>.flow.js`); the revision returned by
+  `code-set`/`code-patch`/`code-check` is required. Frontend sources are
+  FlowEngine working copies on a loaded project (saved with the project);
+  project blocks are written by `code-set`/`code-patch` directly.
 
 The engine parses and validates FlowScript, returns line-based diagnostics
 when a block or property is invalid, and writes the canonical FlowScript source

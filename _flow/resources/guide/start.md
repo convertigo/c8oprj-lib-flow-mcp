@@ -123,10 +123,15 @@ encode a block in `qname`.
 
 - Studio edits are in-memory working copies: the Properties **Apply** button
   changes a draft, **Save project** writes files, Reload discards drafts.
-- MCP `code-set` / `code-patch` on a Flow use a separate engine working-copy
-  store published by `code-promote`. Studio drafts are not visible to
-  `code-get`, and MCP working copies are not Studio drafts. If the user has
-  unsaved Studio edits on the same source, ask them to Save project first.
+- On a project loaded in Convertigo, MCP shares those working copies:
+  frontend sources, Catalog components and sources created from palette
+  items are written as FlowEngine drafts (`draft:true`), and `code-get`,
+  trees, checks and the dev preview read them. Tell the user to **Save
+  project** when the work is done; a tool `saveProject` is refused while
+  other unsaved Studio work exists.
+- `code-set` / `code-patch` on a Flow update its working copy (the Studio
+  shows it unsaved); `code-promote` with the returned `revision` saves it.
+  Project `.block.js` sources are still written directly by `code-set`.
 - Runtime caches follow project source fingerprints automatically. Exception:
   after lib_flow_engine or frontbuilder code changed outside the Studio (git
   pull, disk edit), call `flow-cache-clear` once for the project, then retry.
