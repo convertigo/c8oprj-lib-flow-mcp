@@ -298,6 +298,19 @@ const _meta = {
 			} catch (ignored) {
 			}
 		}
+		// Frontend nodes carry their business properties under props; the node identity stays on id
+		// and the output capture of an action on out ($$out), read here as its result target.
+		var props = definition.props;
+		if (props && typeof props === "object") {
+			Object.keys(props).forEach(function (key) {
+				if (definition[key] === undefined) {
+					definition[key] = props[key];
+				}
+			});
+		}
+		if (definition.target === undefined && typeof definition.out === "string" && definition.out) {
+			definition.target = definition.out;
+		}
 		var info = node && node.info;
 		if (info && typeof info !== "object") {
 			try {
@@ -327,7 +340,14 @@ const _meta = {
 	}
 
 	function visibleLabel(node, definition) {
-		return String(definition.label || definition.title || definition.text || node.summary || definition.id || node.name || "");
+		// Bound properties are structured values: only a plain text can label the block.
+		var candidates = [definition.label, definition.title, definition.text, node.summary, definition.id, node.name];
+		for (var i = 0; i < candidates.length; i++) {
+			if (typeof candidates[i] === "string" && candidates[i]) {
+				return candidates[i];
+			}
+		}
+		return "";
 	}
 
 	function lowerFirst(value) {
