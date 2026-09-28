@@ -99,7 +99,8 @@ Flow Svelte uses the palette tag generated from that id, inside an event's
 ```
 
 With no `target`, read the result as `@<$$id>` (`@normalizeName`). Set
-`target` only to an existing `local.name` when the action must update that
+`target` only to an existing `page.name` (`layout.` / `comp.` in a layout or a
+component) when the action must update that
 state. Never author `RunAxiom`; insert the portable tag directly. The Svelte
 compiler lowers it to a static import and bundles only used browser functions.
 

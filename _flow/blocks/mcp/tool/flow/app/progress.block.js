@@ -249,6 +249,7 @@ const _meta = {
 		arrayValue(paperboard.actions).forEach(function (action) {
 			if (flowMatchesQName({ qname: action.requestable, name: action.requestable }, auditQName, project)) {
 				actionIds[String(actionResultId(action) || action.id || "")] = true;
+				if (actionIdentity(action).sequenceKey) actionIds[actionIdentity(action).sequenceKey] = true;
 			}
 		});
 		var roots = {};
@@ -365,9 +366,12 @@ const _meta = {
 	function actionIdentity(action) {
 		action = action || {};
 		var executionId = String(action.id || action.backendCall || action.clientAction || lowerFirst(requestableFlowName(action.requestable)) || "");
+		// Backend results are kept by sequence (".Seq" or ".Seq#marker"), wherever the call is made.
+		var requestable = String(action.requestable || "");
 		return {
 			bindingId: String(action.target || executionId),
-			executionId: executionId
+			executionId: executionId,
+			sequenceKey: requestable ? String(action.resultKey || requestable + (action.marker ? "#" + action.marker : "")) : ""
 		};
 	}
 
@@ -384,6 +388,9 @@ const _meta = {
 			}
 			if (identity.executionId && !index.byExecutionId[identity.executionId]) {
 				index.byExecutionId[identity.executionId] = action;
+			}
+			if (identity.sequenceKey && !index.byBindingId[identity.sequenceKey]) {
+				index.byBindingId[identity.sequenceKey] = action;
 			}
 		});
 		return index;

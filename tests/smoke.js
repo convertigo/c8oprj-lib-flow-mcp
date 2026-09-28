@@ -1556,7 +1556,10 @@ assertTrue(appProgressStructured.result.result.structuredContent.frontend.bindin
 		return task.id === "frontendBindings" && task.done === true;
 	}) && appProgressStructured.result.result.structuredContent.backend.debt.unusedFrontendOutputs.indexOf("first") !== -1 &&
 	appProgressStructured.result.result.structuredContent.backend.debt.unusedFrontendOutputs.indexOf("target") === -1,
-	"MCP flow-app-progress should accept the structured binding produced by its fix");
+	"MCP flow-app-progress should accept the structured binding produced by its fix: " +
+		JSON.stringify({ frontend: appProgressStructured.result.result.structuredContent.frontend,
+			debt: appProgressStructured.result.result.structuredContent.backend.debt,
+			tasks: appProgressStructured.result.result.structuredContent.tasks }));
 var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 	project: "target",
 	projectDir: targetProjectDir,
@@ -1566,7 +1569,7 @@ var frontendBindingInspect = callTool(1397, "frontend-svelte-tree", {
 		return source.id === "targetValue";
 	})[0].path,
 	property: "text",
-	sourceId: "readTarget",
+	sourceId: ".TargetSmoke",
 	maxDepth: 0
 });
 var inspectedBinding = frontendBindingInspect.result.result.structuredContent.children[0].bindings.text;
@@ -2384,7 +2387,7 @@ assertTrue(multiPageFrontend.hasRoutes === true &&
 	multiPageFrontend.paperboard.pageCount === 3 &&
 	multiPageFrontend.paperboard.blocks.some(function (block) {
 		return block.id === "projectName" && block.source && block.source.mode === "source" &&
-			block.source.source.actionId === "projectDetailData" &&
+			block.source.source.actionId === ".TargetSmoke" &&
 			block.source.path.length === 1 && block.source.path[0].name === "target";
 	}) && multiPageFrontend.paperboard.actions.some(function (action) {
 		return action.id === "loadProject" && action.target === "projectDetailData" &&

@@ -976,7 +976,7 @@ const _meta = {
 				},
 				valueSyntax: {
 					literal: 'property="literal"',
-					source: 'property="@producer.path"',
+					source: 'property="@.Sequence.path" (last result of that sequence; @.Sequence#marker.path with a marker)',
 					local: 'property="@local.name"',
 					iteration: 'property="@<ForEach $$id>.item.field" (or the ForEach context name)',
 					route: 'property="@route.params.name"',

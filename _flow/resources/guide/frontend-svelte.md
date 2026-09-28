@@ -243,7 +243,7 @@ the fallback syntax `~/help` is rooted at the deployed application base,
 A bindable property has three human modes, as in the Studio picker:
 
 - **Literal:** `label="News"` (or `value={true}` for non-strings);
-- **Source:** `text="@loadNews.news"`, a schema-backed reference that always
+- **Source:** `text="@.GetNews.news"`, a schema-backed reference that always
   starts with `@`;
 - **Compose:** ordered literal, source and expression parts
   (`expression.parts`) such as `index + 1 + " / " + total`; a source framed by
@@ -258,9 +258,13 @@ each block: `Text.text`, `Button.label`, `Image.src`, `ForEach.source`.
 
 Sources:
 
-- `@<actionId>.path`: an action, requestable or FullSync result;
-- `@local.name`: a page variable (`State`, `Derived`, `Translations`),
-  including variables of ancestor Layouts;
+- `@.Sequence.path` (or `@.Sequence#marker.path`): the last result of that
+  sequence, as in NGX, wherever a `CallSequence` ran it on the page;
+- `@<actionId>.path`: a FullSync or portable action result;
+- `@page.name`, `@layout.name`, `@comp.name`: a variable (`State`, `Derived`,
+  `Translations`) named by its owner, as in NGX: `page.` in a page,
+  `layout.` in a layout, `comp.` in a component. A page reads the variables of
+  its Layouts as `@layout.name` (the nearest Layout declaring `name`);
 - `@<context>.path` and `@index` inside a `ForEach` (`@row.name` under
   `context="row"`), or the explicit `@<forEachId>.item.path` and
   `@<forEachId>.index`;
@@ -270,7 +274,7 @@ Sources:
 - `@theme.available`, `@theme.options`, `@theme.default`: application themes.
 
 ```svelte
-<ForEach $$id="news" source="@loadNews.news" context="item" index="index">
+<ForEach $$id="news" source="@.GetNews.news" context="item" index="index">
   <Children>
     <Image $$id="image" src="@item.imageUrl" />
     <Text $$id="title" text="@item.title" />
@@ -314,9 +318,10 @@ inside a larger explicit mount chain. `OnMount once={true}` survives route
 round trips but not a full reload.
 
 Declare mutable state with `State` and computed state with `Derived` or
-`DerivedBy` in `Variables`. Write state with an action `target="local.name"`
-(`<SetValue $$id="setLanguage" target="local.language" value="fr" />`) and
-read it with `@local.name`. `Variable` is the argument block of actions,
+`DerivedBy` in `Variables`. Write state with an action `target="page.name"`
+(`<SetValue $$id="setLanguage" target="page.language" value="fr" />`) and
+read it with `@page.name` (`layout.` / `comp.` in a layout or a component).
+The former `local.name` is still read and rewritten on save. `Variable` is the argument block of actions,
 Params and Query, not page state. Initialize local state before long network
 actions, and keep provisioning, synchronization and the first query separate
 so progress and errors remain observable.
@@ -327,8 +332,9 @@ so progress and errors remain observable.
 </CallSequence>
 ```
 
-`marker` is an optional static NGX-compatible identity, not a business
-parameter; per-item results stay scoped to the iterator. Use `SetValue`,
+`marker` is an optional static identity that keeps a separate result per
+marker (`@.GetDetail#cardDetail.name`), not a business parameter; per-item
+results stay scoped to the iterator. Use `SetValue`,
 `UpdateList` and `UpdateNumber` for explicit client state, `Derived` /
 `DerivedBy` for pure projections, and portable blocks (inserted by their
 palette tag, never `RunAxiom`) for reusable browser logic. For FullSync, read
@@ -343,7 +349,7 @@ them with `DateNow`, `DateFormat`, `NumberAdd`, `NumberSubtract`,
 their properties and a `wallClock` recipe. Look up one exact block (for
 example `date.now`) in the palette only when its properties are absent. A
 portable action's `target` is optional: omit it and bind `@<$$id>`, or write
-an existing `local.name`. Never implement a stopwatch by counting `Interval`
+an existing `page.name`. Never implement a stopwatch by counting `Interval`
 callbacks.
 
 ## Components And Inputs

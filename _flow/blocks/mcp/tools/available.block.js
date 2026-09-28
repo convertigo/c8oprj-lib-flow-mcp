@@ -509,7 +509,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-tree") {
 			description = "Svelte frontend authoring tree. Use compact detail for structure. For one picker use detail:'inspect', an exact focusPath, maxDepth:0, property:'source' (or another exact bindable property) and sourceId when known; untargeted inspect only summarizes candidate counts.";
 		} else if (name === "frontend-svelte-mutate") {
-			description = "Applies Svelte frontend tree mutations. Bindable properties accept @ references (@local.x, @<requestable>, @<ForEach $$id>.item, @route, @props.x, @theme) or the structured binding returned by the picker; bare string paths are rejected.";
+			description = "Applies Svelte frontend tree mutations. Bindable properties accept @ references (@page.x, @layout.x, @comp.x, @.Sequence.path, @<ForEach $$id>.item, @route, @props.x, @theme) or the structured binding returned by the picker; bare string paths are rejected.";
 		} else if (name === "frontend-svelte-fullsync-schema") {
 			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {
