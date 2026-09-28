@@ -131,7 +131,8 @@ encode a block in `qname`.
   other unsaved Studio work exists.
 - `code-set` / `code-patch` on a Flow update its working copy (the Studio
   shows it unsaved); `code-promote` with the returned `revision` saves it.
-  Project `.block.js` sources are still written directly by `code-set`.
+  Project `.block.js` sources are written directly by `code-set`, which is
+  refused while the Studio has unsaved changes to that block.
 - Runtime caches follow project source fingerprints automatically. Exception:
   after lib_flow_engine or frontbuilder code changed outside the Studio (git
   pull, disk edit), call `flow-cache-clear` once for the project, then retry.

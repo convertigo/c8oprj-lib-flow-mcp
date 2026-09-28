@@ -1979,7 +1979,8 @@
 			args = resolveProjectDir(args);
 		}
 		args = inferFrontendMutationSourceFile(name, args);
-		if (/^(?:authoring|frontend-svelte)-/.test(name) || name === "flow-app-progress") {
+		// Project block tools read the working copies and refuse to overwrite one.
+		if (/^(?:authoring|frontend-svelte|flow-block-code)-/.test(name) || name === "flow-app-progress") {
 			args = withSourceDrafts(args, name === "authoring-mutate" || name === "frontend-svelte-mutate" ||
 				name === "frontend-svelte-fullsync-schema");
 		}
