@@ -63,7 +63,29 @@ function mcp_resources_read({ input, config, result }) {
   })
   local.resource = resource.get({
     $$id: "readResource",
+    $$comment: "Guides and skills are served whole: never cut them at the default preview size.",
     path: "{{ local.matches.0.path }}",
+    allowLarge: true,
+  })
+  if({
+    $$id: "ifTruncated",
+    condition: local.resource.truncated == true,
+    $$then: function () {
+      local.truncatedResponse = mcp.response.error({
+        $$id: "truncatedError",
+        request: input.request,
+        code: -32000,
+        message: "Flow MCP resource could not be read completely: " + input.request.params.uri,
+        data: {
+          "code": "FLOW_MCP_RESOURCE_TRUNCATED",
+        },
+        out: "local.truncatedResponse",
+      })
+      return({
+        $$id: "returnTruncated",
+        value: local.truncatedResponse,
+      })
+    },
   })
   local.content = json.object({
     $$id: "content",
