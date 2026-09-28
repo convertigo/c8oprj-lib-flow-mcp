@@ -309,6 +309,31 @@ const _meta = {
 			delete schema.properties.focusPath;
 			schema.required = ["parentPath"];
 		}
+		if (toolName === "authoring-tree" || toolName === "frontend-svelte-tree") {
+			schema.properties.detail = {
+				type: "string",
+				enum: ["compact", "summary", "inspect"],
+				description: "compact by default. inspect adds property definitions, props, slots and bindings of the focused nodes."
+			};
+			schema.properties.maxDepth = {
+				type: "integer",
+				description: "Tree depth below the focus (0 for the focused node only; at most 8)."
+			};
+			schema.properties.includeFlowCatalog = {
+				type: "boolean",
+				description: "Include Catalog > Blocks and Types (backend definitions)."
+			};
+			schema.properties.includeFrontendCatalog = {
+				type: "boolean",
+				description: "Include Catalog > Components (Flow and Svelte UI blocks) and their creation targets."
+			};
+		}
+		if (toolName === "frontend-svelte-tree") {
+			schema.properties.property = {
+				type: "string",
+				description: "With focusPath and detail:\"inspect\": binding picker of this property (current value, sources, apply mutations)."
+			};
+		}
 		if (toolName === "flow-app-progress") {
 			schema.properties.qname = {
 				type: "string",

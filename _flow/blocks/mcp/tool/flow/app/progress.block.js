@@ -548,9 +548,12 @@ const _meta = {
 			return validPath && (((source.category === "requestable" || source.category === "action") && !!source.actionId)
 				|| (source.category === "fullsync" && !!source.actionId && !!source.operation)
 				|| (source.category === "local" && !!source.name && !!source.scopeId)
-				|| (source.category === "iteration" && !!source.scopeId && (source.value === "item" || source.value === "index"))
+				|| (source.category === "iteration" && !!source.scopeId &&
+					(source.value === "item" || source.value === "index" || source.value === "iterable"))
 				|| (source.category === "event" && source.value === "event")
-				|| (source.category === "route" && source.value === "route"));
+				|| (source.category === "route" && source.value === "route")
+				|| (source.category === "theme" && source.value === "theme")
+				|| (source.category === "props" && source.value === "props"));
 	}
 
 	function firstNodePath(tree, predicate) {
