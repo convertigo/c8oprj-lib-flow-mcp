@@ -321,7 +321,20 @@ Declare mutable state with `State` and computed state with `Derived` or
 `DerivedBy` in `Variables`. Write state with an action `target="page.name"`
 (`<SetValue $$id="setLanguage" target="page.language" value="fr" />`) and
 read it with `@page.name` (`layout.` / `comp.` in a layout or a component).
-The former `local.name` is still read and rewritten on save. `Variable` is the argument block of actions,
+The former `local.name` is still read and rewritten on save.
+
+Inside an event, an action's Output may instead declare a variable of that
+event, as a `let` in JavaScript: `$$out="local.probe"` keeps the result for the
+following actions of the same run only (`value="@local.probe.message"`). It is
+not visible in the page structure nor to earlier actions, and every run of the
+event starts without it.
+
+```svelte
+<OnMount $$id="mount"><Actions>
+  <CallSequence $$id="callProbe" $$out="local.probe" requestable=".LiveProbe" />
+  <SetValue $$id="keep" target="page.message" value="@local.probe.message" />
+</Actions></OnMount>
+``` `Variable` is the argument block of actions,
 Params and Query, not page state. Initialize local state before long network
 actions, and keep provisioning, synchronization and the first query separate
 so progress and errors remain observable.
