@@ -1,158 +1,164 @@
 # Flow MCP Start
 
-Default route for Flow authoring:
+Start here: the default Flow authoring route, the source contract, the project layout and which guide to read next.
 
-When a task shares pure logic between backend FlowScript and Flow Svelte, read
-`flow://guide/portable-blocks`. Portable blocks keep one typed contract and use
-target-specific runtime implementations; do not duplicate their behavior in an
-ad hoc frontend expression.
+## Which guide next
 
-1. For a simple new Flow, learn syntax from small samples, then write compact FlowScript first. FlowScript is strict: every block call is `block.name({ key: value })` with one object argument. Do not search/copy existing application Flows unless this is maintenance, reuse, or an unclear pattern.
-   If the requested `project`, `qname`, or `block` is not accessible through Flow MCP, stop and report that blocker. Do not use legacy MCP project discovery, and do not create the Flow in another project.
-2. Start coding directly with `code-set` in the strict DSL. Do not browse the full catalog first; let `code-set` and `code-run` diagnostics suggest block names, properties and signatures.
-   Keep structural constants in `config.*` or the project FlowEngine config:
-   service base URLs, API paths, tokens, namespaces and timeouts do not belong
-   in low-level block code.
-   If the project already exposes high-level config, use it directly; do not
-   copy that config into `_flow.config`. When the feature has many similar
-   rows or calls, use `list.map` over a config collection or small data block.
-   Do not unroll many copied `http.get`, `http.request` or `requestable.call`
-   calls in the parent Flow.
-   For object maps whose keys are data, use standard object primitives:
-   `object.keys({ source: local.map })` to list keys,
-   `object.get({ source: local.map, key: current.code })` to read a dynamic
-   value, and `object.firstEntry({ source: local.map })` when only one entry is
-   needed. Do not create a Rhino domain block just to enumerate object keys or
-   read `map[code]`.
-   Reusable domain blocks should expose a simple low-code API: pass the domain
-   object or native business fields, and read shared service endpoints from
-   `config.*`. Prefer `currency.countryRate({ country: current, rates:
-   local.rates })` or `catalog.enrichProduct({ product: current })` over
-   passing a prebuilt URL or query string between blocks.
-   For top-down design, call the high-level domain block you want even when it
-   may not exist yet. If diagnostics report `UNKNOWN_BLOCK` and no candidate
-   clearly matches the intent, create an explicit project-local mock with
-   `flow-block-mock({ project, name, properties, outputs })` rather than hiding
-   the feature in Rhino or copied HTTP calls. A mock keeps the parent Flow
-   executable but remains unfinished work until `mock:true` and the TODO are
-   removed. Use `flow-block-mock-list` before claiming the Flow is complete.
-   `UNKNOWN_BLOCK` diagnostics include `candidateDecision.bestScore`,
-   `candidateDecision.preferExistingScore` and `create.tool`; follow that
-   decision instead of guessing between a candidate and a mock.
-3. Use `flow-requestable-list` and `flow-requestable-schema` only when a legacy sequence or transaction shape is needed.
-4. Write the working copy with `code-set`, patch it with `code-patch` if needed, then run it with `code-run`.
-5. Treat it like an editor buffer: use `code-status` to see dirty state, `code-discard` to cancel, and `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, call `code-promote` before stopping.
-6. Stop after a successful working-copy run plus promotion unless the user explicitly asked for deployed HTTP validation.
-7. Use `flow-search` only after the first draft when the block/pattern is still unknown, with natural tokens such as `GetFeed requestable call sort`. Prefer `project` scope; it also indexes visible `sample_*` Flows from the Flow engine library.
-8. Prefer `kind:"sample"` matches only when you need a pattern. Samples are private executable Flows whose name starts with `sample_`.
-9. Treat FlowScript, project blocks and canonical Flow Svelte files as code.
-   The fast path is `code-rg` followed directly by the smallest `code-patch`
-   when one revisioned contextual extract identifies the local change. Use a
-   bounded `code-get` range when more context is necessary, and a full
-   `code-get` only for ambiguity or broad edits. Address executable Flows with a
-   real Convertigo DBO qname such as `qname:"Project.Flow"`, project-local
-   blocks with `block:"namespace.name"`, and Flow Svelte/CSS with
-   `sourceFile`. A `sourceFile` selects source code automatically; use
-   `kind:"source"` without `sourceFile` for project-wide source `rg`.
-   Do not encode blocks in `qname`.
+| Task | Read |
+| --- | --- |
+| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` |
+| Unclear syntax: two real samples | `flow://guide/samples` |
+| Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
+| Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` |
+| One pure block for backend and frontend | `flow://guide/portable-blocks` |
+| Backend plus Svelte application | `flow://guide/fullstack-paperboard` |
+| Svelte-only frontend | `flow://guide/frontend-svelte` |
+| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |
+| FullSync server DBOs and client actions | `flow://guide/fullsync` |
+| Locate and patch existing code | `flow://guide/search-and-edit` |
+| MCP JSONL tracing | `flow://guide/tracing` |
 
-Project-local blocks are code-first: `code-set` writes a canonical `.block.js` with `_meta` and either one FlowScript function or one Rhino IIFE. Use Rhino only for Java bridges or low-level primitives; static metadata stays in `_meta`, runtime code is limited to `run(ctx,node)`, and dynamic labels/analysis live in `hooks.file`.
+Guides are served whole by `resources/read`; read each one once per task.
 
-When creating a Rhino primitive, read `flow://guide/rhino-block-api` first instead of searching files on disk for `ctx.*` examples.
+## Source contract in five rules
 
-Use `input.*` for Flow or block inputs and `local.*` for scratch data. `flow.*` and `props.*` are not expression scopes. Blocks that load JavaScript helpers with `ctx.lib(...)` must declare them with `uses` so the dependency is visible in the catalog.
+1. Every block call is `block.name({ key: value })` with one object argument.
+   Positional calls such as `http.get(url)` or `requestable.call(".GetFeed")`
+   are invalid; diagnostics show the accepted keys.
+2. Capture a block result with an assignment: `local.feed = requestable.call({
+   requestable: ".GetFeed" })`. Write one statement per line; never join two
+   Flow statements with `;` on one line.
+3. `$$id`, `$$comment`, `$$disabled`, `$$out` and slots such as `$$then` are
+   engine attributes. Plain names (`id`, `disabled`, `out`, `comment`) are
+   ordinary business properties.
+4. Source headers hold static literals only: `_flow` describes an executable
+   Flow, a Page, a Layout or a Flow component; `_meta` describes a block or a
+   Svelte UI block. Backend sources default to `sourceVersion: 2`; every
+   `.flow.svelte` file must declare `sourceVersion: 2`.
+5. `input.*` holds Flow or block inputs, `local.*` scratch data, `result.*`
+   the response, `config.*` configuration. In backend FlowScript `flow.*` and
+   `props.*` are not expression scopes (in Flow Svelte, `@props.<name>` reads
+   component inputs).
 
-For executable Flows with request variables or reusable tests, declare a
-top-level `const _flow = { inputs: {...}, tests: {...} }` before the function.
-`code-*` tools report these as `inputDefinitions`, `inputVariables`, and
-`testCases`. Explicit inputs are synchronized to Convertigo request variables so
-Studio and SDK callers see the same contract; if absent, `inputVariables` are
-inferred from `input.foo` reads and authoring diagnostics ask for declarations.
+`flow://guide/authoring` gives the full backend dialect with examples.
 
-Use `flow-output-schema` only when a downstream contract or diagnostic requires
-schema review. `flow://guide/authoring` owns the inspect, adopt, remove and reset
-lifecycle.
-Flow runtime caches are invalidated automatically from Flow engine and project
-source fingerprints. `flow-cache-clear` is a debug tool only; do not include it
-in the normal authoring workflow.
+## Project layout
 
-For JSON HTTP APIs, use the visible HTTP block: `var response = http.get({ url: "https://..." })`, then read `response.body`; parse `response.text` only when the body is not already native JSON. FlowScript is a Flow block DSL: every block call uses exactly one object parameter, for example `list.filter({ items, where: current.ok })`, `list.sort({ items, by: current.label })`, and `list.map({ items, select: { label: current.label } })`. Positional JavaScript-style calls such as `http.get(url)`, `list.sort(items, by)`, or `requestable.call(".GetFeed")` are invalid; diagnostics show the accepted object keys.
+Flow sources live only under `<project>/_flow/`, which `.httpignore` keeps
+private (`/_flow/`). Public files live outside it (project `resources/`, app
+`static/`).
 
-For array projections, assign the mapping to a variable and then copy it to the response: `var rows = list.map({ items, select: { label: current.label } }); result.rows = rows`. Do not hard-code fixed indexes such as `rows[0]`, `rows[1]` for a dynamic list.
+| Path | Content |
+| --- | --- |
+| `_flow/engine.yaml` | project Flow `config` and frontbuilder settings |
+| `_flow/flows/<Name>.flow.js` | executable Flow (FlowScript) |
+| `_flow/blocks/<ns>/<name>.block.js` | block: `_meta` then FlowScript function or Rhino IIFE |
+| `…/<name>.hooks.js`, `…/<name>.browser.js` | analysis hooks, browser implementation |
+| `…/<name>.block.defaults.json` | optional defaults history |
+| `_flow/types/*.type.yaml`, `_flow/types/editors/*.html` | property types and their editors |
+| `_flow/schemas/<Flow>/<node>.out.schema.json` | learned or adopted output schemas |
+| `_flow/fragments/*.fragment.yaml` | fragments used by `fragment.use` |
+| `_flow/icons/iconify/<set>/<name>.svg` + `LICENSE.json` | icons (SVG only) |
+| `_flow/fonts/<provider>/<family>/font.json` + `*.woff2` | custom fonts |
+| `_flow/dependencies.json` | definer versions, written on save |
+| `_flow/frontbuilder/svelte/model/<App>/src/routes/**` | Pages and Layouts (`+page.flow.svelte`, `+layout.flow.svelte`) |
+| `_flow/frontbuilder/svelte/model/<App>/src/{lib,theme.flow.css,app.flow.css,i18n}` | app components, theme, CSS, translations |
+| `_flow/frontbuilder/svelte/components/<ns>/<Tag>.flow.svelte` | shared (Catalog) components |
 
-For JSON object maps, keep the logic visible with `object.keys`, `object.get`
-and `object.firstEntry`. Example: `var codes = object.keys({ source:
-local.rates }); var rate = object.get({ source: local.rates, key:
-current.currency })`. These blocks propagate broad value schemas for homogeneous
-maps, so prefer them before creating a custom primitive.
+Generated output (`_private/svelte`, `DisplayObjects/mobile`) is never edited.
 
-For repeated external work, write one per-item operation and iterate. A Flow
-that needs many similar API calls should read rows from `config.*` or a small
-data block, then call a reusable FlowScript block inside `list.map`. A source
-with five or more copied HTTP/requestable calls should be refactored before
-promotion unless those calls are genuinely different operations.
-The reusable per-item block should keep a business-level contract. Pass
-`zone`, `country`, `latitude`, `longitude`, `city`, or another native domain
-value, not a preassembled URL that hides service configuration from the block.
+## Default backend loop
 
-Use `config.use({ http: {...}, sql: {...}, then: function () { ... } })` when a subtree needs temporary configuration such as an HTTP profile. Root keys are config branches, `then` is reserved for child nodes, and nested objects are deep-merged then restored. Example: `config.use({ http: { timeout: 30000, headers: { Authorization: config.github.token } }, then: function () { var page = http.get({ url: config.github.url }) } })`.
+1. For a new Flow, write compact FlowScript with `code-set` first. Do not
+   browse the catalog or copy application Flows first; let `code-set` and
+   `code-run` diagnostics name blocks and properties. Read at most two
+   samples when syntax is unclear.
+2. If the requested `project`, `qname` or `block` is not accessible through
+   Flow MCP, stop and report that blocker. Never fall back to another project
+   or to legacy MCP discovery.
+3. Patch with `code-patch`, run with `code-run`, then `code-promote` once
+   diagnostics and behavior are clean. `unsaved:true` or `workingCopy:true`
+   in a `code-run` response means the Flow is still a draft: promote it
+   before stopping. `code-status` shows dirty state, `code-discard` cancels.
+4. Stop after a successful run plus promotion unless deployed HTTP validation
+   was requested. Do not call `flow-test` when `code-run` already proved it.
+5. Use `flow-search` only after the first draft, when a block or pattern is
+   still unknown (`GetFeed requestable call sort`); `kind:"sample"` matches
+   are private `sample_*` Flows.
+6. Use `flow-requestable-list` / `flow-requestable-schema` only when a legacy
+   sequence or transaction shape is needed.
 
-Keep the visible algorithm in FlowScript. A custom Rhino block must not hide an entire backend feature such as fetch + parse + normalize + sort + response. If one primitive is missing, create only that primitive, for example `domain.extractState({ html })`, and keep HTTP, loops, list transforms and result mapping as Flow blocks. Project Rhino blocks are rejected if they perform HTTP or Convertigo requestable calls directly; use `http.get({ url })`/`http.request({ method, url })` and `requestable.call({ requestable })` instead.
+Address executable Flows with `qname:"Project.Flow"`, project blocks with
+`block:"ns.name"`, and Flow Svelte or CSS sources with `sourceFile`. Never
+encode a block in `qname`.
 
-When drafting top-down, prefer the readable parent Flow first: call a domain
-block that names the missing operation, let diagnostics prove it is missing, and
-then use `flow-block-mock` with the expected input properties and output schema.
-Only replace that mock with real FlowScript after the parent algorithm is
-validated. Do not finish the task while the parent Flow still depends on a
-mock. Use `flow-block-mock-list` to audit remaining mocks.
+## Design rules
 
-Prefer `code-get`, `code-set`, `code-patch`, `code-check`, `code-run`, `code-status`, `code-discard`, `code-promote`, and `code-rg`. `flow-get`/`flow-set` with JSON definitions remain available only when inspecting or debugging the model conversion itself.
+- Keep structural constants (service URLs, API paths, tokens, namespaces,
+  timeouts) in `config.*` or the project `_flow/engine.yaml`, not in block
+  code. Reuse existing project config instead of copying it into
+  `_flow.config`.
+- For repeated external work, model one item and iterate with `list.map` over
+  a config collection or a small data block. Five or more copied `http.get` /
+  `requestable.call` nodes must be refactored before promotion.
+- Reusable domain blocks take business values (`country`, `city`, `product`)
+  and read endpoints from `config.*`; prefer `currency.countryRate({ country:
+  current, rates: local.rates })` over passing a prebuilt URL.
+- For object maps whose keys are data, use `object.keys`, `object.get` and
+  `object.firstEntry`; never write a Rhino block just to read `map[code]`.
+- Keep the algorithm visible in FlowScript. Rhino is for one missing JVM
+  primitive; project Rhino blocks that open URLs or call requestables are
+  rejected.
+- Top-down: call the domain block you want even if it does not exist yet.
+  When `UNKNOWN_BLOCK` has no matching candidate (follow
+  `candidateDecision`), create a typed mock with `flow-block-mock({ project,
+  name, properties, outputs })`. A Flow using a mock is unfinished; check
+  `flow-block-mock-list` before reporting completion.
+- For request inputs and reusable tests, declare `const _flow = { inputs:
+  {...}, tests: {...} }`; `code-*` tools report `inputDefinitions`,
+  `inputVariables` and `testCases`, and inputs are synchronized to Convertigo
+  request variables.
 
-For Studio workspace cleanup, inspect a loaded project with
-`flow-project-remove({ project, dryRun:true })`. The default `unload` action
-keeps files on disk. Use `action:"delete"` only after the plan reports
-`safe:true`; dirty, linked, Git-backed and referenced projects are protected by
-default. Never use `force:true` without reviewing every returned blocker.
+## Drafts, Save and caches
 
-Write result captures as `local.feed = requestable.call({ requestable: ".GetFeed" })`, with multiline named arguments when useful. `$$out` is the explicit metadata spelling of the same capture, not a business parameter; the canonical writer emits the assignment. A plain `out` is only valid when it is a declared business property. Arithmetic and comparisons can remain expressions.
+- Studio edits are in-memory working copies: the Properties **Apply** button
+  changes a draft, **Save project** writes files, Reload discards drafts.
+- MCP `code-set` / `code-patch` on a Flow use a separate engine working-copy
+  store published by `code-promote`. Studio drafts are not visible to
+  `code-get`, and MCP working copies are not Studio drafts. If the user has
+  unsaved Studio edits on the same source, ask them to Save project first.
+- Runtime caches follow project source fingerprints automatically. Exception:
+  after lib_flow_engine or frontbuilder code changed outside the Studio (git
+  pull, disk edit), call `flow-cache-clear` once for the project, then retry.
+- The first `authoring-tree`, palette or `code-get` on a cold project can
+  take several seconds; do not retry it.
 
-When debugging `definition.nodes[]`, business properties are in `props`: `{id:"call", block:"requestable.call", props:{requestable:".GetFeed"}, out:"local.feed"}`. The structural AST `out` is distinct from `props.out`. Prefer FlowScript over raw definitions for normal authoring.
+## Tool hygiene
 
-When a live `project` is provided, `flow-set` and `flow-edit` register/save the Flow DBO by default so it is callable as a requestable. Use `register:false` only for sidecar-only tests.
+- After reading a tool contract once, pass `doc:false,hints:false`.
+- Discovery tools are paginated (`limit`, `cursor`). `flow-catalog`,
+  `flow-resource-search` and `flow-search` may return `partial:true` with a
+  `nextCursor`; a partial result never proves that nothing else matches.
+- `flow-app-progress` defaults to the POC goal; use `mode:"hardening"` only
+  when a complete assessment is requested.
+- Mutation tools and `flow-block-get` answer compactly; use `code-get` or
+  `authoring-tree` for focused inspection.
+- Do not run shell commands (`git status`, `sed`, `cat`, HTTP scripts) to
+  confirm a generated Flow. Trust given `project`/`qname`; MCP results are the
+  source of truth.
+- Do not call `flow-schema-reset` during normal authoring;
+  `flow://guide/authoring` owns the schema lifecycle.
+- Workspace cleanup: `flow-project-remove({ project, dryRun:true })` first;
+  `action:"delete"` only after `safe:true`; never `force:true` without
+  reviewing every blocker.
+- Tracing: Convertigo symbol `flow.mcp.traceJsonl`, see `flow://guide/tracing`.
 
-Keep responses small: after reading this guide, pass `doc:false,hints:false` on repeated tool calls. Discovery tools are paginated by default; keep using `limit` and `cursor` instead of asking for unbounded catalog/tree data.
+## Frontend entry
 
-Potentially expensive discovery is budgeted automatically. `flow-catalog`, `flow-resource-search` and `flow-search` stop cooperative result loops after a useful first response or before an abusive response size, then return `partial:true`, a `PARTIAL_RESULT_*` warning and an opaque `nextCursor`. Continue with that cursor only when the first results are insufficient. Never treat a partial result as proof that no more matches exist. `flow-app-progress` defaults to the fast POC goal; its `complete:true` means the first useful preview is ready. Use `mode:"hardening"` only for an explicitly requested complete assessment. The budget starts with the compatible result loop or phase; it does not preempt project loading or other Convertigo work before it.
-
-Avoid shell commands for routine checks. Do not run `git status`, `git diff`, `sed`, `cat`, `pwd`, or HTTP scripts just to confirm a newly generated Flow. If the prompt gives `project` and `qname`, trust them; do not inspect workspace YAML/XML to rediscover them. Use MCP tool results as the source of truth. Do not call `flow-test` after saving when `code-run` already proved the result.
-
-Mutation tools and `flow-block-get` return compact summaries by default. Call `flow-tree` or `flow-get` for focused inspection; pass `detail:"full"` only when debugging the tool response itself or editing block implementation source.
-
-Sample convention for the POC: a sample is a private executable Flow named
-`sample_*`. Read at most two matching sources from `flow://guide/samples`; do
-not run or tree-inspect a sample only to learn syntax.
-
-Do not call `flow-schema-reset` during normal authoring. Prefer
-`flow-node-output-schema action:"remove"` for one producer; use
-`flow-schema-reset` only when an existing learned schema is stale and blocks
-picker/output-schema work across broader scope.
-
-For diagnostics, MCP responses are sanitized for agents and optional JSONL tracing is enabled with the Convertigo symbol `flow.mcp.traceJsonl` (`true` for the default project `_private/flow-mcp-trace.jsonl`, or a file path). See `flow://guide/tracing`.
-
-For backend + Svelte application work, read
-`flow://guide/fullstack-paperboard` before coding. It defines the short
-paperboard loop: bootstrap, one backend pass, one visible frontend application
-pass that may contain several Pages, early action wiring,
-`flow-app-progress({ mode:"poc" })`, build and preview. Functional Page
-separation is part of the POC. Stop there unless hardening was requested;
-exhaustive schema, history and visual review are a separate phase. For
-Svelte-only frontend work, read
-`flow://guide/frontend-svelte` and use `authoring-tree`,
-`authoring-palette`, `authoring-mutate`,
-`frontend-svelte-actions` and `frontend-svelte-action`. These tools reuse the
-same authoring contract as the Studio tree and palette; do not edit generated
-Svelte output directly. Flow Svelte source follows SvelteKit routes under
-`_flow/frontbuilder/svelte/model/<App>/src/routes`, and generated output
-must stay under `_private/svelte/src/routes`.
-Read optional `flow://guide/frontend-svelte-routing` only for dynamic Page
-segments, parameters, matchers, nested layouts or route groups.
+For backend plus Svelte work, read `flow://guide/fullstack-paperboard` before
+coding. For Svelte-only work, read `flow://guide/frontend-svelte` and use
+`code-get` / `code-set` on `sourceFile`, with `authoring-tree`,
+`authoring-palette`, `authoring-mutate`, `frontend-svelte-actions` and
+`frontend-svelte-action`. Pages live under
+`_flow/frontbuilder/svelte/model/<App>/src/routes`; generated Svelte is never
+edited.

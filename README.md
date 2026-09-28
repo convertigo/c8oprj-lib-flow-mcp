@@ -50,8 +50,8 @@ lib_flow_mcp.McpServer
 The flow graph owns the visible protocol routing. Reusable protocol branches
 that deserve a palette/catalog item are composite graph blocks in
 `_flow/blocks/*.block.js`; for example `mcp.handle` routes one JSON-RPC
-request, and `mcp.tools.call` is implemented with `mcp.tool.identify` and one
-branch per tool family. Private native `mcp.*` blocks keep the low-level
+request, and `mcp.tools.call` groups tools by family before delegating to
+small private blocks. Private native `mcp.*` blocks keep the low-level
 JSON-RPC/Convertigo glue small. When reusable behavior has a clear contract,
 expose it as a block and call it with `ctx.callBlock(...)`; keep
 `_flow/lib/mcp.js` only for local algorithmic helpers that would add noise
@@ -62,33 +62,34 @@ Scope naming convention for new Flow sources:
 - `input.*` is the data received by the executable Flow or block implementation.
 - `local.*` is the private working scope of the current execution.
 - `config.*`, `current`, `result` keep their usual meanings.
-- `props.*` and `flow.*` are not expression scopes. JS hooks/raw implementations
-  can inspect the raw node with `ctx.props(node)`.
+- In backend FlowScript, `props.*` and `flow.*` are not expression scopes (Flow
+  Svelte reads component inputs with `@props.<name>`). JS hooks/raw
+  implementations can inspect the raw node with `ctx.props(node)`.
 
-For simple MCP tools, prefer this graph shape:
+For simple MCP tools, prefer this FlowScript shape (one statement per line,
+captures as assignments):
 
-```yaml
-nodes:
-  - id: run
-    block: mcp.tool.run
-    request: input.request
-    target: resource.search
-    out: local.response
-  - id: done
-    block: return
-    value: "{{ local.response }}"
+```javascript
+local.response = mcp.tool.run({
+  $$id: "run",
+  request: input.request,
+  target: "resource.search",
+})
+return({
+  $$id: "done",
+  value: local.response,
+})
 ```
 
 `mcp.tool.run` prepares MCP arguments, resolves the target project, calls the
 target block with `ctx.callBlock(...)`, and wraps either the result or the error
 as a JSON-RPC tools/call response.
 
-The simple read/test/introspection tools now use this shape and delegate to
-core capability blocks such as `flow.list`, `flow.get`, `flow.run`,
-`flow.test`, `flow.tree`, `flow.context`, `flow.outputSchema`, `flow.apply`,
-`resource.*`, `block.*` and `type.*`. Keep JavaScript wrappers only when the
-tool still owns MCP-specific behavior such as workspace search or Studio DBO
-registration after writing a Flow.
+The simple read/test/introspection tools use this shape and delegate to
+lib_flow_engine capability blocks such as `flow.list`, `flow.test`,
+`flow.outputSchema`, `flow.code.*`, `block.code.*`, `resource.*` and
+`authoring.*`. Keep JavaScript wrappers only when the tool still owns
+MCP-specific behavior such as workspace search or Studio DBO registration.
 
 When adding a new operation, ask whether the underlying behavior is:
 
@@ -96,34 +97,47 @@ When adding a new operation, ask whether the underlying behavior is:
 - MCP authoring behavior: keep it here;
 - project-specific glue: keep it in the target project, preferably private.
 
+## Tools
+
+`tools/list` advertises only the tools named in `PUBLIC_TOOLS`
+(`_flow/blocks/mcp/tools/available.block.js`). MCP clients expose only listed
+tools, so guides, skills and this README must not recommend any other tool.
+
+| Family | Tools |
+| --- | --- |
+| Code | `code-get`, `code-set`, `code-patch`, `code-rg`, `code-check`, `code-run`, `code-status`, `code-discard`, `code-promote`, `code-analyze` |
+| Authoring tree | `authoring-tree`, `authoring-palette`, `authoring-mutate` |
+| Svelte frontend | `frontend-svelte-tree`, `frontend-svelte-mutate`, `frontend-svelte-actions`, `frontend-svelte-action`, `frontend-svelte-asset-import`, `frontend-svelte-fullsync-schema` |
+| Discovery | `flow-search`, `flow-list`, `flow-catalog`, `flow-block-get`, `flow-requestable-list`, `flow-requestable-schema` |
+| Schemas and tests | `flow-output-schema`, `flow-node-output-schema`, `flow-schema-reset`, `flow-test`, `flow-sync-inputs` |
+| Blocks | `flow-block-mock`, `flow-block-mock-list` |
+| Resources | `flow-resource-search`, `flow-resource-get`, `flow-resource-patch`, `flow-resource-delete` |
+| Project | `flow-project-bootstrap`, `flow-project-reference`, `flow-project-remove`, `flow-fullsync-scaffold`, `flow-app-progress` |
+| Caches | `flow-cache-clear`, `flow-cache-info` |
+
 Default authoring cycle for a blank agent context:
 
 ```text
 resources/list
 resources/read flow://guide/start
 tools/list
-flow-search to find flows, nodes, catalog entries and schemas; multi-word queries match unordered tokens
-flow-code-rg / flow-code-get for FlowScript source
-flow-tree / flow-get only for model-conversion debugging
-flow-context when choosing paths or expressions
+code-set for the first FlowScript draft (FlowScript working copy)
+code-run, code-patch for revision-checked edits, then code-promote once behavior is clean
+flow-search only after the first draft, when a block, pattern or schema is still unknown; multi-word queries match unordered tokens
+code-rg / code-get for existing FlowScript, project blocks and Flow Svelte sources
+code-analyze when choosing paths or expressions
 flow-output-schema when downstream nodes need the result shape
 flow-node-output-schema when one HTTP/exec/parser producer needs schema inspection, adoption or removal
 flow-schema-reset only for broader stale learned-schema cleanup
-flow-code-set for broad Flow edits; it writes the FlowScript working copy
-flow-code-patch for revision-checked maintenance edits on that working copy
-flow-code-check / flow-code-run, then flow-code-promote once behavior is clean
 flow-catalog only when search/examples are insufficient; it is summary by default
-authoring-palette with a parentPath returned by authoring-tree before implementing a reusable missing frontend capability locally; provider discovery is internal
+authoring-palette with a parentPath returned by authoring-tree before implementing a reusable missing frontend capability locally
 flow-project-reference only for explicit project-reference maintenance
-flow-block-code-rg / flow-block-code-get / flow-block-code-patch for project-local blocks
-flow-block-code-set only when reusable vocabulary is needed
-flow-block-create / flow-block-duplicate / flow-block-edit are compatibility facades that still write canonical .block.js
-flow-type-create only for project-local property type definitions
-flow-resource-search / flow-resource-get / flow-resource-patch for maintenance patches on project JS/HTML/CSS resources and Flow libraries
+code-set with block:"ns.name" and the complete _meta + implementation only when reusable vocabulary is needed
+flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments and resources
 ```
 
-The default path remains catalog-first and sidecar-first. Custom blocks are
-project vocabulary, not automatic core changes.
+The default path is sample-first and source-first. Custom blocks are project
+vocabulary, not automatic core changes.
 
 Project-local blocks use a canonical `*.block.js` source containing `_meta`
 plus either one FlowScript function or one Rhino IIFE. Use Rhino blocks only for
@@ -138,16 +152,29 @@ top-level FlowScript contract:
 
 ```javascript
 const _flow = {
-  inputs: {
-    city: { type: "string", description: "City name.", default: "Paris" }
+  "sourceVersion": 2,
+  "inputs": {
+    "city": {
+      "type": "string",
+      "description": "City name.",
+      "default": "Paris",
+    },
   },
-  tests: {
-    checkParis: { input: { city: "Paris" } }
-  }
+  "tests": {
+    "checkParis": {
+      "input": {
+        "city": "Paris",
+      },
+    },
+  },
+}
+
+function Weather({ input, config, result }) {
+  result.city = input.city
 }
 ```
 
-`flow-code-*` tools expose this as `inputDefinitions`, `inputVariables`, and
+`code-*` tools expose this as `inputDefinitions`, `inputVariables`, and
 `testCases`. Explicit `_flow.inputs` are synchronized to Convertigo request
 variables so Studio, SDK callers and generated test cases see the same contract.
 Without `_flow.inputs`, inputs are only inferred from `input.foo` reads and
@@ -167,156 +194,49 @@ Most tools accept either:
 When omitted, tools operate on `lib_flow_mcp` itself. Agents should pass
 `project` for application work, for example `AAAProject`.
 
-Mutation tools accept semantic node targets first. Prefer this shape after
-`flow-search` returns a `nodeId`:
+## FlowScript code tools
 
-```json
-{
-  "name": "WeatherAlert",
-  "mutation": {
-    "op": "replace",
-    "nodeId": "setMessage",
-    "property": "value",
-    "value": "Done"
-  }
-}
-```
+`code-*` is the default source surface for agents:
 
-Use `afterNodeId`, `beforeNodeId` or `parentNodeId + slot` to insert nodes
-without hard-coding array indexes:
+- `code-get({ qname | block | sourceFile })` returns `code` plus `revision`
+  (bounded reads with `startLine`/`endLine`).
+- `code-set({ qname, revision?, code })` writes and validates the FlowScript
+  working copy; with `block` it writes a canonical project `.block.js`, with
+  `sourceFile` a Flow Svelte or CSS source.
+- `code-patch({ ..., revision, codepatch })` applies a revision-checked unified
+  diff.
+- `code-rg({ ..., pattern })` returns small revisioned extracts.
+- `code-check` dry-runs a Flow, a frontend source or a browser block
+  implementation (`target:"frontend"`).
+- `code-run({ qname, input? })` runs the current working copy without resending
+  code; `code-status`, `code-discard` and `code-analyze` inspect or cancel it.
+- `code-promote({ qname, revision? })` saves the working copy to the official
+  Flow (`_flow/flows/<Name>.flow.js`). Blocks and frontend sources are saved by
+  `code-set`/`code-patch` directly.
 
-```json
-{
-  "name": "WeatherAlert",
-  "mutation": {
-    "op": "insert",
-    "afterNodeId": "setMessage",
-    "value": {
-      "id": "logDone",
-      "block": "log",
-      "message": "Done"
-    }
-  }
-}
-```
-
-Low-level mutations can still use the same JSON Pointer syntax as the Flow
-virtual tree:
-
-```json
-{
-  "name": "WeatherAlert",
-  "mutation": {
-    "op": "insert",
-    "path": "/nodes",
-    "index": "end",
-    "value": {
-      "id": "setMessage",
-      "block": "set",
-      "path": "result.message",
-      "value": "Done"
-    }
-  }
-}
-```
-
-Use `flow-apply` to preview the updated YAML source. Use `flow-edit` to apply
-the same mutation to a named project Flow sidecar.
-
-For a broader edit, use the tree-like model round trip instead of inventing a
-new command:
-
-1. `flow-get` returns `source` and `definition`.
-2. Modify `definition` as a JSON object.
-3. Send it back with `flow-set` using the same `definition` property.
-
-`flow-run`, `flow-test`, `flow-tree`, `flow-apply`, `flow-output-schema` and
-`flow-block-test` also accept this `definition` shape. This is the preferred
-KISS alternative to multiplying CRUD aliases such as create/update/replace.
-
-`flow-catalog` intentionally returns summary block/type contracts by default.
-Ask for `detail:"compact"` when property docs are useful. Ask for
-`detail:"full"` only when icon paths, type usage lists or full descriptor
-resources are useful.
-
-When `flow-set` or `flow-edit` receives a live `project`, it also registers the
-named sidecar as a minimal Flow DBO by default, saves the project, and refreshes
-the Studio tree when Studio is available. Pass `register:false`, `autoSave:false`
-or `refresh:false` only for deliberate tooling cases. With `projectDir` only,
-registration is skipped and the tool stays a pure filesystem sidecar writer.
-
-The common node wrappers are preferred when they fit:
-
-- `flow-node-add`: add a node near another node or inside a parent slot.
-- `flow-node-edit`: replace one property or merge several properties.
-- `flow-node-move`: move a node by `nodeId`.
-- `flow-node-delete`: delete a node by `nodeId`.
-- `flow-node-duplicate`: duplicate a node and optionally patch the new copy.
-
-`flow-node-add` requires a stable `id`. `flow-node-duplicate` requires `newId`
-or `properties.id` to avoid creating duplicate ids.
-
-Block authoring is intentionally explicit:
-
-- `flow-block-get` reads any visible block source.
-- `flow-block-code-set` writes canonical project-local `.block.js` source.
-- `flow-block-create` is a compatibility facade that also writes `.block.js`.
-- `flow-block-duplicate` copies a core/shared/project block to a new
-  project-local name.
-- `flow-block-edit` replaces the source of an existing project-local block.
-
-Core and shared blocks are read-only through this MCP surface. Duplicate them
-first when an agent needs a custom variant.
-
-## FlowScript spike tools
-
-On the `spike-flowscript` branch, the MCP also exposes an experimental source
-view for agents:
-
-```text
-flow-code-get
-flow-code-set
-flow-code-patch
-flow-code-rg
-
-flow-source-get
-flow-source-validate
-flow-source-patch
-```
-
-Prefer `flow-code-*` for normal agent work:
-
-- `flow-code-get({qname})` returns only FlowScript `code` plus `revision`.
-- `flow-code-set({qname, revision?, code})` writes and validates the FlowScript working copy.
-- `flow-code-patch({qname, revision, codepatch|code})` applies a revision-checked edit to the working copy.
-- `flow-code-run({qname, input?})` runs the current working copy without resending code.
-- `flow-code-promote({qname, revision?})` saves the working copy to the official Flow.
-- `flow-code-rg({qname?, pattern})` returns small FlowScript extracts.
-
-The engine parses and validates the FlowScript, returns line-based diagnostics
-when a block/property is invalid, and writes the canonical FlowScript sidecar
+The engine parses and validates FlowScript, returns line-based diagnostics
+when a block or property is invalid, and writes the canonical FlowScript source
 after validation succeeds.
 
-Keep `flow-source-*` for compiler/debug work where canonical definitions, YAML
-or full analysis are intentionally needed.
+`flow-catalog` intentionally returns summary block/type contracts by default.
+Ask for `detail:"compact"` when property docs are useful.
 
-This is a research path to measure whether agents transpose code instincts more
-efficiently than direct block/tree MCP editing.
-
-For iterative maintenance, prefer patching the project-local resource instead
-of replacing a whole source file:
+For iterative maintenance of other project resources, patch instead of
+replacing a whole file:
 
 ```text
 flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unified diff)
 ```
 
-The patch API is limited to Flow resources such as
-`_flow/blocks/**/*.block.js`, `_flow/fragments/**/*.fragment.yaml`,
-`_flow/lib/**/*.js`, `_flow/types/**/*.{type.yaml,js}` and
-`_flow/types/editors/**/*.{html,css,js}`. It validates block/type/library
-resources and parses Flow/fragment YAML by default.
-Unified diff line numbers may be approximate when the surrounding context is
-unique.
+The patch API is limited to Flow resources: `_flow/engine.yaml`,
+`_flow/blocks/**/*.{block,hooks}.js`, `_flow/fragments/**/*.fragment.yaml`,
+`_flow/lib/**/*.js`, `_flow/types/**/*.{type.yaml,js}`,
+`_flow/types/editors/**/*.{html,css,js}`,
+`_flow/frontbuilder/**/*.{flow.svelte,flow.css,uiblock.json}`,
+`_flow/resources/**` and public `resources/**` text files
+(`md`, `txt`, `json`, `xml`, `yaml`). It validates block/type/library resources
+and parses fragment YAML by default. Unified diff line numbers may be
+approximate when the surrounding context is unique.
 
 Search is the MCP equivalent of `rg` for Flow authoring:
 
@@ -326,13 +246,14 @@ Search is the MCP equivalent of `rg` for Flow authoring:
   "query": "temperature",
   "kinds": ["node"],
   "context": 1,
-  "limit": 20
+  "limit": 10
 }
 ```
 
-Each node match returns `flowQName`, `nodeId` and a canonical JSON Pointer
-`path`. Use `nodeId` for semantic edits and `path` for low-level mutations.
-Pass `doc:false,hints:false` once the agent has learned the tool contract.
+Each node match returns `flowQName`, `nodeId` (the node `$$id`) and a canonical
+JSON Pointer `path`. Use `code-rg`/`code-patch` for the edit itself and the
+`path` as `nodePointer` for node output schemas. Pass `doc:false,hints:false`
+once the agent has learned the tool contract.
 
 MCP responses are sanitized before they are sent to agents: internal `__flow*`
 fields are removed, empty metadata fields such as `mode:""` are omitted, and
@@ -358,12 +279,24 @@ while preserving their summary. Standalone tests may also pass
 `config.mcp.traceJsonl` and `config.mcp.traceJsonlMaxChars`, but production
 configuration should use symbols.
 
-MCP resources provide the same guidance to agents that cannot read this repo:
+MCP resources provide the same guidance to agents that cannot read this repo.
+`resources/list` returns the twelve guides of `_flow/resources/guide`, each
+with its one-line summary; `resources/read` returns every resource whole:
 
 - `flow://guide/start`
 - `flow://guide/authoring`
+- `flow://guide/samples`
 - `flow://guide/search-and-edit`
 - `flow://guide/custom-blocks`
+- `flow://guide/rhino-block-api`
+- `flow://guide/portable-blocks`
 - `flow://guide/fullstack-paperboard`
 - `flow://guide/frontend-svelte`
+- `flow://guide/frontend-svelte-routing`
+- `flow://guide/fullsync`
 - `flow://guide/tracing`
+
+The skills `flow://skills/convertigo-flow-mcp/SKILL`,
+`flow://skills/convertigo-flow-backend/SKILL` and
+`flow://skills/convertigo-flow-frontend-svelte/SKILL` are not listed but are
+readable with `resources/read`.

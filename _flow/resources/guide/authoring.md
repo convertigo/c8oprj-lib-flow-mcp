@@ -1,143 +1,288 @@
 # Flow Authoring Cycle
 
-For pure blocks shared by backend FlowScript and Flow Svelte, read
-`flow://guide/portable-blocks`. The block id, properties and outputs stay
-canonical while backend and frontend implementations remain explicit targets.
+Backend FlowScript: the source dialect with verified examples, then the write, run, promote and schema loop.
 
-Prefer natural assignments. Keep named arguments multiline
-for readable Git diffs and focused patches:
+## A complete Flow
 
 ```javascript
-local.sum = number.add({
-  left: 2,
-  right: 3
+const _flow = {
+  "sourceVersion": 2,
+  "inputs": {
+    "name": {
+      "type": "string",
+      "description": "Person name.",
+      "default": "Ada",
+    },
+  },
+}
+
+function Greeting({ input, config, result }) {
+  local.name = text.trim({
+    $$id: "cleanName",
+    text: input.name,
+  })
+  if({
+    $$id: "checkName",
+    condition: local.name == "",
+    $$then: function () {
+      throw({
+        $$id: "missingName",
+        code: "NAME_REQUIRED",
+        message: "name is required",
+        status: 400,
+      })
+    },
+  })
+  result.message = "Hello {{ local.name }}"
+}
+```
+
+## Dialect rules
+
+- **Block calls** take exactly one object of named properties:
+  `block.name({ key: value })`. A catalog name is a block before a JS method:
+  `text.trim({...})` is a block, `local.word.trim()` stays JavaScript.
+- **One statement per line.** Never join two Flow statements with `;` on one
+  line.
+- **Captures are assignments:** `local.x = block({...})` or
+  `result.x = block({...})`. `const x = block({...})` is accepted and stored
+  as `local.x`, but the writer emits `local.x = …`, so write that form.
+  A plain value assignment such as `result.message = "Hello"` is stored as a
+  `set` node and written back as `set({ $$id, path, value })`.
+- **`$$out`** is the explicit capture metadata, only for destinations an
+  assignment cannot express. An assignment and a disagreeing `$$out` give
+  `FLOW_SOURCE_OUTPUT_CONFLICT`; chained or bodied assignments give
+  `FLOWSCRIPT_UNSUPPORTED_ASSIGNMENT`.
+- **Engine attributes use exactly two `$`:** `$$id` (the node Name, shown
+  read-only in Studio and changed only by Rename), `$$comment` (Comment),
+  `$$disabled: true` (Is active = false: the node and its subtree are skipped
+  by execution and analysis; omit it when enabled), `$$out` (Output), and the
+  slots `$$then`, `$$else`, `$$nodes`, `$$fields` (any declared slot is
+  `$$<slot>`). Unknown `$$` names are errors. Plain names such as `id`,
+  `disabled`, `out` or `comment` are business properties; `$$$name` spells a
+  business property whose name starts with `$$`.
+- **Headers** `const _flow = {...}` hold static literals only (no expressions,
+  spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
+  `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (optional, 2 is the
+  only value), `inputs`, `outputs`, `config` (an object), `tests`.
+- **Control flow is blocks with slots.** JavaScript `if`/`else`, loops and
+  `throw` statements are rejected (`FLOWSCRIPT_UNSUPPORTED_SYNTAX`); there is
+  no `else if`: nest an `if` block in `$$else`. Raise errors with
+  `throw({ code, message, status, details })`.
+- **Values:** arithmetic and comparisons stay expressions (`left + 1`,
+  `!local.entity`). Expressions are null-safe and allow index reads
+  (`local.items[0]`, `current["media:thumbnail"]`). Object literals are values
+  (`select: { title: current.title }`), not expressions. Use
+  `"Hello {{ input.name }}"` or a template literal for mixed text.
+- **Business `id`, `disabled`, `out` are free** for project block properties;
+  core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
+
+## Slots, loops and typed collections
+
+```javascript
+json.array({
+  $$id: "rows",
+  path: "local.rows",
+  itemType: {
+    type: "object",
+    properties: {
+      label: { type: "string" },
+      size: { type: "number" },
+    },
+  },
+})
+forEach({
+  $$id: "eachItem",
+  items: input.items,
+  $$nodes: function () {
+    json.push({
+      $$id: "addRow",
+      path: "local.rows",
+      value: {
+        label: current.label,
+        size: current.field,
+      },
+    })
+  },
+})
+if({
+  $$id: "isEmpty",
+  condition: local.rows.length == 0,
+  $$then: function () {
+    result.status = "empty"
+  },
+  $$else: function () {
+    if({
+      $$id: "isSingle",
+      condition: local.rows.length == 1,
+      $$then: function () {
+        result.status = "single"
+      },
+      $$else: function () {
+        result.status = "many"
+      },
+    })
+  },
+})
+result.rows = local.rows
+```
+
+Collections are created typed, then mutated explicitly: `json.array({ path,
+itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
+`json.put({ path, key, value })`. Destinations are static `local.`/`result.`
+names; a value that does not match the declared type is refused with
+`VALUE_TYPE_MISMATCH`. Create them with `path:` (not with an assignment).
+
+## Lists, maps and config
+
+```javascript
+local.rows = list.map({
+  $$id: "rows",
+  items: input.items,
+  select: {
+    label: current.label,
+  },
+})
+result.rows = local.rows
+local.rates = json.object({
+  $$id: "rates",
+  $$fields: function () {
+    json.field({
+      $$id: "eur",
+      key: "EUR",
+      value: 1,
+    })
+    json.field({
+      $$id: "usd",
+      key: "USD",
+      value: 1.1,
+    })
+  },
+})
+local.codes = object.keys({
+  $$id: "codes",
+  source: local.rates,
+})
+local.usd = object.get({
+  $$id: "usd",
+  source: local.rates,
+  key: "USD",
+})
+result.codes = local.codes
+result.usd = local.usd
+```
+
+- Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
+  `select` takes an expression or object literal, not a block call; for a
+  per-item block, use `forEach` with a `json.push` into a typed array.
+- `object.firstEntry({ source })` returns one `{ key, value }`.
+- For repeated external work, model one item and iterate: store rows in
+  `config.*` or a small data block and call one per-item FlowScript block.
+- Temporary configuration for a subtree:
+
+```javascript
+config.use({
+  $$id: "slowHttp",
+  http: {
+    timeout: 30000,
+  },
+  $$then: function () {
+    result.timeout = config.http.timeout
+  },
 })
 ```
 
-The assignment is the engine capture; it is not an `out` business parameter.
-`$$out` is the explicit spelling of that metadata, but the canonical writer
-uses the left-hand assignment. Keep simple arithmetic/comparisons as expressions
-when suitable; do not replace them with extra blocks just to mimic JavaScript.
+Root keys (or one `overrides` object) are config branches, deep-merged only
+while `$$then` runs. Config precedence per root key: `_flow.config`, then
+project `_flow/engine.yaml`, then request config. Put structural constants
+(API roots, tokens, timeouts) in project or Flow `config.*`; reuse existing
+project config instead of duplicating it in `_flow.config`.
 
-Create or modify a Flow sidecar with the smallest loop that proves behavior:
+For JSON HTTP APIs: `local.response = http.get({ url: config.api.url })`,
+then read `local.response.body`; parse `local.response.text` only when the
+body is not native JSON.
 
-- If the user gives a `project`, `qname`, or `block`, that is the target contract. If Flow MCP cannot access it, stop and report the exact blocker instead of falling back to another project or to legacy MCP project discovery.
-- `flow-list` only to enumerate known Flow names during maintenance, not during fresh authoring.
-- `flow-search` to locate samples, nodes, schemas, block docs or existing examples only after the first draft when the block or pattern is unclear. Project search also includes visible library samples.
-- Prefer `kind:"sample"` matches only when you need a pattern. A sample is a private executable Flow named `sample_*`, meant to teach syntax and style, not to replace first-principles authoring.
-- Avoid `flow-catalog` when a sample exists. `flow-catalog` defaults to typed signatures; use `flow-block-get` only for one unclear block.
-- `flow-context` at the target node to know `request`, `input`, `config`, `local`, `current` and `result` paths. Use `include:["local","current"]` when you only need those roots.
-- `flow-analyze` is static data-flow analysis, close to a schema manager view: node order, reads, writes, sources and inferred scope paths. It is compact by default; use `detail:"full"` only when schema details are needed.
-- For a new Flow, write compact FlowScript first with `code-set`, patch the working copy with `code-patch`, run it with `code-run`, then call `code-promote` once after diagnostics and runtime behavior are clean. If `code-run` returns `unsaved:true` or `workingCopy:true`, the Flow is still a draft: call `code-promote` before stopping. Use `code-status` when you need dirty/revision state and `code-discard` to cancel the buffer. Do not pass `saveProject:true`, `refresh:true`, `draft`, or `dry` unless the user explicitly asks for low-level debugging.
-- Use raw `definition.nodes[]` only when debugging the compiler/model conversion. Business properties are in `props`, while identity and capture are structural: `{id:"call", block:"requestable.call", props:{requestable:".GetFeed"}, out:"local.feed"}`. Prefer a FlowScript assignment, as illustrated above, for authoring.
-- Flow expressions are null-safe and support index reads such as `local.items[0]` or `current["media:thumbnail"]`. Expression arrays/objects can contain scope expressions, for example `args: [command]` or `select: { title: current.title }`.
-- For array projections, prefer `var mapped = list.map({ items, select: {
-  field: current.field } }); result.mapped = mapped`. Do not hard-code
-  `items[0]`, `items[1]`, etc. for dynamic lists.
-- For JSON object maps whose keys are data, use `object.keys`, `object.get` and
-  `object.firstEntry` before inventing a custom block. For example, read a
-  rates map with `object.get({ source: local.rates, key: current.currency })`
-  instead of hiding `rates[current.currency]` in Rhino.
-- For repeated external work, model one item and iterate. If a Flow needs many
-  similar HTTP/requestable calls, store the repeated rows in project-level
-  `config.*` or a small data block, then call one per-item FlowScript block from
-  `list.map`. Do not copy/paste 5, 10 or 27 nearly identical `http.get` calls.
-- Use `config.use({ overrides: { http: {...}, sql: {...} }, $$then: function () { ... } })` for temporary scoped config. Overrides are deep-merged only while the child slot runs.
-- Put structural constants such as API roots, service URLs, tokens,
-  namespaces and timeouts under project or Flow `config.*`. Reusable domain
-  blocks should accept typed business inputs and read shared endpoints from
-  config, not from hard-coded strings hidden in block code.
-  They should not expose transport plumbing as their public API either:
-  prefer `currency.countryRate({ country, rates })` or
-  `catalog.enrichProduct({ product })` over
-  `domain.fetch({ url })`.
-- Prefer existing high-level project config over `_flow.config`. Use
-  `_flow.config` only for Flow-local defaults, not to duplicate project
-  collections such as `config.countries.referenceList`.
-- Use top-level `const _flow = { inputs: {...}, tests: {...} }` for request inputs, descriptions, defaults, and reusable test inputs. If omitted, `code-*` tools infer `inputVariables` from `input.foo` reads, but human-facing labels/comments are unavailable.
-- Use `flow-output-schema({ project, qname })` to verify executable Flow
-  outputs. It combines explicit contracts, static analysis of `result.*` writes
-  and optional learned result schemas. Ordinary `code-run` or requestable
-  execution does not learn the final Flow result unless an explicit record/learn
-  flag is used. If a requestable schema is partial after a good run, inspect
-  `detail:"full"` warnings and the producer nodes before changing block schemas;
-  use `flow-schema-reset` only for stale learned schemas.
-- Use `flow-output-schema({ project, qname, detail:"full" })` before adopting
-  a contract when you need declared/static/learned/effective sources and
-  warnings. Use `flow-node-output-schema({ project, qname, nodeId,
-  detail:"full" })` for one producer node, especially HTTP/exec/parser blocks
-  with generic declared output and richer learned output. If `nodeId` is
-  ambiguous, pass the JSON Pointer `path` returned by `flow-search` as
-  `nodePointer`. Use `action:"adopt"` with `source:"learned"`, `source:"static"`
-  or `schema:{...}` to keep a verified node schema; use `action:"remove"` to
-  resume inference for that node output.
-- If `learned` contains fields no longer produced by current code, or `unknown`
-  array items from old/empty runtime samples, treat it as stale. Use
-  `flow-schema-reset({ project, flowName })` for Flow-level stale learned
-  schemas; use `flow-node-output-schema action:"remove"` for one producer.
-- `_flow.outputs` is optional. If present, it is the explicit Flow result
-  contract used by requestable schemas and pickers; if absent, inference still
-  works and remains dynamic as new `result.*` writes are added. After a verified
-  run and `detail:"full"` review, use `flow-output-schema({ project, qname,
-  action:"adopt", source:"static"|"learned" })` to write `_flow.outputs`, or
-  `flow-output-schema({ project, qname, action:"remove" })` to delete it.
-  Use `flow-output-schema({ project, qname, action:"reset" })` to delete stale
-  learned result samples without touching `_flow.outputs`.
-- Before writing a Rhino primitive, read `flow://guide/rhino-block-api`.
-  It documents `ctx.props`, `ctx.template`, `ctx.expr`, `ctx.read`,
-  `ctx.write`, `ctx.callBlock`, `ctx.throwFlow` and `ctx.lib` so agents do not
-  need shell `rg` over Flow engine sources.
-- For a focused maintenance edit, start with `code-rg`. Each contextual extract
-  carries its target, line range and revision; when the match is unique and the
-  context is sufficient, apply the smallest `code-patch` directly without a
-  full read. If context is insufficient, request only that range with
-  `code-get({ sourceFile, revision, startLine, endLine })`. Read the complete
-  source only for an ambiguous or genuinely broad change. This facade accepts a
-  Flow `qname`, a project `block`, or a canonical Flow Svelte `sourceFile`; use
-  `kind:"source"` without `sourceFile` to search every canonical
-  `*.flow.svelte` and `*.flow.css` source.
-- `flow-tree` is compact by default through MCP. Use `detail:"full"` only when a UI-like tree with full `definition` and `info` strings is really needed.
-- Prefer FlowScript patching for normal maintenance. Use `flow-node-add/edit/move/delete/duplicate` only for low-level model operations or UI-like tooling.
-- Node mutation tools use `properties` for node properties. That is an MCP tool argument, not the Flow definition shape. Do not send `props`.
-- To skip an existing node without deleting it, use the `sourceMutationPath`
-  returned by the tree with `authoring-mutate({ project, sourceFile, mutation:
-  { op:"setEnabled", path:sourceMutationPath, enabled:false } })`. Set
-  `enabled:true` to restore it. Disabled nodes are ignored by execution and
-  schema/data-flow analysis; absence of the disabled state means enabled.
-- For source resources (`_flow/blocks`, `_flow/types`, type editors), use search/get/patch instead of replacing whole files.
-- Custom Rhino blocks are for missing low-level primitives only. They must not do HTTP or Convertigo requestable calls directly; use visible `http.get`/`http.request` and `requestable.call` nodes.
-- Enumerating JSON object keys or reading a dynamic key is not a reason for a
-  project Rhino block; use the standard `object.keys`, `object.get` and
-  `object.firstEntry` blocks.
-- If a readable high-level FlowScript draft needs a block that does not exist,
-  keep the parent draft and let `UNKNOWN_BLOCK` diagnostics confirm the missing
-  contract. Then create a project-local mock with `flow-block-mock({ project,
-  name, properties, outputs })`, using the call arguments as the typed
-  `properties` and the expected return shape as typed `outputs`. Do not hide the
-  feature in a large Rhino block or duplicated low-level calls just to avoid the
-  mock. The generated block is marked `mock:true`, contains an obvious TODO, and
-  is not completed behavior. Implement that sub-block with real FlowScript
-  before considering the parent Flow done. Use `flow-block-mock-list` to audit
-  remaining mocks before reporting completion.
+## Loop
+
+1. If the given `project`, `qname` or `block` is not accessible, stop and
+   report it; never fall back to another project.
+2. Write the Flow with `code-set`, patch with `code-patch`, run with
+   `code-run`, then `code-promote` once diagnostics and behavior are clean.
+   `unsaved:true` / `workingCopy:true` in `code-run` means: promote before
+   stopping. `code-status` gives dirty/revision state, `code-discard` cancels,
+   `code-analyze` returns scopes (`input`, `local`, `current`, `result`) and
+   data-flow diagnostics for the working copy.
+3. Do not pass `saveProject`, `refresh`, `draft` or `dry` unless low-level
+   debugging was requested.
+4. `flow-list` only for maintenance. `flow-search` only after a first draft
+   when a block, sample or pattern is unclear; `flow-catalog` (typed
+   signatures) or `flow-block-get` (one block) only when diagnostics are not
+   enough.
+5. `flow-test` validates saved Flows only; use `includeTrace:true` while
+   debugging and avoid `includeFlow`, `includeFullResult`, `includeFullTrace`.
+6. After `code-run` proves the result and `code-promote` succeeds, stop. No
+   shell confirmation (`git`, `sed`, `cat`, HTTP scripts).
+
+## Formatting and defaults
+
+The canonical writer puts one property per line, engine attributes first
+(`$$id`, `$$comment`, `$$disabled`, `$$out`), then business properties, then
+slots. The first write of a non-canonical file reorders it completely: expect
+that diff and do not "repair" it; patch the returned revision afterwards.
+A property edit (Studio or mutation) that sets a value back to the block
+default removes it from the source: absent means default, and a present
+default value stays valid.
+
+## Maintenance edits
+
+Start with `code-rg`. Each extract carries its target, line range and
+revision: when the match is unique, apply the smallest `code-patch` directly.
+Otherwise read only that range with `code-get({ qname, revision, startLine,
+endLine })`; read the whole source only for ambiguous or broad changes. To
+skip a node without deleting it, patch `$$disabled: true` into its call and
+remove the line to restore it.
+
+## Output schemas
+
+- `flow-output-schema({ project, qname })` combines the explicit contract,
+  static analysis of `result.*` writes and optional learned samples; add
+  `detail:"full"` to compare declared/static/learned/effective sources and
+  warnings. Ordinary `code-run` does not learn the Flow result.
+- `_flow.outputs` is optional. After a verified run, `action:"adopt"` with
+  `source:"static"|"learned"` writes it, `action:"remove"` deletes it,
+  `action:"reset"` deletes stale learned samples only.
+- `flow-node-output-schema({ project, qname, nodeId, detail:"full" })`
+  inspects one producer (HTTP, exec, parser); pass the JSON Pointer `path`
+  from `flow-search` as `nodePointer` when `nodeId` is ambiguous. Use
+  `action:"adopt"` to keep a verified schema, `action:"remove"` to resume
+  inference.
+- Learned fields no longer produced, or `unknown` items from old samples, are
+  stale. Prefer `flow-node-output-schema action:"remove"` for one producer;
+  `flow-schema-reset({ project, flowName })` only for broader stale learned
+  schemas.
+
+## Blocks and mocks
+
+- If a readable draft needs a missing domain block, let `UNKNOWN_BLOCK`
+  confirm it, then `flow-block-mock({ project, name, properties, outputs })`
+  with the call arguments as typed properties. The mock is `mock:true` with a
+  TODO; implement it before calling the parent Flow done, and audit with
+  `flow-block-mock-list`.
 - Treat `FLOW_BLOCK_PROPERTY_UNKNOWN`,
-  `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and
-  `FLOW_BLOCK_OUTPUT_UNKNOWN` as block contract feedback. Patch the
-  project-local block descriptor with native JSON types instead of leaving
-  knowable business values as `unknown`.
-- Use `flow-edit` for lower-level mutations; use `dryRun:true` when unsure.
-- Mutation tools and `flow-block-get` return compact responses by default. Use `detail:"full"` only when debugging the response or editing source; otherwise inspect with `flow-tree`.
-- With a live `project`, named write tools register/save the Flow DBO and refresh Studio by default. This makes the Flow callable through normal `?__sequence=Name` execution.
-- `flow-test` with realistic input and `includeTrace:true` only while debugging. Avoid `includeFlow`, `includeFullResult` and `includeFullTrace` during normal authoring.
-- Do not use `flow-schema-reset` unless an old learned schema is clearly stale
-  across broader scope. Prefer `flow-node-output-schema action:"remove"` for one
-  producer node.
+  `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and `FLOW_BLOCK_OUTPUT_UNKNOWN`
+  as contract feedback: patch the project block `_meta` with native types.
+- Rhino blocks are for missing low-level primitives only; read
+  `flow://guide/rhino-block-api` first. Never hide HTTP or requestable calls
+  in Rhino, and never write a block only to enumerate object keys.
+- For pure logic shared with Flow Svelte, read `flow://guide/portable-blocks`.
+- Other project resources (`_flow/types`, editors, libraries, fragments):
+  `flow-resource-search`, `flow-resource-get`, `flow-resource-patch` with
+  `baseHash`.
 
-After `code-run` has proved the requested result and `code-promote`
-succeeds, stop. Avoid shell commands such as `git status`, `git diff`, `sed`,
-`cat`, `pwd`, `flow-test`, or ad hoc HTTP scripts for routine confirmation.
-If the prompt gives `project` and `qname`, trust them; do not inspect workspace
-YAML/XML to rediscover them.
+## Samples
 
-Do not read every Flow sidecar up front. Search first, then open the narrow target.
-
-For reusable examples, create a private executable Flow named `sample_*`. Keep comments didactic: explain subtle syntax or design choices, not what the node label already says. Good comments look like `// Only call Flow blocks with one object containing named parameters.` Rhino sample blocks should start with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+For reusable examples, create a private executable Flow named `sample_*`.
+Comments explain subtle syntax, for example
+`// Only call Flow blocks with one object containing named parameters.`
+Rhino sample blocks start with
+`// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.

@@ -1,118 +1,175 @@
 # Custom Blocks And Types
 
-Prefer core blocks and core property types. Add project-local vocabulary only when it expresses a reusable domain concept.
+Project-local blocks: the `.block.js` file, the property charter, output schemas, defaults history, icons and types.
 
-Read `flow://guide/portable-blocks` before creating a block for both backend and
-frontend. Use `targets`, `effects` and `implementations` in the canonical
-metadata, then manage the browser function with `code-*` and
-`target:"frontend"`; do not hide it in generated Svelte output.
+Prefer core blocks and core property types. Add project vocabulary only for a
+reusable domain concept, and keep the algorithm visible in FlowScript. For a
+block shared by backend and frontend, also read `flow://guide/portable-blocks`;
+for a Java/JVM primitive, read `flow://guide/rhino-block-api`.
 
-For project-local FlowScript blocks, the canonical source lives under
-`_flow/blocks/<namespace>/<name>.block.js`. The file contains `_meta` for
-the visible contract and either one FlowScript function or one Rhino IIFE for
-the implementation.
+## File and shape
 
-Before creating a new block, inspect real samples:
+`_flow/blocks/<namespace>/<name>.block.js` is block `namespace.name`. It
+starts with `const _meta = {...}` (static literals only, after optional
+comments), followed by one FlowScript function or one Rhino IIFE. Companion
+files sit beside it: `<name>.hooks.js` (analysis hooks declared by
+`_meta.hooks.file`), `<name>.browser.js` (frontend implementation) and the
+optional `<name>.block.defaults.json` (defaults history).
 
-```json
-{"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.formatGreeting"}}
-{"tool":"code-get","arguments":{"project":"lib_flow_mcp","block":"sample.sha256"}}
+```javascript
+const _meta = {
+  "sourceVersion": 2,
+  "description": "Formats a customer label.",
+  "summary": "label {{name}}",
+  "icon": "mdi:card-text-outline",
+  "targets": [
+    "backend",
+  ],
+  "properties": {
+    "name": {
+      "label": "Name",
+      "kind": "template",
+      "type": "string",
+      "default": "World",
+      "description": "Customer name.",
+    },
+    "id": {
+      "label": "Customer id",
+      "kind": "template",
+      "type": "string",
+      "default": "",
+      "description": "Business identifier shown after the name.",
+    },
+  },
+  "outputs": {
+    "out": {
+      "type": "string",
+    },
+  },
+}
+
+function crm_customerLabel({ input }) {
+  return input.name + " #" + input.id
+}
 ```
 
-For Rhino/JVM primitives, read the MCP resource `flow://guide/rhino-block-api`
-with `resources/read` before writing code. Do not search sibling repositories
-for `ctx.*` helpers.
+A caller captures the result with an assignment:
 
-Only Rhino implementation source is JavaScript executed by Rhino ES6 inside the Convertigo JVM. Java classes are available through `Packages`; Node.js APIs such as `require`, npm modules and browser globals are not. Start Rhino sample or project blocks with `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+```javascript
+local.label = crm.customerLabel({
+  $$id: "label",
+  name: "Ada",
+  id: "42",
+})
+result.label = local.label
+```
 
-Minimal Rhino block source shape: `(function(){ return { run:function(ctx,node){...} }; }())`.
+## Property charter
 
-Use `input.*` inside Flow implementations and `local.*` for scratch state. `flow.*` and `props.*` are not expression scopes.
+- `description` is required on the block and on every property. The public
+  key is `properties`; each entry uses `label`, `kind`, `type`, `default`,
+  `description`, and optionally `enum`, `expert`, `hidden`.
+- Never declare engine metadata as properties. `$$id` (Name), `$$comment`
+  (Comment), `$$disabled` (Is active) and `$$out` (Output) belong to every
+  node. A property named `id`, `disabled`, `comment` or `out` is an ordinary
+  business value, as `id` above.
+- The block result is the returned value, described by `_meta.outputs.out`;
+  the caller captures it (`local.x = ns.block({...})`). A block that returns
+  nothing useful marks `outputs.out` `hidden` (or `expert`) so Studio moves
+  or hides the Output row.
+- `summary` is a node summary template such as `"GET {{url}}"`.
+- `targets` lists `backend` and/or `frontend`; a frontend-only block in a
+  backend Flow fails with `BLOCK_NOT_AVAILABLE_ON_TARGET`.
+- `icon` names an Iconify icon (`"mdi:card-text-outline"`); see Icons below.
+- A Rhino block that calls `ctx.lib("name")` declares it in `_meta.uses`.
 
-Use `ctx.props(node)`, `ctx.template(value)`, `ctx.expr(value)`, `ctx.read(path)`, `ctx.write(path,value)` and return a value when the catalog has an `out` path property. For `kind: "template"` properties, call `ctx.template(props.key)`; for expression properties, call `ctx.expr(props.key)`; use `ctx.input(props, fallback)` only for generic `value`-style properties. If Rhino code calls `ctx.lib("name")`, declare that library in `_meta.uses` so the dependency is visible in the catalog.
+In FlowScript block code, `input.*` holds the block properties, `local.*` is
+scratch state and `return value` is the result. `input`, `local` and `result`
+of a composite block are private: the caller sees only the returned value.
 
-Types live under `_flow/types/*.type.yaml` and may point to HTML editors under `_flow/types/editors/*.html`.
+## Write, test, maintain
 
-Use `code-set` for project-local blocks with `block:"namespace.name"` or `kind:"block", name:"namespace.name"`. It accepts `{name, code, properties, description}` and writes the canonical `.block.js` file. Provide `outputs` when the return type is known; if omitted, the tool registers an `out` output with unknown type. FlowScript code can be just the block body, a `function localName({ input }) { ... }`, or the complete `_meta + function` source returned by `code-get`. Rhino code must be a complete `_meta` with `runtime: "rhino"` followed by an IIFE returning `{ run: function (ctx, node) { ... } }`. Use `flow-type-create` for project-local property types, then validate with `flow-catalog` or `flow-type-get`.
+- Write the complete `_meta` + implementation with `code-set({ project,
+  block:"ns.name", code })`. `code-set` and `code-patch` save blocks directly;
+  never call `code-promote` for a block.
+- Prove it by running a Flow that uses it (`code-run`). `code-check` on a
+  block only validates `target:"frontend"` browser implementations.
+- If `code-set` or `code-run` reports `FLOW_BLOCK_PROPERTY_UNKNOWN`,
+  `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` or `FLOW_BLOCK_OUTPUT_UNKNOWN`,
+  patch the `_meta` with native types. Use `type:"any"` only for deliberately
+  generic values.
+- Focused edits: `code-rg` then the smallest `code-patch` with its revision;
+  bounded `code-get` only when more context is needed.
+- Core and referenced blocks are read-only. For a project variant, read the
+  original with `code-get({ project, block:"text.trim" })` and write the
+  adapted source under a project name with `code-set`.
+- Call blocks with direct typed values: `crm.customerLabel({ name:
+  current.name })`, `forEach({ items: local.rows, $$nodes: function () {...}
+  })`. Use `{{ expression }}` only for mixed text such as `"Hello {{
+  input.name }}"`.
+- Top-down: when the domain block does not exist yet, create a typed mock
+  with `flow-block-mock` (it writes `_meta.mock = true` and a TODO), then
+  implement it; `flow-block-mock-list` must be empty before completion.
+- Design low-code APIs: pass domain objects or business fields (`zone`,
+  `city`, `limit`), read endpoints and tokens from `config.*`, never ask
+  callers for prebuilt URLs. Use `object.keys`/`object.get`/`object.firstEntry`
+  instead of a block that only reads `map[code]`.
+- When a block is worth teaching, add a private `sample_*` Flow using it.
 
-For top-down authoring, prefer `flow-block-mock` over hidden procedural code
-when the intended domain block does not exist yet. Pass typed `properties` and
-typed `outputs`; the generated `_meta.mock = true` and TODO make the missing
-implementation visible to humans, Studio and agents. A parent Flow that calls a
-mock is executable for exploration but not complete. Use `flow-block-mock-list`
-to find remaining mocks before claiming completion.
-Design project-local domain block APIs as low-code contracts. Pass domain
-objects or native business fields such as `zone`, `latitude`, `longitude`,
-`city`, `namespace`, `pod` or `limit`. Store structural endpoints and tokens in
-project/Flow config and let the block read that config; do not make callers pass
-prebuilt URLs, query strings or protocol-specific plumbing unless the block is a
-low-level HTTP helper.
-Before creating a project-local Rhino block for JSON object manipulation, check
-the standard object primitives. Use `object.keys` to enumerate keys,
-`object.get` to read a static or dynamic key/path, and `object.firstEntry` to
-convert one map entry into `{ key, value }`. A domain block may still wrap
-business logic, but it should not exist only to implement `Object.keys(map)` or
-`map[code]`.
+## Output schemas
 
-## Output Schemas
+Do not leave outputs `unknown` when the shape is stable: declare it in
+`_meta.outputs`, for example `outputs:{out:{type:"array",items:{type:"string"}}}`.
+When it depends on an input schema, keep `outputs` broad and add a hooks
+analyzer:
 
-Do not leave block outputs as `unknown` when the result shape is stable or
-derivable. A static contract belongs in `_meta.outputs`, for example
-`outputs:{out:{type:"array",items:{type:"string"}}}`. Use this for wrappers,
-protocol responses and primitives that always return the same shape.
+- `ctx.addSameSchema(outPath, sourcePath)` for filters, sorts and pass-through
+  transforms;
+- `ctx.addArraySchema(outPath, itemSchema)` for mappers;
+- `ctx.schemaForExpression(value)`, `ctx.schemaForPath(path)`;
+- `ctx.itemSchema(schema)` / `ctx.itemSchemaFor(path)` for `current.*`;
+- `ctx.addSchema(outPath, schema)` to publish the derived schema.
 
-When the output depends on an input schema, keep the static `outputs` broad and
-add a `hooks.file` analyzer. Common helpers are:
+For item-scoped expression properties (`where`, `by`, `select`), set
+`current:"item"` and `sourceProperty:"items"` on the property so pickers and
+`code-analyze` expose typed `current.*` paths.
 
-- `ctx.addSameSchema(outPath, sourcePath)` for filters, sorts, takes and other
-  pass-through transforms.
-- `ctx.addArraySchema(outPath, itemSchema)` for mappers and pluck-like blocks.
-- `ctx.schemaForExpression(value)` when a property can be a scope expression.
-- `ctx.schemaForPath(path)` for selector/path properties.
-- `ctx.itemSchema(schema)` or `ctx.itemSchemaFor(path)` for `current.*` item
-  propagation.
-- `ctx.addSchema(outPath, schema)` to publish the derived schema; node
-  `outputs[].schema`, picker paths and `outputSchema` are updated from this.
+## Defaults and history
 
-For item-scoped expression properties such as `where`, `by` or `select`, set the
-property metadata to `current:"item"` and `sourceProperty:"items"` so
-`flow-context` exposes `current.name`, `current.age`, etc. Unknown is acceptable
-only for deliberately generic values, learned external payloads before the first
-run, or project block templates.
-If `code-set` or `code-check` reports `FLOW_BLOCK_PROPERTY_UNKNOWN`,
-`FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` or `FLOW_BLOCK_OUTPUT_UNKNOWN`,
-patch the block descriptor before finalizing. Use `type:"any"` with a clear
-description only for deliberately generic values.
+- An absent property means its default. Studio or a mutation that sets a
+  value back to the default removes it from the source.
+- Whoever changes a declared default adds a history entry, so sources written
+  against an older version keep their behavior. The companion file sits
+  beside the definition (`x.block.js` -> `x.block.defaults.json`,
+  `Card.flow.svelte` -> `Card.flow.defaults.json`):
 
-In FlowScript block code, `input.*` contains the block properties. Use `return value;` for the block result. Template literals such as `` `${input.name} - ${input.city}` `` are accepted for simple string composition. In executable Flow code, `return { ... }` writes the response object. A normal assignment such as `const label = my.block({ text: input.name })` stores the returned block value in `local.label`.
+```json
+{ "format": "convertigo-flow-defaults",
+  "history": [ { "until": "0.1.1", "props": { "padding": "16px" } } ] }
+```
 
-For `_meta.runtime = "flow"` composite blocks, internal `input`, `local` and
-`result` scopes are private to the block. The caller sees only the returned
-value on the caller's `out` path, so `_meta.outputs.out` is the public contract.
-Business fields named `type` are valid; declare them under `properties` rather
-than treating them as schema keywords.
+- For an instance written against definer version V (the `version` in the
+  definer's `c8oProject.yaml`), the first entry with `until >= V` applies;
+  otherwise the current default applies.
+- `_flow/dependencies.json` records the definer versions a project was saved
+  against (`{"format":"convertigo-flow-dependencies","projects":{...}}`). The
+  Studio FlowEngine save writes it; do not edit it by hand. A default changed
+  without history is logged as `FLOW_DEFAULTS_MIGRATION_REQUIRED`.
 
-Use `code-set` directly when the block should become available in the project palette. Treat it like writing code: register it, run a Flow that uses it, then patch the block if diagnostics or runtime behavior are wrong.
+## Icons
 
-For focused edits, use `code-rg` first. If one contextual extract identifies
-the intended phrase, property, helper call or expression, apply `code-patch`
-directly with its revision. Request a bounded `code-get` range only when more
-context is needed. Use a full read or full `code` replacement only when the
-change is broad or the patch would be larger or less clear than the complete
-`.block.js` source.
+`_meta.icon: "mdi:name"` resolves to `_flow/icons/iconify/<set>/<name>.svg`
+plus the set's `LICENSE.json`, looked up in the project, its references,
+lib_flow_engine, then the server cache. Saving a source copies the icons it
+uses into its project. Icons are SVG project sources: never commit PNG
+renderings and never put icons under `_flow/blocks`.
 
-When calling a block from compact FlowScript, use direct typed values where possible: `user.summary({ name: current.name, email: current.email })`, `forEach({ items: sorted })`, or `set({ path: "local.count", value: news.length })`. Quoted expression strings such as `items: "local.items"` are accepted for low-level calls, but the bare form is clearer. Use `{{ expression }}` only for mixed text templates, for example `"Hello {{ input.name }}"`, or when working with low-level canonical node data.
+## Types
 
-Reusable blocks can be used as array mappers: `const labels = list.map({ items, select: text.label({ value: current.name }) })`. This compiles to the explicit Flow loop, block call and `json.push` nodes.
-
-Use Rhino blocks only for Java bridge or performance-critical primitives. Create them with `code-set` and a canonical `.block.js` source. Java packages are available through `Packages`, for example `Packages.java.security.MessageDigest`. Coerce Java values to JavaScript primitives before JS operations, for example `var s = String(javaString);` before using `s.length`.
-
-Do not put a whole feature in one Rhino block. Reuse standard Flow blocks for IO (`http.get`, `http.request`, `requestable.call`), transforms (`list.*`), object/JSON shaping (`object.*`, `json.*`), files/resources and sessions. If only parsing or a Java bridge is missing, create that one primitive and keep orchestration in FlowScript. Project Rhino blocks must not open URLs, sockets, or Convertigo requestables directly; the engine rejects those implementations so the graph stays inspectable.
-
-When a custom block is worth teaching, add a private executable Flow named `sample_*` that uses it in a realistic small graph. The search index will link the sample to the blocks it uses automatically.
-
-For maintenance of non-FlowScript resources, use `flow-resource-search` + `flow-resource-get` + `flow-resource-patch` with `baseHash`. For executable Flows and project blocks, prefer `code-get`, `code-rg`, `code-set`, and `code-patch`; they are shorter and preserve the FlowScript model.
-
-Duplicate a core/shared block with `flow-block-duplicate` before editing it with `flow-block-edit`.
-
-Keep one-off procedural code exceptional; prefer a small Flow made of existing blocks.
+Property types live in `_flow/types/<name>.type.yaml` (project types are
+named `project.<name>.type.yaml`) and may point to web editors in
+`_flow/types/editors/<name>.html`. Create one only for real project
+vocabulary; core types such as `text`, `path`, `value`, `template`,
+`expression`, `literal`, `schema` or `requestable` usually fit. Maintain types,
+editors, libraries and fragments with `flow-resource-search`,
+`flow-resource-get` and `flow-resource-patch` (`baseHash`).

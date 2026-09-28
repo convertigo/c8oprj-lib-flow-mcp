@@ -1,5 +1,7 @@
 # Flow MCP Tracing
 
+Optional JSONL tracing of Flow MCP requests and responses, for measuring or debugging an agent run.
+
 Use tracing only while measuring or debugging an agent run.
 
 Enable it with Convertigo symbols:
@@ -20,4 +22,4 @@ jq -s . /path/to/flow-mcp-trace.jsonl > /tmp/flow-mcp-trace.pretty.json
 jq -r '[.direction,.tool,((.durationMs // "")|tostring),(.summary|tostring)] | @tsv' /path/to/flow-mcp-trace.jsonl
 ```
 
-After you know the tool contract, call tools with `hints:false` and usually `doc:false`. Prefer paginated discovery (`limit`, `cursor`) and exact reads (`flow-block-get`, `flow-tree` on one flow) over full catalog dumps.
+After you know the tool contract, call tools with `hints:false` and usually `doc:false`. Prefer paginated discovery (`limit`, `cursor`) and exact reads (`flow-block-get`, `code-get` on one Flow, block or source) over full catalog or tree dumps.

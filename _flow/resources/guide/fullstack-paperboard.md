@@ -1,5 +1,7 @@
 # Flow Full-Stack Paperboard
 
+Backend plus Svelte application in one short loop: bootstrap, backend pass, visible paperboard, early wiring, POC proof.
+
 Use this guide for a Flow task that must deliver a backend plus a Svelte
 frontend, especially when the user asks for an application from a short prompt
 or for a legacy Convertigo screen to be rebuilt with Flow technologies.
@@ -40,14 +42,14 @@ is mocked. Deliver in two phases:
    explicit application CSS classes.
 
 When wiring a backend action in Flow Svelte source, use an intuitive
-`@action.path` reference. If the schema path is unknown, use the schema-backed
+`@<actionId>.path` reference. If the schema path is unknown, use the schema-backed
 `binding` or `mutation` returned by the picker or by `flow-app-progress` and
 pass it unchanged. Do not invent bare relative paths or descriptor JSON.
 Validate the complete runnable pass before calling `flow-app-progress`.
 
-Keep value intent visible in source: quoted attributes are literals,
-`{expression}` is browser-only logic, and quoted `@source.path` values are
-schema-backed sources. For a computation shared with backend FlowScript, use a
+Keep value intent visible in source (Literal / Source / Compose): quoted
+attributes are literals, quoted `@source.path` values are schema-backed
+sources, and `{expression}` is browser-only logic. For a computation shared with backend FlowScript, use a
 dual-target portable block rather than duplicating subtly different Rhino and
 browser expressions.
 
@@ -103,9 +105,10 @@ source, including a structured literal for intentionally static content.
    blocks and visible placeholders:
    - `PageShell` for the shell;
    - `Card`, `RowLayout`, `ColumnLayout`, `GridLayout` for structure;
-   - `Text`, `Image`, `Button`, `LinkButton`, `Status`, `Table`, `JSON` for
+   - `Text`, `Image`, `Button`, `LinkButton`, `Status`, `Table`, `Json` for
      visible intent;
-   - `ForEach`, `If`, `Await` for data-driven structure.
+   - `ForEach` and `If` for data-driven structure (the `Await` `pending` slot
+     is currently refused; show progress with `Status`).
    - `OnMount`, `Navigate` and `GoBack` for explicit lifecycle and route
      transitions when the workflow cannot be expressed by a static link. Put
      `GoBack` below a visible Button event action chain, and use
@@ -119,8 +122,10 @@ source, including a structured literal for intentionally static content.
    placeholder result before detailed refinement begins.
    Prove one complete representative create/read relationship before copying
    the pattern to sibling entities. If the shell, form, card or relation picker
-   repeats, turn the proven pattern into a reusable application block instead
-   of duplicating markup and action chains. Remove obsolete demo Flows once the
+   repeats, turn the proven pattern into an application component with typed
+   inputs (`_flow.props`, `@props.<name>`; see "Components And Inputs" in
+   `flow://guide/frontend-svelte`) instead of duplicating markup and action
+   chains. Remove obsolete demo Flows once the
    real command replaces them so agents cannot choose between parallel data
    paths with different validation rules.
 8. On an existing project where dev mode was not started during bootstrap,
@@ -162,7 +167,9 @@ PageShell
     Text "Select a row"
 ```
 
-For Svelte route pages, use the normal SvelteKit tree:
+For Svelte route pages, use the normal SvelteKit tree (sources under
+`<App>/src/routes/`, each Page a `<FlowComponent $$id="…">` with
+`sourceVersion: 2` in its header):
 
 ```text
 Routes
