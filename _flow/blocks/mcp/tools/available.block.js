@@ -459,15 +459,13 @@ const _meta = {
 		var source = specificToolSchema(wrapper) ? wrapper : capability || wrapper;
 		var description = String(name.indexOf("code-") === 0
 			? wrapper.description || source.description || "Flow MCP tool."
-			: name === "flow-block-test"
-			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
 			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation.";
 		} else if (name === "code-patch") {
 			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation.";
 		} else if (name === "code-check") {
-			description = "Checks FlowScript, a canonical source selected by sourceFile, or a project block implementation.";
+			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch).";
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
 		} else if (name === "code-get") {
@@ -478,17 +476,15 @@ const _meta = {
 		if (name === "flow-catalog") {
 			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
 		} else if (name === "authoring-tree") {
-			description = "Generic authoring tree for frontend/Flow surfaces. Requires project; catalogs are omitted by default because authoring-palette resolves blocks contextually.";
+			description = "Generic authoring tree of the project FlowEngine (frontends, config, Catalog). Requires project; Catalog content (blocks, components, types) is listed with includeFlowCatalog:true, otherwise authoring-palette resolves blocks contextually.";
 		} else if (name === "authoring-palette") {
 			description = "Contextual palette for one qualified parentPath. Searches the project, references and workspace; execute items[].apply unchanged.";
 		} else if (name === "authoring-mutate") {
 			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
 		} else if (name === "frontend-svelte-tree") {
 			description = "Svelte frontend authoring tree. Use compact detail for structure. For one picker use detail:'inspect', an exact focusPath, maxDepth:0, property:'source' (or another exact bindable property) and sourceId when known; untargeted inspect only summarizes candidate counts.";
-		} else if (name === "frontend-svelte-palette") {
-			description = "Svelte frontend palette for a tree focusPath. Execute items[].apply unchanged when present; it contains the exact source file and structured mutation.";
 		} else if (name === "frontend-svelte-mutate") {
-			description = "Applies Svelte frontend tree mutations. Bindable properties accept intuitive @action.path/@item.path references or the structured mutation returned by the picker; bare string paths are rejected.";
+			description = "Applies Svelte frontend tree mutations. Bindable properties accept @ references (@local.x, @<requestable>, @<ForEach $$id>.item, @route, @props.x, @theme) or the structured binding returned by the picker; bare string paths are rejected.";
 		} else if (name === "frontend-svelte-fullsync-schema") {
 			description = "Learns a safe read requestable schema and attaches it to one FullSync action using the exact path from flow-app-progress.";
 		} else if (name === "frontend-svelte-actions") {
@@ -530,19 +526,19 @@ const _meta = {
 		} else if (name === "flow-resource-patch") {
 			description = "Patches one project resource, or synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
 		} else if (name === "flow-cache-clear") {
-			description = "Debug only: clears runtime caches when automatic invalidation is suspected stale. Do not use during normal authoring.";
+			description = "Clears the Flow runtime caches. Required after editing lib_flow_engine or frontbuilder files outside Convertigo (git, shell); Studio and MCP writes invalidate caches automatically.";
 		} else if (name === "flow-cache-info") {
 			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
 		} else if (name === "flow-sync-inputs") {
 			description = "Synchronizes FlowScript _flow.inputs to Flow request variables and clears stale Flow dirty flags.";
 		} else if (name === "flow-requestable-list") {
-			description = "Lists requestables for one project. Requires project; use only when legacy requestables are needed.";
+			description = "Lists the requestables (sequences, transactions) of one project. Requires project.";
 		} else if (name === "flow-test") {
 			description = "Saved-flow validation only. For FlowScript drafts use code-run after code-set/code-patch.";
 		}
 		return {
 			name: name,
-			description: description.length > 120 ? description.substring(0, 117) + "..." : description,
+			description: description,
 			inputSchema: inputSchema(source, name)
 		};
 	}

@@ -58,6 +58,21 @@ function mcp_handle({ input, config, result }) {
     },
   })
   if({
+    $$id: "ifPing",
+    condition: input.request.method == "ping",
+    $$then: function () {
+      local.response = mcp.response.result({
+        $$id: "handlePing",
+        request: input.request,
+        result: {},
+      })
+      return({
+        $$id: "returnPing",
+        value: local.response,
+      })
+    },
+  })
+  if({
     $$id: "if8",
     condition: input.request.method == "initialize",
     $$then: function () {

@@ -1863,13 +1863,6 @@
 			if (args.hints === undefined || args.hints === null || String(args.hints) === "") {
 				args.hints = false;
 			}
-		} else if (name === "flow-tree") {
-			if (!args.detail && !args.mode) {
-				args.detail = "compact";
-			}
-			if (args.maxDepth === undefined || args.maxDepth === null || String(args.maxDepth) === "") {
-				args.maxDepth = 4;
-			}
 		} else if (name === "authoring-tree") {
 			if (!args.surface) {
 				args.surface = "frontend";
@@ -2022,10 +2015,6 @@
 					String(args.detail || args.mode || "").toLowerCase() === "debug")) {
 				args.detail = "compact";
 				args.fullDetailIgnored = true;
-			}
-		} else if (name === "flow-block-list") {
-			if (args.limit === undefined || args.limit === null || String(args.limit) === "") {
-				args.limit = 20;
 			}
 		} else if (name === "flow-resource-search") {
 			args.limit = argInt(args.limit, 10, 1, 10);
@@ -2678,21 +2667,6 @@
 		return request && request.params && request.params.arguments || {};
 	}
 
-	function compactTypeForList(type) {
-		type = type || {};
-		var out = {};
-		["name", "label", "type", "origin", "description", "inferred"].forEach(function (key) {
-			if (type[key] !== undefined && type[key] !== null && type[key] !== "") {
-				out[key] = type[key];
-			}
-		});
-		if (type.editor) {
-			out.editor = type.editor.component || type.editor.label || true;
-		}
-		out.useCount = (type.uses || []).length;
-		return out;
-	}
-
 	function compactFlowListToolValue(request, value) {
 		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
 			return value;
@@ -3319,53 +3293,6 @@
 			argBool(args.includeFullResponse || args.fullResponse || args.verbose, false);
 	}
 
-	function compactWriteLikeValue(value) {
-		if (!value || typeof value !== "object") {
-			return value;
-		}
-		var out = {};
-		["ok", "status", "name", "file", "target", "message"].forEach(function (key) {
-			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
-				out[key] = value[key];
-			}
-		});
-		if (value.source !== undefined && value.source !== null) {
-			out.sourceChars = String(value.source).length;
-		}
-		if (value.definition) {
-			out.definition = compactDefinition(value.definition);
-		}
-		if (value.analysis) {
-			out.analysis = compactAnalysis(value.analysis);
-		}
-		if (value.children) {
-			out.childCount = value.children.length;
-			out.children = compactChildren(value.children);
-		}
-		if (value.registration) {
-			out.registration = compactRegistration(value.registration);
-		}
-		return out;
-	}
-
-	function compactMutationToolValue(request, value) {
-		if (wantsFullMutationResponse(request) || !value || typeof value !== "object") {
-			return value;
-		}
-		var out = compactWriteLikeValue(value);
-		if (value.written) {
-			out.written = compactWriteLikeValue(value.written);
-		}
-		if (value.source !== undefined && value.source !== null) {
-			out.sourceHint = "Rewritten YAML omitted by default. Pass detail:\"full\" only when the complete source is required.";
-		}
-		if (value.children) {
-			out.treeHint = "Virtual tree omitted/compacted by default. Call flow-tree for focused inspection.";
-		}
-		out.responseDetail = "summary";
-		return out;
-	}
-
 	function compactRequestableSchemaToolValue(request, value) {
 		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
 			return value;
@@ -3485,10 +3412,10 @@
 		if (name === "flow-block-code-set" || name === "flow-block-code-patch") {
 			return compactFlowCodeWriteToolValue(request, value);
 		}
-		if (name === "flow-run" || name === "flow-test" || name === "flow-block-test" || name === "flow-code-run" || name === "code-run") {
+		if (name === "flow-test" || name === "flow-code-run" || name === "code-run") {
 			return compactRuntimeToolValue(request, value);
 		}
-		if (name === "flow-analyze" || name === "flow-code-analyze" || name === "code-analyze") {
+		if (name === "flow-code-analyze" || name === "code-analyze") {
 			return compactAnalyzeToolValue(request, value);
 		}
 		if (name === "flow-requestable-schema") {
@@ -3500,27 +3427,7 @@
 				(name === "authoring-mutate" && String(toolArguments(request).surface || "") === "frontend")) {
 			return compactFrontendWriteToolValue(request, value);
 		}
-		if (name === "flow-set" ||
-				name === "flow-edit" ||
-				name === "flow-apply" ||
-				name === "flow-node-add" ||
-				name === "flow-node-edit" ||
-				name === "flow-node-move" ||
-				name === "flow-node-delete" ||
-				name === "flow-node-duplicate") {
-			return compactMutationToolValue(request, value);
-		}
-		if (name !== "flow-type-list" || !value || !value.types) {
-			return value;
-		}
-		var out = {};
-		Object.keys(value).forEach(function (key) {
-			if (key !== "types") {
-				out[key] = value[key];
-			}
-		});
-		out.types = (value.types || []).map(compactTypeForList);
-		return out;
+		return value;
 	}
 
 	function parseRequest(value, ctx) {

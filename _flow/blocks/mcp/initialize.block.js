@@ -44,7 +44,7 @@ function mcp_initialize({ input, config, result }) {
       "protocolVersion": "2025-06-18",
       "serverInfo": {
         "name": "convertigo-flow-mcp",
-        "version": "0.1.0",
+        "version": "0.1.1",
       },
       "capabilities": {
         "tools": {},

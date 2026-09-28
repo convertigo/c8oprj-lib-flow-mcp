@@ -626,27 +626,23 @@ var typeGet = JSON.parse(engine.run(JSON.stringify({
 			id: 1003,
 			method: "tools/call",
 			params: {
-				name: "flow-type-get",
+				name: "flow-block-get",
 				arguments: {
 					projectDir: projectDir,
-					name: "expression"
+					name: "set"
 				}
 			}
 		})
 	}
 })));
-var typeResponsePayload = JSON.stringify(typeGet.result.result);
-assertTrue(typeResponsePayload.indexOf("/Users/") === -1 &&
-	typeResponsePayload.indexOf(String(new java.io.File(engineDir).getAbsolutePath())) === -1,
-	"MCP Flow type response leaked absolute paths");
-assertTrue(typeResponsePayload.indexOf("\"mode\":\"\"") === -1,
-	"MCP Flow type response leaked empty mode metadata");
-assertTrue(typeGet.result.result.structuredContent.descriptor.editor.file === "_flow/types/editors/expression.html",
-	"MCP Flow type response did not shorten type resource paths");
+var blockResponsePayload = JSON.stringify(typeGet.result.result);
+assertTrue(blockResponsePayload.indexOf("/Users/") === -1 &&
+	blockResponsePayload.indexOf(String(new java.io.File(engineDir).getAbsolutePath())) === -1,
+	"MCP Flow block response leaked absolute paths");
 var traceContent = String(Packages.org.apache.commons.io.FileUtils.readFileToString(traceFile, "UTF-8"));
 assertTrue(traceContent.indexOf("\"direction\":\"request\"") !== -1 &&
 	traceContent.indexOf("\"direction\":\"response\"") !== -1 &&
-	traceContent.indexOf("flow-type-get") !== -1,
+	traceContent.indexOf("flow-block-get") !== -1,
 	"MCP Flow trace JSONL was not written");
 assertTrue(traceContent.indexOf("/Users/") === -1,
 	"MCP Flow trace JSONL leaked absolute paths");
@@ -654,7 +650,7 @@ var traceLines = traceContent.trim().split(/\r?\n/).map(function (line) {
 	return JSON.parse(line);
 });
 var traceResponse = traceLines.filter(function (line) {
-	return line.direction === "response" && line.tool === "flow-type-get";
+	return line.direction === "response" && line.tool === "flow-block-get";
 })[0];
 assertTrue(traceResponse &&
 	traceResponse.summary &&
@@ -663,35 +659,6 @@ assertTrue(traceResponse &&
 	traceResponse.payloadChars > 0 &&
 	traceResponse.payloadTruncated === false,
 	"MCP Flow trace JSONL did not include response metrics");
-var treeResponse = JSON.parse(engine.run(JSON.stringify({
-	flowSource: mcpFlowSource,
-	includeTrace: false,
-	includeFlow: false,
-	input: {
-		request: JSON.stringify({
-			jsonrpc: "2.0",
-			id: 1004,
-			method: "tools/call",
-			params: {
-				name: "flow-tree",
-				arguments: {
-					projectDir: projectDir,
-					definition: {
-						version: 1,
-						nodes: [{
-							id: "treeSet",
-							block: "set",
-							path: "result.value",
-							value: "ok"
-						}]
-					}
-				}
-			}
-		})
-	}
-})));
-assertTrue(JSON.stringify(treeResponse.result.result).indexOf("/Users/") === -1,
-	"MCP Flow tree response leaked absolute paths through virtual info strings");
 
 var resources = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -3040,15 +3007,6 @@ var searchTarget = callTool(9, "flow-search", {
 assertTrue(searchTarget.result.result.structuredContent.matches.some(function (match) {
 	return match.flow === "TargetSmoke";
 }), "MCP Flow flow-search did not find the target FlowScript");
-
-var treeTarget = callTool(10, "flow-tree", {
-	projectDir: targetProjectDir,
-	name: "TargetSmoke"
-});
-assertTrue(treeTarget.result.result.structuredContent.children.some(function (child) {
-	return child.name === "flow";
-}),
-	"MCP Flow flow-tree did not describe the named target FlowScript");
 
 var schemaTarget = callTool(11, "flow-output-schema", {
 	projectDir: targetProjectDir,
