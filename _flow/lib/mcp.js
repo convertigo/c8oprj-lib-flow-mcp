@@ -1979,6 +1979,9 @@
 			args = resolveProjectDir(args);
 		}
 		args = inferFrontendMutationSourceFile(name, args);
+		if ((name === "flow-resource-patch" || name === "flow-resource-delete") && args.path) {
+			assertNoWorkingCopy(args, String(args.path), name);
+		}
 		// Project block tools read the working copies and refuse to overwrite one.
 		if (/^(?:authoring|frontend-svelte|flow-block-code)-/.test(name) || name === "flow-app-progress") {
 			args = withSourceDrafts(args, name === "authoring-mutate" || name === "frontend-svelte-mutate" ||
@@ -2187,6 +2190,26 @@
 				return { paths: paths, draft: true };
 			}
 		};
+	}
+
+	// Resource tools write files: never under a Studio working copy of the same source.
+	function assertNoWorkingCopy(args, path, name) {
+		var store = sourceStore(args);
+		if (!store.drafts || !args.projectDir) {
+			return;
+		}
+		var root = new File(String(args.projectDir)).getCanonicalFile();
+		var file = new File(root, path.replace(/^\/+/, "")).getCanonicalFile();
+		var engineFile = new File(root, "_flow/engine.yaml").getCanonicalFile();
+		var dirty = String(file.getCanonicalPath()) === String(engineFile.getCanonicalPath())
+			? store.project.getFlowEngine().isEngineSourceDirty() === true
+			: store.dirty(file);
+		if (dirty) {
+			var error = new Error(name + " refused: " + path + " has unsaved Studio changes.");
+			error.code = "SOURCE_WORKING_COPY";
+			error.hint = "Ask the user to save the project (or reload it), or edit the source with code-get/code-set, which work on the working copy.";
+			throw error;
+		}
 	}
 
 	// Engine requests of a loaded project see its working copies, like Studio requests.
