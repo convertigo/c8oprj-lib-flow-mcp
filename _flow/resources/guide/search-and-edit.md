@@ -42,9 +42,13 @@ Typical source edits:
 - move a node into a slot: cut its call into the `$$then`, `$$else`,
   `$$nodes` or `$$fields` function (FlowScript) or the slot tag (Flow Svelte).
 
-Renaming a `$$id` is a Rename: references in the same file must follow.
-Studio refuses a rename whose root is referenced from another file
-(`FLOW_RENAME_REFERENCE_CONFLICT`).
+Rename a `$$id` with a mutation replacing `<node path>.id`
+(`frontend-svelte-mutate`, `authoring-mutate`), as the Studio Rename does: the
+references in the same file follow (States, actions, ForEach, short
+references, destinations, free expressions) and a backend node keeps its
+learned output schema. A text patch does not rewrite anything. A rename that
+would leave another file with an unresolved reference is refused
+(`FLOW_RENAME_REFERENCE_CONFLICT`), nothing is written.
 
 ## Structure and palette
 
