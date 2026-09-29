@@ -66,6 +66,11 @@ Runtime helpers available in `run(ctx,node)`:
 - `ctx.throwFlow({ code, message, status, details, hint }, node)`: raises a
   structured Flow error.
 - `ctx.lib("name")`: loads a helper library declared in `_meta.uses`.
+- `ctx.canContinue()`: false once the execution is cancelled (Studio cancel,
+  requestable timeout, cancelled caller). The engine already checks it before
+  each block and before publishing a result; a block that loops internally,
+  waits long or is about to write reads it too and stops cleanly, as Java
+  steps read `bContinue`.
 
 Property mapping rule:
 

@@ -306,6 +306,13 @@ If -> Then / Else
 Layout -> PageContent
 ```
 
+The actions of an event run in order; each one waits for the previous and the
+chain stops at the first error. A Button stays disabled while the actions of
+its click run, so a double click never starts them twice; Expert
+`allowConcurrentClicks={true}` allows repeated clicks for harmless actions such
+as a counter, never for an order or a payment. Actions still running when their
+page or component is destroyed are cancelled and publish nothing.
+
 Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 `GridLayout`, `Card`), display, forms and navigation. A Layout must contain
 `PageContent`. Do not hide behavior in CSS, generated code or browser

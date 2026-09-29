@@ -54,8 +54,13 @@ const _meta = {
 }())
 ```
 
-The adjacent `normalize.browser.js` is one synchronous function receiving the
-JSON input object and returning a JSON-compatible value:
+The adjacent `normalize.browser.js` is one function receiving the JSON input
+object and returning a JSON-compatible value, or a Promise of one (the runtime
+awaits only what is really asynchronous). Its second argument carries
+`canContinue()`, to read in internal loops, and `signal`, an `AbortSignal` to
+pass to `fetch`: both report that the execution was cancelled (its page or
+component destroyed, for instance). A synchronous function stays the common
+case:
 
 ```javascript
 function (input) {
