@@ -77,7 +77,24 @@ The Svelte palette exposes operation-aware action blocks under an event:
 - `FullSyncView`: local design-document view; query options are `Variable`
   children whose values are literals or `@` sources.
 - `FullSyncSync`: `mode` is `sync`, `pull` or `push`; progress is retained in
-  runtime state under the action `$$id`.
+  runtime state under the action `$$id`. To act on each progress, put an
+  `OnProgress` in its `Events` slot: its actions run as their own executions
+  (`@event.value` is the progress), keep only the latest progress by default
+  (Expert `reentrancy`), end with the replication (what still runs is
+  cancelled and publishes nothing) and never fail it (their errors are
+  reported).
+
+```svelte
+<FullSyncSync $$id="pullStore" database="retaildb" mode="pull">
+  <Events>
+    <OnProgress>
+      <Actions>
+        <SetValue $$id="showProgress" target="page.progress" value="@event.value" />
+      </Actions>
+    </OnProgress>
+  </Events>
+</FullSyncSync>
+```
 - `FullSyncReset`: resets the local database. Set a stable migration `marker`
   so the reset runs once per browser and marker value; changing the marker
   explicitly schedules a new one-time reset.
