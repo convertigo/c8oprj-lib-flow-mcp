@@ -164,6 +164,26 @@ lib_flow_engine, then the server cache. Saving a source copies the icons it
 uses into its project. Icons are SVG project sources: never commit PNG
 renderings and never put icons under `_flow/blocks`.
 
+## Traits
+
+A trait declares properties shared by many blocks, documented once:
+`_flow/traits/<namespace>/<name>.trait.js` with a leading `_meta`
+(`name`, `description`, optional `includes`, `properties`). A block composes it
+in `_meta.traits`, as a list of names or as an object that changes, per trait
+property, only its `default`, `label`, `category` or adds a `note`:
+
+```javascript
+traits: { "proof.greeting": { salutation: { default: "Bonjour", note: "French here." } } }
+```
+
+A block never redefines a trait property (type, meaning, description) and
+never declares its own property with the same name; two traits bringing the
+same member need `{ from: "<trait>" }`. The property shows the trait usage,
+then the notes of the trait and of the block, and the format of its type.
+Frontend components compose `ui.control` (`disabled`, kept disabled while its
+actions run) and events compose `ui.event`, which includes `ui.trigger`
+(`reentrancy`, `debounceMs`).
+
 ## Types
 
 Property types live in `_flow/types/<name>.type.yaml` (project types are

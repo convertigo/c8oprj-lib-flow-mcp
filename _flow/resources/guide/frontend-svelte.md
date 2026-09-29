@@ -307,11 +307,16 @@ Layout -> PageContent
 ```
 
 The actions of an event run in order; each one waits for the previous and the
-chain stops at the first error. A Button stays disabled while the actions of
-its click run, so a double click never starts them twice; Expert
-`allowConcurrentClicks={true}` allows repeated clicks for harmless actions such
-as a counter, never for an order or a payment. Actions still running when their
-page or component is destroyed are cancelled and publish nothing.
+chain stops at the first error. When an event fires again while its actions
+still run, its Expert `reentrancy` decides: `drop` ignores it, `latest` cancels
+the running actions, `serial` queues it (at most 16), `parallel` runs both;
+Expert `debounceMs` first waits for a pause. The defaults fit the common case:
+`OnClick`, `OnSubmit` and `Interval` drop, `OnChange` keeps the latest. A
+control (Button, Input, Select...) stays disabled while the actions it
+triggered run, so a double click never starts them twice; set
+`<OnClick reentrancy="parallel">` only for harmless repeats such as a counter,
+never for an order or a payment. Actions still running when their page or
+component is destroyed are cancelled and publish nothing.
 
 Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 `GridLayout`, `Card`), display, forms and navigation. A Layout must contain
