@@ -40,10 +40,15 @@ A directory that is only a route node (segment, group `(x)` or parameter
 `[x]` without its own Page) carries a `.flow-route.json` marker; the Studio
 route palette creates it, do not hand-write it.
 
-Known limit: bracketed parameter routes currently answer HTTP 400 in the dev
-viewer behind the Studio gateway. For a POC, prefer a static Page such as
-`product/+page.flow.svelte`, pass the id in the `Navigate` `Query`, and read
-`@route.query.id`.
+The production build is static and served by Convertigo: each route with
+required or optional parameters is prerendered with `_` in their place and the
+server answers `/product/42/` with that page, so the application keeps its
+relative paths. Rest parameters and matchers make the whole application a
+single-page application on an absolute base instead: prefer required or
+optional parameters. The dev viewer loads each Page source by its path,
+brackets included: a server that predates this support answers HTTP 400 for a
+bracketed Page. There, prefer a static Page such as `product/+page.flow.svelte`,
+pass the id in the `Navigate` `Query`, and read `@route.query.id`.
 
 Required parameters match one segment. Optional parameters use double brackets.
 Rest parameters match zero or more segments and should be validated before use.
