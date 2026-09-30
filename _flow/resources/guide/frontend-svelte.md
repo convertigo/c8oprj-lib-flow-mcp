@@ -297,7 +297,7 @@ empty label. Do not emulate this with `Input`, `ForEach` and buttons.
 
 ```text
 FlowComponent -> Variables -> State / Derived / DerivedBy / Translations
-FlowComponent -> Events -> OnMount / OnDestroy / Effect / PreEffect / Interval / Timeout
+FlowComponent -> Events -> OnMount / OnAfterNavigate / OnDestroy / Effect / PreEffect / Interval / Timeout
 FlowComponent -> Structure -> PageShell
 Button -> Events -> OnClick -> Actions -> CallSequence -> Variables
 Input -> Events -> OnChange -> Actions -> portable block
@@ -311,7 +311,8 @@ chain stops at the first error. When an event fires again while its actions
 still run, its Expert `reentrancy` decides: `drop` ignores it, `latest` cancels
 the running actions, `serial` queues it (at most 16), `parallel` runs both;
 Expert `debounceMs` first waits for a pause. The defaults fit the common case:
-`OnClick`, `OnSubmit` and `Interval` drop, `OnChange` keeps the latest. A
+`OnClick`, `OnSubmit` and `Interval` drop, `OnChange` and `OnAfterNavigate`
+keep the latest. A
 control (Button, Input, Select...) stays disabled while the actions it
 triggered run, so a double click never starts them twice; set
 `<OnClick reentrancy="parallel">` only for harmless repeats such as a counter,
@@ -324,10 +325,26 @@ Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 globals. To skip a block temporarily, patch `$$disabled={true}` onto it;
 remove the attribute to restore it.
 
-Page lifecycle goes in the root `Events` slot. `Interval` and `Timeout`
-register on mount and clean up on teardown; nest them under `OnMount` only
-inside a larger explicit mount chain. `OnMount once={true}` survives route
-round trips but not a full reload.
+Page lifecycle goes in the root `Events` slot, with the Svelte meaning of each
+event. `OnMount` runs when the page or component mounts: its first display,
+each entry on its route and a live reload; a navigation that keeps the page
+shown (other route parameters, another query) does not run it again.
+`OnAfterNavigate` runs after each navigation, the first display included, as
+SvelteKit `afterNavigate`: load there what depends on the address, with
+`@event.to.params.id`, `@event.to.query.tab`, `@event.to.path` or
+`@event.to.route`, `@event.from` (null on the first display) and `@event.type`
+(`enter`, `link`, `goto`, `popstate`, `form`). A newer navigation cancels the
+run of an older one still going.
+
+```svelte
+<OnAfterNavigate $$id="load"><Actions>
+  <FullSyncGet $$id="readProduct" database="retail" docid="@event.to.params.id" />
+</Actions></OnAfterNavigate>
+```
+
+`Interval` and `Timeout` register on mount and clean up on teardown; nest them
+under `OnMount` only inside a larger explicit mount chain. `OnMount once={true}`
+survives route round trips but not a full reload.
 
 Declare mutable state with `State` and computed state with `Derived` or
 `DerivedBy` in `Variables`. Write state with an action `target="page.name"`

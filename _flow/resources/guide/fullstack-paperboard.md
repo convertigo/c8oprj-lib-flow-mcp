@@ -109,11 +109,13 @@ source, including a structured literal for intentionally static content.
      visible intent;
    - `ForEach` and `If` for data-driven structure (the `Await` `pending` slot
      is currently refused; show progress with `Status`).
-   - `OnMount`, `Navigate` and `GoBack` for explicit lifecycle and route
-     transitions when the workflow cannot be expressed by a static link. Put
-     `GoBack` below a visible Button event action chain, and use
-     `OnMount once={true}` only for bootstrap state that must survive a route
-     round trip.
+   - `OnMount`, `OnAfterNavigate`, `Navigate` and `GoBack` for explicit
+     lifecycle and route transitions when the workflow cannot be expressed by a
+     static link. `OnMount` runs when the page mounts; `OnAfterNavigate` after
+     each navigation, to load what depends on the address
+     (`@event.to.params.id`). Put `GoBack` below a visible Button event action
+     chain, and use `OnMount once={true}` only for bootstrap state that must
+     survive a route round trip.
    Use the application CSS source plus explicit `class` values for gradients,
    typography and other visual rules. Do not expand every UI block into a CSS
    property matrix and do not put behavior or data wiring in CSS.

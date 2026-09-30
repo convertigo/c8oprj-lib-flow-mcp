@@ -781,7 +781,7 @@ const _meta = {
 		"Progress", "Spinner", "Breadcrumb", "Segment", "Table", "JSON", "Input", "Select",
 		"Checkbox", "RadioGroup", "Toggle", "Range", "ForEach", "If",
 		"State", "Derived", "DerivedBy",
-		"OnMount", "OnDestroy", "Effect", "PreEffect", "Interval", "Timeout",
+		"OnMount", "OnAfterNavigate", "OnDestroy", "Effect", "PreEffect", "Interval", "Timeout",
 		"SetValue", "UpdateList", "UpdateNumber", "Navigate", "GoBack", "Variable",
 		"CallSequence"
 	];
@@ -998,7 +998,7 @@ const _meta = {
 				},
 				blocks: blocks,
 				portableBlocks: portableBlocks,
-				actionPattern: "FlowComponent > Events > OnMount|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
+				actionPattern: "FlowComponent > Events > OnMount|OnAfterNavigate|OnDestroy|Effect|PreEffect|Interval|Timeout > Actions > SetValue|UpdateList|UpdateNumber|FlowBlock",
 				rules: [
 					"Every source starts with the header module declaring sourceVersion: 2; headers hold static literals only.",
 					"$$id is the node identity, unique in the document; plain attributes are widget or business properties (id= is a DOM/business id, not the identity).",
