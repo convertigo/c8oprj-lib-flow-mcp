@@ -32,7 +32,10 @@ const _meta = {
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
 	var FRONTEND_TOOL_PREFIX = "mcp.tool.frontend.";
+	var TAG_TOOL_PREFIX = "mcp.tool.tags.";
 	var PUBLIC_TOOLS = {
+		"tags-get": true,
+		"tags-apply": true,
 		"authoring-mutate": true,
 		"authoring-palette": true,
 		"authoring-tree": true,
@@ -117,6 +120,9 @@ const _meta = {
 
 	function toolName(blockName) {
 		blockName = String(blockName || "");
+		if (blockName.indexOf(TAG_TOOL_PREFIX) === 0) {
+			return "tags-" + camelToKebab(blockName.substring(TAG_TOOL_PREFIX.length));
+		}
 		if (blockName.indexOf(CODE_TOOL_PREFIX) === 0) {
 			return "code-" + camelToKebab(blockName.substring(CODE_TOOL_PREFIX.length));
 		}

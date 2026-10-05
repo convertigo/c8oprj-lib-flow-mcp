@@ -22,6 +22,8 @@ var execution = JSON.parse(engine.run(JSON.stringify({
 assertTrue(execution.ok === true, "McpServer internal execution failed: " + JSON.stringify(execution));
 assertTrue(execution.result && execution.result.result && execution.result.result.serverInfo,
   "McpServer internal authentication bypass did not reach initialize: " + JSON.stringify(execution.result));
+assertTrue(execution.result.result.serverInfo.version === "development",
+  "Standalone initialize must not advertise a hard-coded project release");
 
 var adminExecution = JSON.parse(engine.run(JSON.stringify({
   flowSource: flowSource,

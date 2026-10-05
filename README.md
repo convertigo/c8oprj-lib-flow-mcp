@@ -34,6 +34,11 @@ advertised to agents by `tools/list`. Configure standalone clients with the
 `CONVERTIGO_MCP_TOKEN` environment variable. The same raw token and environment
 variable authenticate both MCP servers in one agent process.
 
+`tags-get` and `tags-apply` expose the common Studio tag domain with the normal
+MCP bearer authentication, without an administrator browser session. See
+`flow://guide/tags` for ordered sequence memberships, named Flow configurations
+and explicit project Save. The legacy MCP exposes the same commands.
+
 Runtime shape:
 
 ```text
@@ -114,6 +119,7 @@ tools, so guides, skills and this README must not recommend any other tool.
 | Resources | `flow-resource-search`, `flow-resource-get`, `flow-resource-patch`, `flow-resource-delete` |
 | Project | `flow-project-bootstrap`, `flow-project-reference`, `flow-project-remove`, `flow-fullsync-scaffold`, `flow-app-progress` |
 | Caches | `flow-cache-clear`, `flow-cache-info` |
+| Tags | `tags-get`, `tags-apply` |
 
 Default authoring cycle for a blank agent context:
 
@@ -138,6 +144,19 @@ flow-resource-search / flow-resource-get / flow-resource-patch for project types
 
 The default path is sample-first and source-first. Custom blocks are project
 vocabulary, not automatic core changes.
+
+Tag transport regressions are covered by `tests/tags-tools.js` (the real Java
+domain and both MCP adapters) and `tests/tags-http-contract.mjs` (the official
+MCP SDK against an owned loopback runtime). The HTTP test requires an explicit
+disposable Flow project with named configurations, `TAGS_TEST_BASE_URL`,
+`TAGS_TEST_PROJECT` and `MCP_SDK_ROOT` pointing to an installed SDK. It uses a
+short-lived credential in memory, logs out the fixture administrator before
+the MCP calls, verifies both catalogues and the shared draft/Save/Reload
+contract, then removes the tags it created. Optional `TAGS_TEST_CONFIG_PROOF_FLOW`
+names a fixture Flow returning its configuration; `TAGS_TEST_CONFIG_PROOF_VALUES`
+contains the two expected `baserow` branches for the first two named configs.
+This also checks that changing tag order changes runtime configuration before
+Save. Never run it against a user project.
 
 Project-local blocks use a canonical `*.block.js` source containing `_meta`
 plus either one FlowScript function or one Rhino IIFE. Use Rhino blocks only for

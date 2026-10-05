@@ -37,15 +37,13 @@ const _flow = {
 }
 
 function mcp_initialize({ input, config, result }) {
+  local.serverInfo = mcp.server.info({})
   mcp.response.result({
     $$id: "wrapResult",
     request: input.request,
     result: {
       "protocolVersion": "2025-06-18",
-      "serverInfo": {
-        "name": "convertigo-flow-mcp",
-        "version": "0.1.2",
-      },
+      "serverInfo": local.serverInfo,
       "capabilities": {
         "tools": {},
         "resources": {},

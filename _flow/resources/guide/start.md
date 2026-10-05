@@ -17,6 +17,7 @@ Start here: the default Flow authoring route, the source contract, the project l
 | FullSync server DBOs and client actions | `flow://guide/fullsync` |
 | Locate and patch existing code | `flow://guide/search-and-edit` |
 | MCP JSONL tracing | `flow://guide/tracing` |
+| Ordered tags and named project configurations | `flow://guide/tags` |
 
 Guides are served whole by `resources/read`; read each one once per task.
 
