@@ -43,6 +43,17 @@ try {
   assertTrue(rejected.authenticated === false && rejected.error.code === "invalid_token_signature",
     "A token with a modified signature was accepted: " + JSON.stringify(rejected));
 
+  // The same decoded signature written differently is refused too: a non-zero unused trailing bit
+  // (the last character of a 32-byte HMAC carries only 4 meaningful bits) or padding.
+  var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  var lastIndex = alphabet.indexOf(token.charAt(token.length - 1));
+  assertTrue(lastIndex % 4 === 0, "The issued signature is not canonical: " + token.substring(signatureStart));
+  [token.substring(0, token.length - 1) + alphabet.charAt(lastIndex + 1), token + "="].forEach(function (variant) {
+    var refused = jwt.validate(variant);
+    assertTrue(refused.authenticated === false && refused.error.code === "invalid_token_signature",
+      "A non canonical signature encoding was accepted: " + JSON.stringify(refused));
+  });
+
   var missing = jwt.validate("");
   assertTrue(missing.authenticated === false && missing.error.code === "missing_token",
     "A missing Flow MCP bearer token was not rejected");
