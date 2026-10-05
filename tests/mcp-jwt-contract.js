@@ -34,7 +34,11 @@ try {
   assertTrue(valid.authenticated === true && valid.kind === "managed",
     "A correctly signed managed Flow MCP token was rejected: " + JSON.stringify(valid));
 
-  var tampered = token.substring(0, token.length - 1) + (token.charAt(token.length - 1) === "a" ? "b" : "a");
+  // Tamper the first signature character: it carries 6 meaningful bits, while the last one carries
+  // only 4 (base64url of a 32-byte HMAC), so changing it can decode to the very same signature.
+  var signatureStart = token.lastIndexOf(".") + 1;
+  var tampered = token.substring(0, signatureStart) + (token.charAt(signatureStart) === "a" ? "b" : "a")
+    + token.substring(signatureStart + 1);
   var rejected = jwt.validate(tampered);
   assertTrue(rejected.authenticated === false && rejected.error.code === "invalid_token_signature",
     "A token with a modified signature was accepted: " + JSON.stringify(rejected));
