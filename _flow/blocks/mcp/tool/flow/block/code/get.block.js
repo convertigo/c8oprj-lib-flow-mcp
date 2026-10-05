@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Reads project-local custom block code only; do not use for standard http/list/json/requestable blocks.",
-  "icon": "mdi:puzzle-search-outline",
+  "icon": "mdi:puzzle-outline",
   "properties": {
     "request": {
       "kind": "expression",

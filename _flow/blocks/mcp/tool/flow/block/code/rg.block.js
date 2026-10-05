@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Searches FlowScript block code and returns small matching extracts.",
-  "icon": "mdi:puzzle-search-outline",
+  "icon": "mdi:text-search",
   "properties": {
     "request": {
       "kind": "expression",
