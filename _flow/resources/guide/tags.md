@@ -19,8 +19,9 @@ invocation or permissions. Workspace project tags are not Flow configurations.
 
 1. Use `authoring-tree({project})` and the contextual `authoring-palette` to
    inspect or create configurations in FlowEngine > Configs. `default` is the
-   common configuration; named configurations are siblings. Use the generic
-   authoring mutations returned by the palette, not raw file writes.
+   common configuration; named configurations are siblings, and none may be
+   called `default` (`FLOW_CONFIG_NAME_RESERVED`). Use the generic authoring
+   mutations returned by the palette, not raw file writes.
 2. Read `tags-get({scope:"projectObjects",project})`. Reuse its `revision`,
    canonical sequence `targets`, and available `contributions`. The Flow
    contribution only exists when this project has a FlowEngine; its config
@@ -56,10 +57,26 @@ invocation or permissions. Workspace project tags are not Flow configurations.
 
 The assignment array preserves its explicit order. `assign` appends tags;
 `reorder` requires exactly the existing assigned IDs, in the desired order.
-The last tag wins, followed by the last config in that tag's `configs` array.
-Precedence is Flow defaults < project default < tagged named configs < explicit
-request config. A winning root key replaces the previous root key; there is
-no implicit deep merge. `config.use` is the explicit merge mechanism.
+The project configuration of a Flow is `default` merged with the named
+configurations its tags select, value by value: tags apply in their order,
+then the configs of each tag in their order, and for a value set several
+times the last one wins (objects merge; arrays, scalars and `null` replace).
+Around it, precedence per root key stays Flow defaults < project
+configuration < explicit request config: a call config replaces whole root
+branches, and `config.use` merges explicitly. When a Flow receives
+configuration, its `authoring-tree` shows a read-only **Effective
+configuration** with each resulting value and its origin. Private keys
+(`configVisibility`) stay masked in named configurations and in the effective
+configuration.
+
+Removing or renaming a configuration that a tag references is refused
+(`FLOW_CONFIG_IN_USE`); a reference broken earlier, for example by a pull,
+does not block other edits: remove it from the tag. A Flow whose tags select a
+missing configuration fails explicitly when it runs
+(`FLOW_CONFIG_REFERENCE_NOT_FOUND`). If the project's tags cannot be read (for
+example an invalid tags file after a merge), the last valid tags keep serving;
+without any, the Flows of a project that has named configurations fail with
+`FLOW_TAGS_UNAVAILABLE` instead of silently running with `default` only.
 
 `update` supplies the complete definition with `input.id`; preserve metadata
 whose contribution is unavailable. A stale or missing revision, invalid

@@ -194,7 +194,9 @@ config.use({
 
 Root keys (or one `overrides` object) are config branches, deep-merged only
 while `$$then` runs. Config precedence per root key: `_flow.config`, then
-project `_flow/engine.yaml`, then request config. Put structural constants
+project `_flow/engine.yaml`, then request config. The project configuration is
+`default` with the named configurations of the Flow's tags merged over it,
+value by value, the last tag winning (`flow://guide/tags`). Put structural constants
 (API roots, tokens, timeouts) in project or Flow `config.*`; reuse existing
 project config instead of duplicating it in `_flow.config`.
 
