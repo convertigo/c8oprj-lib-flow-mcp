@@ -2016,7 +2016,8 @@
 		// before calling a provider. The Studios use the very same preparation.
 		delete args.tagContext;
 		var host = Packages.com.twinsoft.convertigo.engine.Engine;
-		if (host.theApp != null && host.theApp.databaseObjectsManager != null) {
+		// without the Convertigo classes (headless tests), Rhino resolves Engine to a package, not a class
+		if (!/^\[JavaPackage /.test(String(host)) && host.theApp != null && host.theApp.databaseObjectsManager != null) {
 			args = JSON.parse(String(Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.prepareProjectRequest(
 				new Packages.org.codehaus.jettison.json.JSONObject(JSON.stringify(args)))));
 		}
