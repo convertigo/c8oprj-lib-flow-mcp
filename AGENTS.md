@@ -83,7 +83,7 @@ after the first frontend code-get of every turn, call frontend-svelte-action wit
 import local or generated images with frontend-svelte-asset-import and reuse the returned resources/... URL unchanged
 before Playwright, call frontend-svelte-action with actionId dev.open and require browserControlReady:true
 code-set with block:"ns.name" and the complete _meta + implementation only when reusable vocabulary is needed
-flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments and other resources
+flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments, Java sources (libs/src) and other resources
 ```
 
 For custom block outputs, prefer a real schema over `unknown`. Use static

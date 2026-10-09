@@ -280,6 +280,10 @@ remove the line to restore it.
 - Other project resources (`_flow/types`, editors, libraries, fragments):
   `flow-resource-search`, `flow-resource-get`, `flow-resource-patch` with
   `baseHash`.
+- Java sources of the project (`libs/src/**/*.java`, compiled by the server
+  into the project class path): the same tools. Create one with a patch from
+  `--- /dev/null` (`@@ -0,0 +1,N @@`); its `package` matches its folder.
+  Use Java for batched hotspots called once from Rhino, not per row or cell.
 
 ## Samples
 

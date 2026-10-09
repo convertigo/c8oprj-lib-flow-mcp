@@ -139,7 +139,7 @@ flow-catalog only when search/examples are insufficient; it is summary by defaul
 authoring-palette with a parentPath returned by authoring-tree before implementing a reusable missing frontend capability locally
 flow-project-reference only for explicit project-reference maintenance
 code-set with block:"ns.name" and the complete _meta + implementation only when reusable vocabulary is needed
-flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments and resources
+flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments, resources and Java sources (libs/src)
 ```
 
 The default path is sample-first and source-first. Custom blocks are project

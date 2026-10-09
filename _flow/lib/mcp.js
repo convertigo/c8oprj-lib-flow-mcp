@@ -2231,6 +2231,11 @@
 
 	// Resource tools write files: never under a Studio working copy of the same source.
 	function assertNoWorkingCopy(args, path, name) {
+		// The FlowEngine keeps working copies of Flow sources only: the Java sources and libraries of the project (libs/)
+		// are plain files, and the FlowEngine refuses to tell the state of such a file.
+		if (/^libs\//.test(path.replace(/\\/g, "/").replace(/^(?:\.?\/)+/, ""))) {
+			return;
+		}
 		var store = sourceStore(args);
 		if (!store.drafts || !args.projectDir) {
 			return;
