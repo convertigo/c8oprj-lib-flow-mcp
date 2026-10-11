@@ -79,7 +79,10 @@ function Greeting({ input, config, result }) {
   `!local.entity`). Expressions are null-safe and allow index reads
   (`local.items[0]`, `current["media:thumbnail"]`). Object literals are values
   (`select: { title: current.title }`), not expressions. Use
-  `"Hello {{ input.name }}"` or a template literal for mixed text.
+  `"Hello {{ input.name }}"` or a template literal for mixed text. `===` and
+  `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
+  loose. A declared `number`, `integer` or `boolean` input arrives typed
+  whatever the caller (HTTP text is converted), other inputs as sent.
 - **Business `id`, `disabled`, `out` are free** for project block properties;
   core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
 
