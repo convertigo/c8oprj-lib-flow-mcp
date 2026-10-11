@@ -249,7 +249,9 @@ way; anyone else gets `AUTHORING_FORBIDDEN`, dry runs included. A dry run
 returns `before`, `after` and `previousRevision`; a change in between answers
 a revision conflict. `persist: "draft"` keeps the working copy the Save of the
 project publishes; `"save"` writes that one file and is refused over its
-unsaved changes. Secret keys only take `"${<project>.<usage>.<name>.secret=}"`.
+unsaved changes. Secret keys only take a reference to a `.secret` global
+symbol, whose default may be a test or development value:
+`"${<project>.<usage>.<name>.secret=<default>}"`.
 
 ## Accessibility
 
