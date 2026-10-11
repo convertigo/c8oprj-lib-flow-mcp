@@ -95,10 +95,20 @@ encode a block in `qname`.
 
 ## Design rules
 
-- Keep structural constants (service URLs, API paths, tokens, namespaces,
-  timeouts) in `config.*` or the project `_flow/engine.yaml`, not in block
-  code. Reuse existing project config instead of copying it into
-  `_flow.config`.
+- Keep structural constants (service URLs, API paths, namespaces, timeouts)
+  in `config.*` or the project `_flow/engine.yaml`, not in block code. Reuse
+  existing project config instead of copying it into `_flow.config`.
+- Never write a secret (password, token, API key) in a configuration or a
+  source: reference a Convertigo global symbol whose name ends with `.secret`,
+  declared with a default, `password: "${<project>.<usage>.<name>.secret=}"`.
+  The server resolves it for the running Flow only (stored encrypted, set in
+  the Global symbols page); traces and schemas show the reference. Every
+  `${...}` in a config string is a symbol reference.
+- Keep a Flow `private` unless a frontend or an external client calls it:
+  `const _flow = { accessibility: "private", ... }`. Private Flows run for
+  Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
+  not listed, `public` is listed. Exploration, authoring, test and
+  qualification Flows are always private.
 - For repeated external work, model one item and iterate with `list.map` over
   a config collection or a small data block. Five or more copied `http.get` /
   `requestable.call` nodes must be refactored before promotion.

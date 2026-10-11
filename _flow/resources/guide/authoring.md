@@ -197,8 +197,46 @@ while `$$then` runs. Config precedence per root key: `_flow.config`, then
 project `_flow/engine.yaml`, then request config. The project configuration is
 `default` with the named configurations of the Flow's tags merged over it,
 value by value, the last tag winning (`flow://guide/tags`). Put structural constants
-(API roots, tokens, timeouts) in project or Flow `config.*`; reuse existing
+(API roots, timeouts) in project or Flow `config.*`; reuse existing
 project config instead of duplicating it in `_flow.config`.
+
+Secrets never appear in a configuration: reference a Convertigo global symbol
+ending with `.secret`, always with a default, so that the project declares it
+(empty or a dummy value):
+
+```yaml
+configs:
+  production:
+    sql:
+      connections:
+        orders:
+          url: "jdbc:postgresql://db:5432/orders"
+          user: "${orders.db.user=orders_reader}"
+          password: "${orders.db.password.secret=}"
+```
+
+The server replaces `${name}` / `${name=default}` for the running Flow only;
+the value is stored encrypted and set by an administrator in the Global
+symbols page. The effective configuration shown in the Studio, the traces and
+the schemas keep the reference. A symbol without default that is not declared
+becomes empty and marks the project.
+
+## Accessibility
+
+```javascript
+const _flow = {
+  "sourceVersion": 2,
+  "accessibility": "private",
+  "inputs": { ... },
+}
+```
+
+`private` Flows run only for Flow→Flow calls, the MCP and administrators;
+`hidden` Flows are callable over HTTP but not listed; `public` Flows are
+listed. Without `accessibility`, the Flow property applies. Keep internal,
+exploration, authoring, test and qualification Flows private; make `public`
+or `hidden` only what a frontend or an external client calls, and validate
+its inputs there.
 
 For JSON HTTP APIs: `local.response = http.get({ url: config.api.url })`,
 then read `local.response.body`; parse `local.response.text` only when the

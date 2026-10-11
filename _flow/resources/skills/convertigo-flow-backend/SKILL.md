@@ -17,7 +17,11 @@ Keep this role across backend lots instead of spawning a replacement agent.
 - Before creating a backend mock or custom primitive, use the ranked candidate
   returned by code diagnostics or one focused catalog lookup. Provider and
   workspace discovery are internal MCP concerns, not a separate agent tool.
-- Put service URLs and structural constants in project `config.*`.
+- Put service URLs and structural constants in project `config.*`. Secrets
+  are Convertigo global symbols ending with `.secret`, referenced with a
+  default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
+- Declare `accessibility: "private"` in `_flow` for every Flow a frontend or
+  external client does not call; `public` or `hidden` only for those.
 - Declare or infer useful output schemas; do not leave downstream contracts at
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before
