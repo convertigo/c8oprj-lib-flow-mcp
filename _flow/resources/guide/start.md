@@ -109,6 +109,10 @@ encode a block in `qname`.
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
   not listed, `public` is listed. Exploration, authoring, test and
   qualification Flows are always private.
+- `throw({ code, message, status })` what must interrupt the caller: the
+  answer is the error alone and a frontend call fails and stops its chain.
+  Return a normal result (`ok: false` with a reason) for an outcome the caller
+  handles, such as a wrong password or nothing found.
 - For repeated external work, model one item and iterate with `list.map` over
   a config collection or a small data block. Five or more copied `http.get` /
   `requestable.call` nodes must be refactored before promotion.

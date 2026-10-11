@@ -69,6 +69,12 @@ function Greeting({ input, config, result }) {
   `throw` statements are rejected (`FLOWSCRIPT_UNSUPPORTED_SYNTAX`); there is
   no `else if`: nest an `if` block in `$$else`. Raise errors with
   `throw({ code, message, status, details })`.
+- **Error or answer:** `throw` what must interrupt the caller (missing rights,
+  resource or parameter, failed dependency), with a `status` when one fits:
+  the Flow answers its error alone and a frontend action fails and stops its
+  chain. Return a normal result for an outcome the caller handles (wrong
+  password, nothing found): `result.ok = false` with its reason, never a
+  result made of an `error` object alone.
 - **Values:** arithmetic and comparisons stay expressions (`left + 1`,
   `!local.entity`). Expressions are null-safe and allow index reads
   (`local.items[0]`, `current["media:thumbnail"]`). Object literals are values

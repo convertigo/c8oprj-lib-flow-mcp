@@ -51,6 +51,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
   tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
   rules in `app.flow.css` and expose concise classes.
+- A Flow that throws fails its call: the chain stops and `Status` shows the
+  message (`@.Flow.error.message` stays readable). Branch with `If` on a
+  normal result such as `ok: false`, never on a failed call.
 - For a focused edit, prefer `code-rg` plus the smallest revision-checked
   `code-patch`. When more context is needed, use bounded `code-get` with
   `startLine`, `endLine` and the current `revision`; read the complete source
