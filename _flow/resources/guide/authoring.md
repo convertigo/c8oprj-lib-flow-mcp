@@ -330,7 +330,7 @@ remove the line to restore it.
 repositories:                 # optional, Maven Central by default
   - https://repo.maven.apache.org/maven2
 jars:
-  - maven: com.querydsl:querydsl-sql:7.7   # no transitive dependency: list each jar
+  - maven: io.github.openfeign.querydsl:querydsl-sql:7.7   # no transitive dependency: list each jar
     sha256: "<64 hex>"
   - url: https://download.example.com/driver-1.2.jar
     sha256: "<64 hex>"
