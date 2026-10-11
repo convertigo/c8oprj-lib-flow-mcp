@@ -221,6 +221,36 @@ symbols page. The effective configuration shown in the Studio, the traces and
 the schemas keep the reference. A symbol without default that is not declared
 becomes empty and marks the project.
 
+## Protected authoring
+
+An application may register what it prepared (a data source, an adopted
+schema) through two platform blocks, never through Java internals:
+
+```javascript
+local.preview = config.mutate({
+  $$id: "preview",
+  project: "sampleApp",
+  configuration: "dataLab",          // default is the config branch, a name is configs.<name>
+  path: "data.sources.orders",
+  op: "set",                         // set, merge or remove
+  value: { provider: "sql", connection: "labPg", table: "orders", readOnly: true },
+  dryRun: true,
+})
+// confirm with revision: local.preview.previousRevision, persist: "draft" or "save"
+```
+
+`schema.adopt({ qname, node?, schema, dryRun, revision, persist })` replaces
+`_flow.outputs` of a Flow (without `node`) or adopts the schema of one node;
+pass the complete schema, a proposal is never adopted implicitly.
+
+Both run for an administrator over HTTP (POST with the session XSRF token) or
+an authenticated MCP call only, whatever the accessibility of the Flows on the
+way; anyone else gets `AUTHORING_FORBIDDEN`, dry runs included. A dry run
+returns `before`, `after` and `previousRevision`; a change in between answers
+a revision conflict. `persist: "draft"` keeps the working copy the Save of the
+project publishes; `"save"` writes that one file and is refused over its
+unsaved changes. Secret keys only take `"${<project>.<usage>.<name>.secret=}"`.
+
 ## Accessibility
 
 ```javascript
