@@ -322,6 +322,24 @@ remove the line to restore it.
   into the project class path): the same tools. Create one with a patch from
   `--- /dev/null` (`@@ -0,0 +1,N @@`); its `package` matches its folder.
   Use Java for batched hotspots called once from Rhino, not per row or cell.
+- Jars the project needs (`libs/jars.yaml`, same tools): never commit them;
+  declare Maven coordinates or http(s) URLs, each with its quoted `sha256`.
+  The server downloads and checks them, the exported `.car` carries them.
+
+```yaml
+repositories:                 # optional, Maven Central by default
+  - https://repo.maven.apache.org/maven2
+jars:
+  - maven: com.querydsl:querydsl-sql:7.7   # no transitive dependency: list each jar
+    sha256: "<64 hex>"
+  - url: https://download.example.com/driver-1.2.jar
+    sha256: "<64 hex>"
+```
+
+  Credentials of a private repository are global symbols in its URL
+  (`https://${repo.user}:${repo.password.secret}@host/path`). A
+  non-redistributable driver stays in a private library project that carries
+  its jar in `libs/`.
 
 ## Samples
 
