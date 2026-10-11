@@ -78,6 +78,23 @@ try {
       guarded.__flowMcpAuthenticationError.code === "missing_token",
     "An unauthenticated HTTP MCP request did not produce the bearer challenge");
 
+  // An authenticated MCP request is marked for the protected authoring primitives of lib_flow_engine
+  var attributes = {};
+  var authenticatedRequest = { jsonrpc: "2.0", id: 9, method: "initialize" };
+  assertTrue(jwt.guardRequest({
+    convertigoContext: function () {
+      return {
+        httpServletRequest: {
+          getHeader: function (name) { return name === "Authorization" ? "Bearer " + token : null; },
+          getSession: function () { return null; },
+          setAttribute: function (name, value) { attributes[name] = String(value); }
+        }
+      };
+    }
+  }, authenticatedRequest) === authenticatedRequest, "A valid bearer token was rejected by the guard");
+  assertTrue(String(attributes["com.convertigo.flow.principal"] || "").indexOf("mcp:") === 0,
+    "An authenticated MCP request was not marked: " + JSON.stringify(attributes));
+
   var internal = { jsonrpc: "2.0", id: 8, method: "initialize" };
   assertTrue(jwt.guardRequest({ convertigoContext: function () { return {}; } }, internal) === internal,
     "A trusted internal Flow invocation was unexpectedly rejected");

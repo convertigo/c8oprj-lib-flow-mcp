@@ -732,9 +732,24 @@
 		} catch (_ignoreResponseStatus) {}
 	}
 
+	// The authenticated principal of an MCP request, for the protected authoring primitives of lib_flow_engine
+	// (config.mutate...): a server-side request attribute, which a client cannot send.
+	var PRINCIPAL_ATTRIBUTE = "com.convertigo.flow.principal";
+
+	function markPrincipal(ctx, authentication) {
+		try {
+			var contextObject = convertigoContext(ctx);
+			var httpRequest = contextObject && contextObject.httpServletRequest;
+			if (httpRequest !== null && httpRequest !== undefined && authentication.kind !== "internal") {
+				httpRequest.setAttribute(PRINCIPAL_ATTRIBUTE, "mcp:" + (trim(authentication.user) || trim(authentication.tokenId) || authentication.kind));
+			}
+		} catch (_noRequest) {}
+	}
+
 	function guardRequest(ctx, request) {
 		var authentication = authenticateRequest(ctx, request);
 		if (authentication && authentication.authenticated === true) {
+			markPrincipal(ctx, authentication);
 			return request;
 		}
 		applyUnauthorizedResponse(ctx);
