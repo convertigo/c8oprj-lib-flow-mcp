@@ -1,6 +1,6 @@
-// flow-resource-patch and flow-resource-delete refuse a source with unsaved Studio changes. The Java sources of the
-// project (libs/src) are never working copies of the FlowEngine, which refuses to tell their state ("Unsupported Flow
-// source file"): the guard lets them through without asking it.
+// flow-resource-patch and flow-resource-delete refuse a source with unsaved Studio changes. The libraries of the
+// project (libs/), as the other files the FlowEngine does not hold (.md guides, .html editors...), are never working
+// copies, and the FlowEngine refuses to tell their state ("Unsupported Flow source file"): the guard lets them through.
 var projectDir = new java.io.File(String(arguments[0] || ".")).getCanonicalFile();
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(projectDir, "_flow/lib/mcp.js"), "UTF-8"));
 function assert(value, message) { if (!value) throw new Error(message); }
@@ -30,10 +30,11 @@ function sourceStore() {
 var assertNoWorkingCopy = extract("assertNoWorkingCopy");
 var args = { projectDir: String(projectDir) };
 
-["libs/src/com/acme/Rows.java", "./libs/src/Root.java", "/libs/src/com/acme/Rows.java"].forEach(function (path) {
+["libs/src/com/acme/Rows.java", "./libs/src/Root.java", "/libs/src/com/acme/Rows.java", "libs/jars.yaml",
+	"_flow/resources/guide/authoring.md", "resources/readme.txt", "_flow/types/editors/text.html"].forEach(function (path) {
 	assertNoWorkingCopy(args, path, "flow-resource-patch");
 });
-assert(asked.length === 0, "the FlowEngine is not asked about the Java sources: " + asked);
+assert(asked.length === 0, "the FlowEngine is not asked about the libraries nor the files it does not hold: " + asked);
 
 var block = String(new File(projectDir, "_flow/blocks/demo.block.js").getCanonicalPath());
 assertNoWorkingCopy(args, "_flow/blocks/demo.block.js", "flow-resource-patch");

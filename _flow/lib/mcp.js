@@ -2231,9 +2231,11 @@
 
 	// Resource tools write files: never under a Studio working copy of the same source.
 	function assertNoWorkingCopy(args, path, name) {
-		// The FlowEngine keeps working copies of Flow sources only: the Java sources and libraries of the project (libs/)
-		// are plain files, and the FlowEngine refuses to tell the state of such a file.
-		if (/^libs\//.test(path.replace(/\\/g, "/").replace(/^(?:\.?\/)+/, ""))) {
+		// The FlowEngine keeps working copies of Flow sources only (FlowEngine.canonicalSourcePath): the libraries of
+		// the project (libs/) and the other files (guides in .md, .java, .html...) are plain files, and the FlowEngine
+		// refuses to tell the state of such a file.
+		var relative = path.replace(/\\/g, "/").replace(/^(?:\.?\/)+/, "");
+		if (/^libs\//.test(relative) || !/\.(?:flow\.svelte|flow\.css|block\.js|type\.yaml|schema\.json|yaml|json|js|svelte)$/.test(relative)) {
 			return;
 		}
 		var store = sourceStore(args);
