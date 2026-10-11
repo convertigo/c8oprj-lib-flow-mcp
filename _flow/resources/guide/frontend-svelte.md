@@ -307,7 +307,13 @@ Layout -> PageContent
 ```
 
 The actions of an event run in order; each one waits for the previous and the
-chain stops at the first error. When an event fires again while its actions
+chain stops at the first error. A Flow that fails answers its error alone,
+`{ error: { code, message } }`: its call ends in error, its `Status` shows the
+message and the chain stops, while `@.Flow.error.message` stays readable; a
+result with an `error` field among others is a business answer. A `DataGrid`
+`OnChange` also fires when new rows drop the selected one (`@event.source` is
+`selection`, `@event.selectedRows` empty): what it runs must accept an empty
+selection. When an event fires again while its actions
 still run, its Expert `reentrancy` decides: `drop` ignores it, `latest` cancels
 the running actions, `serial` queues it (at most 16), `parallel` runs both;
 Expert `debounceMs` first waits for a pause. The defaults fit the common case:
