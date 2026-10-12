@@ -1,7 +1,7 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
-  "description": "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction, a sequence or a Flow item.",
+  "description": "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction, a sequence or a Flow item; or the sources a Flow the project no longer has left.",
   "icon": "mdi:delete-outline",
   "properties": {
     "project": {
@@ -12,7 +12,7 @@ const _meta = {
     "qname": {
       "kind": "text",
       "type": "string",
-      "description": "QName of the object, as the Studio and the code tools name it: project.Flow, project.Connector, project.Connector.Transaction, or the qualified id of a Flow item.",
+      "description": "QName of the object, as the Studio and the code tools name it: project.Flow, project.Connector, project.Connector.Transaction, or the qualified id of a Flow item. project.Flow also names the sources of a Flow the project no longer has.",
     },
     "dryRun": {
       "kind": "literal",
@@ -101,6 +101,59 @@ const _meta = {
 		return value == null ? {} : JSON.parse(String(value.toString()));
 	}
 
+	/**
+	 * The sources of a Flow the project no longer has, as a Flow deleted by an older Studio left them: its
+	 * FlowScript and its learned schemas go as the sources of a deleted Flow, at the Save of the project.
+	 */
+	function removeOrphanFlow(ctx, node, props, mcp, removal, project, projectName, qname) {
+		var flowName = qname.indexOf(projectName + ".") === 0 ? qname.substring(projectName.length + 1) : "";
+		var orphan = /^[A-Za-z_][A-Za-z0-9_]*$/.test(flowName) && typeof removal.checkOrphanFlow === "function"
+			? removal.checkOrphanFlow(project, flowName) : null;
+		if (orphan == null) {
+			fail("OBJECT_NOT_FOUND", "No object " + qname + " in the loaded projects.",
+				typeof removal.checkOrphanFlow === "function"
+					? "Use flow-list for Flows, or the qname shown by the Studio."
+					: "Use flow-list for Flows, or the qname shown by the Studio. Removing the sources a deleted Flow left needs a newer Convertigo (develop of 12/10/2026 evening or later).");
+		}
+		var check = jsonValue(orphan);
+		var result = {
+			ok: true,
+			project: projectName,
+			qname: qname,
+			type: "OrphanFlowSource",
+			dryRun: boolValue(props.dryRun, true),
+			removes: {
+				folders: [],
+				database: null,
+				sources: check.sources || []
+			},
+			done: false,
+			saved: false
+		};
+		if (result.dryRun) {
+			result.next = "The project has no Flow " + flowName + ", only these sources it left. Call again with dryRun:false to remove them;" +
+				" the Save of the project writes it, or pass saveProject:true.";
+			ctx.write(props.out || "local.objectRemoval", result);
+			return result;
+		}
+		var saveProject = boolValue(props.saveProject, false) &&
+			mcp.assertProjectSaveAllowed({ project: projectName, saveProject: true }, flowName);
+		var removed = jsonValue(removal.removeOrphanFlow(project, flowName));
+		result.done = removed.done === true;
+		if (!result.done) {
+			fail("OBJECT_REMOVE_FAILED", String(removed.error || ("Unable to remove the sources of " + qname + ".")));
+		}
+		if (saveProject) {
+			Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.exportProject(project);
+			result.saved = true;
+		}
+		result.studioRefresh = mcp.studioRefreshFlowEngine({ project: projectName }, "orphan Flow sources removed");
+		result.next = result.saved ? "Removed and saved." :
+			"Removed as working copies; the Save of the project deletes the files.";
+		ctx.write(props.out || "local.objectRemoval", result);
+		return result;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -126,8 +179,7 @@ const _meta = {
 			}
 			var dbo = studio.Utils.getDbo(qname);
 			if (dbo == null) {
-				fail("OBJECT_NOT_FOUND", "No object " + qname + " in the loaded projects.",
-					"Use flow-list for Flows, or the qname shown by the Studio.");
+				return removeOrphanFlow(ctx, node, props, mcp, removal, project, projectName, qname);
 			}
 			if (dbo instanceof Packages.com.twinsoft.convertigo.beans.core.Project) {
 				fail("OBJECT_IS_PROJECT", qname + " is a project.", "Use flow-project-remove.");
