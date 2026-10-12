@@ -169,6 +169,9 @@ encode a block in `qname`.
   source of truth.
 - Do not call `flow-schema-reset` during normal authoring;
   `flow://guide/authoring` owns the schema lifecycle.
+- Project version and description: `flow-project-metadata({ project })` reads
+  them, `version` and/or `description` set them (the Save of the project writes
+  it, or `saveProject:true`). Never edit the project YAML for them.
 - Workspace cleanup: `flow-project-remove({ project, dryRun:true })` first;
   `action:"delete"` only after `safe:true`; never `force:true` without
   reviewing every blocker.

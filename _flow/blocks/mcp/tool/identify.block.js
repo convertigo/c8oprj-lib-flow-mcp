@@ -38,7 +38,7 @@ const _meta = {
 		if (name.match(/^flow-(run|test|block-test)$/)) {
 			return "runtime";
 		}
-		if (name.match(/^flow-(list|get|set|apply|edit|node-|schema-reset|project-(bootstrap|reference|remove)|object-remove|fullsync-scaffold)/)) {
+		if (name.match(/^flow-(list|get|set|apply|edit|node-|schema-reset|project-(bootstrap|reference|remove|metadata)|object-remove|fullsync-scaffold)/)) {
 			return "author";
 		}
 		return "unknown";

@@ -1777,6 +1777,7 @@
 			"flow-catalog": true,
 			"flow-list": true,
 			"flow-object-remove": true,
+			"flow-project-metadata": true,
 			"flow-resource-delete": true,
 			"flow-resource-get": true,
 			"flow-resource-patch": true,
