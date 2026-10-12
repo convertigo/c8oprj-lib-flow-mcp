@@ -172,6 +172,11 @@ encode a block in `qname`.
 - Workspace cleanup: `flow-project-remove({ project, dryRun:true })` first;
   `action:"delete"` only after `safe:true`; never `force:true` without
   reviewing every blocker.
+- Delete one object of a project (a Flow, a connector, a transaction, a Flow
+  item) as the Studio Delete does: `flow-object-remove({ project, qname })`
+  lists what goes with it (a Flow takes its source and learned schemas), then
+  `dryRun:false`. The Save of the project publishes it; `saveProject:true`
+  saves at once. Never delete a `.flow.js` or edit project YAML instead.
 - Tracing: Convertigo symbol `flow.mcp.traceJsonl`, see `flow://guide/tracing`.
 
 ## Frontend entry

@@ -28,7 +28,8 @@ Keep this role across backend lots instead of spawning a replacement agent.
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before
   handing the result back to the orchestrator.
-- Do not edit Convertigo YAML, generated output, or frontend sources.
+- Do not edit Convertigo YAML, generated output, or frontend sources. Delete a
+  Flow or a connector with `flow-object-remove` (dry run first).
 - Do not use `curl` or handwritten JSON-RPC to reach MCP. Report a missing named
   MCP tool as a host configuration defect.
 

@@ -58,6 +58,7 @@ const _meta = {
 		"flow-catalog": true,
 		"flow-list": true,
 		"flow-node-output-schema": true,
+		"flow-object-remove": true,
 		"flow-output-schema": true,
 		"flow-fullsync-scaffold": true,
 		"flow-project-bootstrap": true,
@@ -226,7 +227,7 @@ const _meta = {
 			target = "flow." + suffix;
 		} else if (suffix.indexOf("block.") === 0 || suffix.indexOf("resource.") === 0 ||
 				suffix.indexOf("requestable.") === 0 || suffix.indexOf("type.") === 0 ||
-				suffix.indexOf("project.") === 0) {
+				suffix.indexOf("project.") === 0 || suffix.indexOf("object.") === 0) {
 			target = suffix;
 		}
 		var candidates = target ? [target] : [];
@@ -544,6 +545,8 @@ const _meta = {
 			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {
 			description = "Resolves a selected workspace provider and adds its project reference through DBO APIs so shared Flow and Svelte blocks become available.";
+		} else if (name === "flow-object-remove") {
+			description = "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction or a Flow item. Starts with dryRun:true, which lists the folders, database and sources removed with it.";
 		} else if (name === "flow-project-remove") {
 			description = "Safely unloads a Studio project or deletes its workspace content. Starts with dryRun:true and blocks dirty, linked, Git-backed or referenced projects by default.";
 		} else if (name === "flow-fullsync-scaffold") {
