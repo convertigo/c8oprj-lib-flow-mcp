@@ -897,6 +897,8 @@ const _meta = {
 		var out = {};
 		Object.keys(properties || {}).forEach(function (name) {
 			var definition = properties[name] || {};
+			// a hidden property (a compatibility alias...) still validates in sources, but is not offered
+			if (definition.hidden === true) return;
 			var value = String(definition.type || "unknown") + ":" +
 				(definition.intents || ["literal"]).join("|");
 			if (definition["enum"] && definition["enum"].length) {

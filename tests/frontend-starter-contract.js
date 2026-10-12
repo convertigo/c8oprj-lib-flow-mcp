@@ -27,7 +27,10 @@ var result = block.run({
 	},
 	authoringContractSource: function () {
 		return { items: [
-			{ id: "svelte.text", tag: "Text", properties: { text: { type: "string", intents: ["literal", "source"] } }, slots: {} },
+			{ id: "svelte.text", tag: "Text", properties: {
+				text: { type: "string", intents: ["literal", "source"] },
+				currency: { type: "string", intents: ["literal"], hidden: true }
+			}, slots: {} },
 			{ id: "frontbuilder.svelte.callSequence", tag: "CallSequence", properties: {}, slots: {} },
 			{ id: "svelte.futurePanel", tag: "FuturePanel", properties: { title: { type: "string", intents: ["literal"] } }, slots: { children: {} } },
 			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text", properties: { text: { type: "string", intents: ["literal", "source"] } } },
@@ -37,6 +40,11 @@ var result = block.run({
 	},
 	write: function (_path, value) { written = value; }
 }, {});
+
+// a hidden property (a compatibility alias) still validates in sources, but is not offered
+var starterText = result.authoringContract.blocks.filter(function (item) { return item.tag === "Text"; })[0];
+assertTrue(starterText && starterText.properties.text && starterText.properties.currency === undefined,
+	"The starter contract offered a hidden property: " + JSON.stringify(starterText));
 
 var tags = result.authoringContract.blocks.map(function (item) { return item.tag; });
 assertTrue(tags.indexOf("Text") !== -1 && tags.indexOf("CallSequence") !== -1 &&
