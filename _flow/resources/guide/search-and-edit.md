@@ -59,3 +59,10 @@ lists the blocks accepted at one qualified `parentPath`; execute an item's
 `apply` unchanged. `authoring-mutate` and `frontend-svelte-mutate` apply
 structured mutations returned by the palette or picker; prefer source patches
 for everything else.
+
+A tree node names its object twice. `summary` is the line the Studio tree shows,
+its main configuration (`bronn = false`, `if page.count > 0`,
+`loginCard · padding: 24px`): read it to follow a Flow or a page without
+fetching every node. It may be truncated with `…`, never parse it. Its identity
+is `path` and `nodeId` (the `$$id` of the source): address and edit nodes with
+them, and read or change their properties, never their summary.
