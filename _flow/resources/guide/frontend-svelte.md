@@ -471,7 +471,9 @@ Before creating a local component or mock, query the contextual palette:
 `query`. Execute the matching item's `apply` unchanged; the palette searches
 the project, its references and the workspace and adds a required project
 reference. `flow-project-reference` adds a reference explicitly, or pass
-`references` to `flow-project-bootstrap`. Referenced components are read-only
+`references` to `flow-project-bootstrap`; its `url` (with `branch` and `path`)
+sets or updates the Git URL another workspace imports the provider from, so a
+published project brings its dependencies. Referenced components are read-only
 library blocks: edit them in their provider project. Otherwise keep a typed,
 visibly incomplete mock; never replace a requested chart with a table or fake
 data. `authoring-tree` omits the catalogs by default; use the palette for

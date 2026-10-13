@@ -1,7 +1,7 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
-  "description": "Resolves a workspace Convertigo project and adds its reference through DBO APIs.",
+  "description": "Resolves a workspace Convertigo project and adds its reference through DBO APIs, or sets the Git URL another workspace imports it from.",
   "icon": "mdi:source-branch",
   "properties": {
     "project": {
@@ -13,6 +13,26 @@ const _meta = {
       "kind": "text",
       "type": "string",
       "description": "Workspace Convertigo project to resolve and reference.",
+    },
+    "url": {
+      "kind": "text",
+      "type": "string",
+      "description": "Git URL of the referenced project (https://host/org/repo.git or git@host:org/repo.git) or URL of its .zip/.car archive, which another workspace imports it from; sets or updates the URL of an existing reference.",
+    },
+    "branch": {
+      "kind": "text",
+      "type": "string",
+      "description": "Git branch of the referenced project, with url; an empty value removes it.",
+    },
+    "path": {
+      "kind": "text",
+      "type": "string",
+      "description": "Folder of the project in its Git repository when it is not the root, with url; an empty value removes it.",
+    },
+    "autoPull": {
+      "kind": "literal",
+      "type": "boolean",
+      "description": "Pulls the Git repository of the referenced project when the project loads, with url.",
     },
     "dryRun": {
       "kind": "literal",
@@ -40,7 +60,16 @@ const _meta = {
         "reference": {
           "type": "string",
         },
+        "url": {
+          "type": "string",
+        },
+        "previousUrl": {
+          "type": "string",
+        },
         "created": {
+          "type": "boolean",
+        },
+        "updated": {
           "type": "boolean",
         },
         "saved": {
@@ -175,17 +204,66 @@ const _meta = {
 		}
 	}
 
-	function hasReference(project, referenceName) {
+	function projectReference(project, referenceName) {
 		var ProjectSchemaReference = Packages.com.twinsoft.convertigo.beans.references.ProjectSchemaReference;
 		var iterator = project.getReferenceList().iterator();
 		while (iterator.hasNext()) {
 			var reference = iterator.next();
 			if (reference instanceof ProjectSchemaReference &&
 					String(reference.getParser().getProjectName()) === referenceName) {
-				return true;
+				return reference;
 			}
 		}
-		return false;
+		return null;
+	}
+
+	function fail(code, message, hint) {
+		var error = new Error(message);
+		error.code = code;
+		if (hint) {
+			error.hint = hint;
+		}
+		throw error;
+	}
+
+	// The project URL of the reference, "name=url:path=...:branch=...:autoPull=true" as Convertigo writes it, from the
+	// current one and the given url, branch, path and autoPull; null when none of them is given
+	function referenceUrl(referenceName, current, props) {
+		var keys = ["url", "branch", "path", "autoPull"].filter(function (key) {
+			var value = prop(props, key);
+			return value !== undefined && value !== null;
+		});
+		if (!keys.length) {
+			return null;
+		}
+		var ProjectUrlParser = Packages.com.twinsoft.convertigo.engine.util.ProjectUrlParser;
+		var parser = new ProjectUrlParser(String(current || referenceName));
+		var url = prop(props, "url");
+		if (url !== undefined && url !== null) {
+			url = String(url).trim();
+			if (url.indexOf(referenceName + "=") === 0) {
+				parser.setUrl(url);
+			} else {
+				parser.setGitUrl(url);
+			}
+		}
+		if (keys.indexOf("branch") !== -1) {
+			parser.setGitBranch(String(prop(props, "branch")).trim());
+		}
+		if (keys.indexOf("path") !== -1) {
+			parser.setProjectPath(String(prop(props, "path")).trim());
+		}
+		if (keys.indexOf("autoPull") !== -1) {
+			parser.setAutoPull(boolValue(prop(props, "autoPull")));
+		}
+		if (String(parser.getProjectName()) !== referenceName) {
+			fail("INVALID_REFERENCE_URL", "The URL names the project " + parser.getProjectName() + ", not " + referenceName + ".");
+		}
+		if (parser.getGitUrl() == null) {
+			fail("INVALID_REFERENCE_URL", "The reference of " + referenceName + " has no Git or archive URL: " + String(url || current || ""),
+				"A Git URL ends with .git (https://github.com/org/repo.git, git@github.com:org/repo.git); an archive URL ends with .zip or .car.");
+		}
+		return String(parser.getProjectUrl());
 	}
 
 	function refreshStudio(engine, project) {
@@ -239,17 +317,33 @@ const _meta = {
 				throw new Error("Unable to resolve referenced Convertigo project: " + referenceName +
 					". Checked workspace roots: " + lastWorkspaceRoots.join(", "));
 			}
-			var exists = hasReference(project, referenceName);
+			var existing = projectReference(project, referenceName);
+			var currentUrl = existing == null ? "" : String(existing.getProjectName());
+			var url = referenceUrl(referenceName, currentUrl, props);
+			var updated = existing != null && url !== null && url !== currentUrl;
 			var response = {
 				ok: true,
 				project: projectNameValue,
 				reference: referenceName,
+				url: url !== null ? url : currentUrl || referenceName,
 				dryRun: dryRun,
-				created: !exists,
+				created: existing == null,
+				updated: updated,
 				saved: false
 			};
-			if (!dryRun && !exists) {
-				Engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
+			if (updated) {
+				response.previousUrl = currentUrl;
+			}
+			if (!dryRun && (existing == null || updated)) {
+				// the save writes the whole project: refused while it holds unsaved Studio work
+				ctx.lib("mcp").assertProjectSaveAllowed({ project: projectNameValue, saveProject: true }, "");
+				var reference = existing || Engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
+				if (url !== null && url !== String(reference.getProjectName())) {
+					reference.setProjectName(url);
+					reference.hasChanged = true;
+					project.hasChanged = true;
+				}
+				response.url = String(reference.getProjectName());
 				Engine.theApp.databaseObjectsManager.exportProject(project);
 				response.saved = true;
 				refreshStudio(Engine, project);

@@ -549,7 +549,7 @@ const _meta = {
 		} else if (name === "flow-library-search") {
 			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {
-			description = "Resolves a selected workspace provider and adds its project reference through DBO APIs so shared Flow and Svelte blocks become available.";
+			description = "Resolves a selected workspace provider and adds its project reference through DBO APIs so shared Flow and Svelte blocks become available. url (with branch, path) sets or updates the Git URL another workspace imports the provider from; start with dryRun:true.";
 		} else if (name === "flow-object-remove") {
 			description = "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction or a Flow item; project.Flow also removes the sources a Flow the project no longer has left. Starts with dryRun:true, which lists the folders, database and sources removed with it.";
 		} else if (name === "flow-project-metadata") {
