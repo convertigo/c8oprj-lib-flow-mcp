@@ -9,6 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Routes one unified code-* MCP request to Flow, block or canonical source tools.",
+  "summary": "code-{{operation}}",
   "properties": {
     "request": {
       "kind": "expression",

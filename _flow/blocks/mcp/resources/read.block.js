@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds the MCP resources/read response.",
+  "summary": [
+    "resources/read -> {{out}}",
+    "resources/read",
+  ],
   "icon": "mdi:book-open-variant",
   "properties": {
     "request": {

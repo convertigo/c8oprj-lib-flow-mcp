@@ -3,6 +3,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Sample FlowScript block that formats one greeting from typed inputs.",
+  "summary": "greeting of {{name}}",
   "icon": "mdi:card-text-outline",
   "visibility": "internal",
   "tags": [

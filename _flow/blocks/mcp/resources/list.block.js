@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds the MCP resources/list response.",
+  "summary": [
+    "resources/list -> {{out}}",
+    "resources/list",
+  ],
   "icon": "mdi:book-open-page-variant-outline",
   "properties": {
     "request": {

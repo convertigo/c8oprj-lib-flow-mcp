@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds the MCP initialize response.",
+  "summary": [
+    "initialize -> {{out}}",
+    "initialize",
+  ],
   "icon": "mdi:hand-wave-outline",
   "properties": {
     "request": {

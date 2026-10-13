@@ -4,6 +4,7 @@ const _meta = {
   private: true,
   runtime: "rhino",
   description: "Reads the MCP server identity from its current Convertigo project.",
+  summary: ["server info -> {{out}}", "server info"],
   properties: {
     out: { kind: "path", mode: "write", default: "local.serverInfo" },
   },

@@ -6,6 +6,7 @@ const _meta = {
   uses: ["mcp"],
   icon: "mdi:tag-search-outline",
   description: "Adapts authenticated MCP tag commands to the shared Java tag domain.",
+  summary: "tags-{{operation}}",
   properties: {
     request: { kind: "expression", type: "object", default: "input.request" },
     operation: { kind: "text", type: "string" },

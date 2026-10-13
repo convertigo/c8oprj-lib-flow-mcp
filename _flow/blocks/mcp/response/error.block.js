@@ -7,6 +7,11 @@ const _meta = {
     "mcp",
   ],
   "description": "Wraps an error in a JSON-RPC error response.",
+  "summary": [
+    "error {{code}}: {{message}} -> {{out}}",
+    "error {{code}}: {{message}}",
+    "error {{code}}",
+  ],
   "hooks": {
     "file": "error.hooks.js",
   },

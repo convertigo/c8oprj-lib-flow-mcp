@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Handles one MCP JSON-RPC request object.",
+  "summary": [
+    "handle MCP request -> {{out}}",
+    "handle MCP request",
+  ],
   "icon": "mdi:router-network",
   "properties": {
     "request": {

@@ -7,6 +7,10 @@ const _meta = {
     "mcp",
   ],
   "description": "Accepts MCP notifications without a JSON-RPC response.",
+  "summary": [
+    "accept MCP notification -> {{out}}",
+    "accept MCP notification",
+  ],
   "hooks": {
     "file": "notification.hooks.js",
   },

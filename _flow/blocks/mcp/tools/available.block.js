@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Returns the Flow MCP tool descriptors.",
+  "summary": [
+    "available tools -> {{out}}",
+    "available tools",
+  ],
   "icon": "mdi:format-list-checks",
   "properties": {
     "out": {

@@ -7,6 +7,7 @@ const _meta = {
     "mcp",
   ],
   "description": "Runs one MCP tool by calling a Flow block capability and wrapping the JSON-RPC response.",
+  "summary": "run {{target}}",
   "hooks": {
     "file": "run.hooks.js",
   },

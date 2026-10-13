@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds the MCP resources/templates/list response.",
+  "summary": [
+    "resources/templates/list -> {{out}}",
+    "resources/templates/list",
+  ],
   "icon": "mdi:file-tree-outline",
   "properties": {
     "request": {

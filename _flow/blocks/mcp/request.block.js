@@ -8,6 +8,10 @@ const _meta = {
     "jwt",
   ],
   "description": "Parses an MCP JSON-RPC request payload.",
+  "summary": [
+    "parse MCP request -> {{out}}",
+    "parse MCP request",
+  ],
   "hooks": {
     "file": "request.hooks.js",
   },

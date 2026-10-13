@@ -7,6 +7,10 @@ const _meta = {
     "mcp",
   ],
   "description": "Dispatches one MCP tools/call request by visible tool family.",
+  "summary": [
+    "tools/call -> {{out}}",
+    "tools/call",
+  ],
   "display": "tools.call -> {{ input.out }}",
   "hooks": {
     "file": "call.hooks.js",

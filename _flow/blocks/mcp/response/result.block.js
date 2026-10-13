@@ -7,6 +7,10 @@ const _meta = {
     "mcp",
   ],
   "description": "Wraps a payload in a JSON-RPC result response.",
+  "summary": [
+    "result {{result}} -> {{out}}",
+    "result {{result}}",
+  ],
   "hooks": {
     "file": "result.hooks.js",
   },

@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Handles a JSON-RPC batch request.",
+  "summary": [
+    "handle MCP batch -> {{out}}",
+    "handle MCP batch",
+  ],
   "icon": "mdi:call-split",
   "properties": {
     "request": {

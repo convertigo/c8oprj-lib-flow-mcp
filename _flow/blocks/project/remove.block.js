@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Safely unloads a Convertigo project from Studio or removes its workspace content after explicit checks.",
+  "summary": [
+    "{{action}} project {{project}}",
+    "remove project {{project}}",
+  ],
   "icon": "mdi:folder-remove-outline",
   "properties": {
     "project": {

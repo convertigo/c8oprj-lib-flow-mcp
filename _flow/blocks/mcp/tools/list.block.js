@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds the MCP tools/list response.",
+  "summary": [
+    "tools/list -> {{out}}",
+    "tools/list",
+  ],
   "icon": "mdi:format-list-bulleted-square",
   "properties": {
     "request": {

@@ -2,6 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Sample Rhino block that computes a SHA-256 digest through Java.",
+  "summary": "sha256 of {{text}}",
   "icon": "mdi:fingerprint",
   "visibility": "internal",
   "tags": [

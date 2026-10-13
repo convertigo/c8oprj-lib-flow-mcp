@@ -2,6 +2,10 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Builds a JSON-RPC method-not-found error.",
+  "summary": [
+    "method not found -> {{out}}",
+    "method not found",
+  ],
   "icon": "mdi:alert-circle-outline",
   "properties": {
     "request": {
