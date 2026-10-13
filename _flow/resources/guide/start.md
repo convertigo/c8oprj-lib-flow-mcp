@@ -178,10 +178,14 @@ encode a block in `qname`.
 - Delete one object of a project (a Flow, a connector, a transaction, a Flow
   item) as the Studio Delete does: `flow-object-remove({ project, qname })`
   lists what goes with it (a Flow takes its source and learned schemas), then
-  `dryRun:false`. The Save of the project publishes it; `saveProject:true`
-  saves at once. A `.flow.js` left without its Flow (`type:"OrphanFlowSource"`)
-  goes the same way with its `qname`. Never delete a `.flow.js` or edit
-  project YAML instead.
+  `dryRun:false` deletes it and saves the project, so that a Flow can then take
+  its name. It is refused while the project holds unsaved Studio work (listed
+  by the dry run in `unsavedChanges`): ask the user to save first.
+  `saveProject:false` only deletes in the loaded project, for the next Save;
+  creating a Flow with the name of a sequence whose deletion is not saved is
+  refused (`FLOW_NAME_DELETION_UNSAVED`). A `.flow.js` left without its Flow
+  (`type:"OrphanFlowSource"`) goes the same way with its `qname`. Never delete
+  a `.flow.js` or edit project YAML instead.
 - Tracing: Convertigo symbol `flow.mcp.traceJsonl`, see `flow://guide/tracing`.
 
 ## Frontend entry

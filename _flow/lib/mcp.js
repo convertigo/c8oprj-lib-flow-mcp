@@ -849,6 +849,7 @@
 			}
 			result.updated = true;
 		} else {
+			assertFlowNameFree(args, name);
 			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
 			flow = new Flow();
 			flow.bNew = true;
@@ -1272,6 +1273,88 @@
 		} catch (_ignoreSourceDrafts) {
 		}
 		return pending;
+	}
+
+	// Objects edited in the Studio and not saved yet (changed or new), which an export of the project
+	// would write too. Flow sources and FlowEngine drafts are reported by pendingStudioDrafts; the
+	// object about to be deleted and its children do not count.
+	function unsavedProjectChanges(project, exceptQName) {
+		var changed = [];
+		var FlowEngineClass = null;
+		try {
+			FlowEngineClass = Packages.java.lang.Class.forName("com.twinsoft.convertigo.beans.flow.FlowEngine");
+		} catch (_noFlowEngineClass) {
+		}
+		function walk(dbo, depth) {
+			if (dbo == null || depth > 64 || changed.length >= 20) {
+				return;
+			}
+			var qname = "";
+			try {
+				qname = String(dbo.getQName());
+			} catch (_noQName) {
+			}
+			if (exceptQName && qname === String(exceptQName)) {
+				return;
+			}
+			if (isFlowDbo(dbo) || (FlowEngineClass != null && FlowEngineClass.isInstance(dbo))) {
+				return;
+			}
+			try {
+				if (dbo.hasChanged === true || dbo.bNew === true) {
+					changed.push(qname);
+				}
+			} catch (_noFlags) {
+			}
+			var children = [];
+			try {
+				children = dbo.getAllChildren().toArray();
+			} catch (_noChildren) {
+			}
+			for (var i = 0; i < children.length; i++) {
+				walk(children[i], depth + 1);
+			}
+		}
+		walk(project, 0);
+		return changed;
+	}
+
+	function assertNoUnsavedProjectChanges(project, projectName, exceptQName) {
+		var changed = unsavedProjectChanges(project, exceptQName);
+		if (changed.length) {
+			var error = new Error("Saving project " + projectName + " would also save unsaved Studio changes (" +
+				changed.slice(0, 10).join(", ") + (changed.length > 10 ? ", ..." : "") + "). Nothing was changed.");
+			error.code = "PROJECT_HAS_UNSAVED_CHANGES";
+			error.hint = "Let the user save the project in the Studio, or pass saveProject:false to leave the change for the next Save of the project.";
+			throw error;
+		}
+	}
+
+	// A Flow cannot take the name of a sequence the project file still declares: its deletion is not
+	// saved yet, and declaring both would bring the sequence back, and rename the Flow, at the next load.
+	function assertFlowNameFree(args, flowName) {
+		args = args || {};
+		var name = String(flowName || args.name || String(args.qname || args.flowQName || "").split(".").pop() || "");
+		if (!args.project || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || typeof Packages === "undefined") {
+			return;
+		}
+		var project = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager
+			.getOriginalProjectByName(String(args.project), false);
+		if (project == null || projectSequenceByName(project, name) != null) {
+			return;
+		}
+		var projectFile = new File(String(project.getDirPath()), "c8oProject.yaml");
+		if (!projectFile.isFile()) {
+			return;
+		}
+		var declared = new RegExp("^  \u2193" + name + " \\[(sequences\\.[A-Za-z0-9_.]+)\\]\\s*:", "m").exec(readUtf8(projectFile));
+		if (declared) {
+			var error = new Error(args.project + "." + name + " is still saved as a " + declared[1].substring("sequences.".length) +
+				" in c8oProject.yaml: its deletion is not saved. Nothing was changed.");
+			error.code = "FLOW_NAME_DELETION_UNSAVED";
+			error.hint = "Ask the user to save the project in the Studio, then create the Flow. Delete with flow-object-remove without saveProject:false, so that the deletion is saved at once.";
+			throw error;
+		}
 	}
 
 	function loadedProjectTargets() {
@@ -2455,6 +2538,7 @@
 		if (args.dryRun === true || !args.name) {
 			return mutationResult;
 		}
+		assertFlowNameFree(args, args.name);
 		var write = ctx.flowSet(args.name, mutationResult.source, args);
 		mutationResult.written = {
 			name: write.name,
@@ -3362,6 +3446,9 @@
 		withSourceDrafts: withSourceDrafts,
 		pendingStudioDrafts: pendingStudioDrafts,
 		assertProjectSaveAllowed: assertProjectSaveAllowed,
+		assertNoUnsavedProjectChanges: assertNoUnsavedProjectChanges,
+		unsavedProjectChanges: unsavedProjectChanges,
+		assertFlowNameFree: assertFlowNameFree,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,

@@ -38,8 +38,8 @@ const _meta = {
     "saveProject": {
       "kind": "literal",
       "type": "boolean",
-      "default": false,
-      "description": "Saves the project at once; refused while it holds unsaved Studio work. Otherwise the Save of the project publishes the deletion.",
+      "default": true,
+      "description": "Saves the project with the deletion, so that the files match the loaded project; refused, before any change, while the project holds unsaved Studio work. false leaves the deletion for the next Save of the project, as the Studio Delete does.",
     },
     "out": {
       "kind": "path",
@@ -75,6 +75,12 @@ const _meta = {
         },
         "saved": {
           "type": "boolean",
+        },
+        "unsavedChanges": {
+          "type": "array",
+          "items": {
+            "type": "string",
+          },
         },
       },
     },
@@ -131,13 +137,17 @@ const _meta = {
 			saved: false
 		};
 		if (result.dryRun) {
-			result.next = "The project has no Flow " + flowName + ", only these sources it left. Call again with dryRun:false to remove them;" +
-				" the Save of the project writes it, or pass saveProject:true.";
+			result.unsavedChanges = mcp.unsavedProjectChanges(project, "");
+			result.next = "The project has no Flow " + flowName + ", only these sources it left. Call again with dryRun:false to remove them" +
+				" and save the project" + (result.unsavedChanges.length ? " (refused while it holds the unsaved Studio changes listed)" : "") + ".";
 			ctx.write(props.out || "local.objectRemoval", result);
 			return result;
 		}
-		var saveProject = boolValue(props.saveProject, false) &&
+		var saveProject = boolValue(props.saveProject, true) &&
 			mcp.assertProjectSaveAllowed({ project: projectName, saveProject: true }, flowName);
+		if (saveProject) {
+			mcp.assertNoUnsavedProjectChanges(project, projectName, "");
+		}
 		var removed = jsonValue(removal.removeOrphanFlow(project, flowName));
 		result.done = removed.done === true;
 		if (!result.done) {
@@ -204,10 +214,11 @@ const _meta = {
 				saved: false
 			};
 			if (result.dryRun) {
-				result.next = "Call again with dryRun:false to delete it" +
+				result.unsavedChanges = mcp.unsavedProjectChanges(project, result.qname);
+				result.next = "Call again with dryRun:false to delete it and save the project" +
 					(result.removes.folders.length ? ", folders:[...] to remove some of these folders too" : "") +
 					(result.removes.database ? ", dropDatabase:true to drop its database" : "") +
-					". The Save of the project publishes the deletion, or pass saveProject:true.";
+					(result.unsavedChanges.length ? ". The project holds the unsaved Studio changes listed: the user saves them first, or pass saveProject:false to leave the deletion for the next Save" : "") + ".";
 				ctx.write(props.out || "local.objectRemoval", result);
 				return result;
 			}
@@ -225,8 +236,11 @@ const _meta = {
 				fail("NO_DATABASE", qname + " has no database to drop.");
 			}
 			// checked before the deletion, whose Flow source removals are unsaved work of the project too
-			var saveProject = boolValue(props.saveProject, false) &&
+			var saveProject = boolValue(props.saveProject, true) &&
 				mcp.assertProjectSaveAllowed({ project: projectName, saveProject: true }, isFlow ? String(dbo.getName()) : "");
+			if (saveProject) {
+				mcp.assertNoUnsavedProjectChanges(project, projectName, result.qname);
+			}
 			var removed = jsonValue(removal.remove(dbo, chosen, boolValue(props.dropDatabase, false)));
 			result.done = removed.done === true;
 			if (!result.done) {
@@ -239,7 +253,7 @@ const _meta = {
 			}
 			result.studioRefresh = mcp.studioRefreshFlowEngine({ project: projectName }, "object removed");
 			result.next = result.saved ? "Deleted and saved." :
-				"Deleted in the loaded project; the Save of the project writes it" +
+				"Deleted in the loaded project only (saveProject:false); the Save of the project writes it" +
 				(result.removes.sources.length ? ", with the removal of the Flow sources" : "") + ".";
 			ctx.write(props.out || "local.objectRemoval", result);
 			return result;

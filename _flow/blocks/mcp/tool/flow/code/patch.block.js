@@ -51,6 +51,7 @@ const _meta = {
 			var request = mcp.requestValue(ctx, props.request);
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
 				mcp.assertProjectSaveAllowed(args);
+				mcp.assertFlowNameFree(args);
 				var write = ctx.flowCodePatch(args);
 				if (write.ok === true && !isDry(args) && !isDraft(args)) {
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
