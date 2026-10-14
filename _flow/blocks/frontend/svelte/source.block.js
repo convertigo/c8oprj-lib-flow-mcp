@@ -666,7 +666,8 @@ const _meta = {
 			if (isApplicationStylesheet(path) && cssSource.trim() &&
 				!/var\(\s*--flow-color-/.test(cssSource)) {
 				var literalColors = cssSource.match(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\s*\(/g) || [];
-				var privateSemanticTokens = cssSource.match(/var\(\s*--(?!flow-color-)[\w-]*(?:background|surface|text|primary|secondary|accent|border)[\w-]*/gi) || [];
+				// the --flow-* aliases of the base theme (--flow-surface, --flow-border...) are public tokens too
+				var privateSemanticTokens = cssSource.match(/var\(\s*--(?!flow-)[\w-]*(?:background|surface|text|primary|secondary|accent|border)[\w-]*/gi) || [];
 				if (privateSemanticTokens.length >= 3) {
 					cssDiagnostics.push({
 						severity: "warning",

@@ -453,6 +453,23 @@ Its label lives in the header (no `label` attribute on its root), and each
 instance owns its own state. An unknown input path gives
 `FRONTEND_BINDING_PATH_UNKNOWN`.
 
+A component tells its host what happened through events declared in the same
+header, `events: { picked: { label, description, schema } }` (camelCase
+names). Inside it, `<EmitEvent $$id="emitPicked" event="picked"
+value="@local.choice" />` raises one from an action chain; its host handles it
+on the use with `On` plus the capitalized name and reads the value, typed by
+the declared `schema`, as `@event.value`:
+
+```svelte
+<Picker $$id="namePicker"><Events><OnPicked $$id="whenPicked"><Actions>
+  <SetValue $$id="keep" target="page.chosen" value="@event.value.name" />
+</Actions></OnPicked></Events></Picker>
+```
+
+`EmitEvent` exists only in a component (`FRONTEND_EMIT_OUTSIDE_COMPONENT`) and
+only for a declared event (`FRONTEND_EMIT_EVENT_UNKNOWN`); a handler of an
+undeclared event gives `FRONTEND_COMPONENT_EVENT_UNKNOWN`.
+
 Shared components live in the builder root
 `_flow/frontbuilder/svelte/components/<namespace>/<Tag>.flow.svelte` of the
 defining project (older libraries stay flat under `components/`). Studio shows
