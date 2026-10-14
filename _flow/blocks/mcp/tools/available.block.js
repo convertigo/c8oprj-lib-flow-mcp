@@ -551,7 +551,7 @@ const _meta = {
 		} else if (name === "flow-project-reference") {
 			description = "Resolves a selected workspace provider and adds its project reference through DBO APIs so shared Flow and Svelte blocks become available. url (with branch, path) sets or updates the Git URL another workspace imports the provider from; start with dryRun:true.";
 		} else if (name === "flow-object-remove") {
-			description = "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction or a Flow item; project.Flow also removes the sources a Flow the project no longer has left. Starts with dryRun:true, which lists the folders, database and sources removed with it.";
+			description = "Deletes one object of a project as the Studio Delete does: a Flow with its source and learned schemas, a connector, a transaction or a Flow item; project.Flow also removes the sources a Flow the project no longer has left. Starts with dryRun:true, which lists the folders, database and sources removed with it, and the unsaved work (Flow drafts included) that refuses it.";
 		} else if (name === "flow-project-metadata") {
 			description = "Reads or sets the version and the description of a project, as its Properties in the Studio. Omitted values are kept; the Save of the project writes the change, or saveProject:true.";
 		} else if (name === "flow-project-remove") {

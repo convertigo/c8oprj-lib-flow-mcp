@@ -106,6 +106,21 @@ const _meta = {
 	function jsonValue(value) {
 		return value == null ? {} : JSON.parse(String(value.toString()));
 	}
+	/**
+	 * Everything a deletion would lose or a Save would write along with it: objects edited in the Studio,
+	 * Flow working copies (the deleted Flow's own included) and Flow engine source drafts.
+	 */
+	function unsavedWork(mcp, project, exceptQName) {
+		return mcp.unsavedProjectChanges(project, exceptQName).concat(
+			typeof mcp.pendingStudioDrafts === "function" ? mcp.pendingStudioDrafts(project, "") : []);
+	}
+	function flowDraftDirty(dbo) {
+		try {
+			return dbo.isFlowSourceDirty() === true;
+		} catch (_noWorkingCopy) {
+			return false;
+		}
+	}
 
 	/**
 	 * The sources of a Flow the project no longer has, as a Flow deleted by an older Studio left them: its
@@ -137,7 +152,7 @@ const _meta = {
 			saved: false
 		};
 		if (result.dryRun) {
-			result.unsavedChanges = mcp.unsavedProjectChanges(project, "");
+			result.unsavedChanges = unsavedWork(mcp, project, "");
 			result.next = "The project has no Flow " + flowName + ", only these sources it left. Call again with dryRun:false to remove them" +
 				" and save the project" + (result.unsavedChanges.length ? " (refused while it holds the unsaved Studio changes listed)" : "") + ".";
 			ctx.write(props.out || "local.objectRemoval", result);
@@ -213,8 +228,16 @@ const _meta = {
 				done: false,
 				saved: false
 			};
+			var ownDraft = isFlow && flowDraftDirty(dbo);
 			if (result.dryRun) {
-				result.unsavedChanges = mcp.unsavedProjectChanges(project, result.qname);
+				result.unsavedChanges = unsavedWork(mcp, project, result.qname);
+				if (ownDraft) {
+					result.next = "The Flow " + String(dbo.getName()) + " has an unsaved draft, which the deletion would lose: it is refused" +
+						" until the draft is discarded (code-discard) or promoted (code-promote)" +
+						(result.unsavedChanges.length > 1 ? ". The project also holds the other unsaved Studio changes listed" : "") + ".";
+					ctx.write(props.out || "local.objectRemoval", result);
+					return result;
+				}
 				result.next = "Call again with dryRun:false to delete it and save the project" +
 					(result.removes.folders.length ? ", folders:[...] to remove some of these folders too" : "") +
 					(result.removes.database ? ", dropDatabase:true to drop its database" : "") +
@@ -234,6 +257,11 @@ const _meta = {
 			}
 			if (boolValue(props.dropDatabase, false) && !result.removes.database) {
 				fail("NO_DATABASE", qname + " has no database to drop.");
+			}
+			// the deletion would drop the draft without a trace, even when it is left for the next Save
+			if (ownDraft) {
+				fail("FLOW_HAS_UNSAVED_DRAFT", "The Flow " + String(dbo.getName()) + " has an unsaved draft. Nothing was changed.",
+					"Discard the draft with code-discard (or promote it with code-promote), then delete the Flow.");
 			}
 			// checked before the deletion, whose Flow source removals are unsaved work of the project too
 			var saveProject = boolValue(props.saveProject, true) &&

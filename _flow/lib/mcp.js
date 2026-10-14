@@ -3448,6 +3448,7 @@
 		assertProjectSaveAllowed: assertProjectSaveAllowed,
 		assertNoUnsavedProjectChanges: assertNoUnsavedProjectChanges,
 		unsavedProjectChanges: unsavedProjectChanges,
+		pendingStudioDrafts: pendingStudioDrafts,
 		assertFlowNameFree: assertFlowNameFree,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,

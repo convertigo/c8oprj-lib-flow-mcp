@@ -180,7 +180,9 @@ encode a block in `qname`.
   lists what goes with it (a Flow takes its source and learned schemas), then
   `dryRun:false` deletes it and saves the project, so that a Flow can then take
   its name. It is refused while the project holds unsaved Studio work (listed
-  by the dry run in `unsavedChanges`): ask the user to save first.
+  by the dry run in `unsavedChanges`, Flow drafts included): ask the user to
+  save first. A Flow with its own unsaved draft is never deleted
+  (`FLOW_HAS_UNSAVED_DRAFT`): `code-discard` or `code-promote` it first.
   `saveProject:false` only deletes in the loaded project, for the next Save;
   creating a Flow with the name of a sequence whose deletion is not saved is
   refused (`FLOW_NAME_DELETION_UNSAVED`). A `.flow.js` left without its Flow
