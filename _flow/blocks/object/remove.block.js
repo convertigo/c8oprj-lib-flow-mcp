@@ -111,8 +111,7 @@ const _meta = {
 	 * Flow working copies (the deleted Flow's own included) and Flow engine source drafts.
 	 */
 	function unsavedWork(mcp, project, exceptQName) {
-		return mcp.unsavedProjectChanges(project, exceptQName).concat(
-			typeof mcp.pendingStudioDrafts === "function" ? mcp.pendingStudioDrafts(project, "") : []);
+		return mcp.unsavedProjectChanges(project, exceptQName).concat(mcp.pendingStudioDrafts(project, ""));
 	}
 	function flowDraftDirty(dbo) {
 		try {
@@ -274,7 +273,9 @@ const _meta = {
 			if (!result.done) {
 				fail("OBJECT_REMOVE_FAILED", String(removed.error || ("Unable to delete " + qname + ".")));
 			}
-			project.hasChanged = true;
+			mcp.withProjectFlagLock(project, function () {
+				project.changed();
+			});
 			if (saveProject) {
 				Engine.theApp.databaseObjectsManager.exportProject(project);
 				result.saved = true;

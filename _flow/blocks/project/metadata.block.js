@@ -127,7 +127,9 @@ const _meta = {
 				project.setComment(description);
 			}
 			if (changes.length) {
-				project.hasChanged = true;
+				mcp.withProjectFlagLock(project, function () {
+					project.changed();
+				});
 			}
 			if (saveProject) {
 				Engine.theApp.databaseObjectsManager.exportProject(project);

@@ -647,11 +647,13 @@
 					if (view == null) {
 						return;
 					}
-					view.reloadDatabaseObject(target);
-					var treeObject = view.findTreeObjectByUserObject(target);
-					if (treeObject != null) {
-						view.refreshTreeObject(treeObject);
-					}
+					reloadNotingProjectFlag(target.getProject(), function () {
+						view.reloadDatabaseObject(target);
+						var treeObject = view.findTreeObjectByUserObject(target);
+						if (treeObject != null) {
+							view.refreshTreeObject(treeObject);
+						}
+					});
 				} catch (e) {
 					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP update", false);
 				}
@@ -754,12 +756,14 @@
 					}
 					var flowEngine = project.getFlowEngine();
 					var treeObject = flowEngine == null ? null : view.findTreeObjectByUserObject(flowEngine);
-					if (treeObject != null) {
-						view.reloadTreeObject(treeObject);
-						view.refreshTreeObject(treeObject);
-					} else {
-						view.refreshTree();
-					}
+					reloadNotingProjectFlag(project, function () {
+						if (treeObject != null) {
+							view.reloadTreeObject(treeObject);
+							view.refreshTreeObject(treeObject);
+						} else {
+							view.refreshTree();
+						}
+					});
 				} catch (e) {
 					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP frontend update", false);
 				}
@@ -799,6 +803,127 @@
 		}
 	}
 
+	var localSharedMaps = {};
+
+	// The Flow runtimes of a server are separate scopes: maps shared by all of them live in the servlet context.
+	function sharedMap(attribute) {
+		var servletContext = Packages.com.twinsoft.convertigo.engine.Engine.getServletContext();
+		if (servletContext == null) {
+			return localSharedMaps[attribute] || (localSharedMaps[attribute] = new Packages.java.util.concurrent.ConcurrentHashMap());
+		}
+		var map = servletContext.getAttribute(attribute);
+		if (map == null) {
+			new Packages.org.mozilla.javascript.Synchronizer(function () {
+				if (servletContext.getAttribute(attribute) == null) {
+					servletContext.setAttribute(attribute, new Packages.java.util.concurrent.ConcurrentHashMap());
+				}
+			}, servletContext)();
+			map = servletContext.getAttribute(attribute);
+		}
+		return map;
+	}
+
+	function projectFlagLock(project) {
+		var locks = sharedMap("lib_flow_mcp.projectFlagLocks");
+		var key = String(project.getName());
+		locks.putIfAbsent(key, new Packages.java.util.concurrent.locks.ReentrantLock());
+		return locks.get(key);
+	}
+
+	function studioReloadFlags() {
+		return sharedMap("lib_flow_mcp.studioReloadProjectFlags");
+	}
+
+	/**
+	 * Serializes the MCP writes of the change flag of a project. A Flow registration lowers the flag that
+	 * project.add() raised back to the value it read first: a flag raised or lowered by another call in the
+	 * meantime would be lost. Returns the function that releases the lock (a no-op when it was not acquired).
+	 */
+	function lockProjectFlags(project, status) {
+		var lock = null;
+		try {
+			lock = projectFlagLock(project);
+			if (!lock.tryLock(30, Packages.java.util.concurrent.TimeUnit.SECONDS)) {
+				lock = null;
+				if (status) {
+					status.error = "timeout";
+				}
+			}
+		} catch (noLock) {
+			lock = null;
+			if (status) {
+				status.error = String(noLock && noLock.message || noLock);
+			}
+		}
+		if (status) {
+			status.acquired = lock != null;
+		}
+		return function () {
+			if (lock != null) {
+				lock.unlock();
+				lock = null;
+			}
+		};
+	}
+
+	/**
+	 * Runs a Project Explorer reload (UI thread) and notes when it is the reload that marked the project as
+	 * changed: the Studio marks the project of any changed child, such as a Flow engine holding the draft of
+	 * another Flow, and only a Save lowers it. The note carries Project.getLastChange(), so that any later
+	 * change of the project invalidates it. Waits at most 2 s for a registration in progress: past that, the
+	 * reload runs without a note and the mark stays, as without this.
+	 */
+	function reloadNotingProjectFlag(project, reload) {
+		var lock = null;
+		try {
+			lock = projectFlagLock(project);
+			if (!lock.tryLock(2, Packages.java.util.concurrent.TimeUnit.SECONDS)) {
+				lock = null;
+			}
+		} catch (_noLock) {
+			lock = null;
+		}
+		try {
+			// the reload also moves lastChange when the project is already marked: a reload-only mark is followed
+			var reloadOnly = project.hasChanged !== true || studioReloadNoted(project, Number(project.getLastChange()));
+			reload();
+			if (lock != null && reloadOnly && project.hasChanged === true) {
+				studioReloadFlags().put(String(project.getName()), Packages.java.lang.Long.valueOf(project.getLastChange()));
+			}
+		} finally {
+			if (lock != null) {
+				lock.unlock();
+			}
+		}
+	}
+
+	/** Whether the noted reload mark is still the last change of the project (lastChange read before ours). */
+	function studioReloadNoted(project, lastChange) {
+		try {
+			var noted = studioReloadFlags().get(String(project.getName()));
+			return noted != null && Number(noted) === Number(lastChange);
+		} catch (_noNote) {
+			return false;
+		}
+	}
+
+	/** Unsaved work of the project besides its own flag: Flow or engine drafts, changed or new objects. */
+	function projectHoldsUnsavedWork(project) {
+		var projectQName = String(project.getQName());
+		return pendingStudioDrafts(project, "").length > 0 || unsavedProjectChanges(project, "").some(function (qname) {
+			return qname !== projectQName;
+		});
+	}
+
+	function withProjectFlagLock(project, fn) {
+		var unlock = lockProjectFlags(project);
+		try {
+			return fn();
+		} finally {
+			unlock();
+		}
+	}
+
 	function registerFlowDbo(args, writeResult) {
 		args = args || {};
 		var result = {
@@ -828,59 +953,77 @@
 		if (project == null) {
 			throw new Error("Unable to register Flow DBO: unknown project " + args.project);
 		}
-		var projectWasChanged = false;
+		result.projectFlagLock = {};
+		var unlockProjectFlags = lockProjectFlags(project, result.projectFlagLock);
 		try {
-			projectWasChanged = project.hasChanged === true;
-		} catch (_ignoreProjectChanged) {
-		}
-		var name = String(args.name || "");
-		var saveProject = assertProjectSaveAllowed(args, name);
-		var sequence = projectSequenceByName(project, name);
-		var flow = null;
-		var flowWasChanged = false;
-		if (sequence != null) {
-			if (!isFlowDbo(sequence)) {
-				throw new Error("Unable to register Flow DBO: " + args.project + "." + name + " already exists and is not a Flow.");
-			}
-			flow = sequence;
+			var projectWasChanged = false;
+			var projectLastChange = -1;
 			try {
-				flowWasChanged = flow.hasChanged === true;
-			} catch (_ignoreFlowChanged) {
+				projectWasChanged = project.hasChanged === true;
+				projectLastChange = Number(project.getLastChange());
+			} catch (_ignoreProjectChanged) {
 			}
-			result.updated = true;
-		} else {
-			assertFlowNameFree(args, name);
-			var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
-			flow = new Flow();
-			flow.bNew = true;
-			flow.setName(name);
-			flow.setIncludeTrace(boolArg(args.includeTrace, false));
-			project.add(flow);
-			result.created = true;
-		}
-		if (writeResult && String(writeResult.format || "") === "flowscript" &&
-				writeResult.code !== undefined && writeResult.code !== null) {
-			flow.setFlowSource(String(writeResult.code));
-		} else if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
-			flow.setFlowSource(String(writeResult.source));
-		}
-		result.flagsBeforeFastSaveClean = flowDboFlags(project, flow);
-		result.registered = true;
-		result.qname = String(flow.getQName());
-		try {
-			flow.hasChanged = true;
-			project.hasChanged = true;
-		} catch (_ignoreDirtyFlags) {
-		}
-		if (saveProject) {
-			result.saveMode = "project";
-			Engine.theApp.databaseObjectsManager.exportProject(project);
-			result.saved = true;
-			result.projectSaved = true;
-		} else {
-			result.saved = true;
-			result.flowDeclarationSaved = saveFlowDeclaration(project, flow, name, args, writeResult);
-			markFastSavedClean(project, flow, projectWasChanged, flowWasChanged);
+			var name = String(args.name || "");
+			var saveProject = assertProjectSaveAllowed(args, name);
+			var sequence = projectSequenceByName(project, name);
+			var flow = null;
+			var flowWasChanged = false;
+			if (sequence != null) {
+				if (!isFlowDbo(sequence)) {
+					throw new Error("Unable to register Flow DBO: " + args.project + "." + name + " already exists and is not a Flow.");
+				}
+				flow = sequence;
+				try {
+					flowWasChanged = flow.hasChanged === true;
+				} catch (_ignoreFlowChanged) {
+				}
+				result.updated = true;
+			} else {
+				assertFlowNameFree(args, name);
+				var Flow = Packages.com.twinsoft.convertigo.beans.flow.Flow;
+				flow = new Flow();
+				flow.bNew = true;
+				flow.setName(name);
+				flow.setIncludeTrace(boolArg(args.includeTrace, false));
+				project.add(flow);
+				result.created = true;
+			}
+			if (writeResult && String(writeResult.format || "") === "flowscript" &&
+					writeResult.code !== undefined && writeResult.code !== null) {
+				flow.setFlowSource(String(writeResult.code));
+			} else if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
+				flow.setFlowSource(String(writeResult.source));
+			}
+			result.flagsBeforeFastSaveClean = flowDboFlags(project, flow);
+			result.registered = true;
+			result.qname = String(flow.getQName());
+			try {
+				flow.hasChanged = true;
+				project.hasChanged = true;
+			} catch (_ignoreDirtyFlags) {
+			}
+			if (saveProject) {
+				result.saveMode = "project";
+				Engine.theApp.databaseObjectsManager.exportProject(project);
+				result.saved = true;
+				result.projectSaved = true;
+			} else {
+				result.saved = true;
+				result.flowDeclarationSaved = saveFlowDeclaration(project, flow, name, args, writeResult);
+				// A mark only left by a Studio reload goes once nothing is unsaved; while drafts remain, the note
+				// follows the lastChange our own add() moved.
+				var reloadNoted = projectWasChanged && studioReloadNoted(project, projectLastChange);
+				if (reloadNoted && !projectHoldsUnsavedWork(project)) {
+					projectWasChanged = false;
+					studioReloadFlags().remove(String(project.getName()));
+				}
+				markFastSavedClean(project, flow, projectWasChanged, flowWasChanged);
+				if (reloadNoted && projectWasChanged) {
+					studioReloadFlags().put(String(project.getName()), Packages.java.lang.Long.valueOf(project.getLastChange()));
+				}
+			}
+		} finally {
+			unlockProjectFlags();
 		}
 		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
 		try {
@@ -951,7 +1094,7 @@
 			}
 		} catch (_ignoreVariableSync) {
 		}
-		markFastSavedClean(project, flow, boolArg(args.cleanProject, false) !== true && project.hasChanged === true);
+		markFastSavedClean(project, flow, boolArg(args.cleanProject, false) === true ? false : null);
 		var refresh = null;
 		if (boolArg(args.refresh, true) === true) {
 			refresh = studioRefreshQName(String(flow.getQName()));
@@ -978,9 +1121,21 @@
 			}
 		} catch (_ignoreFlowClean) {
 		}
+		// The promoted source is written: a Flow engine without drafts has nothing left to save, while the flag
+		// its draft raised would mark the project at the next Project Explorer reload of the Studio.
 		try {
-			project.hasChanged = projectWasChanged === true;
-		} catch (_ignoreProjectClean) {
+			var flowEngine = project.getFlowEngine();
+			if (flowEngine != null && flowEngine.getSourceDrafts().isEmpty() && flowEngine.isEngineSourceDirty() !== true) {
+				flowEngine.hasChanged = false;
+			}
+		} catch (_ignoreFlowEngineClean) {
+		}
+		// null leaves the project flag as it is: writing back a value read earlier could lose a concurrent change
+		if (projectWasChanged !== null && projectWasChanged !== undefined) {
+			try {
+				project.hasChanged = projectWasChanged === true;
+			} catch (_ignoreProjectClean) {
+			}
 		}
 	}
 
@@ -1301,7 +1456,9 @@
 				return;
 			}
 			try {
-				if (dbo.hasChanged === true || dbo.bNew === true) {
+				// a project only marked by a Studio reload, unchanged since, holds no work of its own
+				if ((dbo.hasChanged === true || dbo.bNew === true) &&
+						!(depth === 0 && dbo.bNew !== true && studioReloadNoted(dbo, Number(dbo.getLastChange())))) {
 					changed.push(qname);
 				}
 			} catch (_noFlags) {
@@ -3178,6 +3335,9 @@
 			if (registration.flagsAfterFastSaveClean) {
 				out.flagsAfterFastSaveClean = registration.flagsAfterFastSaveClean;
 			}
+			if (registration.projectFlagLock && registration.projectFlagLock.acquired !== true) {
+				out.projectFlagLock = registration.projectFlagLock;
+			}
 			return out;
 		}
 
@@ -3448,7 +3608,7 @@
 		assertProjectSaveAllowed: assertProjectSaveAllowed,
 		assertNoUnsavedProjectChanges: assertNoUnsavedProjectChanges,
 		unsavedProjectChanges: unsavedProjectChanges,
-		pendingStudioDrafts: pendingStudioDrafts,
+		withProjectFlagLock: withProjectFlagLock,
 		assertFlowNameFree: assertFlowNameFree,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
