@@ -260,6 +260,11 @@ Sources:
 
 - `@.Sequence.path` (or `@.Sequence#marker.path`): the last result of that
   sequence, as in NGX, wherever a `CallSequence` ran it on the page;
+- `@Project.Sequence.path`: the result of a sequence of another project, named
+  as its `CallSequence` names it (`requestable="lib_OAuth.GetOAuthCredentials"`
+  is read by `@lib_OAuth.GetOAuthCredentials.GoogleClientID`); `@.Sequence`
+  always means the page project, and a result no `CallSequence` produces warns
+  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`;
 - `@<actionId>.path`: a FullSync or portable action result;
 - `@page.name`, `@layout.name`, `@comp.name`: a variable (`State`, `Derived`,
   `Translations`) named by its owner, as in NGX: `page.` in a page,
