@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Applies a revision-checked FlowScript patch to the working copy.",
-  "display": "tool flow-code-patch -> {{ input.out }}",
+  "display": "tool flow-code-patch -> ${input.out}",
   "hooks": {
     "file": "patch.hooks.js",
   },

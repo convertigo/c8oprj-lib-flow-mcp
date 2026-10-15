@@ -26,7 +26,7 @@ const _meta = {
   "tags": [
     "mcp",
   ],
-  "display": "tool flow-resource-patch -> {{ input.out }}",
+  "display": "tool flow-resource-patch -> ${input.out}",
   "runtime": "rhino",
 }
 

@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Returns dirty/revision state for one executable FlowScript working copy.",
-  "display": "tool code-status -> {{ input.out }}",
+  "display": "tool code-status -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Writes and checks the FlowScript working copy with optional revision checking.",
-  "display": "tool flow-code-set -> {{ input.out }}",
+  "display": "tool flow-code-set -> ${input.out}",
   "hooks": {
     "file": "set.hooks.js",
   },

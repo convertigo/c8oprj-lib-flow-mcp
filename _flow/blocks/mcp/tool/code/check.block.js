@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Checks the executable FlowScript working copy without running it.",
-  "display": "tool code-check -> {{ input.out }}",
+  "display": "tool code-check -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

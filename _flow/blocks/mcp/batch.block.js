@@ -33,7 +33,7 @@ const _meta = {
   "tags": [
     "mcp",
   ],
-  "display": "batch -> {{ input.out }}",
+  "display": "batch -> ${input.out}",
 }
 
 // c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.

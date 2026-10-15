@@ -30,7 +30,7 @@ const _meta = {
     "frontend",
     "check",
   ],
-  "display": "tool flow-block-code-check -> {{ input.out }}",
+  "display": "tool flow-block-code-check -> ${input.out}",
 }
 
 // c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.

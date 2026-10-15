@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Reads FlowScript code for one executable Flow or project-local block.",
-  "display": "tool code-get -> {{ input.out }}",
+  "display": "tool code-get -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

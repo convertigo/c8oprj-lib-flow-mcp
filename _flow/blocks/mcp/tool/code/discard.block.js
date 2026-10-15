@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Discards the executable FlowScript working copy.",
-  "display": "tool code-discard -> {{ input.out }}",
+  "display": "tool code-discard -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

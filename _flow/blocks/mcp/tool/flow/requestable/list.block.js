@@ -27,7 +27,7 @@ const _meta = {
     "mcp",
     "requestable",
   ],
-  "display": "tool flow-requestable-list -> {{ input.out }}",
+  "display": "tool flow-requestable-list -> ${input.out}",
 }
 
 // c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.

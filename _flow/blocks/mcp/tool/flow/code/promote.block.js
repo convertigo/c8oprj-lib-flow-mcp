@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Promotes a checked FlowScript working copy to the official Flow model.",
-  "display": "tool flow-code-promote -> {{ input.out }}",
+  "display": "tool flow-code-promote -> ${input.out}",
   "hooks": {
     "file": "promote.hooks.js",
   },

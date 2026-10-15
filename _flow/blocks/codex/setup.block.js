@@ -156,15 +156,15 @@ function codex_setup({ input, config, result }) {
   })
   local.skillMarkdown = template.render({
     $$id: "skillMarkdown",
-    template: "{{ local.skillTemplate }}",
+    template: local.skillTemplate,
   })
   local.backendSkillMarkdown = template.render({
     $$id: "backendSkillMarkdown",
-    template: "{{ local.backendSkillTemplate }}",
+    template: local.backendSkillTemplate,
   })
   local.frontendSkillMarkdown = template.render({
     $$id: "frontendSkillMarkdown",
-    template: "{{ local.frontendSkillTemplate }}",
+    template: local.frontendSkillTemplate,
   })
   local.skillWrite = file.writeIfChanged({
     $$id: "writeSkill",

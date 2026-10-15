@@ -105,8 +105,7 @@ of a composite block are private: the caller sees only the returned value.
   adapted source under a project name with `code-set`.
 - Call blocks with direct typed values: `crm.customerLabel({ name:
   current.name })`, `forEach({ items: local.rows, $$nodes: function () {...}
-  })`. Use `{{ expression }}` only for mixed text such as `"Hello {{
-  input.name }}"`.
+  })`. Compose text with a template literal such as `` `Hello ${input.name}` ``.
 - Top-down: when the domain block does not exist yet, create a typed mock
   with `flow-block-mock` (it writes `_meta.mock = true` and a TODO), then
   implement it; `flow-block-mock-list` must be empty before completion.

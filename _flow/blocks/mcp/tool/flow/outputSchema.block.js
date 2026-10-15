@@ -30,7 +30,7 @@ const _meta = {
   "tags": [
     "mcp",
   ],
-  "display": "tool flow-output-schema -> {{ input.out }}",
+  "display": "tool flow-output-schema -> ${input.out}",
 }
 
 // Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html

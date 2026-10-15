@@ -30,7 +30,7 @@ const _meta = {
   "tags": [
     "mcp",
   ],
-  "display": "handle request -> {{ input.out }}",
+  "display": "handle request -> ${input.out}",
 }
 
 // c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
@@ -51,7 +51,7 @@ function mcp_handle({ input, config, result }) {
         code: -32001,
         message: input.request.__flowMcpAuthenticationError.message,
         data: {
-          "code": "{{ input.request.__flowMcpAuthenticationError.code }}",
+          "code": input.request.__flowMcpAuthenticationError.code,
         },
         out: "local.response",
       })

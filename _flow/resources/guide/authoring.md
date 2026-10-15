@@ -33,7 +33,7 @@ function Greeting({ input, config, result }) {
       })
     },
   })
-  result.message = "Hello {{ local.name }}"
+  result.message = `Hello ${local.name}`
 }
 ```
 
@@ -75,12 +75,13 @@ function Greeting({ input, config, result }) {
   chain. Return a normal result for an outcome the caller handles (wrong
   password, nothing found): `result.ok = false` with its reason, never a
   result made of an `error` object alone.
-- **Values:** arithmetic and comparisons stay expressions (`left + 1`,
-  `!local.entity`). Expressions are null-safe and allow index reads
-  (`local.items[0]`, `current["media:thumbnail"]`). Object literals are values
-  (`select: { title: current.title }`), not expressions. Use
-  `"Hello {{ input.name }}"` or a template literal for mixed text. `===` and
-  `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
+- **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
+  those characters), an expression is a value with its type (`input.name`,
+  `left + 1`, `!local.entity`, `local.items[0]`, `current["media:thumbnail"]`,
+  null-safe), a template literal composes text (`` `Hello ${input.name}` ``),
+  an object literal is a value (`select: { title: current.title }`). Studio
+  shows the same: a text, an expression, or a text with `${…}` parts. `===`
+  and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
   loose. A declared `number`, `integer` or `boolean` input arrives typed
   whatever the caller (HTTP text is converted), other inputs as sent.
 - **Business `id`, `disabled`, `out` are free** for project block properties;

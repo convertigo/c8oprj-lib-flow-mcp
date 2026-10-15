@@ -50,8 +50,9 @@ Runtime helpers available in `run(ctx,node)`:
 
 - `ctx.props(node)`: the direct business properties (never engine `$$`
   attributes).
-- `ctx.template(value)`: evaluates a template property such as
-  `"{{ input.name }}"` and returns a typed or string value.
+- `ctx.template(value)`: evaluates a template or value property: a value
+  made of one `${expression}` keeps the type of its result, a composition
+  such as `Hello ${input.name}` gives text, a literal stays as written.
 - `ctx.expr(value)`: evaluates an expression property and preserves arrays,
   objects, numbers and booleans.
 - `ctx.input(props, fallback)`: reads a generic `value`-style property.

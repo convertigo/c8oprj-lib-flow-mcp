@@ -10,7 +10,7 @@ const _meta = {
     "search",
   ],
   "description": "Searches FlowScript source and returns small matching extracts.",
-  "display": "tool code-rg -> {{ input.out }}",
+  "display": "tool code-rg -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

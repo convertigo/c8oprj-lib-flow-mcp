@@ -24,7 +24,7 @@ const _meta = {
   "tags": [
     "mcp",
   ],
-  "display": "available tools -> {{ input.out }}",
+  "display": "available tools -> ${input.out}",
   "hooks": {
     "file": "available.hooks.js",
   },

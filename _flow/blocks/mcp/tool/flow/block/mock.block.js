@@ -86,7 +86,7 @@ const _meta = {
     },
   },
   "runtime": "rhino",
-  "display": "tool flow-block-mock -> {{ input.out }}",
+  "display": "tool flow-block-mock -> ${input.out}",
 }
 
 (function () {

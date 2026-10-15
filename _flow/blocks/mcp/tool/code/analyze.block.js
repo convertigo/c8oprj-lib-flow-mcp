@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Analyzes the executable FlowScript working copy and returns scopes/diagnostics.",
-  "display": "tool code-analyze -> {{ input.out }}",
+  "display": "tool code-analyze -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

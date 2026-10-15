@@ -10,7 +10,7 @@ const _meta = {
     "patch",
   ],
   "description": "Applies a revision-checked FlowScript patch to one executable Flow or project-local block.",
-  "display": "tool code-patch -> {{ input.out }}",
+  "display": "tool code-patch -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

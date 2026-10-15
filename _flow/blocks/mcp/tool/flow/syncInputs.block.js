@@ -9,7 +9,7 @@ const _meta = {
     "inputs",
   ],
   "description": "Synchronizes FlowScript input declarations to the Flow DBO variables without changing FlowScript code.",
-  "display": "tool flow-sync-inputs -> {{ input.out }}",
+  "display": "tool flow-sync-inputs -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

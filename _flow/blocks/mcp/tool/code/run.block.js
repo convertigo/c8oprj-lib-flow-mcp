@@ -10,7 +10,7 @@ const _meta = {
     "runtime",
   ],
   "description": "Runs or tests the executable FlowScript working copy without resending code.",
-  "display": "tool code-run -> {{ input.out }}",
+  "display": "tool code-run -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

@@ -11,7 +11,7 @@ const _meta = {
     "tools/call -> {{out}}",
     "tools/call",
   ],
-  "display": "tools.call -> {{ input.out }}",
+  "display": "tools.call -> ${input.out}",
   "hooks": {
     "file": "call.hooks.js",
   },

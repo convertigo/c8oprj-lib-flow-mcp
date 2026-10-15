@@ -9,7 +9,7 @@ const _meta = {
     "code",
   ],
   "description": "Executable Flow only: promotes a checked FlowScript working copy. Project-local blocks are saved directly by code-set/code-patch.",
-  "display": "tool code-promote -> {{ input.out }}",
+  "display": "tool code-promote -> ${input.out}",
   "properties": {
     "request": {
       "kind": "expression",

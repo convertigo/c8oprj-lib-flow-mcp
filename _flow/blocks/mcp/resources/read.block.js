@@ -68,7 +68,7 @@ function mcp_resources_read({ input, config, result }) {
   local.resource = resource.get({
     $$id: "readResource",
     $$comment: "Guides and skills are served whole: never cut them at the default preview size.",
-    path: "{{ local.matches.0.path }}",
+    path: local.matches.0.path,
     allowLarge: true,
   })
   if({

@@ -71,7 +71,7 @@ const _meta = {
     },
   },
   "runtime": "rhino",
-  "display": "tool flow-app-progress -> {{ input.out }}",
+  "display": "tool flow-app-progress -> ${input.out}",
 }
 
 (function () {
