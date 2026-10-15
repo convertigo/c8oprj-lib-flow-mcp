@@ -202,12 +202,46 @@ config.use({
 ```
 
 Root keys (or one `overrides` object) are config branches, deep-merged only
-while `$$then` runs. Config precedence per root key: `_flow.config`, then
-project `_flow/engine.yaml`, then request config. The project configuration is
-`default` with the named configurations of the Flow's tags merged over it,
-value by value, the last tag winning (`flow://guide/tags`). Put structural constants
-(API roots, timeouts) in project or Flow `config.*`; reuse existing
-project config instead of duplicating it in `_flow.config`.
+while `$$then` runs.
+
+Configuration is inherited and merged value by value (objects merge, any other
+value replaces), weakest first:
+
+1. `_flow.config` of the Flow;
+2. the `config` of `_flow/engine.yaml` of lib_flow_engine, then of each
+   referenced Flow project, in the order of the project references (a
+   referenced project comes after its own references; the last one wins);
+3. the project `_flow/engine.yaml`: `default`, then the named configurations of
+   the Flow's tags, the last tag winning (`flow://guide/tags`);
+4. the project the HTTP request targets, when it is another project: its own
+   values win, so a library takes the settings of each application using it;
+5. the call config.
+
+A library ships every setting with a working default under its own prefix
+(`email.smtp.*`, `oauth.*`, `sql.*`); a project overrides only the values it
+needs, in its own `config`, without symbols unless the value depends on the
+server. When two references declare the same branch, `configParents` picks one:
+
+```yaml
+configParents:
+  email.smtp: lib_flow_engine
+config:
+  email:
+    smtp:
+      port: 2525
+```
+
+Put structural constants (API roots, timeouts) in project or Flow `config.*`;
+reuse inherited or project config instead of duplicating it in `_flow.config`.
+
+Emails: `email.send({ to, subject, html })` uses the SMTP server of the platform
+(`config.email.smtp`, inherited from lib_flow_engine and set by the symbols
+`lib_flow_engine.smtp.*`). Render the HTML with `template.freemarker({ file:
+"_flow/resources/emails/welcome.ftlh", locale: input.lang, values: { ... } })`:
+a `.ftlh` template escapes the values for HTML, `welcome_fr.ftlh` is picked for
+the `fr` locale. A FreeMarker template is a resource file of the project (or a
+plain string in the Expert `template` property); its `${...}` belong to
+FreeMarker, so never write it as a JavaScript template literal.
 
 Secrets never appear in a configuration: reference a Convertigo global symbol
 ending with `.secret`, always with a default, so that the project declares it
