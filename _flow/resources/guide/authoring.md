@@ -82,8 +82,17 @@ function Greeting({ input, config, result }) {
   an object literal is a value (`select: { title: current.title }`). Studio
   shows the same: a text, an expression, or a text with `${…}` parts. `===`
   and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
-  loose. A declared `number`, `integer` or `boolean` input arrives typed
-  whatever the caller (HTTP text is converted), other inputs as sent.
+  loose.
+- **Declared inputs arrive converted** whatever the caller (HTTP text, MCP,
+  Flow call): `string` takes numbers and booleans as text and objects as
+  JSON; `integer` truncates (`"3.9"` → 3); `number` parses text; `boolean`
+  takes `true`/`false`/`1`/`0` in any case; `array` takes a JSON array text
+  or wraps one value (`"a"` → `["a"]`); `object` takes a JSON object text;
+  `any` is left as sent. An absent input takes its `default`; for a non-text
+  input `""` and `null` count as absent unless `nullable: true`; a
+  `required: true` input must be given. A value that does not convert is a
+  400 `FLOW_INPUT_TYPE_INVALID`. Blocks get the same conversion with
+  `ctx.convert(value, schema)`.
 - **Business `id`, `disabled`, `out` are free** for project block properties;
   core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
 
