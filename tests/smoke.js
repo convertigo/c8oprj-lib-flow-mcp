@@ -4,8 +4,9 @@ var engineFile = new java.io.File(engineDir, "Engine.js");
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(engineFile, "UTF-8"));
 var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
-// The smoke reads Flow Svelte sources with Node.js: a Convertigo engine on the classpath (a server image, not the
-// Studio) runs Node.js only when its server_build setting allows the builds of the web Studio.
+// The smoke also generates frontends, which a Convertigo engine on the classpath (a server image, not the Studio)
+// runs only when its server_build setting allows the builds of the web Studio; reading and editing the sources does not
+// need it.
 try {
 	var smokeEngineProperties = Packages.com.twinsoft.convertigo.engine.EnginePropertiesManager;
 	smokeEngineProperties.setProperty(smokeEngineProperties.PropertyName.SERVER_BUILD, "studio");
