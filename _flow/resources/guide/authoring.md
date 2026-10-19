@@ -82,7 +82,15 @@ function Greeting({ input, config, result }) {
   an object literal is a value (`select: { title: current.title }`). Studio
   shows the same: a text, an expression, or a text with `${…}` parts. `===`
   and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
-  loose.
+  loose. Methods chain as in JavaScript, on a path, a call or a parenthesis
+  (`input.q.trim().toLowerCase().includes(local.term)`,
+  `local.items.slice(0, 5).join(", ")`, `String(local.n).padStart(3, "0")`),
+  from a fixed list: text `trim`, `toLowerCase`, `toUpperCase`, `includes`,
+  `startsWith`, `endsWith`, `indexOf`, `lastIndexOf`, `slice`, `substring`,
+  `split`, `replace`, `replaceAll` (text patterns), `padStart`, `padEnd`,
+  `charAt`, `concat`, `repeat`; lists `includes`, `indexOf`, `slice`, `join`,
+  `concat`, `at`, `length`; numbers `toFixed`. Anything else is a block
+  (`list.filter`, `list.map`, `list.sort`...).
 - **Declared inputs arrive converted** whatever the caller (HTTP text, MCP,
   Flow call): `string` takes numbers and booleans as text and objects as
   JSON; `integer` truncates (`"3.9"` → 3); `number` parses text; `boolean`
