@@ -430,8 +430,9 @@ them with `DateNow`, `DateFormat`, `NumberAdd`, `NumberSubtract`,
 `NumberChoose` and `DurationFormat`; `authoringContract.portableBlocks` lists
 their properties and a `wallClock` recipe. Look up one exact block (for
 example `date.now`) in the palette only when its properties are absent. A
-portable action's `target` is optional: omit it and bind `@<$$id>`, or write
-an existing `page.name`. Never implement a stopwatch by counting `Interval`
+portable action writes its result with its Output `$$out="page.name"` (an
+existing state), or the following actions read it as `@<$$id>`; only
+`SetValue`, `UpdateList` and `UpdateNumber` take `target`. Never implement a stopwatch by counting `Interval`
 callbacks.
 
 ## Components And Inputs

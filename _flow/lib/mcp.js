@@ -3701,6 +3701,32 @@
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
 		}
+		if ((name === "authoring-palette" || name === "frontend-svelte-palette") && value && typeof value === "object" &&
+				Object.prototype.toString.call(value.items) === "[object Array]" && responseDetail(request) !== "full") {
+			// a candidate is what to insert and how: its documentation, icons and duplicate mutation stay out
+			value.items = value.items.map(function (item) {
+				var properties = item && item.properties && typeof item.properties === "object" ? item.properties : {};
+				var out = {};
+				["id", "label", "category", "kind", "description", "provider", "apply"].forEach(function (key) {
+					if (item[key] !== undefined && item[key] !== null && item[key] !== "") out[key] = item[key];
+				});
+				var names = Object.keys(properties).filter(function (key) {
+					var property = properties[key] || {};
+					return key !== "id" && property.hidden !== true && property.category !== "Information";
+				});
+				if (names.length) {
+					out.properties = names.slice(0, 24).map(function (key) {
+						var property = properties[key] || {};
+						return key + ":" + String(property.type || property.kind || "unknown") +
+							(Object.prototype.toString.call(property.enum) === "[object Array]" && property.enum.length <= 8
+								? "(" + property.enum.join("|") + ")" : "");
+					});
+				}
+				return out;
+			});
+			value.responseDetail = "compact";
+			value.next = "Execute items[].apply unchanged. Use detail:\"full\" only to read a candidate's documentation.";
+		}
 		if (name === "flow-catalog" && value && typeof value === "object") {
 			var catalogArgs = toolArguments(request);
 			var need = String(catalogArgs.query || catalogArgs.q || catalogArgs.search || "");

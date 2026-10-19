@@ -24,7 +24,10 @@ libraries, fragments).
 
 1. `code-rg` for the phrase, property or `$$id` to change.
 2. When one extract identifies the change, apply the smallest `code-patch`
-   (unified diff in `codepatch`, with the extract's `revision`).
+   (unified diff in `codepatch`, with the extract's `revision`). The line
+   numbers of every hunk refer to that revision, hunks may come in any order,
+   and each hunk needs its exact context lines: re-read the range with
+   `code-get` rather than guessing a context.
 3. When context is missing, read only that range with `code-get({ ...,
    revision, startLine, endLine })`; read a whole source only for an
    ambiguous or broad change.

@@ -453,8 +453,18 @@ const _meta = {
 	// The checked draft is keyed under the canonical path and under the projectDir spelling:
 	// the provider matches the files it reads from projectDir (for example /var vs /private/var
 	// on macOS), so a canonical-only key would validate the persisted source instead.
-	function checkedDrafts(props, path, source) {
+	// The checked source over the other working copies of the project: a Page written but not saved yet is known
+	// to the Navigate of another Page.
+	function checkedDrafts(ctx, props, path, source) {
 		var drafts = {};
+		try {
+			var store = ctx.lib("mcp").sourceStore({ projectDir: String(props.projectDir), project: props.project });
+			if (store && store.drafts) {
+				drafts = store.sourceDrafts() || {};
+			}
+		} catch (e) {
+			drafts = {};
+		}
 		drafts[path.absolute] = source;
 		drafts[String(new File(String(props.projectDir), path.relative).getAbsolutePath())] = source;
 		return drafts;
@@ -462,7 +472,7 @@ const _meta = {
 
 	function validateProviderComponent(ctx, props, path, source, diagnostics) {
 		try {
-			var drafts = checkedDrafts(props, path, source);
+			var drafts = checkedDrafts(ctx, props, path, source);
 			var contract = ctx.authoringContractSource({
 				projectDir: String(props.projectDir),
 				surface: "frontend",
@@ -724,7 +734,7 @@ const _meta = {
 				};
 			}
 			try {
-				var drafts = checkedDrafts(props, path, source);
+				var drafts = checkedDrafts(ctx, props, path, source);
 				var tree = ctx.authoringTreeSource({
 					projectDir: String(props.projectDir),
 					surface: "frontend",
