@@ -2863,10 +2863,106 @@
 		return argInt(args.maxDiagnostics || args.diagnosticLimit || args.diagnosticsLimit, 8, 1, 25);
 	}
 
+	// Blocks of the loaded workspace projects (data libraries such as lib_flow_sql), found by their id and description
+	// for a block the target project does not know: it becomes usable once the project references its library.
+	var WORKSPACE_BLOCK_SKIPPED = { lib_flow_engine: true, lib_flow_mcp: true };
+	var WORKSPACE_BLOCK_SYNONYMS = {
+		db: ["sql", "data"], database: ["sql", "data"], jdbc: ["sql"], hsqldb: ["sql"], postgres: ["sql"], mysql: ["sql"],
+		select: ["query", "read", "page"], find: ["query", "read"], list: ["page", "query"], fetch: ["read", "get"],
+		insert: ["mutate", "write"], update: ["mutate", "write"], delete: ["mutate", "write"], save: ["write", "mutate"],
+		couch: ["couchdb"], fullsync: ["couchdb"], table: ["sql", "baserow"], crud: ["data"]
+	};
+	var workspaceBlockIndex = { at: 0, entries: null };
+
+	function blockWords(text) {
+		return String(text || "").replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/)
+			.filter(function (word) { return word.length >= 2; });
+	}
+
+	function workspaceBlockEntries() {
+		var now = Number(System.currentTimeMillis());
+		if (workspaceBlockIndex.entries && now - workspaceBlockIndex.at < 30000) {
+			return workspaceBlockIndex.entries;
+		}
+		var entries = [];
+		loadedProjectTargets().forEach(function (target) {
+			if (WORKSPACE_BLOCK_SKIPPED[target.project]) return;
+			var root = new File(new File(String(target.projectDir), "_flow"), "blocks");
+			(function walk(dir, namespace) {
+				var files = dir.isDirectory() ? dir.listFiles() : null;
+				for (var i = 0; files && i < files.length; i++) {
+					var name = String(files[i].getName());
+					if (files[i].isDirectory()) {
+						walk(files[i], namespace.concat([name]));
+						continue;
+					}
+					var match = /^(.+)\.block\.js$/.exec(name);
+					if (!match) continue;
+					var head = "";
+					try {
+						head = String(new Packages.java.lang.String(Files.readAllBytes(files[i].toPath()), StandardCharsets.UTF_8)).substring(0, 4000);
+					} catch (e) {
+					}
+					if (/"private"\s*:\s*true/.test(head)) continue;
+					var description = /"description"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(head);
+					entries.push({ project: target.project, block: namespace.concat([match[1]]).join("."),
+						description: description ? description[1] : "" });
+				}
+			})(root, []);
+		});
+		workspaceBlockIndex = { at: now, entries: entries };
+		return entries;
+	}
+
+	// The best workspace blocks for a block id or a need, outside the target project.
+	function workspaceBlockProviders(targetProject, query, limit) {
+		var exact = String(query || "");
+		var words = {};
+		blockWords(query).forEach(function (word) {
+			words[word] = true;
+			(WORKSPACE_BLOCK_SYNONYMS[word] || []).forEach(function (synonym) { words[synonym] = true; });
+		});
+		return workspaceBlockEntries().filter(function (entry) {
+			return entry.project !== String(targetProject || "");
+		}).map(function (entry) {
+			var score = entry.block === exact ? 1000 : 0;
+			blockWords(entry.block).forEach(function (word) { if (words[word]) score += 3; });
+			blockWords(entry.description).forEach(function (word) { if (words[word]) score += 1; });
+			return { entry: entry, score: score };
+		}).filter(function (item) {
+			return item.score >= 3;
+		}).sort(function (a, b) {
+			return b.score - a.score || a.entry.block.localeCompare(b.entry.block);
+		}).slice(0, limit || 3).map(function (item) {
+			return { project: item.entry.project, block: item.entry.block,
+				description: item.entry.description.length > 120 ? item.entry.description.substring(0, 119) + "…" : item.entry.description };
+		});
+	}
+
+	function withWorkspaceProviders(request, diagnostic) {
+		if (!diagnostic || diagnostic.code !== "UNKNOWN_BLOCK") return diagnostic;
+		var block = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "");
+		var target = String(toolArguments(request).project || "");
+		var providers = [];
+		try {
+			providers = block ? workspaceBlockProviders(target, block, 3) : [];
+		} catch (e) {
+			providers = [];
+		}
+		if (!providers.length) return diagnostic;
+		diagnostic.workspaceProviders = providers;
+		diagnostic.candidateDecision = { recommendation: "reference", tool: "flow-project-reference",
+			reference: providers[0].project, bestBlock: providers[0].block };
+		diagnostic.next = "The workspace project " + providers[0].project + " provides " + providers[0].block +
+			": add it with flow-project-reference({project:\"" + (target || "<project>") + "\", reference:\"" + providers[0].project +
+			"\"}), use the block, then check again. Do not mock a block that a workspace library provides.";
+		return diagnostic;
+	}
+
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
@@ -2902,7 +2998,9 @@
 			hasMore = details.hasMore === true;
 		}
 		var limit = diagnosticLimit(request);
-		var shown = diagnostics.slice(0, limit).map(compactFlowCodeDiagnostic);
+		var shown = diagnostics.slice(0, limit).map(function (diagnostic) {
+			return compactFlowCodeDiagnostic(withWorkspaceProviders(request, diagnostic));
+		});
 		diagnosticCount = Math.max(diagnosticCount, diagnostics.length);
 		return {
 			diagnosticCount: diagnosticCount,
@@ -3557,6 +3655,20 @@
 		}
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
+		}
+		if (name === "flow-catalog" && value && typeof value === "object") {
+			var catalogArgs = toolArguments(request);
+			var need = String(catalogArgs.query || catalogArgs.q || catalogArgs.search || "");
+			if (need) {
+				try {
+					var providers = workspaceBlockProviders(catalogArgs.project, need, 5);
+					if (providers.length) {
+						value.workspaceProviders = providers;
+						value.workspaceNext = "These blocks come from workspace projects the project does not reference yet: add one with flow-project-reference({project, reference}) before using its blocks.";
+					}
+				} catch (e) {
+				}
+			}
 		}
 		var codeArgs = toolArguments(request);
 		var sourceCodeRequest = codeArgs && (

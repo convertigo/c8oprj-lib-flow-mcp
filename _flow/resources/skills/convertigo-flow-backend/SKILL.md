@@ -17,6 +17,10 @@ Keep this role across backend lots instead of spawning a replacement agent.
 - Before creating a backend mock or custom primitive, use the ranked candidate
   returned by code diagnostics or one focused catalog lookup. Provider and
   workspace discovery are internal MCP concerns, not a separate agent tool.
+- Data access (SQL databases, CouchDB, Baserow, shared CRUD contracts) comes
+  from workspace libraries: when a diagnostic or `flow-catalog` lists
+  `workspaceProviders`, reference that library with `flow-project-reference`
+  and use its blocks instead of a mock or a legacy connector.
 - Put service URLs and structural constants in project `config.*`. Secrets
   are Convertigo global symbols ending with `.secret`, referenced with a
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
