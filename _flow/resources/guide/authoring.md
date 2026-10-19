@@ -74,7 +74,10 @@ function Greeting({ input, config, result }) {
   the Flow answers its error alone and a frontend action fails and stops its
   chain. Return a normal result for an outcome the caller handles (wrong
   password, nothing found): `result.ok = false` with its reason, never a
-  result made of an `error` object alone.
+  result made of an `error` object alone. To go on after a block that may
+  fail (an email, a call to another Flow or service), wrap it in `try`:
+  `try({ error: "local.failure", $$try: function () { ... }, $$catch: function () { ... } })`;
+  catch reads `local.failure.code` / `.message` / `.status`.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), an expression is a value with its type (`input.name`,
   `left + 1`, `!local.entity`, `local.items[0]`, `current["media:thumbnail"]`,

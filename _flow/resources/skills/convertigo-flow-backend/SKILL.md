@@ -29,7 +29,9 @@ Keep this role across backend lots instead of spawning a replacement agent.
 - Declare `accessibility: "private"` in `_flow` for every Flow a frontend or
   external client does not call; `public` or `hidden` only for those.
 - `throw({ code, message, status })` what must interrupt the caller; return
-  a normal result (`ok: false` and a reason) for an outcome it handles.
+  a normal result (`ok: false` and a reason) for an outcome it handles. Catch
+  a block that may fail with `try` (`$$try`, `$$catch`, error path), never
+  with a Rhino block.
 - Declare or infer useful output schemas; do not leave downstream contracts at
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before
