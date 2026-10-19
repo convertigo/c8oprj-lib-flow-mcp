@@ -452,12 +452,6 @@ const _meta = {
 				description: "Maximum diagnostics to return. Default 8, max 25."
 			};
 		}
-		if (toolName === "code-set" || toolName === "code-patch") {
-			schema.properties.contentFile = {
-				type: "string",
-				description: "File holding the " + (toolName === "code-patch" ? "unified diff" : "code") + ", read by the server instead of an inline " + (toolName === "code-patch" ? "codepatch" : "code") + " argument: write generated or long content to a file and pass its path, absolute or relative to the Convertigo projects directory, inside it or the target project, at most 2 MB. The content is never echoed."
-			};
-		}
 		if (toolName === "code-patch" && schema.properties.codepatch) {
 			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
 		}
@@ -533,7 +527,7 @@ const _meta = {
 		} else if (name === "frontend-svelte-actions") {
 			description = "Lists available Svelte frontend actions such as generate, build and dev server commands for the target project.";
 		} else if (name === "frontend-svelte-action") {
-			description = "Runs one Svelte frontend action. Never call build while Dev is active: stopping Dev automatically rebuilds dirty output. Use dev.start with wait:false to overlap setup, dev.sync once after authoring, and dev.open only when no managed viewer was returned.";
+			description = "Runs one Svelte frontend action. build produces the production output, also while Dev is active (the viewer keeps running); stopping Dev also rebuilds dirty output. Use dev.start with wait:false to overlap setup, dev.sync once after authoring, and dev.open only when no managed viewer was returned.";
 		} else if (name === "flow-list") {
 			description = "Lists executable Flows for one project. Requires project; do not call for fresh authoring.";
 		} else if (name === "flow-search") {

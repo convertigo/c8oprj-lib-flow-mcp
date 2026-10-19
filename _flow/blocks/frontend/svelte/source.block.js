@@ -510,7 +510,7 @@ const _meta = {
 		return null;
 	}
 
-	function projectedPropertyDiagnostics(tree, source, contract) {
+	function projectedPropertyDiagnostics(tree, source, contract, blockContract) {
 		var diagnostics = [];
 		var propertiesByTag = {};
 		(contract && contract.items || []).forEach(function (item) {
@@ -600,6 +600,13 @@ const _meta = {
 			}
 			var props = authoredProperties(node, projected);
 			var canonicalDefinitions = propertiesByTag[String(projected.tag || node.type || "")];
+			// A Flow block used in a frontend source (DateFormat, ...) is checked against its block contract: the
+			// compact tree carries no property definitions for it.
+			var flowBlock = String(node.block || projected.block || "");
+			if (!canonicalDefinitions && flowBlock && typeof blockContract === "function") {
+				var blockProperties = blockContract(flowBlock);
+				if (blockProperties) canonicalDefinitions = blockProperties;
+			}
 			var definitions = canonicalDefinitions || (
 				node.propertyDefinitions && typeof node.propertyDefinitions === "object"
 				? node.propertyDefinitions
@@ -623,7 +630,10 @@ const _meta = {
 						path: String(node.path || projected.sourceMutationPath || ""),
 						property: name,
 						acceptedProperties: accepted,
-						hint: "Use one of the catalog properties: " + accepted.join(", ") + "."
+						hint: flowBlock && (name === "target" || name === "out")
+							? "A block writes its result with $$out=\"page.<state>\" (or local.<name>); other actions read it as @" +
+								String(projected.id || node.nodeId || "<$$id>") + ". Catalog properties: " + accepted.join(", ") + "."
+							: "Use one of the catalog properties: " + accepted.join(", ") + "."
 					});
 				});
 			}
@@ -746,7 +756,21 @@ const _meta = {
 						surface: "frontend",
 						builder: "svelte"
 					});
-					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source, contract));
+					var blockContracts = {};
+					diagnostics = diagnostics.concat(projectedPropertyDiagnostics(tree, source, contract, function (blockId) {
+						if (!Object.prototype.hasOwnProperty.call(blockContracts, blockId)) {
+							var found = null;
+							try {
+								var blockDefinition = typeof ctx.blockContract === "function" ? ctx.blockContract(blockId) : null;
+								found = blockDefinition && blockDefinition.properties && typeof blockDefinition.properties === "object"
+									? blockDefinition.properties : null;
+							} catch (e) {
+								found = null;
+							}
+							blockContracts[blockId] = found;
+						}
+						return blockContracts[blockId];
+					}));
 				}
 			} catch (error) {
 				diagnostics.push({

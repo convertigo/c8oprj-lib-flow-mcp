@@ -50,7 +50,11 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   assets with shell commands and never edit generated `static` directories.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
   tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
-  rules in `app.flow.css` and expose concise classes.
+  rules in `app.flow.css` and expose concise classes. Drive a value computed
+  from state through the common `style` property as a CSS custom property
+  (`style={"--angle:" + page.second * 6 + "deg"}`), never one class per value.
+- A block result goes straight into a state with `$$out="page.name"`; only
+  `SetValue`, `UpdateList` and `UpdateNumber` take `target`.
 - A Flow that throws fails its call: the chain stops and `Status` shows the
   message (`@.Flow.error.message` stays readable). Branch with `If` on a
   normal result such as `ok: false`, never on a failed call.

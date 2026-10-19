@@ -2005,57 +2005,6 @@
 		}
 	}
 
-	// code-set and code-patch read their code (or diff) from a file of the Convertigo projects directory or of the
-	// target project, so that a generated source is not copied token by token into the call.
-	function readContentFile(name, args) {
-		if (args.contentFile === undefined || args.contentFile === null || String(args.contentFile) === "") {
-			delete args.contentFile;
-			return args;
-		}
-		if (!/^(?:flow-|flow-block-|frontend-svelte-)?code-(set|patch)$/.test(name)) {
-			throw new Error(name + " does not accept contentFile; only code-set and code-patch read their content from a file.");
-		}
-		var field = /code-patch$/.test(name) ? "codepatch" : "code";
-		var inline = args[field] !== undefined && args[field] !== null && String(args[field]) !== "";
-		if (inline || (field === "codepatch" && args.patch)) {
-			throw new Error(name + " accepts " + field + " or contentFile, not both.");
-		}
-		var roots = [];
-		try {
-			roots.push(new File(String(Packages.com.twinsoft.convertigo.engine.Engine.PROJECTS_PATH)).getCanonicalFile());
-		} catch (e) {
-		}
-		if (args.projectDir) {
-			roots.push(new File(String(args.projectDir)).getCanonicalFile());
-		}
-		var requested = String(args.contentFile);
-		var file = new File(requested);
-		if (!file.isAbsolute()) {
-			if (!roots.length) {
-				throw new Error(name + " contentFile must be absolute when the projects directory is unknown.");
-			}
-			file = new File(roots[0], requested);
-		}
-		file = file.getCanonicalFile();
-		var path = String(file.getPath());
-		var inside = roots.some(function (root) {
-			var rootPath = String(root.getPath());
-			return path === rootPath || path.indexOf(rootPath + File.separator) === 0;
-		});
-		if (!inside) {
-			throw new Error(name + " contentFile must be inside the Convertigo projects directory or the target project: " + requested);
-		}
-		if (!file.isFile()) {
-			throw new Error(name + " contentFile not found: " + requested);
-		}
-		if (Number(file.length()) > 2 * 1024 * 1024) {
-			throw new Error(name + " contentFile is larger than 2 MB: " + requested);
-		}
-		args[field] = String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
-		delete args.contentFile;
-		return args;
-	}
-
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
@@ -2342,7 +2291,9 @@
 		if (!workspaceSearch && options.resolveProject !== false) {
 			args = resolveProjectDir(args);
 		}
-		args = readContentFile(name, args);
+		if (args.contentFile !== undefined) {
+			throw new Error(name + " takes its content inline (code or codepatch); MCP tools never read the agent's files.");
+		}
 		if ((name === "flow-resource-patch" || name === "flow-resource-delete") && args.path) {
 			assertNoWorkingCopy(args, String(args.path), name);
 		}

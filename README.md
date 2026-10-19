@@ -238,10 +238,6 @@ disables the relay.
   `sourceFile` a Flow Svelte or CSS source.
 - `code-patch({ ..., revision, codepatch })` applies a revision-checked unified
   diff.
-- `code-set` and `code-patch` accept `contentFile` instead of `code` or
-  `codepatch`: a file of the Convertigo projects directory or of the target
-  project (absolute, or relative to the projects directory, 2 MB at most), read
-  by the server so that a generated source is not copied into the call.
 - `code-rg({ ..., pattern })` returns small revisioned extracts.
 - `code-check` dry-runs a Flow, a frontend source or a browser block
   implementation (`target:"frontend"`).

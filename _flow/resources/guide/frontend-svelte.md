@@ -159,7 +159,12 @@ CSS or HTML property names.
 
 Use semantic layout properties for structure, the source-backed
 `theme.flow.css` for tokens and the free-form `app.flow.css` plus explicit
-`class` names for visual rules. Palette and display mode are independent:
+`class` names for visual rules. A visual value computed from state (an angle,
+a width, a position) goes to the common `style` property as a CSS custom
+property that `app.flow.css` consumes, never to one class per value:
+`style={"--second:" + page.second * 6 + "deg"}` with
+`.hand.second { transform: rotate(var(--second)); }`.
+Palette and display mode are independent:
 
 - Define each named palette in `theme.flow.css` under `@layer flow.theme`
   with `:root[data-flow-palette="name"]`, and its dark values with the same
@@ -374,9 +379,13 @@ under `OnMount` only inside a larger explicit mount chain. `OnMount once={true}`
 survives route round trips but not a full reload.
 
 Declare mutable state with `State` and computed state with `Derived` or
-`DerivedBy` in `Variables`. Write state with an action `target="page.name"`
-(`<SetValue $$id="setLanguage" target="page.language" value="fr" />`) and
-read it with `@page.name` (`layout.` / `comp.` in a layout or a component).
+`DerivedBy` in `Variables`. Write a value into a state with `SetValue`
+(`<SetValue $$id="setLanguage" target="page.language" value="fr" />`); only
+the state actions (`SetValue`, `UpdateList`, `UpdateNumber`) take `target`.
+An action that produces a result (a Flow call, `DateFormat`, any Flow block)
+writes it straight into a state with its Output, `$$out="page.hour"`, with no
+extra `SetValue`; without `$$out`, the following actions read it as `@<$$id>`.
+Read state with `@page.name` (`layout.` / `comp.` in a layout or a component).
 The former `local.name` is still read and rewritten on save.
 
 Inside an event, an action's Output may instead declare a variable of that

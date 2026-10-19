@@ -1,5 +1,5 @@
-// Writing tools require an explicit target project, never write into the project serving the MCP endpoint, and
-// code-set/code-patch read their content from a file of the projects directory or of the target project.
+// Writing tools require an explicit target project and never write into the project serving the MCP endpoint;
+// their content is inline, MCP tools never read the agent's files.
 var directory = new java.io.File(arguments[0]).getCanonicalFile();
 var source = String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(directory, "_flow/lib/mcp.js"), "UTF-8"));
 var Files = java.nio.file.Files;
@@ -48,14 +48,6 @@ assert(prepare("code-get", {qname:"Foo.Foo"}).qname === "Foo.Foo", "reading tool
 assert(prepare("code-set", {projectDir:String(directory.getPath()), qname:"Foo.Foo", code:code}).code === code, "standalone tests keep projectDir");
 assert(prepare("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", code:code}).code === code, "inline code");
 
-var fromFile = prepare("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:"App/gen/Foo.flow.js"});
-assert(fromFile.code === code, "contentFile relative to the projects directory, UTF-8 kept");
-assert(fromFile.contentFile === undefined, "contentFile is consumed");
-assert(prepare("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:String(new java.io.File(app, "gen/Foo.flow.js").getPath())}).code === code, "absolute contentFile");
-assert(prepare("code-patch", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", revision:"r1", contentFile:"App/gen/Foo.diff"}).codepatch.indexOf("+b") !== -1, "code-patch reads its diff");
-fails("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:secret}, /inside the Convertigo projects directory/, "file outside");
-fails("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:"App/gen/../../../" + outside.getName() + "/secret.flow.js"}, /inside the Convertigo projects directory/, "escaping path");
-fails("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:"App/gen/Missing.flow.js"}, /not found/, "missing file");
-fails("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", code:code, contentFile:"App/gen/Foo.flow.js"}, /not both/, "code and contentFile");
-fails("code-get", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:"App/gen/Foo.flow.js"}, /does not accept contentFile/, "contentFile on a reading tool");
+fails("code-set", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", contentFile:"App/gen/Foo.flow.js"}, /takes its content inline/, "contentFile is refused");
+fails("code-patch", {project:"App", projectDir:String(app.getPath()), qname:"App.Foo", revision:"r1", contentFile:"App/gen/Foo.diff"}, /takes its content inline/, "contentFile is refused for a patch");
 print("project-write-guard OK (" + count + " checks)");
