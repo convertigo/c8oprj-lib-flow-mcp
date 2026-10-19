@@ -161,9 +161,13 @@ Use semantic layout properties for structure, the source-backed
 `theme.flow.css` for tokens and the free-form `app.flow.css` plus explicit
 `class` names for visual rules. A visual value computed from state (an angle,
 a width, a position) goes to the common `style` property as a CSS custom
-property that `app.flow.css` consumes, never to one class per value:
-`style={"--second:" + page.second * 6 + "deg"}` with
-`.hand.second { transform: rotate(var(--second)); }`.
+property that `app.flow.css` consumes, never to one class per value. Bind it
+on the element it moves, with one named variable, so that its node shows what
+drives it, and keep the CSS rule generic:
+`<Text $$id="secondHand" class="hand" style={"--angle:" + page.second * 6 + "deg"} />`
+with `.hand { transform: rotate(var(--angle)); }`. Do not set variables on a
+parent for its children to read: the tree no longer tells which state moves
+which element.
 Palette and display mode are independent:
 
 - Define each named palette in `theme.flow.css` under `@layer flow.theme`

@@ -51,8 +51,11 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
   tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
   rules in `app.flow.css` and expose concise classes. Drive a value computed
-  from state through the common `style` property as a CSS custom property
-  (`style={"--angle:" + page.second * 6 + "deg"}`), never one class per value.
+  from state through the common `style` property as a CSS custom property,
+  bound on the element it moves with one named variable
+  (`style={"--angle:" + page.second * 6 + "deg"}` and a generic
+  `.hand { transform: rotate(var(--angle)); }`), never one class per value
+  and never variables set on a parent for its children.
 - A block result goes straight into a state with `$$out="page.name"`; only
   `SetValue`, `UpdateList` and `UpdateNumber` take `target`.
 - A Flow that throws fails its call: the chain stops and `Status` shows the
