@@ -107,7 +107,10 @@ encode a block in `qname`.
 - Keep a Flow `private` unless a frontend or an external client calls it:
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
-  not listed, `public` is listed. Exploration, authoring, test and
+  not listed, `public` is listed. The Studio runs every requestable over HTTP,
+  private ones included (Studio mode): an anonymous call that succeeds in the
+  Studio is refused on a server, so prove access control on the server or by
+  the accessibility you declare, not by an anonymous Studio call. Exploration, authoring, test and
   qualification Flows are always private.
 - `throw({ code, message, status })` what must interrupt the caller: the
   answer is the error alone and a frontend call fails and stops its chain.
