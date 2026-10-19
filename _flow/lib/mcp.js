@@ -1967,6 +1967,95 @@
 		}
 	}
 
+	// Tools that write into their target project: the target must be explicit and never the MCP project itself.
+	var projectWritingTools = {
+		"authoring-mutate": true,
+		"code-discard": true,
+		"code-patch": true,
+		"code-promote": true,
+		"code-set": true,
+		"flow-block-code-patch": true,
+		"flow-block-code-set": true,
+		"flow-block-mock": true,
+		"flow-code-discard": true,
+		"flow-code-patch": true,
+		"flow-code-promote": true,
+		"flow-code-set": true,
+		"flow-fullsync-scaffold": true,
+		"flow-object-remove": true,
+		"flow-project-reference": true,
+		"flow-project-remove": true,
+		"flow-resource-delete": true,
+		"flow-resource-patch": true,
+		"flow-schema-reset": true,
+		"flow-sync-inputs": true,
+		"frontend-svelte-asset-import": true,
+		"frontend-svelte-code-patch": true,
+		"frontend-svelte-code-set": true,
+		"frontend-svelte-mutate": true,
+		"tags-apply": true
+	};
+
+	function isServerProject(ctx, project) {
+		try {
+			var own = ctx.convertigoContext().project;
+			return own != null && String(own.getName()) === String(project);
+		} catch (e) {
+			return false;
+		}
+	}
+
+	// code-set and code-patch read their code (or diff) from a file of the Convertigo projects directory or of the
+	// target project, so that a generated source is not copied token by token into the call.
+	function readContentFile(name, args) {
+		if (args.contentFile === undefined || args.contentFile === null || String(args.contentFile) === "") {
+			delete args.contentFile;
+			return args;
+		}
+		if (!/^(?:flow-|flow-block-|frontend-svelte-)?code-(set|patch)$/.test(name)) {
+			throw new Error(name + " does not accept contentFile; only code-set and code-patch read their content from a file.");
+		}
+		var field = /code-patch$/.test(name) ? "codepatch" : "code";
+		var inline = args[field] !== undefined && args[field] !== null && String(args[field]) !== "";
+		if (inline || (field === "codepatch" && args.patch)) {
+			throw new Error(name + " accepts " + field + " or contentFile, not both.");
+		}
+		var roots = [];
+		try {
+			roots.push(new File(String(Packages.com.twinsoft.convertigo.engine.Engine.PROJECTS_PATH)).getCanonicalFile());
+		} catch (e) {
+		}
+		if (args.projectDir) {
+			roots.push(new File(String(args.projectDir)).getCanonicalFile());
+		}
+		var requested = String(args.contentFile);
+		var file = new File(requested);
+		if (!file.isAbsolute()) {
+			if (!roots.length) {
+				throw new Error(name + " contentFile must be absolute when the projects directory is unknown.");
+			}
+			file = new File(roots[0], requested);
+		}
+		file = file.getCanonicalFile();
+		var path = String(file.getPath());
+		var inside = roots.some(function (root) {
+			var rootPath = String(root.getPath());
+			return path === rootPath || path.indexOf(rootPath + File.separator) === 0;
+		});
+		if (!inside) {
+			throw new Error(name + " contentFile must be inside the Convertigo projects directory or the target project: " + requested);
+		}
+		if (!file.isFile()) {
+			throw new Error(name + " contentFile not found: " + requested);
+		}
+		if (Number(file.length()) > 2 * 1024 * 1024) {
+			throw new Error(name + " contentFile is larger than 2 MB: " + requested);
+		}
+		args[field] = String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
+		delete args.contentFile;
+		return args;
+	}
+
 	function prepareToolArguments(ctx, request, options) {
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
@@ -2028,6 +2117,14 @@
 		};
 		if (requiresProject[name] === true && !hasExplicitProject && String(args.scope || "") !== "workspace") {
 			throw new Error(name + " requires an explicit project. This MCP endpoint runs in lib_flow_mcp and is not necessarily the target project; call " + name + " with project:\"<target project>\".");
+		}
+		if (projectWritingTools[name] === true) {
+			if (!hasExplicitProject) {
+				throw new Error(name + " writes into a project and requires project:\"<target project>\". Without it the write would land in lib_flow_mcp, the project serving this MCP endpoint.");
+			}
+			if (args.project && !args.projectDir && isServerProject(ctx, args.project)) {
+				throw new Error(name + " refuses to write into " + args.project + ", the project serving this MCP endpoint. Pass the application project.");
+			}
 		}
 		if (name === "flow-catalog") {
 			if (!args.detail && !args.mode) {
@@ -2245,6 +2342,7 @@
 		if (!workspaceSearch && options.resolveProject !== false) {
 			args = resolveProjectDir(args);
 		}
+		args = readContentFile(name, args);
 		if ((name === "flow-resource-patch" || name === "flow-resource-delete") && args.path) {
 			assertNoWorkingCopy(args, String(args.path), name);
 		}

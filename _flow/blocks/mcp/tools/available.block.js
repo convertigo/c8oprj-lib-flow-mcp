@@ -452,6 +452,12 @@ const _meta = {
 				description: "Maximum diagnostics to return. Default 8, max 25."
 			};
 		}
+		if (toolName === "code-set" || toolName === "code-patch") {
+			schema.properties.contentFile = {
+				type: "string",
+				description: "File holding the " + (toolName === "code-patch" ? "unified diff" : "code") + ", read by the server instead of an inline " + (toolName === "code-patch" ? "codepatch" : "code") + " argument: write generated or long content to a file and pass its path, absolute or relative to the Convertigo projects directory, inside it or the target project, at most 2 MB. The content is never echoed."
+			};
+		}
 		if (toolName === "code-patch" && schema.properties.codepatch) {
 			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
 		}

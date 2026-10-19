@@ -210,8 +210,10 @@ Most tools accept either:
 - `project`: Convertigo project name, resolved by the live engine;
 - `projectDir`: direct filesystem path, mainly for standalone tests.
 
-When omitted, tools operate on `lib_flow_mcp` itself. Agents should pass
-`project` for application work, for example `AAAProject`.
+When omitted, reading tools operate on `lib_flow_mcp` itself. Agents should
+pass `project` for application work, for example `AAAProject`. Writing tools
+require it and refuse to write into `lib_flow_mcp`, the project serving the
+endpoint (`projectDir` stays available for standalone tests).
 
 ## FlowScript code tools
 
@@ -224,6 +226,10 @@ When omitted, tools operate on `lib_flow_mcp` itself. Agents should pass
   `sourceFile` a Flow Svelte or CSS source.
 - `code-patch({ ..., revision, codepatch })` applies a revision-checked unified
   diff.
+- `code-set` and `code-patch` accept `contentFile` instead of `code` or
+  `codepatch`: a file of the Convertigo projects directory or of the target
+  project (absolute, or relative to the projects directory, 2 MB at most), read
+  by the server so that a generated source is not copied into the call.
 - `code-rg({ ..., pattern })` returns small revisioned extracts.
 - `code-check` dry-runs a Flow, a frontend source or a browser block
   implementation (`target:"frontend"`).
