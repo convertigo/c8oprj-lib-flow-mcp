@@ -15,6 +15,7 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 			query: String(exchange.getRequestURI().getQuery()),
 			authorization: String(exchange.getRequestHeaders().getFirst("Authorization")),
 			guidance: String(exchange.getRequestHeaders().getFirst("X-Convertigo-Guidance-Version")),
+			provider: exchange.getRequestHeaders().getFirst("X-Convertigo-Agent-Provider"),
 			cookie: exchange.getRequestHeaders().getFirst("Cookie"),
 			body: body
 		});
@@ -58,6 +59,12 @@ try {
 	assert(call.body.method === "tools/call" && call.body.params.name === "scheduler-apply", "tools/call forwarded");
 	assert(call.authorization === "Bearer client-token" && call.guidance === "g1", "client token and guidance version forwarded");
 	assert(call.cookie === null, "cookies are not forwarded");
+
+	headers["X-Convertigo-Agent-Provider"] = "claude";
+	var claudeTools = mcp.legacyRelayTools(ctx);
+	assert(seen.length === 3 && String(seen[2].provider) === "claude" && claudeTools !== tools, "the catalog is fetched and cached per agent provider");
+	assert(mcp.legacyRelayTools(ctx) === claudeTools && seen.length === 3, "the provider catalog is cached");
+	delete headers["X-Convertigo-Agent-Provider"];
 
 	java.lang.System.setProperty("convertigo.flow.mcp.legacyRelay", "false");
 	assert(!mcp.legacyRelayTool("scheduler-apply"), "the relay can be disabled");

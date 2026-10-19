@@ -3698,11 +3698,12 @@
 		"scheduler-apply": true,
 		"scheduler-list": true
 	};
-	var LEGACY_RELAY_HEADERS = ["Authorization", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
+	var LEGACY_RELAY_HEADERS = ["Authorization", "X-Convertigo-Agent-Provider", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
 		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
 	var LEGACY_RELAY_NOTE = " (Relayed to the Convertigo MCP of this server.)";
-	var legacyToolsCache = { at: 0, tools: null };
+	// The Convertigo MCP adapts its catalog to the agent provider (Claude has no gateway vision tools): one entry each.
+	var legacyToolsCache = {};
 
 	function legacyRelayEnabled() {
 		return String(System.getProperty("convertigo.flow.mcp.legacyRelay", "true")).toLowerCase() !== "false";
@@ -3757,8 +3758,10 @@
 			return [];
 		}
 		var now = Number(System.currentTimeMillis());
-		if (legacyToolsCache.tools && now - legacyToolsCache.at < 60000) {
-			return legacyToolsCache.tools;
+		var key = "provider:" + legacyProvider(ctx);
+		var cached = legacyToolsCache[key];
+		if (cached && now - cached.at < 60000) {
+			return cached.tools;
 		}
 		var tools = [];
 		try {
@@ -3773,8 +3776,17 @@
 		} catch (e) {
 			tools = [];
 		}
-		legacyToolsCache = { at: now, tools: tools };
+		legacyToolsCache[key] = { at: now, tools: tools };
 		return tools;
+	}
+
+	function legacyProvider(ctx) {
+		try {
+			var request = ctx.convertigoContext().httpServletRequest;
+			return String(request && request.getHeader("X-Convertigo-Agent-Provider") || "").trim().toLowerCase();
+		} catch (e) {
+			return "";
+		}
 	}
 
 	function legacyRelayCall(ctx, request) {
