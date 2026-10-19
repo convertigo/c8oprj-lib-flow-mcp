@@ -3643,6 +3643,7 @@
 		"marketplace-list": true,
 		"project-list": true,
 		"project-list-symbols": true,
+		"project-save": true,
 		"project-security-audit": true,
 		"rag-query": true,
 		"requestable-execute": true,

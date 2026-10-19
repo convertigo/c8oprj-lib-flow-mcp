@@ -155,7 +155,8 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
 - This endpoint also relays Convertigo MCP tools that apply to Flow projects:
   `scheduler-list`/`scheduler-apply` (schedule a Flow), `requestable-execute`
   (run a Flow or transaction, `authenticatedUser` to run it as a signed-in
-  user), `log-view`, `project-list-symbols`, `marketplace-*`,
+  user), `log-view`, `project-list-symbols`, `project-save` (saves the frontend sources
+  and tags of a project), `marketplace-*`,
   `project-security-audit`, `image-describe`, `rag-query` and read-only
   `databaseobject-*`. Use them instead of a workaround.
 - `flow-output-schema` and `flow-node-output-schema` inspect or adopt verified
