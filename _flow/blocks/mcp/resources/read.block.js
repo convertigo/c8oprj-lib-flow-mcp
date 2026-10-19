@@ -35,6 +35,23 @@ const _flow = {
 }
 
 function mcp_resources_read({ input, config, result }) {
+  if({
+    $$id: "ifLibraryGuide",
+    $$comment: "Guides of workspace libraries are read from their project.",
+    condition: input.request.params.uri.startsWith("flow://lib/"),
+    $$then: function () {
+      local.libraryResponse = mcp.resources.library({
+        $$id: "readLibraryGuide",
+        request: input.request,
+        operation: "read",
+        out: "local.libraryResponse",
+      })
+      return({
+        $$id: "returnLibraryGuide",
+        value: local.libraryResponse,
+      })
+    },
+  })
   local.resourceList = resource.list({
     $$id: "listResourceFiles",
     rootDir: "_flow/resources",

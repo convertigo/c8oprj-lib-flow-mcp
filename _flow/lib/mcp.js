@@ -1520,10 +1520,17 @@
 			return targets;
 		}
 		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
-		var dbom = Engine.theApp.databaseObjectsManager;
-		var names = Engine.isStudioMode()
-			? dbom.getStudioProjects().getProjects(true).keySet()
-			: dbom.getAllProjectNamesList(false);
+		var dbom;
+		var names;
+		try {
+			dbom = Engine.theApp.databaseObjectsManager;
+			names = Engine.isStudioMode()
+				? dbom.getStudioProjects().getProjects(true).keySet()
+				: dbom.getAllProjectNamesList(false);
+		} catch (e) {
+			// no running Convertigo engine (standalone tests): no workspace project
+			return targets;
+		}
 		var iterator = names.iterator();
 		while (iterator.hasNext()) {
 			var projectName = String(iterator.next());
@@ -2939,6 +2946,41 @@
 		});
 	}
 
+	// Guides shipped by workspace libraries (_flow/resources/guide/*.md), served as flow://lib/<project>/<guide>.
+	function libraryGuides() {
+		var guides = [];
+		loadedProjectTargets().forEach(function (target) {
+			if (WORKSPACE_BLOCK_SKIPPED[target.project]) return;
+			var dir = new File(new File(new File(new File(String(target.projectDir), "_flow"), "resources"), "guide"), "");
+			var files = dir.isDirectory() ? dir.listFiles() : null;
+			for (var i = 0; files && i < files.length; i++) {
+				var name = String(files[i].getName());
+				var match = /^([A-Za-z0-9_.-]+)\.md$/.exec(name);
+				if (!match || !files[i].isFile()) continue;
+				var text = "";
+				try {
+					text = String(new Packages.java.lang.String(Files.readAllBytes(files[i].toPath()), StandardCharsets.UTF_8));
+				} catch (e) {
+				}
+				var title = /^#\s+(.+)$/m.exec(text);
+				guides.push({
+					uri: "flow://lib/" + target.project + "/" + match[1],
+					name: target.project + " " + match[1],
+					description: (title ? title[1] : target.project + " guide") + " (guide of the workspace library " + target.project + ")",
+					mimeType: "text/markdown",
+					project: target.project,
+					file: String(files[i].getCanonicalPath())
+				});
+			}
+		});
+		return guides;
+	}
+
+	function libraryGuideText(uri) {
+		var found = libraryGuides().filter(function (guide) { return guide.uri === String(uri || ""); })[0];
+		return found ? String(new Packages.java.lang.String(Files.readAllBytes(new File(found.file).toPath()), StandardCharsets.UTF_8)) : null;
+	}
+
 	function withWorkspaceProviders(request, diagnostic) {
 		if (!diagnostic || diagnostic.code !== "UNKNOWN_BLOCK") return diagnostic;
 		var block = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "");
@@ -2950,19 +2992,22 @@
 			providers = [];
 		}
 		if (!providers.length) return diagnostic;
+		var guides = libraryGuides().filter(function (guide) { return guide.project === providers[0].project; });
 		diagnostic.workspaceProviders = providers;
+		if (guides.length) diagnostic.workspaceGuides = guides.map(function (guide) { return guide.uri; });
 		diagnostic.candidateDecision = { recommendation: "reference", tool: "flow-project-reference",
 			reference: providers[0].project, bestBlock: providers[0].block };
 		diagnostic.next = "The workspace project " + providers[0].project + " provides " + providers[0].block +
 			": add it with flow-project-reference({project:\"" + (target || "<project>") + "\", reference:\"" + providers[0].project +
-			"\"}), use the block, then check again. Do not mock a block that a workspace library provides.";
+			"\"}), use the block, then check again. Do not mock a block that a workspace library provides." +
+			(guides.length ? " Read its guide first: " + guides.map(function (guide) { return guide.uri; }).join(", ") + "." : "");
 		return diagnostic;
 	}
 
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "workspaceGuides", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
@@ -3664,6 +3709,10 @@
 					var providers = workspaceBlockProviders(catalogArgs.project, need, 5);
 					if (providers.length) {
 						value.workspaceProviders = providers;
+						var catalogGuides = libraryGuides().filter(function (guide) {
+							return providers.some(function (provider) { return provider.project === guide.project; });
+						}).map(function (guide) { return guide.uri; });
+						if (catalogGuides.length) value.workspaceGuides = catalogGuides;
 						value.workspaceNext = "These blocks come from workspace projects the project does not reference yet: add one with flow-project-reference({project, reference}) before using its blocks.";
 					}
 				} catch (e) {
@@ -3872,6 +3921,8 @@
 	return {
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
+		libraryGuides: libraryGuides,
+		libraryGuideText: libraryGuideText,
 		legacyRelayTool: legacyRelayTool,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,

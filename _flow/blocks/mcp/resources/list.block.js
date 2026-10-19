@@ -94,6 +94,23 @@ function mcp_resources_list({ input, config, result }) {
       })
     },
   })
+  local.libraryGuides = mcp.resources.library({
+    $$id: "libraryGuides",
+    $$comment: "Guides shipped by workspace libraries, read with resources/read like the Flow guides.",
+    operation: "list",
+    out: "local.libraryGuides",
+  })
+  forEach({
+    $$id: "eachLibraryGuide",
+    items: local.libraryGuides,
+    $$nodes: function () {
+      json.push({
+        $$id: "pushLibraryGuide",
+        path: "local.resources",
+        value: current,
+      })
+    },
+  })
   local.payload = json.object({
     $$id: "payload",
     $$fields: function () {

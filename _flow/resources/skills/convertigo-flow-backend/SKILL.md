@@ -20,7 +20,9 @@ Keep this role across backend lots instead of spawning a replacement agent.
 - Data access (SQL databases, CouchDB, Baserow, shared CRUD contracts) comes
   from workspace libraries: when a diagnostic or `flow-catalog` lists
   `workspaceProviders`, reference that library with `flow-project-reference`
-  and use its blocks instead of a mock or a legacy connector.
+  and use its blocks instead of a mock or a legacy connector. Read the guide
+  of that library first when one is listed (`workspaceGuides`,
+  `flow://lib/<library>/<guide>` in `resources/list`).
 - Put service URLs and structural constants in project `config.*`. Secrets
   are Convertigo global symbols ending with `.secret`, referenced with a
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
