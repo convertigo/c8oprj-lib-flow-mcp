@@ -149,6 +149,12 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   it into `code`/`codepatch`: the server reads it (projects directory or target
   project, 2 MB at most) and never echoes it.
 - `authoring-palette` is contextual discovery for one parent path.
+- This endpoint also relays Convertigo MCP tools that apply to Flow projects:
+  `scheduler-list`/`scheduler-apply` (schedule a Flow), `requestable-execute`
+  (run a Flow or transaction, `authenticatedUser` to run it as a signed-in
+  user), `log-view`, `project-list-symbols`, `marketplace-*`,
+  `project-security-audit`, `image-describe`, `rag-query` and read-only
+  `databaseobject-*`. Use them instead of a workaround.
 - `flow-output-schema` and `flow-node-output-schema` inspect or adopt verified
   contracts; do not adopt stale learned schemas.
 - `flow-resource-*` is for bounded non-FlowScript project resources, never for

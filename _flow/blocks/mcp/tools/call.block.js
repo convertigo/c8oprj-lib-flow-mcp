@@ -97,7 +97,9 @@ const _meta = {
 			var out = props.out || "local.response";
 			var response = block
 				? ctx.callBlock(block, { request: request, out: out }, { trace: false })
-				: ctx.callBlock("mcp.tool.notFound", { request: request, out: out }, { trace: false });
+				: mcp.legacyRelayTool(name)
+					? mcp.legacyRelayCall(ctx, request)
+					: ctx.callBlock("mcp.tool.notFound", { request: request, out: out }, { trace: false });
 			ctx.write(out, response);
 			return response;
 		}

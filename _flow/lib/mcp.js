@@ -3678,9 +3678,127 @@
 		return response;
 	}
 
+	// Relay to the Convertigo MCP (lib_ConvertigoMCP) of the same server: the tools it already provides and that apply
+	// to a Flow project are listed and called through this endpoint, so that one MCP serves both. The call goes back
+	// to the server over HTTP with the headers of the client (the two endpoints share their tokens).
+	var LEGACY_RELAY_TOOLS = {
+		"databaseobject-schema": true,
+		"databaseobject-search": true,
+		"databaseobject-tree-get": true,
+		"image-describe": true,
+		"log-view": true,
+		"marketplace-describe": true,
+		"marketplace-import": true,
+		"marketplace-list": true,
+		"project-list": true,
+		"project-list-symbols": true,
+		"project-security-audit": true,
+		"rag-query": true,
+		"requestable-execute": true,
+		"scheduler-apply": true,
+		"scheduler-list": true
+	};
+	var LEGACY_RELAY_HEADERS = ["Authorization", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
+		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
+		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
+	var LEGACY_RELAY_NOTE = " (Relayed to the Convertigo MCP of this server.)";
+	var legacyToolsCache = { at: 0, tools: null };
+
+	function legacyRelayEnabled() {
+		return String(System.getProperty("convertigo.flow.mcp.legacyRelay", "true")).toLowerCase() !== "false";
+	}
+
+	function legacyRelayTool(name) {
+		return legacyRelayEnabled() && LEGACY_RELAY_TOOLS[String(name || "")] === true;
+	}
+
+	function legacyEndpoint(ctx) {
+		var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+		var servletRequest = context && context.httpServletRequest;
+		if (!servletRequest) {
+			throw new Error("The Convertigo MCP relay needs an HTTP request.");
+		}
+		var scheme = String(servletRequest.getScheme() || "http").toLowerCase() === "https" ? "https" : "http";
+		var host = scheme === "https" ? "localhost" : "127.0.0.1";
+		return {
+			url: scheme + "://" + host + ":" + Number(servletRequest.getLocalPort()) +
+				String(servletRequest.getContextPath() || "").replace(/\/+$/, "") + "/api/mcp?jsonOnly=true",
+			servletRequest: servletRequest
+		};
+	}
+
+	function legacyPost(ctx, payload, timeoutSeconds) {
+		var endpoint = legacyEndpoint(ctx);
+		var HttpRequest = Packages.java.net.http.HttpRequest;
+		var builder = HttpRequest.newBuilder(Packages.java.net.URI.create(endpoint.url))
+			.timeout(Packages.java.time.Duration.ofSeconds(timeoutSeconds))
+			.header("Content-Type", "application/json")
+			.header("Accept", "application/json, text/event-stream");
+		LEGACY_RELAY_HEADERS.forEach(function (name) {
+			var value = endpoint.servletRequest.getHeader(name);
+			if (value !== null && value !== undefined && String(value) !== "") {
+				builder.header(name, String(value));
+			}
+		});
+		var request = builder.POST(HttpRequest.BodyPublishers.ofString(JSON.stringify(payload), StandardCharsets.UTF_8)).build();
+		var client = Packages.java.net.http.HttpClient.newBuilder()
+			.connectTimeout(Packages.java.time.Duration.ofSeconds(5)).build();
+		var response = client.send(request, Packages.java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		var body = String(response.body() || "");
+		if (Number(response.statusCode()) >= 400 && !/^\s*\{/.test(body)) {
+			throw new Error("The Convertigo MCP answered HTTP " + response.statusCode() + ".");
+		}
+		return JSON.parse(body);
+	}
+
+	// The relayed tool descriptors, or [] when lib_ConvertigoMCP does not answer (the Flow tools stay available).
+	function legacyRelayTools(ctx) {
+		if (!legacyRelayEnabled()) {
+			return [];
+		}
+		var now = Number(System.currentTimeMillis());
+		if (legacyToolsCache.tools && now - legacyToolsCache.at < 60000) {
+			return legacyToolsCache.tools;
+		}
+		var tools = [];
+		try {
+			var answer = legacyPost(ctx, { jsonrpc: "2.0", id: "flow-relay-list", method: "tools/list", params: {} }, 30);
+			tools = (answer && answer.result && answer.result.tools || []).filter(function (tool) {
+				return tool && LEGACY_RELAY_TOOLS[String(tool.name)] === true;
+			}).map(function (tool) {
+				var copy = JSON.parse(JSON.stringify(tool));
+				copy.description = String(copy.description || "") + LEGACY_RELAY_NOTE;
+				return copy;
+			});
+		} catch (e) {
+			tools = [];
+		}
+		legacyToolsCache = { at: now, tools: tools };
+		return tools;
+	}
+
+	function legacyRelayCall(ctx, request) {
+		try {
+			var answer = legacyPost(ctx, {
+				jsonrpc: "2.0",
+				id: request.id === undefined ? null : request.id,
+				method: "tools/call",
+				params: request.params || {}
+			}, 600);
+			answer.id = request.id === undefined ? null : request.id;
+			return answer;
+		} catch (error) {
+			return toolError(request, new Error("Convertigo MCP relay failed for " + (request.params && request.params.name) +
+				": " + (error && error.message || error) + ". Check that lib_ConvertigoMCP is loaded on this server."), ctx);
+		}
+	}
+
 	return {
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
+		legacyRelayTool: legacyRelayTool,
+		legacyRelayTools: legacyRelayTools,
+		legacyRelayCall: legacyRelayCall,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
 		requestValue: requestValue,

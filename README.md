@@ -215,6 +215,18 @@ pass `project` for application work, for example `AAAProject`. Writing tools
 require it and refuse to write into `lib_flow_mcp`, the project serving the
 endpoint (`projectDir` stays available for standalone tests).
 
+## Relayed Convertigo MCP tools
+
+The endpoint also lists and calls a fixed set of Convertigo MCP
+(`lib_ConvertigoMCP`) tools that apply to Flow projects: scheduling,
+`requestable-execute` (with `authenticatedUser`), logs, symbols, marketplace,
+security audit, image description, documentation search and read-only
+database object tools (`LEGACY_RELAY_TOOLS` in `_flow/lib/mcp.js`). Calls go
+back to the server's `/api/mcp` over HTTP with the client's token and Convertigo
+headers; the two endpoints share their tokens. Without `lib_ConvertigoMCP` the
+list only holds the Flow tools. `-Dconvertigo.flow.mcp.legacyRelay=false`
+disables the relay.
+
 ## FlowScript code tools
 
 `code-*` is the default source surface for agents:

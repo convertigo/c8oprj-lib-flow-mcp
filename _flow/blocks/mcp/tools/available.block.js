@@ -632,6 +632,15 @@ const _meta = {
 					tools.push(descriptor);
 				}
 			});
+			var own = {};
+			tools.forEach(function (tool) {
+				own[tool.name] = true;
+			});
+			ctx.lib("mcp").legacyRelayTools(ctx).forEach(function (tool) {
+				if (!own[tool.name]) {
+					tools.push(tool);
+				}
+			});
 			tools.sort(function (a, b) {
 				return a.name.localeCompare(b.name);
 			});
