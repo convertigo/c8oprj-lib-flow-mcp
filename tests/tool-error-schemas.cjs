@@ -8,6 +8,6 @@ const project=path.resolve(process.argv[3]||path.join(__dirname,'..'));
 const output=execFileSync('java',['-cp',process.argv[2],'org.mozilla.javascript.tools.shell.Main','-version','200',path.join(project,'tests/tool-errors.js'),project,'--schemas'],{encoding:'utf8'});
 const fixtures=JSON.parse(output.split('\n').find(line=>line.startsWith('SCHEMA_FIXTURES:')).slice('SCHEMA_FIXTURES:'.length));
 const validate=new Ajv({strict:false,allErrors:true}).compile(fixtures.schema);
-for(const value of [fixtures.ordinary,fixtures.vibe,{answer:42},{error:{context:'string',newField:{nested:true}}}])assert(validate(value),JSON.stringify(validate.errors));
+for(const value of [fixtures.ordinary,fixtures.vibe,{error:fixtures.ordinary.error,revision:'checked',diagnostics:[]},{answer:42},{error:{context:'string',newField:{nested:true}}}])assert(validate(value),JSON.stringify(validate.errors));
 for(const value of [{answer:'wrong'},{answer:42,extra:'not allowed'},{}, {error:'not an object'}])assert(!validate(value),'Strict schema accepted '+JSON.stringify(value));
-console.log('tool-error-schemas OK (8 real Ajv validations)');
+console.log('tool-error-schemas OK (9 real Ajv validations)');

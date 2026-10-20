@@ -62,9 +62,7 @@ function mcp_handle({ input, config, result }) {
         request: input.request,
         code: -32001,
         message: input.request.__flowMcpAuthenticationError.message,
-        data: {
-          "code": input.request.__flowMcpAuthenticationError.code,
-        },
+        data: input.request.__flowMcpAuthenticationError,
         out: "local.response",
       })
       return({

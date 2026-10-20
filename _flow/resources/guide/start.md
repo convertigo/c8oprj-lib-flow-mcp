@@ -159,7 +159,7 @@ encode a block in `qname`.
 
 ## Tool hygiene
 
-After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`.
+After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`. Relayed tools keep the legacy MCP response.
 
 - After reading a tool contract once, pass `doc:false,hints:false`.
 - Discovery tools are paginated (`limit`, `cursor`). `flow-catalog`,

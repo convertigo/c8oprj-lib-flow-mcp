@@ -1972,9 +1972,9 @@
 	function toolOutputSchema(successSchema) {
 		var error = { type: "object", additionalProperties: true,
 			description: "Tool failed: read code, message, hint and details before retrying." };
-		return { type: "object", properties: { error: error }, anyOf: [
+		return { type: "object", properties: { error: error }, additionalProperties: true, anyOf: [
 			successSchema || { type: "object", additionalProperties: true },
-			{ type: "object", properties: { error: error }, required: ["error"], additionalProperties: false }
+			{ type: "object", properties: { error: error }, required: ["error"], additionalProperties: true }
 		] };
 	}
 
@@ -3982,20 +3982,32 @@
 	function legacyPost(ctx, payload, timeoutSeconds) {
 		var endpoint = legacyEndpoint(ctx);
 		var HttpRequest = Packages.java.net.http.HttpRequest;
-		var builder = HttpRequest.newBuilder(Packages.java.net.URI.create(endpoint.url))
-			.timeout(Packages.java.time.Duration.ofSeconds(timeoutSeconds))
-			.header("Content-Type", "application/json")
-			.header("Accept", "application/json, text/event-stream");
-		LEGACY_RELAY_HEADERS.forEach(function (name) {
-			var value = endpoint.servletRequest.getHeader(name);
-			if (value !== null && value !== undefined && String(value) !== "") {
-				builder.header(name, String(value));
-			}
-		});
-		var request = builder.POST(HttpRequest.BodyPublishers.ofString(JSON.stringify(payload), StandardCharsets.UTF_8)).build();
-		var client = Packages.java.net.http.HttpClient.newBuilder()
-			.connectTimeout(Packages.java.time.Duration.ofSeconds(5)).build();
-		var response = client.send(request, Packages.java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		function post(url) {
+			var builder = HttpRequest.newBuilder(Packages.java.net.URI.create(url))
+				.timeout(Packages.java.time.Duration.ofSeconds(timeoutSeconds))
+				.header("Content-Type", "application/json")
+				.header("Accept", "application/json, text/event-stream");
+			LEGACY_RELAY_HEADERS.forEach(function (name) {
+				var value = endpoint.servletRequest.getHeader(name);
+				if (value !== null && value !== undefined && String(value) !== "") {
+					builder.header(name, String(value));
+				}
+			});
+			var request = builder.POST(HttpRequest.BodyPublishers.ofString(JSON.stringify(payload), StandardCharsets.UTF_8)).build();
+			var client = Packages.java.net.http.HttpClient.newBuilder()
+				.connectTimeout(Packages.java.time.Duration.ofSeconds(5)).build();
+			return client.send(request, Packages.java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		}
+		var response;
+		try { response = post(endpoint.url); }
+		catch (error) {
+			// A TLS-terminating proxy rewrites getScheme(), not the local connector.
+			// Retry only a proven plaintext connector, on this same loopback port/path.
+			// Certificate/hostname errors must never select this path.
+			if (endpoint.url.indexOf("https://localhost:") !== 0 ||
+					String(error).indexOf("Unrecognized SSL message, plaintext connection?") < 0) throw error;
+			response = post(endpoint.url.replace("https://localhost:", "http://127.0.0.1:"));
+		}
 		var body = String(response.body() || "");
 		if (Number(response.statusCode()) >= 400 && !/^\s*\{/.test(body)) {
 			throw new Error("The Convertigo MCP answered HTTP " + response.statusCode() + ".");

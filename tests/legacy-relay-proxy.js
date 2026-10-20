@@ -1,0 +1,15 @@
+// The proxy rewrites getScheme to HTTPS, but the local connector can still speak HTTP.
+// Stub only the HTTP transport: a genuine plaintext/TLS mismatch may downgrade loopback; certificate errors may not.
+var project=new java.io.File(arguments[0]).getCanonicalFile(),realPackages=Packages,seen=[],failure='Unrecognized SSL message, plaintext connection?';
+var client={send:function(request){seen.push(request);if(request.url.indexOf('https:')===0)throw new Error('javax.net.ssl.SSLException: '+failure);return {statusCode:function(){return 200;},body:function(){return JSON.stringify({jsonrpc:'2.0',id:23,result:{isError:false,content:[{type:'text',text:'Legacy failure'}],structuredContent:{error:{code:'LEGACY_TEST',message:'Legacy failure'}}}});}};}};
+var Packages={java:{io:realPackages.java.io,nio:realPackages.java.nio,lang:realPackages.java.lang,util:realPackages.java.util,time:realPackages.java.time,net:{URI:realPackages.java.net.URI,http:{HttpRequest:{newBuilder:function(uri){var request={url:String(uri),headers:{}};var builder={timeout:function(){return builder;},header:function(name,value){request.headers[name]=String(value);return builder;},POST:function(body){request.body=String(body);return builder;},build:function(){return request;}};return builder;},BodyPublishers:{ofString:function(text){return text;}}},HttpClient:{newBuilder:function(){var builder={connectTimeout:function(){return builder;},build:function(){return client;}};return builder;}},HttpResponse:{BodyHandlers:{ofString:function(){return {};}}}}}},org:realPackages.org,com:realPackages.com};
+var mcp=eval(String(realPackages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(project,'_flow/lib/mcp.js'),'UTF-8')));
+var ctx={convertigoContext:function(){return {httpServletRequest:{getScheme:function(){return 'https';},getLocalPort:function(){return 28080;},getContextPath:function(){return '/convertigo';},getHeader:function(name){return name==='User-Agent'?'MistralAI-VibeCLI/proxy':name==='Authorization'?'Bearer fake-test-token':null;}}};}};
+var request={jsonrpc:'2.0',id:23,method:'tools/call',params:{name:'log-view',arguments:{}}};
+var answer=mcp.legacyRelayCall(ctx,request);
+if(seen.length!==2 || answer.error || answer.result.structuredContent.error.code!=='LEGACY_TEST' || answer.result.isError!==false)throw new Error('HTTPS proxy broke transparent legacy relay: '+JSON.stringify(answer));
+if(seen[1].url!=='http://127.0.0.1:28080/convertigo/api/mcp?jsonOnly=true'||seen[1].headers['User-Agent']!=='MistralAI-VibeCLI/proxy'||seen[1].headers.Authorization!=='Bearer fake-test-token')throw new Error('Local relay endpoint or client headers changed');
+seen=[];failure='PKIX path building failed';
+answer=mcp.legacyRelayCall(ctx,request);
+if(seen.length!==1 || answer.result.isError!==false || answer.result.structuredContent.error.message.indexOf('PKIX')<0)throw new Error('Certificate error must not retry as plaintext');
+print('legacy-relay-proxy OK (plaintext connector fallback, intact response/headers, no certificate downgrade)');

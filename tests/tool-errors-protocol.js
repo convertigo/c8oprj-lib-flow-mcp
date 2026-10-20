@@ -20,4 +20,8 @@ var tools=call({jsonrpc:'2.0',id:4,method:'tools/list'}).result.tools;
 var own=tools.filter(function(t){return !/Relayed to the Convertigo MCP/.test(t.description||'');});
 assert(own.length>=40,'Expected the real Flow catalog');
 own.forEach(function(t){assert(t.outputSchema && t.outputSchema.type==='object' && t.outputSchema.properties.error.type==='object',t.name+' output schema rejects errors');});
+var authSource='const _flow={sourceVersion:2,inputs:{request:{type:"object"}}}\nfunction Auth({input,config,result}) {\n local.response=mcp.handle({request:input.request})\n return({value:local.response})\n}\n';
+var auth=JSON.parse(engine.run(JSON.stringify({flowSource:authSource,includeTrace:false,input:{request:{jsonrpc:'2.0',id:5,__flowMcpAuthenticationError:{code:'missing_token',message:'Bearer required'}}}})));
+assert(auth.ok===true && auth.result.error.code===-32001 && !auth.result.result,'Authentication must remain a JSON-RPC error');
+assert(auth.result.error.data.code==='missing_token','Authentication diagnostic was left as an unevaluated template');
 print('tool-errors-protocol OK ('+checks+' checks, '+own.length+' Flow schemas)');
