@@ -25,8 +25,14 @@ Keep this role across backend lots instead of spawning a replacement agent.
   `flow://lib/<library>/<guide>` in `resources/list`).
 - SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
   and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
-  JDBC call or a Rhino block for SQL. A missing SQL capability is a friction
-  to report, not a reason to bypass the library.
+  JDBC call or a Rhino block for SQL. Declare the tables in `schema.json` and
+  the sample rows in `data.json`, apply them with `sql.initialize`, then read
+  and write through `data.read` / `data.write` on a `sql.table` resource. The
+  HSQLDB development database lives in the project resources; PostgreSQL or
+  another database reuses the same declarations and Flows by configuration
+  only. Keep `sql.write` / `sql.transaction` for business operations beyond
+  CRUD. A missing SQL capability is a friction to report, not a reason to
+  bypass the library.
 - Accounts, sign-in, roles and password reset come from the Flow libraries
   `lib_UserManager` and `lib_OAuth` (Google, Microsoft, OpenID): reference
   them and call their Flows; never store, hash or check passwords in the
