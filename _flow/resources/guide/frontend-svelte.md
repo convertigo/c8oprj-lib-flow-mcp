@@ -333,6 +333,12 @@ failure ends the chain, an empty branch lets it go on. Its branches hold
 actions and `If` only. A `DataGrid` `OnChange` also fires when new rows drop
 the selected one (`@event.source` is `selection`): guard what needs a row.
 
+A chain started by a user event survives the teardown of the view that
+launched it: a button may hide its own panel, or a Flow component may be
+unmounted, and the remaining actions still run; lifecycle work (`OnMount`,
+intervals) is cancelled instead. Reentrancy policies still apply. The first
+error fills `Status` and is logged in the console.
+
 ```svelte
 <OnChange $$id="pickTable"><Actions>
   <If $$id="hasRow" test="@event.value.selectedRows.length"><Then>
@@ -386,6 +392,9 @@ Declare mutable state with `State` and computed state with `Derived` or
 `DerivedBy` in `Variables`. Write a value into a state with `SetValue`
 (`<SetValue $$id="setLanguage" target="page.language" value="fr" />`); only
 the state actions (`SetValue`, `UpdateList`, `UpdateNumber`) take `target`.
+`UpdateList` `remove` deletes every occurrence of `value`; `toggle` removes it
+when present, otherwise appends it (a multiple selection). Comparison is
+strict, `17` differs from `"17"`: keep stable primitive identifiers.
 An action that produces a result (a Flow call, `DateFormat`, any Flow block)
 writes it straight into a state with its Output, `$$out="page.hour"`, with no
 extra `SetValue`; without `$$out`, the following actions read it as `@<$$id>`.
