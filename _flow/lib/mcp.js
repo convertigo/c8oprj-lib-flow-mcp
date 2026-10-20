@@ -994,6 +994,7 @@
 			} else if (writeResult && writeResult.source !== undefined && writeResult.source !== null) {
 				flow.setFlowSource(String(writeResult.source));
 			}
+			if (writeResult && writeResult.flowMetadata && typeof writeResult.flowMetadata.authenticatedContextRequired === "boolean") flow.setAuthenticatedContextRequired(writeResult.flowMetadata.authenticatedContextRequired);
 			result.flagsBeforeFastSaveClean = flowDboFlags(project, flow);
 			result.registered = true;
 			result.qname = String(flow.getQName());
@@ -1049,6 +1050,9 @@
 			writeUtf8(sequenceFile, "includeTrace: " + (boolArg(args.includeTrace, false) ? "true" : "false") + "\n");
 			changed = true;
 		}
+		var nativeContent = readUtf8(sequenceFile), nativeNext = nativeContent.replace(/^authenticatedContextRequired:.*\n/gm, "");
+		if (flow.getAuthenticatedContextRequired()) nativeNext = "authenticatedContextRequired: true\n" + nativeNext;
+		if (nativeNext !== nativeContent) { writeUtf8(sequenceFile, nativeNext); changed = true; }
 		if (syncFlowInputDeclarationYaml(sequenceFile, name, writeResult)) {
 			changed = true;
 		}
@@ -1178,7 +1182,8 @@
 			content = "includeTrace: false\n";
 		}
 		var ids = existingFlowInputVariableIds(content);
-		var filtered = removeFlowInputVariableBlocks(content, keys);
+		// The declared input contract is authoritative; preserve only reserved native __ variables.
+		var filtered = removeFlowInputVariableBlocks(content, Object.keys(ids).filter(function (key) { return key.indexOf("__") !== 0; }));
 		if (filtered.length && filtered.charAt(filtered.length - 1) !== "\n") {
 			filtered += "\n";
 		}
@@ -1244,6 +1249,8 @@
 		if (definition.required === true) {
 			lines.push("  required: true");
 		}
+		if (definition.visibility !== undefined && Number(definition.visibility) !== 0) lines.push("  visibility: " + Number(definition.visibility));
+		if (definition.isFileUpload === true) lines.push("  isFileUpload: true");
 		var value = flowInputYamlDefault(definition);
 		if (value !== undefined) {
 			lines.push("  value: " + yamlScalar(value));

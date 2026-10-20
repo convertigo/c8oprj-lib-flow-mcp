@@ -362,6 +362,12 @@ const _meta = {
 				description: "Compact by default. Use full only to inspect complete paperboard and binding inventories."
 			};
 		}
+		if (toolName === "flow-sync-inputs") {
+			schema.properties.name = {type:"string",description:"Local Flow name; provide name or qname."};
+			schema.properties.qname = {type:"string",description:"Qualified Flow name in project; provide qname or name."};
+			schema.properties.refresh = {type:"boolean",description:"Refresh the Studio tree after synchronization (default true)."};
+			schema.anyOf = [{required:["name"]},{required:["qname"]}];
+		}
 		var supportsBlockTarget = /^code-(get|set|patch|check|rg)$/.test(String(toolName || ""));
 		if (/^code-/.test(String(toolName || ""))) {
 			schema.properties.qname = schema.properties.qname || {
@@ -574,7 +580,7 @@ const _meta = {
 		} else if (name === "flow-cache-info") {
 			description = "Compact runtime cache diagnostics. Avoid during normal authoring.";
 		} else if (name === "flow-sync-inputs") {
-			description = "Synchronizes FlowScript _flow.inputs to Flow request variables and clears stale Flow dirty flags.";
+			description = "Synchronizes one Flow (name or qname): typed inputs, defaults, required, visibility, isFileUpload and authenticatedContextRequired. Preserves undeclared native settings; returns inputDefinitions and saved status.";
 		} else if (name === "flow-requestable-list") {
 			description = "Lists the requestables (sequences, transactions) of one project. Requires project.";
 		} else if (name === "flow-test") {

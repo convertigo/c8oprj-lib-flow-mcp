@@ -81,3 +81,20 @@ its main configuration (`bronn = false`, `if page.count > 0`,
 fetching every node. It may be truncated with `…`, never parse it. Its identity
 is `path` and `nodeId` (the `$$id` of the source): address and edit nodes with
 them, and read or change their properties, never their summary.
+
+## Project HTTP exclusions
+
+`flow-resource-get({project,path:".httpignore"})` reads the exact root file.
+Patch it with the returned hash (`baseHash`), first with `dryRun:true`, to add
+private directories such as `/docs/flow-port/`. Creation uses the SHA-256 of
+an empty file. The API preserves `/_flow/` and every existing ignore rule;
+it refuses removing rules, adding unignore (`!`) rules, deleting the file,
+control characters and files over 64 KiB. These safeguards still apply with
+`validate:false`. Other root dotfiles and paths outside the project remain
+inaccessible. Private material belongs under an excluded directory; public
+assets stay outside it. A literal path containing `input.csv` is text, not an
+undeclared Flow input.
+
+An unknown block is diagnosed before nested-call corrections; inspect its
+suggestions and keep the intended contract. No suggested block is substituted
+automatically.

@@ -454,3 +454,31 @@ Comments explain subtle syntax, for example
 `// Only call Flow blocks with one object containing named parameters.`
 Rhino sample blocks start with
 `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+
+## Native inputs and backend primitives
+
+`_flow.authenticatedContextRequired` is a native boolean. Input `visibility`
+(-1 masks all, 0 visible, or bitmask 1/2/4/8) and `isFileUpload:true` are
+synchronized to the generated Convertigo variables, persisted on promotion,
+and retained on reload. An omitted property preserves its native value; an
+explicit false/zero resets it. `flow-sync-inputs({project,name})` also accepts
+`qname` instead of name. It requires a target Flow, not just a project.
+
+Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
+maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The
+result contains typed `rows`, `rowCount`, `columns`, `rowSchema`, `byteLength`.
+It supports BOM/quotes/multiline cells and refuses overflow or invalid cells
+without a partial result. It reads data; writes remain explicit transactions.
+
+Use `flow.poll({until:local.job.body.status == "finished",intervalMs:1000,
+timeoutMs:30000,maxAttempts:30,$$nodes:function(){...}})` to wait for an async
+job: one attempt, then the condition, then a sleeping interval. Bound the
+child HTTP timeout too. `flow.wait({delayMs:250})` yields without a busy loop
+and has a hard 60-second cap. Exhausted polling raises `POLL_TIMEOUT` (504).
+`project.cacheRemove({key:"table_id_cache"})` invalidates the exact key in the
+current project's native application cache (including legacy caches),
+returning `{key,removed}`; it does not clear runtime descriptor caches.
+
+Contracts, limits, error codes and complete examples:
+`flow://lib/lib_flow_engine/backend-io`. Never add a Rhino CSV parser, sleep
+or project-cache bridge in an application.
