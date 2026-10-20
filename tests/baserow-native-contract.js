@@ -31,7 +31,7 @@ try{
  assert(yaml.indexOf('visibility:')<0&&yaml.indexOf('isFileUpload:')<0,'Explicit resets override preserved native flags');
  var code=String(files.readFileToString(new java.io.File(project,'_flow/blocks/mcp/tools/available.block.js'),'UTF-8'));
  var available=eval(code.substring(code.indexOf('(function'))),name='mcp.tool.flow.syncInputs';
- var tools=available.run({props:function(){return {};},blockNames:function(){return [name];},blockContract:function(){return {name:name,props:{request:{type:'object'},out:{kind:'path'}},description:'sync'};},write:function(){},lib:function(){return {legacyRelayTools:function(){return [];}};}},{});
+ var tools=available.run({props:function(){return {};},blockNames:function(){return [name];},blockContract:function(){return {name:name,props:{request:{type:'object'},out:{kind:'path'}},description:'sync'};},write:function(){},lib:function(){return {legacyRelayTools:function(){return [];},toolOutputSchema:mcp.toolOutputSchema};}},{});
  var tool=tools.filter(function(t){return t.name==='flow-sync-inputs';})[0];assert(tool,'F21 tool exists');
  assert(tool.inputSchema.properties.project&&tool.inputSchema.properties.name&&tool.inputSchema.properties.qname,'F21 public schema exposes project/name/qname');
  assert(tool.inputSchema.anyOf&&tool.inputSchema.anyOf.length===2,'F21 name or qname is required');
