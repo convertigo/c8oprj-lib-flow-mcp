@@ -21,6 +21,13 @@ try{
  bean.getAuthenticatedContextRequired=function(){return false;};definitions.secret.visibility=0;definitions.files.isFileUpload=false;
  mcp._saveNativeDeclaration(p,bean,'Probe',{}, {inputDefinitions:definitions});yaml=String(files.readFileToString(file,'UTF-8'));
  assert(yaml.indexOf('authenticatedContextRequired')<0&&yaml.indexOf('isFileUpload')<0&&yaml.indexOf('visibility')<0,'Explicit false/zero survives reload defaults');
+ bean.getVariable=function(key){return {getVisibility:function(){return key==='secret'?-1:0;},getIsFileUpload:function(){return key==='files';}};};
+ delete definitions.secret.visibility;delete definitions.files.isFileUpload;
+ mcp._saveNativeDeclaration(p,bean,'Probe',{}, {inputDefinitions:definitions});yaml=String(files.readFileToString(file,'UTF-8'));
+ assert(yaml.indexOf('visibility: -1')>=0&&yaml.indexOf('isFileUpload: true')>=0,'Omitted native flags survive fast save from the existing beans');
+ definitions.secret.visibility=0;definitions.files.isFileUpload=false;
+ mcp._saveNativeDeclaration(p,bean,'Probe',{}, {inputDefinitions:definitions});yaml=String(files.readFileToString(file,'UTF-8'));
+ assert(yaml.indexOf('visibility:')<0&&yaml.indexOf('isFileUpload:')<0,'Explicit resets override preserved native flags');
  var code=String(files.readFileToString(new java.io.File(project,'_flow/blocks/mcp/tools/available.block.js'),'UTF-8'));
  var available=eval(code.substring(code.indexOf('(function'))),name='mcp.tool.flow.syncInputs';
  var tools=available.run({props:function(){return {};},blockNames:function(){return [name];},blockContract:function(){return {name:name,props:{request:{type:'object'},out:{kind:'path'}},description:'sync'};},write:function(){},lib:function(){return {legacyRelayTools:function(){return [];}};}},{});

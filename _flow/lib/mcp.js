@@ -1053,7 +1053,7 @@
 		var nativeContent = readUtf8(sequenceFile), nativeNext = nativeContent.replace(/^authenticatedContextRequired:.*\n/gm, "");
 		if (flow.getAuthenticatedContextRequired()) nativeNext = "authenticatedContextRequired: true\n" + nativeNext;
 		if (nativeNext !== nativeContent) { writeUtf8(sequenceFile, nativeNext); changed = true; }
-		if (syncFlowInputDeclarationYaml(sequenceFile, name, writeResult)) {
+		if (syncFlowInputDeclarationYaml(sequenceFile, name, writeResult, flow)) {
 			changed = true;
 		}
 		return ensureProjectFlowDeclaration(projectDir, name) || changed;
@@ -1165,7 +1165,7 @@
 		return out;
 	}
 
-	function syncFlowInputDeclarationYaml(sequenceFile, flowName, writeResult) {
+	function syncFlowInputDeclarationYaml(sequenceFile, flowName, writeResult, flow) {
 		var inputDefinitions = writeResult && writeResult.inputDefinitions;
 		if (!inputDefinitions || typeof inputDefinitions !== "object") {
 			return false;
@@ -1188,7 +1188,13 @@
 			filtered += "\n";
 		}
 		keys.forEach(function (key, index) {
-			var definition = inputDefinitions[key] || {};
+			var definition = Object.assign({}, inputDefinitions[key] || {});
+			// Omitted native flags preserve an existing variable; false/zero is an explicit reset.
+			var nativeVariable = flow && typeof flow.getVariable === "function" ? flow.getVariable(key) : null;
+			if (nativeVariable) {
+				if (definition.visibility === undefined && typeof nativeVariable.getVisibility === "function") definition.visibility = Number(nativeVariable.getVisibility());
+				if (definition.isFileUpload === undefined && typeof nativeVariable.getIsFileUpload === "function") definition.isFileUpload = Boolean(nativeVariable.getIsFileUpload());
+			}
 			var className = flowInputVariableClass(definition);
 			var id = ids[key] && ids[key].indexOf(className + "-") === 0
 				? ids[key]
