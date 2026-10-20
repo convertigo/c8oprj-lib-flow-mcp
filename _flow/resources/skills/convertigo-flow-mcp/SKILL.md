@@ -29,6 +29,8 @@ specialist merely to continue the same application.
 
 ## Non-Negotiable Boundaries
 
+After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`.
+
 - Address every tool call with an explicit `project` (or `projectDir` only in
   standalone tests). The MCP host project is not the target project.
 - Never hand-edit Convertigo YAML, generated Svelte, `_private/svelte`, build

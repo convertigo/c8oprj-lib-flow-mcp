@@ -739,10 +739,10 @@ var toolNotFound = JSON.parse(engine.run(JSON.stringify({
 		})
 	}
 })));
-assertTrue(toolNotFound.result.error.code === -32000 &&
-	toolNotFound.result.error.message === "Unknown Flow MCP tool: flow-does-not-exist" &&
-	toolNotFound.result.error.data.code === "FLOW_MCP_TOOL_ERROR",
-	"MCP Flow tool-not-found graph block did not return a JSON-RPC error");
+assertTrue(toolNotFound.result.result.isError === true &&
+	toolNotFound.result.result.structuredContent.error.message === "Unknown Flow MCP tool: flow-does-not-exist" &&
+	toolNotFound.result.result.structuredContent.error.code === "FLOW_MCP_TOOL_ERROR",
+	"MCP unknown tool did not return a readable tool error");
 
 var startGuide = JSON.parse(engine.run(JSON.stringify({
 	flowSource: mcpFlowSource,
@@ -1333,9 +1333,9 @@ var frontendSvelteStringBinding = callTool(13902, "frontend-svelte-mutate", {
 	}
 });
 // Binding validation now lives in the provider: the engine reports its refusal as a mutation failure.
-assertTrue(frontendSvelteStringBinding.result.error &&
-	frontendSvelteStringBinding.result.error.data.code === "FRONTEND_SOURCE_MUTATION_FAILED" &&
-	String(frontendSvelteStringBinding.result.error.message).indexOf("requires a structured FlowValueBinding") !== -1,
+assertTrue(frontendSvelteStringBinding.result.result.structuredContent.error &&
+	frontendSvelteStringBinding.result.result.structuredContent.error.code === "FRONTEND_SOURCE_MUTATION_FAILED" &&
+	String(frontendSvelteStringBinding.result.result.structuredContent.error.message).indexOf("requires a structured FlowValueBinding") !== -1,
 	"MCP frontend-svelte-mutate should reject new string bindings with a structured diagnostic: " +
 		JSON.stringify(frontendSvelteStringBinding));
 var frontendSvelteStructuredBinding = callTool(13903, "frontend-svelte-mutate", {
@@ -2639,8 +2639,8 @@ var frontendSourceRangeStale = callTool(13843, "code-get", {
 	startLine: 1,
 	endLine: 2
 });
-assertTrue(frontendSourceRangeStale.result.error &&
-	frontendSourceRangeStale.result.error.data.code === "FRONTEND_SOURCE_STALE_REVISION",
+assertTrue(frontendSourceRangeStale.result.result.structuredContent.error &&
+	frontendSourceRangeStale.result.result.structuredContent.error.code === "FRONTEND_SOURCE_STALE_REVISION",
 	"MCP ranged code-get should reject stale source context");
 var frontendSourceRangeInvalid = callTool(13844, "code-get", {
 	projectDir: targetProjectDir,
@@ -2649,15 +2649,15 @@ var frontendSourceRangeInvalid = callTool(13844, "code-get", {
 	startLine: 0,
 	endLine: 2
 });
-assertTrue(frontendSourceRangeInvalid.result.error &&
-	frontendSourceRangeInvalid.result.error.data.code === "FRONTEND_SOURCE_RANGE_INVALID",
+assertTrue(frontendSourceRangeInvalid.result.result.structuredContent.error &&
+	frontendSourceRangeInvalid.result.result.structuredContent.error.code === "FRONTEND_SOURCE_RANGE_INVALID",
 	"MCP ranged code-get should reject invalid one-based bounds");
 var frontendSourceStale = callTool(1385, "frontend-svelte-code-set", {
 	projectDir: targetProjectDir,
 	revision: frontendSourceRevision,
 	code: frontendSetCode
 });
-assertTrue(frontendSourceStale.result.error,
+assertTrue(frontendSourceStale.result.result.structuredContent.error,
 	"MCP frontend-svelte-code-set should reject a stale revision");
 var frontendSourceImplicit = callTool(1386, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir
@@ -2978,8 +2978,8 @@ var contextualStalePatch = callTool(13900, "code-patch", {
 assertTrue(contextualPatch.result.result.structuredContent.written === true &&
 	contextualAfter.result.result.structuredContent.code.indexOf("Home contextual") !== -1 &&
 	contextualAfter.result.result.structuredContent.partial === true &&
-	contextualStalePatch.result.error &&
-	contextualStalePatch.result.error.data.code === "FRONTEND_SOURCE_STALE_REVISION",
+	contextualStalePatch.result.result.structuredContent.error &&
+	contextualStalePatch.result.result.structuredContent.error.code === "FRONTEND_SOURCE_STALE_REVISION",
 	"The light edit path should patch directly from code-rg context and reject a stale retry: " +
 		JSON.stringify({ patch: contextualPatch, after: contextualAfter, stale: contextualStalePatch }));
 
@@ -3479,9 +3479,9 @@ var invalidBlockQName = callTool(131, "code-get", {
 	projectDir: targetProjectDir,
 	qname: "blocks.smoke.echo"
 });
-assertTrue(invalidBlockQName.result.error &&
-	invalidBlockQName.result.error.data &&
-	invalidBlockQName.result.error.data.code === "INVALID_CODE_QNAME",
+assertTrue(invalidBlockQName.result.result.structuredContent.error &&
+	invalidBlockQName.result.result.structuredContent.error &&
+	invalidBlockQName.result.result.structuredContent.error.code === "INVALID_CODE_QNAME",
 	"MCP Flow code-get should reject block names passed as qname");
 
 var resourceSearch = callTool(14, "flow-resource-search", {

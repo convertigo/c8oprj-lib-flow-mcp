@@ -417,7 +417,7 @@
 			return String(value);
 		}
 		if (value.error) {
-			return "Error: " + String(value.error.message || value.error.code || value.error) + ". See structuredContent.error.";
+			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error) + ". See structuredContent.error.";
 		}
 		var parts = [];
 		if (value.ok === true) {
@@ -1797,11 +1797,16 @@
 	}
 
 	function toolResult(value, ctx) {
+		if (value && value.error) {
+			var copy = {};
+			Object.keys(value).forEach(function (key) { copy[key] = value[key]; });
+			copy.error = normalizeToolError(value.error);
+			value = copy;
+		}
 		value = sanitizeForMcp(value, ctx);
-		return {
-			content: textContent(value, ctx),
-			structuredContent: value
-		};
+		var result = { content: textContent(value, ctx), structuredContent: value };
+		if (value && value.error) result.isError = !errorsAsResult(ctx);
+		return result;
 	}
 
 	function toolResponse(request, value, ctx) {
@@ -1930,13 +1935,47 @@
 			: value;
 	}
 
+	// Match the legacy MCP exactly; only the trusted servlet User-Agent selects this compatibility mode.
+	function errorsAsResult(ctx) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			var request = context && context.httpServletRequest;
+			return /^MistralAI-VibeCLI\//.test(String(request && request.getHeader("User-Agent") || ""));
+		} catch (ignored) { return false; }
+	}
+
+	function normalizeToolError(error) {
+		error = error || {};
+		var out = {};
+		// Preserve bounded diagnostics/recovery fields from checked drafts, never exception internals.
+		["diagnostics", "diagnosticCount", "diagnosticsShown", "hasMore"].forEach(function (key) {
+			if (error[key] !== undefined) out[key] = error[key];
+		});
+		out.code = String(error.code || "FLOW_MCP_TOOL_ERROR");
+		out.message = String(error.message || error);
+		out.hint = error.hint ? String(error.hint) : "";
+		out.details = error.details === undefined ? null : error.details;
+		return out;
+	}
+
 	function toolError(request, error, ctx) {
 		request = request || {};
-		error = error || {};
-		return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, String(error.message || error), {
-			code: String(error.code || "FLOW_MCP_TOOL_ERROR"),
-			hint: error.hint ? String(error.hint) : ""
-		}));
+		var normalized = normalizeToolError(error);
+		if (request.method && request.method !== "tools/call") {
+			return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, normalized.message, {
+				code: normalized.code, hint: normalized.hint, details: normalized.details
+			}));
+		}
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult({ error: normalized }, ctx)));
+	}
+
+	function toolOutputSchema(successSchema) {
+		var error = { type: "object", additionalProperties: true,
+			description: "Tool failed: read code, message, hint and details before retrying." };
+		return { type: "object", properties: { error: error }, anyOf: [
+			successSchema || { type: "object", additionalProperties: true },
+			{ type: "object", properties: { error: error }, required: ["error"], additionalProperties: false }
+		] };
 	}
 
 	function firstForwardedValue(value) {
@@ -3096,6 +3135,7 @@
 		});
 		if (error.details) {
 			var report = compactFlowCodeDiagnosticReport(request, error.details);
+			out.details = report;
 			out.diagnosticCount = report.diagnosticCount;
 			out.diagnosticsShown = report.diagnosticsShown;
 			out.hasMore = report.hasMore;
@@ -3851,7 +3891,11 @@
 	function parseRequest(value, ctx) {
 		value = value || {};
 		if (typeof value === "string") {
-			value = JSON.parse(value);
+			try { value = JSON.parse(value); }
+			catch (invalidJson) { return { id: null, __flowMcpProtocolError: { code: -32700, message: "Parse error: invalid JSON." } }; }
+		}
+		if (!value || typeof value !== "object" || (Array.isArray(value) && !value.length)) {
+			return { id: null, __flowMcpProtocolError: { code: -32600, message: "Invalid JSON-RPC request." } };
 		}
 		var started = Number(System.currentTimeMillis());
 		if (Object.prototype.toString.call(value) === "[object Array]") {
@@ -3905,7 +3949,7 @@
 		"scheduler-apply": true,
 		"scheduler-list": true
 	};
-	var LEGACY_RELAY_HEADERS = ["Authorization", "X-Convertigo-Agent-Provider", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
+	var LEGACY_RELAY_HEADERS = ["User-Agent", "Authorization", "X-Convertigo-Agent-Provider", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
 		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
 	var LEGACY_RELAY_NOTE = " (Relayed to the Convertigo MCP of this server.)";
@@ -3965,7 +4009,7 @@
 			return [];
 		}
 		var now = Number(System.currentTimeMillis());
-		var key = "provider:" + legacyProvider(ctx);
+		var key = "provider:" + legacyProvider(ctx) + ":vibe:" + errorsAsResult(ctx);
 		var cached = legacyToolsCache[key];
 		if (cached && now - cached.at < 60000) {
 			return cached.tools;
@@ -4037,6 +4081,7 @@
 		applyNamedFlowMutation: applyNamedFlowMutation,
 		toolResponse: toolResponse,
 		toolError: toolError,
+		toolOutputSchema: toolOutputSchema,
 		toolResult: toolResult,
 		persistSourceMutationResult: persistSourceMutationResult,
 		sourceStore: sourceStore,

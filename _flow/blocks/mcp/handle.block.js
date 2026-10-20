@@ -41,6 +41,18 @@ const _flow = {
 }
 
 function mcp_handle({ input, config, result }) {
+  if ({
+    $$id: "ifProtocolError",
+    condition: input.request.__flowMcpProtocolError,
+    $$then: function () {
+      local.protocolResponse = mcp.response.error({
+        request: input.request,
+        code: input.request.__flowMcpProtocolError.code,
+        message: input.request.__flowMcpProtocolError.message,
+      })
+      return({ value: local.protocolResponse })
+    },
+  })
   if({
     $$id: "if2",
     condition: input.request.__flowMcpAuthenticationError,

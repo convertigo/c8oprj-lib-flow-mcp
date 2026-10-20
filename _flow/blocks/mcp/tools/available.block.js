@@ -632,6 +632,7 @@ const _meta = {
 				var block = contractFor(name);
 				var descriptor = block ? descriptorFor(block, byName, contractFor) : null;
 				if (descriptor) {
+					descriptor.outputSchema = ctx.lib("mcp").toolOutputSchema(descriptor.outputSchema);
 					tools.push(descriptor);
 				}
 			});

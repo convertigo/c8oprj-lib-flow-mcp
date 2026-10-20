@@ -159,6 +159,8 @@ encode a block in `qname`.
 
 ## Tool hygiene
 
+After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`.
+
 - After reading a tool contract once, pass `doc:false,hints:false`.
 - Discovery tools are paginated (`limit`, `cursor`). `flow-catalog`,
   `flow-resource-search` and `flow-search` may return `partial:true` with a

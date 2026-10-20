@@ -13,6 +13,7 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 		var body = JSON.parse(String(new java.lang.String(exchange.getRequestBody().readAllBytes(), "UTF-8")));
 		seen.push({
 			query: String(exchange.getRequestURI().getQuery()),
+			userAgent: String(exchange.getRequestHeaders().getFirst("User-Agent")),
 			authorization: String(exchange.getRequestHeaders().getFirst("Authorization")),
 			guidance: String(exchange.getRequestHeaders().getFirst("X-Convertigo-Guidance-Version")),
 			provider: exchange.getRequestHeaders().getFirst("X-Convertigo-Agent-Provider"),
@@ -26,6 +27,9 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 				{ name: "code-set", description: "Not the Flow one.", inputSchema: { type: "object" } }
 			] } }
 			: { jsonrpc: "2.0", id: body.id, result: { content: [{ type: "text", text: "ok" }], structuredContent: { echoed: body.params } } };
+		if(body.method==='tools/call' && body.params.arguments.fail) {
+            answer={jsonrpc:'2.0',id:body.id,result:{isError:!/^MistralAI-VibeCLI\//.test(seen[seen.length-1].userAgent),content:[{type:'text',text:'Legacy failure'}],structuredContent:{error:{code:'LEGACY_FAIL',message:'Legacy failure',details:{context:'string'}}}}};
+        }
 		var bytes = new java.lang.String(JSON.stringify(answer)).getBytes("UTF-8");
 		exchange.sendResponseHeaders(200, bytes.length);
 		exchange.getResponseBody().write(bytes);
@@ -66,6 +70,16 @@ try {
 	assert(mcp.legacyRelayTools(ctx) === claudeTools && seen.length === 3, "the provider catalog is cached");
 	delete headers["X-Convertigo-Agent-Provider"];
 
+    headers['User-Agent']='MistralAI-VibeCLI/1.0';
+    var beforeVibe=seen.length, vibeTools=mcp.legacyRelayTools(ctx);
+    assert(seen.length===beforeVibe+1 && seen[seen.length-1].userAgent===headers['User-Agent'],'Vibe catalog must get its forwarded User-Agent');
+    assert(vibeTools!==tools && mcp.legacyRelayTools(ctx)===vibeTools,'Ordinary and Vibe descriptor caches must be separate');
+    [false,true].forEach(function(vibe){
+        headers['User-Agent']=vibe?'MistralAI-VibeCLI/1.0':'ordinary';
+        var errorAnswer=mcp.legacyRelayCall(ctx,{jsonrpc:'2.0',id:44,method:'tools/call',params:{name:'scheduler-apply',arguments:{fail:true}}});
+        var expected={jsonrpc:'2.0',id:44,result:{isError:!vibe,content:[{type:'text',text:'Legacy failure'}],structuredContent:{error:{code:'LEGACY_FAIL',message:'Legacy failure',details:{context:'string'}}}}};
+        assert(JSON.stringify(errorAnswer)===JSON.stringify(expected),'Legacy tool error changed during relay');
+    });
 	java.lang.System.setProperty("convertigo.flow.mcp.legacyRelay", "false");
 	assert(!mcp.legacyRelayTool("scheduler-apply"), "the relay can be disabled");
 	java.lang.System.clearProperty("convertigo.flow.mcp.legacyRelay");

@@ -30,6 +30,11 @@ const _meta = {
     },
   },
   "runtime": "rhino",
+  "outputs": {
+    "out": {
+      "type": "unknown",
+    },
+  },
 }
 
 (function () {
@@ -93,13 +98,28 @@ const _meta = {
 			var mcp = ctx.lib("mcp");
 			var request = mcp.requestValue(ctx, prop(node, "request"));
 			var name = String(request.params && request.params.name || "");
-			var block = toolMap(ctx)[name];
 			var out = props.out || "local.response";
-			var response = block
-				? ctx.callBlock(block, { request: request, out: out }, { trace: false })
-				: mcp.legacyRelayTool(name)
-					? mcp.legacyRelayCall(ctx, request)
-					: ctx.callBlock("mcp.tool.notFound", { request: request, out: out }, { trace: false });
+			var response;
+			try {
+				var block = toolMap(ctx)[name];
+				// Relayed answers belong to the legacy MCP: do not rewrap or normalize them.
+				if (!block && mcp.legacyRelayTool(name)) {
+					var relayed = mcp.legacyRelayCall(ctx, request);
+					ctx.write(out, relayed);
+					return relayed;
+				}
+				response = block
+					? ctx.callBlock(block, { request: request, out: out }, { trace: false })
+					: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
+				// Older Flow wrappers can still return a JSON-RPC error. At the tools/call boundary it is a tool error.
+				if (response && response.error) {
+					var error = response.error;
+					var data = error.data || {};
+					response = mcp.toolError(request, { code: data.code, message: error.message, hint: data.hint, details: data.details }, ctx);
+				}
+			} catch (error) {
+				response = mcp.toolError(request, error, ctx);
+			}
 			ctx.write(out, response);
 			return response;
 		}
