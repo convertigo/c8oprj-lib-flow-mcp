@@ -2,11 +2,8 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "description": "Returns the Flow MCP tool descriptors.",
-  "summary": [
-    "available tools -> {{out}}",
-    "available tools",
-  ],
   "icon": "mdi:format-list-checks",
+  "private": true,
   "properties": {
     "out": {
       "kind": "path",
@@ -20,7 +17,10 @@ const _meta = {
       "type": "unknown",
     },
   },
-  "private": true,
+  "summary": [
+    "available tools -> {{out}}",
+    "available tools",
+  ],
   "tags": [
     "mcp",
   ],
@@ -482,6 +482,9 @@ const _meta = {
 				}
 			};
 		}
+		if (/^(?:flow-)?code-promote$/.test(String(toolName || "")) && schema.properties.revision) {
+			schema.properties.revision.description = "Optional for the unique current working copy, checked again before saving. Required with supplied code; a stale explicit revision is always refused.";
+		}
 		return schema;
 	}
 
@@ -498,13 +501,13 @@ const _meta = {
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
-			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation.";
+			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code.";
 		} else if (name === "code-patch") {
-			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation.";
+			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation. Safe backend corrections return fixes and the complete corrected code.";
 		} else if (name === "code-check") {
 			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch).";
 		} else if (name === "code-promote") {
-			description = "Executable Flow only: saves a checked working copy. Do not call for project-local blocks; code-set/code-patch already save blocks.";
+			description = "Executable Flow only: saves a checked working copy. Without revision, selects and checks the unique current draft; an explicit stale revision is refused. Corrections return fixes and code. Project-local blocks are saved by code-set/code-patch.";
 		} else if (name === "code-get") {
 			description = "Reads code by qname, block or sourceFile. Frontend sources return a bounded starter contract; use contractDetail:'full' only for diagnostics. Supports bounded line reads and code-rg extracts.";
 		} else if (name === "code-rg") {

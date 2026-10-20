@@ -3106,6 +3106,12 @@
 				out.workingCopy = true;
 				out.unsaved = true;
 			}
+		// Corrections are an audit trail, never a lossy preview. Keep the full
+		// source and every before/after even in the default compact response.
+		if (value.fixes && value.fixes.length) {
+			out.fixes = value.fixes;
+			out.code = value.code;
+		}
 		if (value.codeFile) {
 			out.codeFile = value.codeFile;
 		}
@@ -3442,8 +3448,10 @@
 					warnings.push({
 						severity: "warning",
 						code: "FLOW_CODE_UNSAVED_WORKING_COPY",
+						revision: value.revision,
+						qname: value.qname,
 						message: "code-run executed an unsaved working copy.",
-						hint: "Promote this revision before stopping. Patch only if the runtime result is functionally wrong."
+						hint: "Resume this exact revision with code-patch or save it with code-promote: " + String(value.revision || "")
 					});
 					runOut.warnings = warnings;
 				}
