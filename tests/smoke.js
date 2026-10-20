@@ -1457,13 +1457,25 @@ assertTrue(frontendSvelteMultiQueryPalette.result.result.structuredContent.ok ==
 var frontendSvelteTextPaletteItem = frontendSvelteMultiQueryPalette.result.result.structuredContent.items.filter(function (item) {
 	return item.id === "svelte.text";
 })[0];
+// Compact palette results carry apply instead of a duplicate insert (0.1.51).
+// Compare the executable value with the full candidate's insertion contract.
+var frontendSvelteFullTextPalette = callTool(13931, "frontend-svelte-palette", {
+	projectDir: targetProjectDir,
+	engineSource: frontendEngineSource,
+	focusPath: frontendSvelteInspectStructure.path,
+	query: "Card Text",
+	detail: "full"
+}).result.result.structuredContent.items.filter(function (item) {
+	return item.id === "svelte.text";
+})[0];
 assertTrue(frontendSvelteTextPaletteItem.apply &&
+	frontendSvelteTextPaletteItem.insert === undefined && frontendSvelteFullTextPalette.insert &&
 	frontendSvelteTextPaletteItem.apply.tool === "frontend-svelte-mutate" &&
 	frontendSvelteTextPaletteItem.apply.arguments.sourceFile ===
 		"_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.op === "append" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.path.indexOf("frontAst") === 0 &&
-	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteTextPaletteItem.insert),
+	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteFullTextPalette.insert),
 	"MCP frontend-svelte-palette should return an executable source-backed mutation");
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	FLOW_V2_HEADER,
