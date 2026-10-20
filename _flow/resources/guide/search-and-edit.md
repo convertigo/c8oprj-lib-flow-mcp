@@ -32,7 +32,19 @@ libraries, fragments).
    revision, startLine, endLine })`; read a whole source only for an
    ambiguous or broad change.
 4. For an executable Flow, `code-run` then `code-promote`; blocks and Flow
-   Svelte sources are saved by `code-patch` itself.
+   Svelte sources are saved by `code-patch` itself. `code-promote` may omit
+   `revision` to select and recheck the only current draft; an explicit stale
+   revision stays refused. `FLOW_CODE_UNSAVED_WORKING_COPY` gives the `qname`
+   and `revision` to resume.
+
+Backend writes (`code-set`, `code-patch`) apply only unambiguous corrections:
+a nested block call lifted into a named intermediate, positional arguments
+named from the block contract, a statically read input or block property
+declared. Each one is listed in `fixes` (`code`, `line`, `before`, `after`)
+with the complete corrected code: inspect them, and use the returned
+`revision` for the next patch. Everything that changes the meaning stays a
+refusal with its diagnostic (unknown block, ambiguous signature, changed
+execution conditions, repeated external calls).
 
 Typical source edits:
 
