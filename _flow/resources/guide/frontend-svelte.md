@@ -358,8 +358,9 @@ keep the latest. A
 control (Button, Input, Select...) stays disabled while the actions it
 triggered run, so a double click never starts them twice; set
 `<OnClick reentrancy="parallel">` only for harmless repeats such as a counter,
-never for an order or a payment. Actions still running when their page or
-component is destroyed are cancelled and publish nothing.
+never for an order or a payment. Lifecycle actions (`OnMount`, `Interval`,
+`Timeout`) still running when their page or component is destroyed are
+cancelled and publish nothing; a chain started by a user event goes on.
 
 Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
 `GridLayout`, `Card`), display, forms and navigation. A Layout must contain
