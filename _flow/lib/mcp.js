@@ -2978,7 +2978,8 @@
 	function libraryGuides() {
 		var guides = [];
 		loadedProjectTargets().forEach(function (target) {
-			if (WORKSPACE_BLOCK_SKIPPED[target.project]) return;
+			// Core backend guides are library resources too; only MCP duplicates the fixed guides.
+			if (target.project === "lib_flow_mcp") return;
 			var dir = new File(new File(new File(new File(String(target.projectDir), "_flow"), "resources"), "guide"), "");
 			var files = dir.isDirectory() ? dir.listFiles() : null;
 			for (var i = 0; files && i < files.length; i++) {

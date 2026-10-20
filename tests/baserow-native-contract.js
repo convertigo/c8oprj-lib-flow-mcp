@@ -3,6 +3,7 @@ function assert(v,m){checks++;if(!v)failures.push(m);}
 var source=String(files.readFileToString(new java.io.File(project,'_flow/lib/mcp.js'),'UTF-8'));
 // Test real fast-save serialization in a temporary directory, exposing private helpers only in this in-memory copy.
 source=source.replace('jsonRpcResult: jsonRpcResult,','_renderNativeInput:renderFlowInputVariableYaml, _saveNativeDeclaration:saveFlowDeclaration, jsonRpcResult: jsonRpcResult,');
+var __guideTargets=[];source=source.replace("function loadedProjectTargets() {","function loadedProjectTargets() { return __guideTargets;");
 var mcp=eval(source),temp=java.nio.file.Files.createTempDirectory('flow-native-contract-').toFile();
 try{
  var bean={getAuthenticatedContextRequired:function(){return true;}},p={getDirPath:function(){return String(temp);}};
@@ -35,6 +36,10 @@ try{
  assert(tool.inputSchema.properties.project&&tool.inputSchema.properties.name&&tool.inputSchema.properties.qname,'F21 public schema exposes project/name/qname');
  assert(tool.inputSchema.anyOf&&tool.inputSchema.anyOf.length===2,'F21 name or qname is required');
  assert(tool.description.indexOf('visibility')>=0&&tool.description.indexOf('isFileUpload')>=0,'Native input properties discoverable');
+ var guideDir=new java.io.File(temp,'engine/_flow/resources/guide');files.forceMkdir(guideDir);var guideText='# Backend inputs\nVerified engine guide.\n';files.writeStringToFile(new java.io.File(guideDir,'backend-io.md'),guideText,'UTF-8');
+ __guideTargets=[{project:'lib_flow_engine',projectDir:String(new java.io.File(temp,'engine'))},{project:'lib_flow_mcp',projectDir:String(new java.io.File(temp,'engine'))}];
+ var guides=mcp.libraryGuides();assert(guides.length===1&&guides[0].uri==='flow://lib/lib_flow_engine/backend-io','Engine library guides are discoverable without duplicating fixed MCP guides');
+ assert(mcp.libraryGuideText('flow://lib/lib_flow_engine/backend-io')===guideText,'The advertised engine library guide can be read');
  if(failures.length)throw new Error(failures.join('\n'));
  print('baserow-native-contract OK ('+checks+' assertions)');
 }finally{files.deleteDirectory(temp);}
