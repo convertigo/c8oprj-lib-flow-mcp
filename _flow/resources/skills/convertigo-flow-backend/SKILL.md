@@ -23,6 +23,17 @@ Keep this role across backend lots instead of spawning a replacement agent.
   and use its blocks instead of a mock or a legacy connector. Read the guide
   of that library first when one is listed (`workspaceGuides`,
   `flow://lib/<library>/<guide>` in `resources/list`).
+- SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
+  and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
+  JDBC call or a Rhino block for SQL. A missing SQL capability is a friction
+  to report, not a reason to bypass the library.
+- Accounts, sign-in, roles and password reset come from the Flow libraries
+  `lib_UserManager` and `lib_OAuth` (Google, Microsoft, OpenID): reference
+  them and call their Flows; never store, hash or check passwords in the
+  application, even for a demo.
+- `email.send` uses the SMTP server of the platform (global symbols
+  `lib_flow_engine.smtp.*`); do not configure a server in the project. Wrap
+  it in `try` when a failed delivery must not stop the Flow.
 - Put service URLs and structural constants in project `config.*`. Secrets
   are Convertigo global symbols ending with `.secret`, referenced with a
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
