@@ -1244,10 +1244,23 @@
 		if (definition.required === true) {
 			lines.push("  required: true");
 		}
-		if (definition.default !== undefined) {
-			lines.push("  value: " + yamlScalar(definition.default));
+		var value = flowInputYamlDefault(definition);
+		if (value !== undefined) {
+			lines.push("  value: " + yamlScalar(value));
 		}
 		return lines.join("\n") + "\n";
+	}
+
+	// As Flow.flowInputDefaultValue in Java: a variable keeps scalars, an object default is its JSON text
+	// (never "[object Object]"). The rows of a multi-valued default are left to the input sync of the engine.
+	function flowInputYamlDefault(definition) {
+		var value = definition.default;
+		if (value === undefined || value === null || typeof value !== "object") {
+			return value;
+		}
+		return flowInputVariableClass(definition) === "variables.RequestableMultiValuedVariable"
+			? undefined
+			: JSON.stringify(value);
 	}
 
 	function flowInputVariableClass(definition) {
@@ -1298,7 +1311,9 @@
 		if (/^[A-Za-z0-9_./@:+-]+(?: [A-Za-z0-9_./@:+-]+)*$/.test(text)) {
 			return text;
 		}
-		return JSON.stringify(text);
+		// As YamlConverter.writeYamlText: Convertigo reads a single-quoted scalar ('' for a quote); a
+		// double-quoted one would keep its quotes in the value.
+		return "'" + text.replace(/\r/g, "").replace(/'/g, "''") + "'";
 	}
 
 	function ensureProjectFlowDeclaration(projectDir, name) {
