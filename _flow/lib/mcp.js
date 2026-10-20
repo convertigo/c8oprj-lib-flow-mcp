@@ -3674,8 +3674,39 @@
 		return out;
 	}
 
+	function boundedCodeRead(request, value) {
+		var args = toolArguments(request);
+		var hasStart = args.startLine !== undefined && args.startLine !== null && String(args.startLine) !== "";
+		var hasEnd = args.endLine !== undefined && args.endLine !== null && String(args.endLine) !== "";
+		if ((!hasStart && !hasEnd) || !value || value.ok === false || typeof value.code !== "string" || value.partial === true) return value;
+		function reject(code, message) { var error = new Error(message); error.code = code; throw error; }
+		if (hasStart !== hasEnd) reject("CODE_RANGE_INCOMPLETE", "A bounded code-get requires both startLine and endLine.");
+		if (args.revision !== undefined && args.revision !== null && String(args.revision) !== "" && String(args.revision) !== String(value.revision)) {
+			reject("CODE_STALE_REVISION", "Source changed since the requested revision. Read its current revision before requesting a range.");
+		}
+		var lines = value.code.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+		var start = Number(args.startLine), end = Number(args.endLine);
+		if (!isFinite(start) || !isFinite(end) || Math.floor(start) !== start || Math.floor(end) !== end ||
+			start < 1 || end < start || end > lines.length || end - start + 1 > 500) {
+			reject("CODE_RANGE_INVALID", "Use inclusive one-based bounds inside the " + lines.length + " line source, at most 500 lines.");
+		}
+		var out = Object.assign({}, value);
+		out.code = lines.slice(start - 1, end).join("\n");
+		out.partial = true;
+		out.startLine = start;
+		out.endLine = end;
+		out.totalLines = lines.length;
+		out.totalContentLength = value.code.length;
+		out.contentLength = out.code.length;
+		delete out.descriptor;
+		delete out.implementationSource;
+		out.next = "Use this revision with code-patch, or request another bounded range.";
+		return out;
+	}
+
 	function compactToolValue(request, value) {
 		var name = toolName(request);
+		if (name === "code-get" || name === "flow-code-get" || name === "flow-block-code-get") return boundedCodeRead(request, value);
 		if ((name === "frontend-svelte-tree" || name === "authoring-tree") && value && typeof value === "object") {
 			var treeArgs = toolArguments(request);
 			var boundedTreeRequest = treeArgs.allowLarge !== true &&

@@ -410,11 +410,11 @@ const _meta = {
 					};
 					schema.properties.startLine = {
 						type: "integer",
-						description: "Canonical source only: first one-based line for a bounded read; requires endLine."
+						description: "First one-based line of a Flow, block implementation or canonical frontend source; requires endLine."
 					};
 					schema.properties.endLine = {
 						type: "integer",
-						description: "Canonical source only: last inclusive line for a bounded read; requires startLine, maximum 500 lines."
+						description: "Last inclusive line of a Flow, block implementation or canonical frontend source; requires startLine, maximum 500 lines."
 					};
 					schema.properties.pattern = {
 						type: "string",
