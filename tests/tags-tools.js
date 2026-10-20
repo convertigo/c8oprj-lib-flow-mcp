@@ -53,7 +53,7 @@ function rpc(method, params) {
 }
 function call(name, args) {
   var response = rpc("tools/call", {name:name,arguments:args});
-  assert(!response.error, "Tool failed: " + JSON.stringify(response));
+  assert(!response.error && response.result && response.result.isError !== true, "Tool failed: " + JSON.stringify(response));
   return response.result.structuredContent;
 }
 function get() { return call("tags-get", {scope:"projectObjects",project:"TagMcpProof"}); }
@@ -62,7 +62,8 @@ function apply(action, input, revision) {
 }
 function rejected(args, reason) {
   var response = rpc("tools/call", {name:"tags-apply",arguments:args});
-  assert(response.error && response.error.message.indexOf(reason) !== -1, "Expected " + reason + ": " + JSON.stringify(response));
+  var result = response.result || {}, error = result.structuredContent && result.structuredContent.error;
+  assert(!response.error && result.isError === true && error && error.message.indexOf(reason) !== -1, "Expected readable tool error " + reason + ": " + JSON.stringify(response));
 }
 try {
   var tools = rpc("tools/list").result.tools;

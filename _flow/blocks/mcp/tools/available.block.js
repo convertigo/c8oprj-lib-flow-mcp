@@ -1,6 +1,9 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
+  "uses": [
+    "mcp",
+  ],
   "description": "Returns the Flow MCP tool descriptors.",
   "icon": "mdi:format-list-checks",
   "private": true,

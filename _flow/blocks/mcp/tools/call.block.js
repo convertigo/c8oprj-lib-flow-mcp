@@ -1,6 +1,9 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
+  "uses": [
+    "mcp",
+  ],
   "private": true,
   "icon": "mdi:tools",
   "tags": [
