@@ -517,9 +517,12 @@ assertTrue(frontendSvelteActionTool.inputSchema.properties.wait &&
 	frontendSvelteActionTool.inputSchema.properties.wait.type === "boolean" &&
 	frontendSvelteActionTool.inputSchema.properties.browserDebugPort === undefined,
 	"MCP frontend-svelte-action did not expose the non-blocking dev start option");
-assertTrue(frontendSvelteActionTool.description.indexOf("Never call build while Dev is active") !== -1 &&
-	frontendSvelteActionTool.description.indexOf("stopping Dev automatically rebuilds") !== -1,
-	"MCP frontend-svelte-action should keep production compilation out of the live Dev memory envelope");
+// Since 0.1.43 the descriptor documents production builds alongside a live Dev
+// viewer. Keep the smoke aligned with that published contract and stop rebuild.
+assertTrue(frontendSvelteActionTool.description.indexOf("build produces the production output") !== -1 &&
+	frontendSvelteActionTool.description.indexOf("also while Dev is active (the viewer keeps running)") !== -1 &&
+	frontendSvelteActionTool.description.indexOf("stopping Dev also rebuilds dirty output") !== -1,
+	"MCP frontend-svelte-action should describe production builds and the automatic dirty rebuild on Dev stop");
 var projectBootstrapTool = list.result.result.tools.filter(function (tool) {
 	return tool.name === "flow-project-bootstrap";
 })[0];
