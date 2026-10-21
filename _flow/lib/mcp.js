@@ -2116,6 +2116,12 @@
 			var checked=ctx.nativePropertyContract().scalar(args.includeTrace,{type:"boolean"},"includeTrace");
 			args.includeTrace=checked.value;
 		}
+		// A compact code-run omits traces. Avoid allocating every per-node scope
+		// snapshot only to discard it in compactRuntimeToolValue below.
+		if ((name === "code-run" || name === "flow-code-run") && args.includeTrace === undefined &&
+				!argBool(args.includeFullResponse || args.fullResponse, false)) {
+			args.includeTrace = argBool(args.includeFullTrace || args.fullTrace, false);
+		}
 		var managedSourceWrite = name === "frontend-svelte-code-set"
 			|| name === "frontend-svelte-code-patch"
 			|| ((name === "code-set" || name === "code-patch") && String(args.sourceFile || "").length > 0);
@@ -3464,7 +3470,7 @@
 		}
 		if (value.trace !== undefined && (name === "flow-code-run" || name === "code-run") && !argBool(args.includeTrace || args.includeFullTrace || args.fullTrace, false)) {
 			var noTraceOut = mutableOut();
-			noTraceOut.traceNodeCount = value.trace && value.trace.nodes ? value.trace.nodes.length : 0;
+			if (value.trace && value.trace.nodes) noTraceOut.traceNodeCount = value.trace.nodes.length;
 			delete noTraceOut.trace;
 			noTraceOut.traceHint = "Trace omitted by default for code-run. Pass includeTrace=true for compact trace or includeFullTrace=true only for full per-node values.";
 		} else if (value.trace !== undefined && !argBool(args.includeFullTrace || args.fullTrace, false)) {

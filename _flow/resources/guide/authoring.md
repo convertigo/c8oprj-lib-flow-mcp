@@ -119,6 +119,21 @@ function Greeting({ input, config, result }) {
 
 ## Slots, loops and typed collections
 
+For row processing, filter/project before the loop, capture `current` before a
+nested loop, and append to a typed array with `json.push`; avoid copying the
+growing array. Metadata and external reads belong outside the cell loop whenever
+they are independent of the cell. Keep business block calls visible in FlowScript.
+The detailed examples and reproducible benchmark are in
+`flow://lib/lib_flow_engine/guide/runtime-performance.md`.
+
+`code-run` skips per-node trace capture by default rather than capturing snapshots
+that its compact response discards. Use `includeTrace:true` or
+`includeFullTrace:true` when inspecting values. For profiling use
+`profile:"envelope"` (phases) or `profile:true` (inclusive node/block time and,
+where the JVM supports it, `allocatedBytes`). Measure throughput without tracing
+or profiling. Automatic checks do not build a whole legacy project's XSD to
+discover one output; use `flow-requestable-schema` explicitly if needed.
+
 ```javascript
 json.array({
   $$id: "rows",
