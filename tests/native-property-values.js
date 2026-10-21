@@ -29,6 +29,10 @@ function ref(props){return reference.run(context(),{props:Object.assign({project
 ['abc',' 60 ','Bogus','private','yes'].forEach(function(v){
  var r=meta({description:v});assert(r.description===v,'Text descriptions retain '+JSON.stringify(v));
 });
+[true,60,{},[],null].forEach(function(v){
+ ['name','language','validateDocumentUpdate'].forEach(function(key){var spec={name:'test'};spec[key]=v;bad(function(){full({designDocuments:[spec]});},'designDocuments[0].'+key,v);});
+});
+['abc',' 60 ','Bogus','private','yes'].forEach(function(v){bad(function(){meta({saveProject:v});},'saveProject',v);});
 var v=meta({version:' 60 '});assert(v.version==='60'&&v.normalizations.length===1,'Version trim is explicitly reported');
 var plain=meta({version:'abc'});assert(plain.version==='abc'&&plain.normalizations.length===0,'Version is bounded text, not a number or enum');
 bad(function(){meta({responseTimeout:'abc'});},'responseTimeout','abc');
@@ -47,6 +51,11 @@ var mcp=eval(library);
  bad(function(){mcp._renderNative('value',{type:'string',visibility:v},'variables.RequestableVariable-1');},'visibility',v);
 });
 bad(function(){mcp._renderNative('value',{type:'Bogus'},'variables.RequestableVariable-1');},'type','Bogus');
+function traceRequest(v){return {jsonrpc:'2.0',id:9,method:'tools/call',params:{name:'code-set',arguments:{project:'Probe',name:'Test',includeTrace:v}}};}
+['abc',' 60 ','Bogus','private','yes'].forEach(function(v){bad(function(){mcp.prepareToolArguments(context(),traceRequest(v),{resolveProject:false});},'includeTrace',v);});
+var trace=mcp.prepareToolArguments(context(),traceRequest(' FALSE '),{resolveProject:false});assert(trace.includeTrace===false,'Trace flag is canonical before any operation');
+var traceResult=mcp.toolResponse(traceRequest(' FALSE '),{ok:true},context());
+assert(traceResult.result.structuredContent.normalizations.some(function(n){return n.property==='includeTrace'&&n.after===false;}),'Trace canonicalization is reported');
 assert(__propertyProject.description==='yes','Rejected options did not change unrelated bean properties');
 if(failures.length)throw new Error(failures.join('\n'));
 print('native-property-values MCP OK ('+assertions+' assertions)');

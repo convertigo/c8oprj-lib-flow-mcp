@@ -1839,7 +1839,9 @@
 			value.normalizations=(value.normalizations||[]).concat(checked.normalizations);
 		}
 		value = enrichSveltePaletteMutations(request, value);
+		var nativeNormalizations = value && value.normalizations;
 		value = compactToolValue(request, value);
+		if (value && nativeNormalizations && nativeNormalizations.length) value.normalizations = nativeNormalizations;
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
 	}
 

@@ -824,6 +824,9 @@ const _meta = {
 			}
 			var E=Packages.com.twinsoft.convertigo.engine.enums;
 			connectorSpec=checked(connectorSpec,{name:{type:"string"},comment:{type:"string"},anonymousReplication:enumeration(E.FullSyncAnonymousReplication)},"connector");
+			designDocuments=designDocuments.map(function(spec,index){return checked(spec,
+				{name:{type:"string"},language:{type:"string"},validateDocumentUpdate:{type:"string"}},
+				"designDocuments["+index+"]");});
 			transactions=transactions.map(function(spec,index){
 				var prefix="transactions["+index+"]";
 				var next=checked(spec,{name:{type:"string"},type:{type:"string"},comment:{type:"string"},view:{type:"string"},
