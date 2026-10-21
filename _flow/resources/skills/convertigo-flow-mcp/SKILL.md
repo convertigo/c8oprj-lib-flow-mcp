@@ -179,3 +179,5 @@ POC completion means the requested business path runs and the representative
 visible behavior is proved. Do not add production builds, exhaustive browser
 matrices, schema adoption or unrelated hardening unless requested. Report
 remaining mocks, unavailable browser control or runtime warnings honestly.
+
+Native bean writes refuse invalid scalar values; inspect `fixes` and `normalizations` (property, before, after) before continuing. Never rely on an invalid value becoming zero, false or the first enum constant.

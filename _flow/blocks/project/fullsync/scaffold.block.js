@@ -653,7 +653,13 @@ const _meta = {
 			changed = true;
 		}
 		if (spec.defaultValue !== undefined && !sameValue(variable.getValueOrNull(), spec.defaultValue)) {
-			variable.setValueOrNull(spec.defaultValue);
+			var defaultValue=spec.defaultValue;
+			if(multi){
+				var rows=new Packages.java.util.ArrayList();
+				(Array.isArray(defaultValue)?defaultValue:[defaultValue]).forEach(function(value){if(value!==null)rows.add(value&&typeof value==="object"?JSON.stringify(value):value);});
+				defaultValue=rows;
+			}else if(defaultValue&&typeof defaultValue==="object")defaultValue=JSON.stringify(defaultValue);
+			variable.setValueOrNull(defaultValue);
 			changed = true;
 		}
 		if (changed) {
@@ -798,12 +804,37 @@ const _meta = {
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
+			var contract = ctx.nativePropertyContract(), normalizations = [];
+			function checked(value, schema, path) {
+				var result = contract.properties(value, schema, path);
+				normalizations = normalizations.concat(result.normalizations);
+				return result.value;
+			}
+			props = checked(props, {dryRun:{type:"boolean"},project:{type:"string"}}, "");
 			var name = projectName(prop(props, "project"));
 			var connectorSpec = objectValue(prop(props, "connector"), "connector");
 			var fsName = connectorName(connectorSpec.name);
 			var designDocuments = arrayValue(prop(props, "designDocuments"), "designDocuments");
 			var transactions = arrayValue(prop(props, "transactions"), "transactions");
 			var listeners = arrayValue(prop(props, "listeners"), "listeners");
+			function enumeration(type) {
+				var values=type.values(), entries=[];
+				for(var i=0;i<values.length;i++) entries.push({name:String(values[i].name()),label:String(values[i].toString())});
+				return {enum:entries};
+			}
+			var E=Packages.com.twinsoft.convertigo.engine.enums;
+			connectorSpec=checked(connectorSpec,{name:{type:"string"},comment:{type:"string"},anonymousReplication:enumeration(E.FullSyncAnonymousReplication)},"connector");
+			transactions=transactions.map(function(spec,index){
+				var prefix="transactions["+index+"]";
+				var next=checked(spec,{name:{type:"string"},type:{type:"string"},comment:{type:"string"},view:{type:"string"},
+					accessibility:enumeration(E.Accessibility),policy:enumeration(E.CouchPostDocumentPolicy),aclPolicy:enumeration(E.FullSyncAclPolicy),useHash:{type:"boolean"}},prefix);
+				if(next.variables!==undefined) next.variables=arrayValue(next.variables,prefix+".variables").map(function(variable,v){
+					return checked(variable,{name:{type:"string"},description:{type:"string"},multiValued:{type:"boolean"},required:{type:"boolean"}},prefix+".variables["+v+"]");
+				});
+				return next;
+			});
+			listeners=listeners.map(function(spec,index){return checked(spec,{name:{type:"string"},type:{type:"string"},comment:{type:"string"},targetSequence:{type:"string"},targetView:{type:"string"},
+				chunk:{type:"integer",min:1,max:2147483647},enabled:{type:"boolean"}},"listeners["+index+"]");});
 			var dryRun = boolValue(prop(props, "dryRun"), false);
 			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 			var project = loadedProject(Engine, name);
@@ -823,6 +854,7 @@ const _meta = {
 				created: [],
 				updated: [],
 				reused: [],
+				normalizations: normalizations,
 				warnings: designWarnings(designDocuments),
 				saved: false,
 				usage: {

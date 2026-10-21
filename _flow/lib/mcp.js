@@ -963,6 +963,12 @@
 				projectLastChange = Number(project.getLastChange());
 			} catch (_ignoreProjectChanged) {
 			}
+			var includeTrace=args.includeTrace;
+			if(includeTrace!==undefined&&typeof includeTrace!=="boolean"){
+				var error=new Error("includeTrace takes true or false, not "+JSON.stringify(includeTrace)+".");
+				error.code="NATIVE_PROPERTY_VALUE_INVALID";
+				throw error;
+			}
 			var name = String(args.name || "");
 			var saveProject = assertProjectSaveAllowed(args, name);
 			var sequence = projectSequenceByName(project, name);
@@ -1243,8 +1249,24 @@
 
 	function renderFlowInputVariableYaml(name, definition, id) {
 		definition = definition && typeof definition === "object" ? definition : {};
+		["required","isFileUpload","multi","multiValued"].forEach(function(key){
+			if(definition[key]!==undefined&&typeof definition[key]!=="boolean"){
+				var error=new Error("input."+name+"."+key+" takes a normalized boolean before native persistence, not "+JSON.stringify(definition[key])+".");
+				error.code="NATIVE_PROPERTY_VALUE_INVALID";throw error;
+			}
+		});
+		if(definition.visibility!==undefined&&(typeof definition.visibility!=="number"||!isFinite(definition.visibility)||Math.floor(definition.visibility)!==definition.visibility||definition.visibility< -1||definition.visibility>15)){
+			var error=new Error("input."+name+".visibility takes -1 or an integer bitmask from 0 to 15, not "+JSON.stringify(definition.visibility)+".");error.code="FLOW_INPUT_VISIBILITY_INVALID";throw error;
+		}
+		if(definition.description!==undefined&&typeof definition.description!=="string"){
+			var error=new Error("input."+name+".description takes text, not "+JSON.stringify(definition.description)+".");error.code="FLOW_INPUT_DESCRIPTION_INVALID";throw error;
+		}
+		var declaredType=definition.type||definition.kind||"string", allowedTypes=["string","integer","number","boolean","array","object","any","unknown","null"];
+		(Array.isArray(declaredType)?declaredType:[declaredType]).forEach(function(type){
+			if(typeof type!=="string"||allowedTypes.indexOf(type)<0){var error=new Error("input."+name+".type takes one of "+allowedTypes.join(", ")+", not "+JSON.stringify(type)+".");error.code="FLOW_INPUT_SCHEMA_INVALID";throw error;}
+		});
 		var lines = ["↓" + name + " [" + id + "]: "];
-		var description = definition.description !== undefined && definition.description !== null && String(definition.description) !== ""
+		var description = definition.description !== undefined && definition.description !== null
 			? definition.description
 			: "Flow input " + name;
 		lines.push("  description: " + yamlScalar(description));
@@ -1811,6 +1833,11 @@
 
 	function toolResponse(request, value, ctx) {
 		request = request || {};
+		var original=toolArguments(request);
+		if(value && !value.error && original.includeTrace!==undefined && typeof original.includeTrace!=="boolean") {
+			var checked=ctx.nativePropertyContract().scalar(original.includeTrace,{type:"boolean"},"includeTrace");
+			value.normalizations=(value.normalizations||[]).concat(checked.normalizations);
+		}
 		value = enrichSveltePaletteMutations(request, value);
 		value = compactToolValue(request, value);
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
@@ -2083,6 +2110,10 @@
 		options = options || {};
 		var args = copyJson(toolArguments(request || {}));
 		var name = toolName(request || {});
+		if(args.includeTrace!==undefined && typeof args.includeTrace!=="boolean") {
+			var checked=ctx.nativePropertyContract().scalar(args.includeTrace,{type:"boolean"},"includeTrace");
+			args.includeTrace=checked.value;
+		}
 		var managedSourceWrite = name === "frontend-svelte-code-set"
 			|| name === "frontend-svelte-code-patch"
 			|| ((name === "code-set" || name === "code-patch") && String(args.sourceFile || "").length > 0);

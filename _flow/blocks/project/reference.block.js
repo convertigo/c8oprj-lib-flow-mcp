@@ -300,7 +300,23 @@ const _meta = {
 
 	return {
 		run: function (ctx, node) {
-			var props = ctx.props(node);
+			var checked=ctx.nativePropertyContract().properties(ctx.props(node),{autoPull:{type:"boolean"},dryRun:{type:"boolean"},
+				url:{type:"string",trim:true},branch:{type:"string",trim:true},path:{type:"string",trim:true}},"");
+			var props = checked.value;
+			var contract=ctx.nativePropertyContract();
+			["branch","path"].forEach(function(key){
+				if(props[key]!==undefined && props[key].indexOf(":")>=0)contract.invalid(key,props[key],"a Git branch or project folder without a ':' option separator");
+			});
+			if(props.url!==undefined){
+				var seen=false;
+				props.url=props.url.replace(/:autoPull=([^:]*)/g,function(token,value){
+					if(seen)contract.invalid("url.autoPull",props.url,"one autoPull option");
+					seen=true;
+					var valueCheck=contract.scalar(value,{type:"boolean"},"url.autoPull");
+					checked.normalizations=checked.normalizations.concat(valueCheck.normalizations);
+					return ":autoPull="+String(valueCheck.value);
+				});
+			}
 			var projectNameValue = projectName(prop(props, "project"));
 			var referenceName = projectName(prop(props, "reference"));
 			var dryRun = boolValue(prop(props, "dryRun"));
@@ -322,6 +338,7 @@ const _meta = {
 			var url = referenceUrl(referenceName, currentUrl, props);
 			var updated = existing != null && url !== null && url !== currentUrl;
 			var response = {
+				normalizations: checked.normalizations,
 				ok: true,
 				project: projectNameValue,
 				reference: referenceName,

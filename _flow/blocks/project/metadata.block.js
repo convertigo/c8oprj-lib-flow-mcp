@@ -89,6 +89,15 @@ const _meta = {
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
+			var contract=ctx.nativePropertyContract();
+			["comment","responseTimeout","contextTimeout","corsOrigin","cors"].forEach(function(name){
+				if(props[name]!==undefined)contract.invalid(name,props[name],"version or description (the only project properties editable by flow-project-metadata)");
+			});
+			var checked=contract.properties(props,{
+				version:{type:"string",trim:true,minLength:1,maxLength:64,singleLine:true,expected:"one line of 1 to 64 characters",code:"INVALID_VERSION"},
+				description:{type:"string",maxLength:4000,expected:"text of at most 4000 characters",code:"INVALID_DESCRIPTION"},saveProject:{type:"boolean"}
+			},"");
+			props=checked.value;
 			var mcp = ctx.lib("mcp");
 			var projectName = String(props.project || "").trim();
 			if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(projectName)) {
@@ -139,6 +148,7 @@ const _meta = {
 				project: projectName,
 				version: String(project.getVersion() || ""),
 				description: String(project.getComment() || ""),
+				normalizations: checked.normalizations,
 				changed: changes,
 				saved: saveProject === true
 			};

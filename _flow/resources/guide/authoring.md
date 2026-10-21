@@ -482,3 +482,24 @@ returning `{key,removed}`; it does not clear runtime descriptor caches.
 Contracts, limits, error codes and complete examples:
 `flow://lib/lib_flow_engine/backend-io`. Never add a Rhino CSV parser, sleep
 or project-cache bridge in an application.
+
+## Native Convertigo properties
+
+Authoring properties are validated before any native bean changes. Booleans take
+`true` or `false`; integer properties reject non-numbers and out-of-range values;
+enums accept their constant or a unique display label, case aside. Spaces around
+a scalar spelling are removed only when unambiguous. Never rely on a fallback
+to zero, false or the first enum constant.
+
+`code-check` reports invalid `_flow.inputs` and `_flow.accessibility` values at
+their source line. `code-set`, `code-patch` and `code-promote` report safe
+normalizations in `fixes` and return the corrected source. Native operations
+return `normalizations` with property, before and after; inspect them.
+
+For inputs, use a supported JSON `type`, boolean `required`/`isFileUpload`, a
+`visibility` of -1 or a mask from 0 to 15, and a text `description`. Typed defaults
+must be convertible by the declared Flow input contract. Business request input
+conversion is distinct from native authoring property validation.
+
+`flow-project-metadata` edits only `version` (one line, at most 64 characters)
+and `description` (at most 4000). It does not edit timeouts or CORS.
