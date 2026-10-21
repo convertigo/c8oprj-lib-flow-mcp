@@ -124,7 +124,7 @@ nested loop, and append to a typed array with `json.push`; avoid copying the
 growing array. Metadata and external reads belong outside the cell loop whenever
 they are independent of the cell. Keep business block calls visible in FlowScript.
 The detailed examples and reproducible benchmark are in
-`flow://lib/lib_flow_engine/guide/runtime-performance.md`.
+`flow://lib/lib_flow_engine/runtime-performance`.
 
 `code-run` skips per-node trace capture by default rather than capturing snapshots
 that its compact response discards. Use `includeTrace:true` or
