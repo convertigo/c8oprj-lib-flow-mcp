@@ -157,10 +157,13 @@ const _meta = {
 				throw new Error("Engine resource payload exceeds " + MAX_TOTAL_BYTES + " UTF-8 bytes.");
 			}
 			var target = root.resolve(path).normalize();
-			if (!target.startsWith(root) || !Files.isRegularFile(target)) {
+			var existed=Files.exists(target);
+			if (!target.startsWith(root) || Files.isSymbolicLink(target) ||
+					!Files.isDirectory(target.getParent()) || !target.getParent().toRealPath().startsWith(root.toRealPath()) ||
+					(existed ? !Files.isRegularFile(target) : path === "_flow/Engine.js")) {
 				throw new Error("Engine resource does not exist inside the loaded project: " + path);
 			}
-			var currentContent = String(Files.readString(target, StandardCharsets.UTF_8));
+			var currentContent = existed ? String(Files.readString(target, StandardCharsets.UTF_8)) : "";
 			var currentHash = sha256(currentContent);
 			var expectedBaseHash = hex(entry.baseHash, path + ".baseHash");
 			if (currentHash !== expectedBaseHash) {
@@ -179,8 +182,9 @@ const _meta = {
 				oldHash: currentHash,
 				newHash: contentHash,
 				changed: currentHash !== contentHash,
+				existed: existed,
 				originalContent: currentContent,
-				permissions: posixPermissions(Files, target),
+				permissions: posixPermissions(Files, existed ? target : root.resolve("_flow/Engine.js")),
 				staged: null
 			};
 		});
@@ -275,6 +279,7 @@ const _meta = {
 				for (var index = replaced.length - 1; index >= 0; index--) {
 					var entry = replaced[index];
 					try {
+						if (!entry.existed) { Files.deleteIfExists(entry.target); continue; }
 						Files.writeString(entry.target, entry.originalContent, StandardCharsets.UTF_8,
 							StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
 						applyPermissions(Files, entry.target, entry.permissions);

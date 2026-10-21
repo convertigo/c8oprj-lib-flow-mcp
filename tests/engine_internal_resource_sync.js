@@ -193,7 +193,23 @@ try {
 	}, 5) } });
 	assertTrue(normalCalls === 1 && capturedResolveProject === true && normal.result.structuredContent.ok === true,
 		"ordinary project resource patching no longer delegates to the established capability");
-	print("engine_internal_resource_sync: ok");
+	var newPath=projectRoot.resolve("_flow/modules/new-contract.js"),newContent="(function(){return {checked:true};}())\n";
+	var newEntry={path:"_flow/modules/new-contract.js",content:newContent,baseHash:sha256(""),sha256:sha256(newContent)};
+	function nativeRequest(files,dry){return {props:{request:request({project:"lib_flow_engine",scope:"engine-internal",revision:"534a2d4ef",files:files,dryRun:dry})}};}
+	var preview=implementation.run(ctx,nativeRequest([newEntry],true));
+	assertTrue(preview.result.structuredContent.changed&&!Files.exists(newPath),"New module dry-run must not create a file");
+	var failingSource=runtimeSource.replace("function moveReplacing(Files, source, target) {","function moveReplacing(Files, source, target) { if(String(target.getFileName()) === 'Engine.js') throw new Error('Injected replace failure');");
+	var failing=(function(Packages){return eval(failingSource);}(mockedPackages));
+	var rollback=failing.run(ctx,nativeRequest([newEntry,{path:"_flow/Engine.js",content:originalEngine,baseHash:sha256(targetEngine),sha256:sha256(originalEngine)}],false));
+	assertTrue(rollback.error&&!Files.exists(newPath)&&String(Files.readString(enginePath,StandardCharsets.UTF_8))===targetEngine,"Rollback must remove a newly created module and preserve the engine");
+	var created=implementation.run(ctx,nativeRequest([newEntry],false));
+	assertTrue(created.result.structuredContent.applied&&String(Files.readString(newPath,StandardCharsets.UTF_8))===newContent,"New internal module can be created with an empty base hash");
+	var staleCreate=implementation.run(ctx,nativeRequest([newEntry],false));
+	assertTrue(/changed since it was read/.test(errorMessage(staleCreate)),"A stale create cannot overwrite an existing module");
+	var linked=projectRoot.resolve("_flow/modules/linked-contract.js");Files.createSymbolicLink(linked,newPath);
+	var symlink=implementation.run(ctx,nativeRequest([{path:"_flow/modules/linked-contract.js",content:newContent,baseHash:sha256(newContent),sha256:sha256(newContent)}],false));
+	assertTrue(symlink.error,"Internal synchronization must refuse symlinks");
+	print("engine_internal_resource_sync: ok (creation, stale create, rollback and symlink guards)");
 } finally {
 	FileUtils.deleteDirectory(tempRoot.toFile());
 }
