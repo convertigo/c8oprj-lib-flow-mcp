@@ -270,16 +270,7 @@ const _meta = {
 
 	function projectNameFromFile(file) {
 		try {
-			var FileUtils = Packages.org.apache.commons.io.FileUtils;
-			var source = String(FileUtils.readFileToString(file, "UTF-8"));
-			var lines = source.split(/\r?\n/);
-			for (var i = 0; i < lines.length; i++) {
-				var match = /^↓([^\s\[]+) \[core\.Project\]: $/.exec(lines[i]);
-				if (match) {
-					return String(match[1]);
-				}
-			}
-			return "";
+			return String(Packages.com.twinsoft.convertigo.engine.DatabaseObjectsManager.getProjectName(file) || "");
 		} catch (_ignoreDefinition) {
 			return "";
 		}
@@ -397,6 +388,8 @@ const _meta = {
 		if (project == null) {
 			throw new Error("No project imported with: " + name + "=" + templateUrl);
 		}
+		// A copied template is a new project; configuring an existing project keeps its format.
+		project.setYamlFormat(Packages.com.twinsoft.convertigo.engine.util.YamlConverter.Format.STANDARD);
 		return project;
 	}
 

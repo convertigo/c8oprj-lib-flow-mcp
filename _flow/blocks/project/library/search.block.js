@@ -127,15 +127,7 @@ const _meta = {
       if (!definition.isFile() || definition.length() > 1024 * 1024) {
         return "";
       }
-      var source = String(FileUtils.readFileToString(definition, "UTF-8"));
-      var lines = source.split(/\r?\n/);
-      for (var i = 0; i < lines.length; i++) {
-        var match = /^↓([^\s\[]+) \[core\.Project\]: $/.exec(lines[i]);
-        if (match) {
-          return String(match[1]);
-        }
-      }
-      return "";
+      return String(Packages.com.twinsoft.convertigo.engine.DatabaseObjectsManager.getProjectName(definition) || "");
     } catch (_ignoreDefinition) {
       return "";
     }

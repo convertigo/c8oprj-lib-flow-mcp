@@ -1049,6 +1049,11 @@
 	function saveFlowDeclaration(project, flow, name, args, writeResult) {
 		args = args || {};
 		var projectDir = new File(String(project.getDirPath()));
+		var projectFile = new File(projectDir, "c8oProject.yaml");
+		var Yaml = Packages.com.twinsoft.convertigo.engine.util.YamlConverter;
+		if (projectFile.isFile() && String(Yaml.getFormat(projectFile)) === "STANDARD") {
+			return saveStandardFlowDeclaration(projectFile, flow, name, args, writeResult);
+		}
 		var sequencesDir = new File(new File(projectDir, "_c8oProject"), "sequences");
 		var sequenceFile = new File(sequencesDir, String(name) + ".yaml");
 		var changed = false;
@@ -1063,6 +1068,83 @@
 			changed = true;
 		}
 		return ensureProjectFlowDeclaration(projectDir, name) || changed;
+	}
+
+	// Patch the saved DOM, not the live project: unrelated Studio drafts must remain unsaved.
+	// The engine codec owns quoting, multiline values, include paths and incremental writes.
+	function saveStandardFlowDeclaration(projectFile, flow, name, args, writeResult) {
+		var Yaml = Packages.com.twinsoft.convertigo.engine.util.YamlConverter;
+		var document = Yaml.readYaml(projectFile);
+		function children(parent) {
+			var out = [], nodes = parent.getChildNodes();
+			for (var i = 0; i < nodes.getLength(); i++) {
+				var child = nodes.item(i);
+				if (child.getNodeType() === 1) out.push(child);
+			}
+			return out;
+		}
+		function scalar(parent, key, value) {
+			children(parent).filter(function (child) { return String(child.getTagName()) === key; })
+				.forEach(function (child) { parent.removeChild(child); });
+			if (value !== undefined) {
+				var child = document.createElement(key);
+				child.setTextContent(value === null ? "" : String(value));
+				parent.appendChild(child);
+			}
+		}
+		var project = children(document.getDocumentElement()).filter(function (child) {
+			return String(child.getAttribute("yaml_key")).indexOf(" [core.Project]") >= 0;
+		})[0];
+		if (!project) throw new Error("Missing project declaration");
+		var identity = String(name) + " [flow.Flow]";
+		var bean = children(project).filter(function (child) {
+			return String(child.getAttribute("yaml_key")) === identity;
+		})[0];
+		if (!bean) {
+			bean = document.createElement("bean");
+			bean.setAttribute("yaml_key", identity);
+			bean.setAttribute("yaml_file", "sequences/" + name + ".yaml");
+			project.appendChild(bean);
+			scalar(bean, "includeTrace", boolArg(args.includeTrace, false));
+		}
+		scalar(bean, "authenticatedContextRequired", flow.getAuthenticatedContextRequired() ? true : undefined);
+		var definitions = writeResult && writeResult.inputDefinitions;
+		var keys = definitions && typeof definitions === "object" ? Object.keys(definitions).filter(function (key) {
+			return /^[A-Za-z_$][\w$]*$/.test(key) && key.indexOf("__") !== 0;
+		}).sort() : [];
+		if (keys.length) {
+			var ids = {};
+			children(bean).forEach(function (child) {
+				var match = /^([A-Za-z_$][\w$]*) \[(variables\.Requestable(?:MultiValued)?Variable-\d+)\]$/.exec(String(child.getAttribute("yaml_key")));
+				if (match && match[1].indexOf("__") !== 0) {
+					ids[match[1]] = match[2];
+					bean.removeChild(child);
+				}
+			});
+			keys.forEach(function (key, index) {
+				var definition = Object.assign({}, definitions[key] || {});
+				var nativeVariable = flow.getVariable(key);
+				if (nativeVariable) {
+					if (definition.visibility === undefined) definition.visibility = Number(nativeVariable.getVisibility());
+					if (definition.isFileUpload === undefined) definition.isFileUpload = Boolean(nativeVariable.getIsFileUpload());
+				}
+				var cls = flowInputVariableClass(definition);
+				var id = ids[key] && ids[key].indexOf(cls + "-") === 0 ? ids[key] : cls + "-" + stableFlowInputPriority(name, key, index);
+				renderFlowInputVariableYaml(key, definition, id); // Shared contract validation, before any disk write.
+				var variable = document.createElement("bean");
+				variable.setAttribute("yaml_key", key + " [" + id + "]");
+				scalar(variable, "description", definition.description == null ? "Flow input " + key : definition.description);
+				var type = flowInputSchemaType(definition.type || definition.kind || "string");
+				if (type !== "xsd:string") scalar(variable, "schemaType", type);
+				if (definition.required === true) scalar(variable, "required", true);
+				if (definition.visibility !== undefined && Number(definition.visibility) !== 0) scalar(variable, "visibility", definition.visibility);
+				if (definition.isFileUpload === true) scalar(variable, "isFileUpload", true);
+				scalar(variable, "value", flowInputYamlDefault(definition));
+				bean.appendChild(variable);
+			});
+		}
+		Yaml.writeYaml(document, projectFile, new File(projectFile.getParentFile(), "_c8oProject"));
+		return true;
 	}
 
 	function syncFlowInputsDbo(args) {
@@ -1555,6 +1637,18 @@
 			return;
 		}
 		var declared = new RegExp("^  \u2193" + name + " \\[(sequences\\.[A-Za-z0-9_.]+)\\]\\s*:", "m").exec(readUtf8(projectFile));
+		var Yaml = Packages.com.twinsoft.convertigo.engine.util.YamlConverter;
+		if (String(Yaml.getFormat(projectFile)) === "STANDARD") {
+			declared = null;
+			var beans = Yaml.readYaml(projectFile, true).getElementsByTagName("bean");
+			for (var i = 0; i < beans.getLength(); i++) {
+				var identity = String(beans.item(i).getAttribute("yaml_key"));
+				if (identity.indexOf(name + " [sequences.") === 0) {
+					declared = [identity, identity.substring(name.length + 2, identity.length - 1)];
+					break;
+				}
+			}
+		}
 		if (declared) {
 			var error = new Error(args.project + "." + name + " is still saved as a " + declared[1].substring("sequences.".length) +
 				" in c8oProject.yaml: its deletion is not saved. Nothing was changed.");
