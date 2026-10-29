@@ -1,7 +1,6 @@
 comment: Handles Flow-native MCP JSON-RPC requests.
-includeTrace: false
 responseTimeout: 600
-↓request [variables.RequestableVariable-1780096200001]: 
+↓request [variables.RequestableVariable-1780096200001]:
   comment: JSON-RPC MCP request body.
-  description: JSON-RPC MCP request body.
-  value: "{}"
+  description: MCP JSON-RPC request body.
+  value: '{}'
