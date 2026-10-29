@@ -227,6 +227,15 @@ headers; the two endpoints share their tokens. Without `lib_ConvertigoMCP` the
 list only holds the Flow tools. `-Dconvertigo.flow.mcp.legacyRelay=false`
 disables the relay.
 
+`report-create` is also relayed when the legacy catalog advertises it. The
+legacy endpoint owns consent, validation and feedback storage; the relay never
+enables reporting or sends feedback externally. Each `tools/list` refreshes the
+legacy catalog for the current caller, so consent changes and provider-specific
+schemas are not shared or cached. Each relayed `tools/call` remains one HTTP hop.
+On a server, a shared bearer alone does not establish the No Code user identity
+required by Tigo feedback. If the legacy endpoint omits the tool, it stays absent;
+`nocode-report-create` is not exposed through this endpoint.
+
 ## FlowScript code tools
 
 `code-*` is the default source surface for agents:

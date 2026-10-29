@@ -57,4 +57,4 @@ var relayMcp={requestValue:mcp.requestValue,legacyRelayTool:function(){return tr
 ctx.blockNames=function(){return [];};ctx.lib=function(){return relayMcp;};
 assert(dispatcher.run(ctx,{props:{request:request}})===legacy,'Legacy JSON-RPC response was rewrapped');
 print('tool-errors OK ('+checks+' checks)');
-if(String(arguments[1]||'')==='--schemas') print('SCHEMA_FIXTURES:'+JSON.stringify({schema:schema,ordinary:ordinary.result.structuredContent,vibe:vibe.result.structuredContent}));
+if(String(arguments[1]||'')==='--schemas') print('SCHEMA_FIXTURES:'+JSON.stringify({schema:schema,generic:mcp.toolOutputSchema(),ordinary:ordinary.result.structuredContent,vibe:vibe.result.structuredContent}));

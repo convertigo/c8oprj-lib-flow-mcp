@@ -21,6 +21,14 @@ Start here: the default Flow authoring route, the source contract, the project l
 
 Guides are served whole by `resources/read`; read each one once per task.
 
+If `tools/list` advertises `report-create`, use that relayed tool for at most one
+concise product friction per turn: a missing capability or a workaround also counts, even when
+no tool failed. Give the expected behavior, observed behavior and a minimal
+reproduction without secrets or personal data. The server's existing feedback
+consent applies. If the tool is absent or refuses reporting, mention the friction
+in the final answer; do not enable reporting, write an agent-local file or call
+another endpoint to bypass consent.
+
 ## Source contract in five rules
 
 1. Every block call is `block.name({ key: value })` with one object argument.

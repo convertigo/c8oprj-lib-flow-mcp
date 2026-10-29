@@ -175,6 +175,13 @@ service details in reusable typed sub-blocks and structural constants in
 
 ## Completion
 
+When `tools/list` advertises `report-create`, report at most one concise, reproducible
+product friction per turn through that relayed tool. Missing capabilities and workarounds
+count even without a tool error. Omit secrets and personal data. The legacy
+endpoint owns feedback consent and storage: never enable reporting or bypass a
+refusal. If unavailable, describe the friction in the final answer instead of
+writing an agent-local feedback file.
+
 POC completion means the requested business path runs and the representative
 visible behavior is proved. Do not add production builds, exhaustive browser
 matrices, schema adoption or unrelated hardening unless requested. Report

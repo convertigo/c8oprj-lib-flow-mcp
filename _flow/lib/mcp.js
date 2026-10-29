@@ -465,9 +465,16 @@
 
 	function textContent(value, ctx) {
 		value = sanitizeForMcp(value, ctx);
+		var notices = [];
+		["operatorNote", "argumentWarning"].forEach(function (key) {
+			if (value && value[key]) {
+				var text = String(value[key]);
+				notices.push(key + ": " + (text.length > 2000 ? text.substring(0, 2000) + "… (see structuredContent)" : text));
+			}
+		});
 		return [{
 			type: "text",
-			text: textSummary(value)
+			text: (notices.length ? notices.join("\n") + "\n" : "") + textSummary(value)
 		}];
 	}
 
@@ -1928,14 +1935,25 @@
 	function toolResponse(request, value, ctx) {
 		request = request || {};
 		var original=toolArguments(request);
+		var ignored = ignoredToolArguments(request);
+		if (value && !value.error && ignored.length) {
+			var warning = "Ignored arguments " + ignored.join(", ") + ": " + toolName(request) +
+				" uses the current working copy. Save source with code-set or code-patch first.";
+			value.argumentWarning = value.argumentWarning ? value.argumentWarning + "\n" + warning : warning;
+		}
 		if(value && !value.error && original.includeTrace!==undefined && typeof original.includeTrace!=="boolean") {
 			var checked=ctx.nativePropertyContract().scalar(original.includeTrace,{type:"boolean"},"includeTrace");
 			value.normalizations=(value.normalizations||[]).concat(checked.normalizations);
 		}
 		value = enrichSveltePaletteMutations(request, value);
-		var nativeNormalizations = value && value.normalizations;
+		var notices = {};
+		["normalizations", "argumentWarning", "operatorNote"].forEach(function (key) {
+			if (value && value[key] !== undefined && value[key] !== null && value[key].length) notices[key] = value[key];
+		});
 		value = compactToolValue(request, value);
-		if (value && nativeNormalizations && nativeNormalizations.length) value.normalizations = nativeNormalizations;
+		if (value && typeof value === "object") {
+			Object.keys(notices).forEach(function (key) { value[key] = notices[key]; });
+		}
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
 	}
 
@@ -2095,10 +2113,24 @@
 	function toolOutputSchema(successSchema) {
 		var error = { type: "object", additionalProperties: true,
 			description: "Tool failed: read code, message, hint and details before retrying." };
-		return { type: "object", properties: { error: error }, additionalProperties: true, anyOf: [
-			successSchema || { type: "object", additionalProperties: true },
-			{ type: "object", properties: { error: error }, required: ["error"], additionalProperties: true }
-		] };
+		var notices = {
+			argumentWarning: { type: "string", description: "Arguments ignored by the tool and how to correct the call." },
+			operatorNote: { type: "string", description: "A note from the person supervising the agent." },
+			normalizations: { type: "array", items: { type: "object" } }
+		};
+		var properties = { error: error };
+		Object.keys(notices).forEach(function (key) { properties[key] = notices[key]; });
+		var schema = { type: "object", properties: properties, additionalProperties: true };
+		// An unconstrained success branch makes anyOf redundant. Most tools use
+		// that default: keep the advertised catalog small instead of repeating it.
+		if (successSchema) {
+			var success = copyJson(successSchema);
+			success.properties = success.properties || {};
+			Object.keys(notices).forEach(function (key) { success.properties[key] = notices[key]; });
+			schema.anyOf = [success,
+				{ type: "object", properties: { error: error }, required: ["error"], additionalProperties: true }];
+		}
+		return schema;
 	}
 
 	function firstForwardedValue(value) {
@@ -2200,6 +2232,16 @@
 		} catch (e) {
 			return false;
 		}
+	}
+
+	// These source arguments are deliberately removed, not arbitrary provider
+	// extensions: tool input schemas otherwise remain open to provider properties.
+	function ignoredToolArguments(request) {
+		if (!/^(?:flow-)?code-(check|run|analyze)$/.test(toolName(request))) return [];
+		var args = toolArguments(request);
+		return ["code", "flowScript", "flowSource", "definition"].filter(function (key) {
+			return Object.prototype.hasOwnProperty.call(args, key);
+		});
 	}
 
 	function prepareToolArguments(ctx, request, options) {
@@ -2485,12 +2527,7 @@
 		if (/^(?:flow-)?code-(get|set|patch|check|run|analyze)$/.test(name)) {
 			args.draft = true;
 		}
-		if (/^(?:flow-)?code-(check|run|analyze)$/.test(name)) {
-			delete args.code;
-			delete args.flowScript;
-			delete args.flowSource;
-			delete args.definition;
-		}
+		ignoredToolArguments(request).forEach(function (key) { delete args[key]; });
 		var workspaceSearch = options.workspaceSearch === true
 			&& String(args.scope || "") === "workspace"
 			&& !args.project
@@ -3033,7 +3070,8 @@
 	}
 
 	function compactFlowListToolValue(request, value) {
-		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
+		// A success-only list projection must never hide a tool failure.
+		if (!value || typeof value !== "object" || value.error || responseDetail(request) === "full") {
 			return value;
 		}
 		var flows = value.flows || [];
@@ -4078,6 +4116,7 @@
 		"project-save": true,
 		"project-security-audit": true,
 		"rag-query": true,
+		"report-create": true,
 		"requestable-execute": true,
 		"scheduler-apply": true,
 		"scheduler-list": true
@@ -4086,8 +4125,6 @@
 		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
 	var LEGACY_RELAY_NOTE = " (Relayed to the Convertigo MCP of this server.)";
-	// The Convertigo MCP adapts its catalog to the agent provider (Claude has no gateway vision tools): one entry each.
-	var legacyToolsCache = {};
 
 	function legacyRelayEnabled() {
 		return String(System.getProperty("convertigo.flow.mcp.legacyRelay", "true")).toLowerCase() !== "false";
@@ -4153,12 +4190,9 @@
 		if (!legacyRelayEnabled()) {
 			return [];
 		}
-		var now = Number(System.currentTimeMillis());
-		var key = "provider:" + legacyProvider(ctx) + ":vibe:" + errorsAsResult(ctx);
-		var cached = legacyToolsCache[key];
-		if (cached && now - cached.at < 60000) {
-			return cached.tools;
-		}
+		// Catalog visibility depends on the current caller and feedback consent.
+		// Fetch once per tools/list; never share a consent-sensitive descriptor or
+		// retain one after consent is withdrawn. tools/call still makes only one hop.
 		var tools = [];
 		try {
 			var answer = legacyPost(ctx, { jsonrpc: "2.0", id: "flow-relay-list", method: "tools/list", params: {} }, 30);
@@ -4172,17 +4206,7 @@
 		} catch (e) {
 			tools = [];
 		}
-		legacyToolsCache[key] = { at: now, tools: tools };
 		return tools;
-	}
-
-	function legacyProvider(ctx) {
-		try {
-			var request = ctx.convertigoContext().httpServletRequest;
-			return String(request && request.getHeader("X-Convertigo-Agent-Provider") || "").trim().toLowerCase();
-		} catch (e) {
-			return "";
-		}
 	}
 
 	function legacyRelayCall(ctx, request) {
