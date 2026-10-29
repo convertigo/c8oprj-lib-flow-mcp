@@ -149,6 +149,10 @@
 
 	function protectFile(file) {
 		try {
+			Files.setPosixFilePermissions(file.toPath(), Packages.java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+			return;
+		} catch (_posixPermissionsUnsupported) {}
+		try {
 			file.setReadable(false, false);
 			file.setWritable(false, false);
 			file.setExecutable(false, false);
@@ -186,7 +190,8 @@
 				}
 				Files.move(temporary.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			}
-			protectFile(file);
+			// The protected temporary file keeps its permissions after the move.
+			// Changing the live file's permissions here briefly denied parallel readers.
 		} finally {
 			try {
 				if (temporary.exists()) {
@@ -586,6 +591,49 @@
 		} catch (_ignoreLastUsedWrite) {}
 	}
 
+	function isStoreReadFailure(error) {
+		return (error && error.javaException || error) instanceof Packages.java.io.IOException;
+	}
+
+	// A transient filesystem failure is not an invalid credential. No token or
+	// record is cached: every retry checks the current store, including revocation.
+	function readStore(read) {
+		var outcome;
+		for (var attempt = 0; attempt < 4; attempt++) {
+			try {
+				outcome = read();
+				if (!outcome.retry) return outcome;
+			} catch (error) {
+				outcome = { error: error };
+				if (!isStoreReadFailure(error)) return outcome;
+			}
+			if (attempt < 3) {
+				try { java.lang.Thread.sleep(25 * (attempt + 1)); }
+				catch (_interrupted) {
+					java.lang.Thread.currentThread().interrupt();
+					return { interrupted: true };
+				}
+			}
+		}
+		return outcome;
+	}
+
+	function unavailableStore() {
+		var result = invalid("token_store_unreadable", "The MCP token store could not be read just now. The token was not refused: retry the call.");
+		result.retryable = true;
+		return result;
+	}
+
+	function lookupDurableRecord(tokenId) {
+		var file = null, roots = tokenRoots();
+		for (var rootIndex = 0; rootIndex < roots.length; rootIndex++) {
+			if (tokenFile(revokedDirectory(roots[rootIndex]), tokenId).isFile()) return { revoked: true };
+			var candidate = tokenFile(activeDirectory(roots[rootIndex]), tokenId);
+			if (file === null && candidate.isFile()) file = candidate;
+		}
+		return file === null ? { retry: true, missing: true } : { file: file, record: parseJsonFile(file) };
+	}
+
 	function validate(token) {
 		var raw = trim(token);
 		if (!raw.length) {
@@ -617,12 +665,10 @@
 			return invalid("token_not_yet_valid", "The Flow MCP bearer token is not valid yet.");
 		}
 		var signingInput = parts[0] + "." + parts[1];
-		var expected;
-		try {
-			expected = sign(signingInput, signingKey());
-		} catch (keyError) {
-			return invalid("signing_key_unavailable", String(keyError.message || keyError));
-		}
+		var key = readStore(function () { return { value: signingKey() }; });
+		if (key.interrupted || (key.error && isStoreReadFailure(key.error))) return unavailableStore();
+		if (key.error) return invalid("signing_key_unavailable", "The MCP signing key is unavailable or invalid.");
+		var expected = sign(signingInput, key.value);
 		if (!signaturesEqual(parts[2], expected)) {
 			return invalid("invalid_token_signature", "The Flow MCP bearer token signature is invalid.");
 		}
@@ -645,26 +691,15 @@
 		if (!tokenId.length || !jti.length) {
 			return invalid("missing_token_identifier", "The Flow MCP bearer token identifier is missing.");
 		}
-		var file = null;
-		try {
-			var roots = tokenRoots();
-			for (var rootIndex = 0; rootIndex < roots.length; rootIndex++) {
-				if (tokenFile(revokedDirectory(roots[rootIndex]), tokenId).isFile()) {
-					return invalid("revoked_token", "The Flow MCP bearer token has been revoked.");
-				}
-				var candidate = tokenFile(activeDirectory(roots[rootIndex]), tokenId);
-				if (file === null && candidate.isFile()) {
-					file = candidate;
-				}
-			}
-		} catch (identifierError) {
-			return invalid("invalid_token_identifier", String(identifierError.message || identifierError));
-		}
-		if (file === null) {
+		var lookup = readStore(function () { return lookupDurableRecord(tokenId); });
+		if (lookup.interrupted || (lookup.error && isStoreReadFailure(lookup.error))) return unavailableStore();
+		if (lookup.error) return invalid("invalid_token_record", "The MCP token record is invalid.");
+		if (lookup.revoked) return invalid("revoked_token", "The Flow MCP bearer token has been revoked.");
+		if (lookup.missing) {
 			return invalid("revoked_or_unknown_token", "The Flow MCP bearer token is revoked or unknown.");
 		}
 		try {
-			var record = parseJsonFile(file);
+			var record = lookup.record;
 			if (trim(record.id) !== tokenId || trim(record.jtiHash) !== sha256(jti)) {
 				return invalid("invalid_token_record", "The Flow MCP bearer token does not match its active record.");
 			}
@@ -675,7 +710,7 @@
 			if (recordExpiration > 0 && java.lang.System.currentTimeMillis() >= recordExpiration) {
 				return invalid("expired_token", "The Flow MCP bearer token has expired.");
 			}
-			updateLastUsed(file, record, java.lang.System.currentTimeMillis());
+			updateLastUsed(lookup.file, record, java.lang.System.currentTimeMillis());
 			return {
 				status: "ok",
 				authenticated: true,
@@ -721,13 +756,14 @@
 		return validate(bearerToken(ctx));
 	}
 
-	function applyUnauthorizedResponse(ctx) {
+	function applyUnauthorizedResponse(ctx, retryable) {
 		try {
 			var contextObject = convertigoContext(ctx);
 			var response = contextObject && contextObject.httpServletResponse;
 			if (response !== null) {
-				response.setStatus(401);
-				response.setHeader("WWW-Authenticate", "Bearer realm=\"Convertigo Flow MCP\"");
+				response.setStatus(retryable ? 503 : 401);
+				if (retryable) response.setHeader("Retry-After", "1");
+				else response.setHeader("WWW-Authenticate", "Bearer realm=\"Convertigo Flow MCP\"");
 			}
 		} catch (_ignoreResponseStatus) {}
 	}
@@ -752,7 +788,7 @@
 			markPrincipal(ctx, authentication);
 			return request;
 		}
-		applyUnauthorizedResponse(ctx);
+		applyUnauthorizedResponse(ctx, authentication && authentication.retryable === true);
 		var error = authentication && authentication.error ? authentication.error : {};
 		return {
 			jsonrpc: "2.0",

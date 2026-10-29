@@ -47,7 +47,7 @@ try {
   // (the last character of a 32-byte HMAC carries only 4 meaningful bits) or padding.
   var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   var lastIndex = alphabet.indexOf(token.charAt(token.length - 1));
-  assertTrue(lastIndex % 4 === 0, "The issued signature is not canonical: " + token.substring(signatureStart));
+  assertTrue(lastIndex % 4 === 0, "The issued signature is not canonical");
   [token.substring(0, token.length - 1) + alphabet.charAt(lastIndex + 1), token + "="].forEach(function (variant) {
     var refused = jwt.validate(variant);
     assertTrue(refused.authenticated === false && refused.error.code === "invalid_token_signature",
