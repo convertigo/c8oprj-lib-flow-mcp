@@ -1914,7 +1914,20 @@
 	}
 
 	function finalizeResponse(ctx, request, response) {
+		// tools/list exposes trusted public descriptors, not runtime values. Their JSON Schemas
+		// must retain field names such as maxTokens, inputTokens and password. Keep the runtime
+		// scrubber everywhere else, including objects named inputSchema in tools/call results.
+		var tools = request && request.method === "tools/list" && response && response.result && response.result.tools;
+		var schemas = tools && typeof tools.length === "number" ? tools.map(function (tool) {
+			return { inputSchema: tool.inputSchema, outputSchema: tool.outputSchema };
+		}) : null;
 		response = sanitizeForMcp(response, ctx);
+		if (schemas && response.result && response.result.tools) {
+			response.result.tools.forEach(function (tool, index) {
+				if (schemas[index].inputSchema !== undefined) tool.inputSchema = schemas[index].inputSchema;
+				if (schemas[index].outputSchema !== undefined) tool.outputSchema = schemas[index].outputSchema;
+			});
+		}
 		traceJsonl(ctx, "response", request || {}, response);
 		return response;
 	}
