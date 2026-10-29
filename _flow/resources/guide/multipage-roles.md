@@ -18,7 +18,7 @@ Créer un Flow `CurrentUser` qui lit `session.authenticatedUser`, recherche le c
 
 ## 3. Imposer le périmètre côté serveur
 
-Déclarer les façades appelées par les pages `Hidden` et `authenticatedContextRequired:true`. `Hidden` masque la découverte mais n'interdit pas HTTP ; `Private` est destiné aux appels internes. Garder les initialisations et le traitement planifié privés.
+Déclarer les façades appelées par les pages avec `_flow.accessibility:"hidden"` et `authenticatedContextRequired:true`. `hidden` masque la découverte mais n'interdit pas HTTP ; `private` est destiné aux appels internes. Écrire ces noms en minuscules dans FlowScript. Garder les initialisations et le traitement planifié privés.
 
 Pour chaque lecture ou écriture, rappeler `CurrentUser`. Le serveur choisit `ownerId` et les droits. Dans une lecture nommée, joindre le périmètre obligatoire au filtre facultatif, par exemple `(:manage=TRUE OR OWNER_ID=:ownerId) AND (:status='' OR STATUS=:status)`. `manage` et `ownerId` viennent du serveur. Les requêtes exposées par une façade ne deviennent pas publiques automatiquement : déclarer `readOnly:true`, garder `expose:false` et utiliser des paramètres liés. `SQL_QUERY_READONLY_REQUIRED` signale l'oubli du premier attribut.
 
