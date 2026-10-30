@@ -60,7 +60,7 @@ var trialPatch = [
 	"+        maxAffectedRows: 1",
 	""
 ].join("\n");
-assert(failure(function () { engineApply(ENGINE_YAML, trialPatch); }).code === "PATCH_CONTEXT_MISMATCH", "lib_flow_engine alone refuses the trial patch");
+assert(engineApply(ENGINE_YAML, trialPatch) === patchLib.applyUnifiedPatch(ENGINE_YAML, trialPatch).content, "engine applies the trial patch");
 var trial = patchLib.applyUnifiedPatch(ENGINE_YAML, trialPatch);
 var expectedTrial = ENGINE_YAML.replace("        table: POSTE\n", "        table: POSTE\n        versionColumn: REVISION\n")
 	.replace("        operation: insert\n", "        operation: insert\n        maxAffectedRows: 1\n");
@@ -109,9 +109,7 @@ assert(atExpected.content === "a: 1\nb: 2\na: 1\nc: 3\n", "a repeated line is ta
 var outside = failure(function () { patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -10,0 +10,1 @@\n+        readOnly: false\n"); });
 assert(outside && outside.code === "PATCH_INSERT_AMBIGUOUS" && outside.details.oldSideAfterLine === 10 && outside.details.newSideAfterLine === 9,
 	"disagreeing insertion numbers are refused: " + JSON.stringify(outside && outside.details));
-assert(failure(function () { engineApply(ENGINE_YAML, "@@ -10,0 +10,1 @@\n+        readOnly: false\n"); }) === null &&
-	engineApply(ENGINE_YAML, "@@ -10,0 +10,1 @@\n+        readOnly: false\n").indexOf("\n\n        readOnly: false\n  sql:") !== -1,
-	"lib_flow_engine alone inserts it after the empty line, outside the source");
+assert(failure(function () { engineApply(ENGINE_YAML, "@@ -10,0 +10,1 @@\n+        readOnly: false\n"); }).code === "PATCH_INSERT_AMBIGUOUS", "engine refuses it too");
 var inserted = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -9,0 +10,1 @@\n+        readOnly: false\n");
 assert(inserted.content.indexOf("        table: POSTE\n        readOnly: false\n\n  sql:") !== -1 && inserted.hunks[0].afterLine === 9, "agreeing numbers insert after the line");
 var withContext = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -10,0 +10,1 @@\n         table: POSTE\n+        readOnly: false\n");
