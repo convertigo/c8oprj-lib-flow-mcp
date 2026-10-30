@@ -17,7 +17,7 @@
    var ready='<SetValue $$id="markViewReady" target="page.viewReady" value={true} />';
    var guarded=call(session,'','loadSession')+(publicPage?(load||'')+ready:'<If $$id="signedIn" test="@.'+session+'.authenticated"><Then>'+(load||'')+ready+'</Then><Else>'+go('crud_login','needLogin')+'</Else></If>');
    // A remounted page must not reveal a previous account's cached rows or actions.
-   var feedback=(content.match(/<Status[^>]*\/>/g)||[]).join('');content=content.replace(/<Status[^>]*\/>/g,'');
+   var feedback=(content.match(/<Status[^>]*\/>/g)||[]).filter(function(t,i,a){return a.indexOf(t)===i;}).join('');content=content.replace(/<Status[^>]*\/>/g,'');
    write(path,{page:{id:id,title:pageTitle}},'<PageHeader $$id="header" eyebrow="'+xml(title)+'" title="'+xml(pageTitle)+'" description="'+xml(description)+'"><Tools><If $$id="toolsReady" test="@page.viewReady"><Then>'+(tools||'')+'</Then></If></Tools></PageHeader><If $$id="viewReadyGuard" test="@page.viewReady"><Then>'+content+'</Then><Else><EmptyState $$id="loadingView" title="Chargement…" /></Else></If>'+feedback+status('loadSession'),guarded,'<State $$id="viewReady" type="boolean" value={false} />'+(state||''));
   }
   var nav=link('crud_dashboard','Tableau de bord','navDashboard','nav')+s.entities.map(function(e){return allow(e.name,'list',link(e.name+'_list',e.label,'nav_'+e.name,'nav'),'showNav_'+e.name);}).join('');

@@ -7,6 +7,7 @@ raw.security={principals:{admin:'admin',staff:'staff'},demoLogin:true};raw.entit
 raw.entities[1].ui.detailFields=['first_name','company_id','status'];raw.entities[1].ui.formFields=['first_name','company_id','status'];
 raw.entities[1].ui.relationFields={company_id:{optionLabelField:'city'}};
 const c=compiler.compile(raw,raw.project,{model,legacy,ui}),files=Object.entries(c.files).filter(([p])=>p.endsWith('.flow.svelte')),text=files.map(([,s])=>s).join('\n');
+for(const [p,source]of files){const ids=Array.from(source.matchAll(/\$\$id="([^"]+)"/g),m=>m[1]);check(new Set(ids).size===ids.length,'unique authoring IDs '+p);}
 check(files.length===9&&c.frontend.pages.length===8,'two entities generate layout, dashboard, login and six entity pages');
 for(const tag of ['AppShell','DataTable','FormSection','StatCard','StatusBadge','Select'])check(text.includes('<'+tag+' '),'shared '+tag+' used');
 check(!text.includes('<style')&&!text.includes('style='),'generated pages contain no application CSS');
