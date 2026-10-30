@@ -139,6 +139,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   `browser-verify` for one visual check of a page, and the host-managed
   Playwright connection only for one quick DOM or timing evaluation: no
   `browser_snapshot` per step, no long click sequences in your own context.
+  Without `subagent-run` and `browser-verify` in your tools (a host whose
+  model sees images, such as Claude), use a sub-agent of your own host for
+  the multi-step proof and one screenshot of your own for a visual check.
 - Before handing a frontend over, pass the visual checklist of
   `flow://guide/frontend-svelte` (POC Acceptance) as `checks` to the verifier
   or `browser-verify`, in light and dark, at 1366px and 390px: frame and
