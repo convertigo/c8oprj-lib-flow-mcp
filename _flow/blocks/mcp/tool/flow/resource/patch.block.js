@@ -23,6 +23,10 @@ const _meta = {
     },
   },
   "private": true,
+  "uses": [
+    "mcp",
+    "patch",
+  ],
   "tags": [
     "mcp",
   ],
@@ -300,6 +304,127 @@ const _meta = {
 		});
 	}
 
+	function filled(value) {
+		return value !== undefined && value !== null && String(value) !== "";
+	}
+
+	function failure(code, message, hint, details) {
+		var error = new Error(message);
+		error.code = code;
+		error.hint = hint || "";
+		if (details !== undefined) {
+			error.details = details;
+		}
+		return error;
+	}
+
+	var PATCH_KEYS = ["patch", "unifiedDiff", "diff", "content"];
+
+	function withoutPatch(args) {
+		var out = {};
+		Object.keys(args).forEach(function (key) {
+			if (PATCH_KEYS.indexOf(key) === -1) {
+				out[key] = args[key];
+			}
+		});
+		return out;
+	}
+
+	// The text the engine patches: the working copy view of the request, whole.
+	function currentResource(ctx, patchLib, args) {
+		var read = withoutPatch(args);
+		read.allowLarge = true;
+		read.maxBytes = 5000000;
+		try {
+			var resource = ctx.resourceGet(read);
+			return { exists: true, content: String(resource.content), hash: String(resource.hash) };
+		} catch (e) {
+			if (String(e && e.code || "") === "UNKNOWN_RESOURCE") {
+				return { exists: false, content: "", hash: patchLib.EMPTY_SHA256 };
+			}
+			throw e;
+		}
+	}
+
+	// A project resource: a unified patch applied here hunk by hunk (headers, offsets and unique context accepted), or
+	// content, the whole new text. lib_flow_engine then writes that text as one replacement hunk checked against the
+	// hash read here, with its own path rules, validation and working copy guard.
+	function patchProjectResource(ctx, args) {
+		if (filled(args.baseContent)) {
+			return ctx.resourcePatch(args);
+		}
+		var patchLib = ctx.lib("patch");
+		var path = String(args.path || "").trim();
+		var text = filled(args.patch) ? args.patch : filled(args.unifiedDiff) ? args.unifiedDiff : filled(args.diff) ? args.diff : null;
+		var hasContent = args.content !== undefined && args.content !== null;
+		if (!path) {
+			throw failure("RESOURCE_PATH_REQUIRED", "flow-resource-patch needs path, the project-relative path of the resource.",
+				"Read it first with flow-resource-get({ project, path }) and patch from its hash.");
+		}
+		if (hasContent && text !== null) {
+			throw failure("INVALID_ARGUMENTS", "Pass either patch (a unified diff) or content (the whole new text), not both.");
+		}
+		if (!hasContent && text === null) {
+			throw failure("INVALID_PATCH", "flow-resource-patch needs patch (a unified diff) or content (the whole new text, with baseHash).",
+				"Read the resource with flow-resource-get, then send a unified diff of it, or its whole new text as content with the hash as baseHash.");
+		}
+		var current = currentResource(ctx, patchLib, args);
+		if (filled(args.baseHash) && String(args.baseHash) !== current.hash) {
+			throw failure("RESOURCE_BASE_HASH_MISMATCH", "Flow resource changed since it was read: " + path + ".",
+				"Read it again with flow-resource-get and patch from its new hash.", { path: path, baseHash: String(args.baseHash), hash: current.hash });
+		}
+		if (hasContent && current.exists && !filled(args.baseHash)) {
+			throw failure("RESOURCE_BASE_HASH_REQUIRED", "content replaces the whole text of " + path + ": pass baseHash, the hash flow-resource-get returned.",
+				"Read it with flow-resource-get({ project, path }), then send content with baseHash set to its hash.", { path: path, hash: current.hash });
+		}
+		var applied = hasContent ? null : patchLib.applyUnifiedPatch(current.content, text);
+		var content = hasContent ? patchLib.normalize(args.content) : applied.content;
+		var mode = hasContent ? "content" : "patch";
+		if (!current.exists && content === "") {
+			throw failure("RESOURCE_CONTENT_EMPTY", path + " does not exist and the new text is empty: nothing to create.",
+				"Send the text of the new resource as content, or a patch adding its lines.");
+		}
+		if (current.exists && content === patchLib.normalize(current.content)) {
+			return {
+				ok: true,
+				path: path,
+				mode: mode,
+				dryRun: args.dryRun === true || String(args.dryRun) === "true",
+				created: false,
+				changed: false,
+				hunks: applied ? applied.hunks.length : 0,
+				appliedHunks: applied ? applied.hunks : undefined,
+				oldHash: current.hash,
+				newHash: current.hash,
+				hash: current.hash,
+				next: "Nothing to write: the resource already has this text. Its hash stays the baseHash of the next patch."
+			};
+		}
+		var replacement = patchLib.replacementPatch(current.content, content);
+		var engineArgs = withoutPatch(args);
+		engineArgs.path = path;
+		engineArgs.patch = replacement.patch;
+		engineArgs.baseHash = current.hash;
+		var result = ctx.resourcePatch(engineArgs);
+		result.mode = mode;
+		result.hunks = applied ? applied.hunks.length : 1;
+		if (applied) {
+			result.appliedHunks = applied.hunks;
+		}
+		result.hash = result.newHash;
+		var warnings = applied ? applied.notes.slice(0) : [];
+		if (replacement.finalNewlineKept) {
+			warnings.push("The resource had no final new line and keeps none (lib_flow_engine cannot add it).");
+		}
+		if (warnings.length) {
+			result.warnings = warnings;
+		}
+		result.next = result.dryRun === true
+			? "Dry run: nothing written. Send the same call without dryRun to write it."
+			: "Written as sent, line for line. Pass hash as baseHash to the next flow-resource-patch of this resource.";
+		return result;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -309,7 +434,7 @@ const _meta = {
 			var response = mcp.runToolBlock(ctx, request, {
 				resolveProject: scope !== "engine-internal"
 			}, function (args) {
-				return scope === "engine-internal" ? synchronize(args) : ctx.resourcePatch(args);
+				return scope === "engine-internal" ? synchronize(args) : patchProjectResource(ctx, args);
 			});
 			var out = prop(node, "out") || "local.response";
 			ctx.write(out, response);

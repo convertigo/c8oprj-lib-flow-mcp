@@ -82,6 +82,30 @@ fetching every node. It may be truncated with `…`, never parse it. Its identit
 is `path` and `nodeId` (the `$$id` of the source): address and edit nodes with
 them, and read or change their properties, never their summary.
 
+## Project resources
+
+`_flow/engine.yaml`, types, editors, libraries, fragments, project documents
+and Java sources are project resources: read one with
+`flow-resource-get({project, path})`, then change it with
+`flow-resource-patch` and the returned `hash` as `baseHash`.
+
+- `patch` is a unified diff of the text read: several hunks in file order,
+  numbered on that text, `--- a/` and `+++ b/` headers optional. An unchanged
+  line starts with a space, an empty unchanged line is one space. A hunk whose
+  numbers are off is applied where its lines match once; a mismatch answers
+  `PATCH_CONTEXT_MISMATCH` with the expected line and the actual lines around.
+- Give an inserted block one unchanged line before or after it: a hunk made of
+  added lines only (`@@ -N,0 +M,k @@`) is placed by its numbers alone, after
+  line N, and is refused when M disagrees (`PATCH_INSERT_AMBIGUOUS`).
+- `content` replaces the whole text instead, with `baseHash`: simpler for many
+  changes or a short file such as `_flow/engine.yaml`.
+- The text is written as computed, line for line, and the answer gives the new
+  `hash` for the next change: do not read the resource again in between. An
+  engine configuration change made by another tool (`authoring-mutate` or a
+  palette item on the engine configuration, saved with the project) renders
+  `_flow/engine.yaml` again as a whole: its hash then changes, and a stale
+  `baseHash` is refused (`RESOURCE_BASE_HASH_MISMATCH`). Read it again then.
+
 ## Project HTTP exclusions
 
 `flow-resource-get({project,path:".httpignore"})` reads the exact root file.

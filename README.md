@@ -280,11 +280,11 @@ after validation succeeds.
 `flow-catalog` intentionally returns summary block/type contracts by default.
 Ask for `detail:"compact"` when property docs are useful.
 
-For iterative maintenance of other project resources, patch instead of
-replacing a whole file:
+For iterative maintenance of other project resources, patch the text read, or
+send it whole with `content` and `baseHash`:
 
 ```text
-flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unified diff)
+flow-resource-search -> flow-resource-get -> flow-resource-patch(baseHash, unified diff or whole content)
 ```
 
 The patch API is limited to Flow resources: `_flow/engine.yaml`,
@@ -294,8 +294,22 @@ The patch API is limited to Flow resources: `_flow/engine.yaml`,
 `_flow/frontbuilder/**/*.{flow.svelte,flow.css,uiblock.json}`,
 `_flow/resources/**` and public `resources/**` text files
 (`md`, `txt`, `json`, `xml`, `yaml`). It validates block/type/library resources
-and parses fragment YAML by default. Unified diff line numbers may be
-approximate when the surrounding context is unique.
+and parses fragment YAML by default.
+
+`flow-resource-patch` applies a unified patch itself (`_flow/lib/patch.js`):
+hunks in order, each located in the text read at its numbered line, then where
+its lines match once (numbers off, or counted on the new file), `--- a/` /
+`+++ b/` headers, code fences and empty context lines that lost their space
+accepted, unchanged lines kept as the resource has them when only trailing
+spaces differ. It refuses an ambiguous match (`PATCH_CONTEXT_AMBIGUOUS`), a
+mismatch with the expected and actual lines around (`PATCH_CONTEXT_MISMATCH`),
+and an insertion without context whose two line numbers disagree
+(`PATCH_INSERT_AMBIGUOUS`): lib_flow_engine alone inserted `@@ -N,0 +N,1 @@`
+after line N, outside the parent block the agent meant. The computed text then
+goes to lib_flow_engine as one replacement hunk with the hash read, so its path
+rules, validation and working copy guard still apply and the file is written
+line for line; the answer gives `hash`, the next `baseHash`, and
+`appliedHunks` (line, match, offset).
 
 Search is the MCP equivalent of `rg` for Flow authoring:
 

@@ -102,10 +102,12 @@ try {
 			}
 		}
 	};
+	var patchLib = eval(String(FileUtils.readFileToString(new java.io.File(projectDir, "_flow/lib/patch.js"), "UTF-8")));
 	var ctx = {
 		props: function (node) { return node.props; },
-		lib: function () { return mcp; },
-		resourcePatch: function (args) { normalCalls++; return { ok: true, args: args }; },
+		lib: function (name) { return name === "patch" ? patchLib : mcp; },
+		resourceGet: function (args) { return { ok: true, path: args.path, content: "a\n", hash: sha256("a\n") }; },
+		resourcePatch: function (args) { normalCalls++; return { ok: true, args: args, newHash: sha256("b\n") }; },
 		write: function (_path, value) { written = value; }
 	};
 
@@ -189,10 +191,15 @@ try {
 		project: "another_project",
 		scope: "project",
 		path: "libs/example.js",
-		patch: "unused"
+		patch: "@@ -1,1 +1,1 @@\n-a\n+b\n"
 	}, 5) } });
 	assertTrue(normalCalls === 1 && capturedResolveProject === true && normal.result.structuredContent.ok === true,
 		"ordinary project resource patching no longer delegates to the established capability");
+	// The patch is applied by the MCP; lib_flow_engine writes its text as one replacement hunk checked against the hash read.
+	var delegated = normal.result.structuredContent.args;
+	assertTrue(delegated.patch === "@@ -1,1 +1,1 @@\n-a\n+b\n" && delegated.baseHash === sha256("a\n") && delegated.path === "libs/example.js" &&
+		normal.result.structuredContent.hash === sha256("b\n") && normal.result.structuredContent.mode === "patch",
+		"project resource patching hands the engine the computed text: " + JSON.stringify(normal.result.structuredContent));
 	var newPath=projectRoot.resolve("_flow/modules/new-contract.js"),newContent="(function(){return {checked:true};}())\n";
 	var newEntry={path:"_flow/modules/new-contract.js",content:newContent,baseHash:sha256(""),sha256:sha256(newContent)};
 	function nativeRequest(files,dry){return {props:{request:request({project:"lib_flow_engine",scope:"engine-internal",revision:"534a2d4ef",files:files,dryRun:dry})}};}

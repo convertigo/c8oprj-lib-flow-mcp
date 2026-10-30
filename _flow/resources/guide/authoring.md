@@ -436,9 +436,11 @@ remove the line to restore it.
   `flow://guide/rhino-block-api` first. Never hide HTTP or requestable calls
   in Rhino, and never write a block only to enumerate object keys.
 - For pure logic shared with Flow Svelte, read `flow://guide/portable-blocks`.
-- Other project resources (`_flow/types`, editors, libraries, fragments):
-  `flow-resource-search`, `flow-resource-get`, `flow-resource-patch` with
-  `baseHash`.
+- Other project resources (`_flow/engine.yaml`, `_flow/types`, editors,
+  libraries, fragments): `flow-resource-search`, `flow-resource-get`, then
+  `flow-resource-patch` with `baseHash` and a unified `patch` (several hunks
+  at once) or the whole new text as `content` (see
+  `flow://guide/search-and-edit`).
 - Java sources of the project (`libs/src/**/*.java`, compiled by the server
   into the project class path): the same tools. Create one with a patch from
   `--- /dev/null` (`@@ -0,0 +1,N @@`); its `package` matches its folder.
