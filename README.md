@@ -427,6 +427,7 @@ with its one-line summary; `resources/read` returns every resource whole:
 - `flow://guide/frontend-svelte-routing`
 - `flow://guide/fullsync`
 - `flow://guide/tracing`
+- `flow://guide/crud`
 
 The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 `flow://skills/convertigo-flow-backend/SKILL` and
@@ -448,6 +449,11 @@ The model is stored in `_flow/data/model.yaml`; preview returns the required `pl
 for application. Generated Flows and resources belong to that model.
 `flow-crud-proof` verifies the applied model, generated artifacts and read-only SQL plan.
 See `_flow/resources/data/model.schema.json` and `tests/fixtures/legacy-crud`.
+The preview lists the references the generated code needs and apply adds them;
+a failed SQL plan returns its underlying diagnostics (code, line, block, fix).
+`flow://guide/crud` is the agent guide: the model format, the preview/apply/proof
+loop and how business Flows, pages (`ui.navigation`), exports and jobs combine
+with the generated parts.
 
 Pages use the Svelte 0.2.6 AppShell, PageHeader, DataTable, FormSection,
 StatCard and StatusBadge components; application styling uses theme.flow.css.

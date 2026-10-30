@@ -29,6 +29,9 @@ guide own the detailed workflow.
 - Start your own sub-agents in the foreground, independent ones together in
   one call, and wait for their reports before ending your turn: some hosts
   stop a background sub-agent when the turn ends.
+- An application of entities with list, detail and form screens, reference
+  data and roles: read `flow://guide/crud` once and generate it with
+  `flow-crud-upsert` first, before any hand-written CRUD Flow or page.
 - Several pages with sign-in, roles, a per-user data perimeter, an export or
   a scheduled job: then read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested

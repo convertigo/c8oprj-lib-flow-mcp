@@ -11,6 +11,7 @@ Start here: the default Flow authoring route, the source contract, the project l
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` |
+| Entities with list/detail/form screens, reference data, roles: generate first | `flow://guide/crud` |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` |
 | Several pages with sign-in, roles and a per-user data perimeter | `flow://guide/multipage-roles` |
 | Svelte-only frontend | `flow://guide/frontend-svelte` |
@@ -219,8 +220,10 @@ After every tool call, check `result.error` in the structured result and read it
 
 ## Frontend entry
 
-For backend plus Svelte work, read `flow://guide/fullstack-paperboard` before
-coding; for several pages with sign-in, roles and a per-user data perimeter,
+When the application is a set of entities with list, detail and form
+screens, generate it from a model with `flow-crud-upsert` first
+(`flow://guide/crud`), then add the business Flows and pages. For backend plus
+Svelte work, read `flow://guide/fullstack-paperboard` before coding; for several pages with sign-in, roles and a per-user data perimeter,
 then read `flow://guide/multipage-roles`. For Svelte-only work, read
 `flow://guide/frontend-svelte` and use
 `code-get` / `code-set` on `sourceFile`, with `authoring-tree`,

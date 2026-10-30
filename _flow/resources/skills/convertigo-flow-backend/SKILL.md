@@ -28,6 +28,9 @@ Keep this role across backend lots instead of spawning a replacement agent.
   `authoring-palette`, never from library sources or other folders. Call it
   once for each block whose contract the guide or a diagnostic (`contract`)
   does not give, before writing its call.
+- Entities with list/detail/form screens: generate the schema, Flows and
+  pages with `flow-crud-upsert` (`flow://guide/crud`) before writing any CRUD
+  Flow; its output is read-only, so change the model and call its Flows.
 - SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
   and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
   JDBC call or a Rhino block for SQL. Declare the tables in `schema.json` and
