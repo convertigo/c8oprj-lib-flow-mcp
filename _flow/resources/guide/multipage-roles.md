@@ -13,8 +13,9 @@ Read `flow://guide/start`, `flow://guide/authoring` and
 proposes: `lib_flow_sql`, `lib_flow_crud_data`, `lib_flow_frontend_data_svelte`
 and the Svelte frontbuilder. Read `flow://lib/lib_flow_sql/sql` for the
 configuration and `flow://lib/lib_flow_crud_data/csv` for the export. Inspect
-the real contracts before writing the calls; an available catalog does not
-prove that a connection is configured.
+the real contracts before writing the calls, with `flow-block-get` for each
+block (`sql.write`, `data.read`, `date.add`...), never in the library sources;
+an available catalog does not prove that a connection is configured.
 
 Create the schema, the demonstration data and the server Flows first, then the
 pages. Declare typed parameters; `int64` identifiers stay strings. Declare

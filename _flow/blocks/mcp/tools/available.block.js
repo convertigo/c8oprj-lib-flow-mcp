@@ -529,11 +529,11 @@ const _meta = {
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
-			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code.";
+			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code. A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-patch") {
 			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation. Safe backend corrections return fixes and the complete corrected code.";
 		} else if (name === "code-check") {
-			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch).";
+			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch). A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-promote") {
 			description = "Executable Flow only: saves a checked working copy. Without revision, selects and checks the unique current draft; an explicit stale revision is refused. Corrections return fixes and code. Project-local blocks are saved by code-set/code-patch.";
 		} else if (name === "code-get") {
@@ -542,7 +542,7 @@ const _meta = {
 			description = "Searches FlowScript, block code or canonical frontend sources and returns revisioned contextual extracts. For a unique local match, patch directly with its revision; use bounded code-get only when more context is needed.";
 		}
 		if (name === "flow-catalog") {
-			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow.";
+			description = "Focused palette search. Requires project. Use only after code diagnostics; keep query narrow. Then flow-block-get gives the full contract of the block chosen.";
 		} else if (name === "authoring-tree") {
 			description = "Generic authoring tree of the project FlowEngine (frontends, config, Catalog). Requires project; Catalog content (blocks, components, types) is listed with includeFlowCatalog:true, otherwise authoring-palette resolves blocks contextually.";
 		} else if (name === "authoring-palette") {
@@ -564,7 +564,7 @@ const _meta = {
 		} else if (name === "flow-search") {
 			description = "Focused search over one project. Requires project; max 10 results. Do not use as a broad block inventory.";
 		} else if (name === "flow-block-get") {
-			description = "Reads one block signature by name (the block alias is also accepted). Compact by default; use code-get block:\"name\" for source.";
+			description = "The contract of one block by name (core, library or project block): its properties (inputs with types, defaults and allowed values), outputs, longDescription (errors, examples, guide) and targets. Call it before using a block whose contract the guide or a diagnostic does not give; never read library sources or project folders for it. Compact by default; code-get block:\"name\" reads the source of a project block.";
 		} else if (name === "flow-block-mock") {
 			description = "Creates a typed project-local mock after UNKNOWN_BLOCK; keeps parent Flow executable while real block is built.";
 		} else if (name === "flow-block-mock-list") {

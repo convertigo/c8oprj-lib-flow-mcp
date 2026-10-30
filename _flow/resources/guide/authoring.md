@@ -378,7 +378,9 @@ body is not native JSON.
 4. `flow-list` only for maintenance. `flow-search` only after a first draft
    when a block, sample or pattern is unclear; `flow-catalog` (typed
    signatures) or `flow-block-get` (one block) only when diagnostics are not
-   enough.
+   enough. `flow-block-get` is the contract of a block (properties, outputs,
+   `longDescription` with its errors and examples): read it there, never in
+   the library sources.
 5. `flow-test` validates saved Flows only; use `includeTrace:true` while
    debugging and avoid `includeFlow`, `includeFullResult`, `includeFullTrace`.
 6. After `code-run` proves the result and `code-promote` succeeds, stop. No

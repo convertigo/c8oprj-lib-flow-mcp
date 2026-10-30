@@ -100,7 +100,9 @@ Keep this role across frontend lots instead of spawning a replacement agent.
 - Before creating a local component or mock, call `authoring-palette` once at
   the intended qualified `parentPath` with the business capability. The
   contextual palette searches project, references and workspace and returns
-  one executable mutation. Never copy provider source.
+  one executable mutation. Never copy provider source, and never read it for a
+  contract: the properties, events and outputs of a block or component come
+  from `authoring-palette` or `flow-block-get`.
 - Let provider components declare exact npm dependencies. `dev.sync` owns
   incremental installation and the exceptional dev restart; never run npm in
   generated application files.

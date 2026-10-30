@@ -260,7 +260,34 @@
 		}
 	}
 
-	function sanitizeForMcp(value, ctx, key) {
+	// A property named password, token... in a block or schema contract (a "properties" map) is a descriptor, not a
+	// secret: flow-block-get must show how to pass it (email.send password). Its sample values stay hidden unless they
+	// are a symbol reference.
+	var DESCRIPTOR_VALUE_KEYS = { "default": true, value: true, example: true, examples: true, "const": true };
+
+	function isPropertyDescriptor(value) {
+		return !!value && typeof value === "object" && Object.prototype.toString.call(value) === "[object Object]" &&
+			["kind", "type", "label"].some(function (name) { return typeof value[name] === "string"; });
+	}
+
+	function sanitizeSensitiveDescriptor(value, ctx) {
+		var out = {};
+		Object.keys(value).forEach(function (childKey) {
+			var child = value[childKey];
+			if (DESCRIPTOR_VALUE_KEYS[childKey] === true) {
+				out[childKey] = child === undefined || child === null || child === "" ||
+					typeof child === "string" && /^\$\{[^}]*\}$/.test(child.trim()) ? child : "[redacted]";
+				return;
+			}
+			var clean = sanitizeForMcp(child, ctx, childKey, "descriptor");
+			if (clean !== undefined) {
+				out[childKey] = clean;
+			}
+		});
+		return out;
+	}
+
+	function sanitizeForMcp(value, ctx, key, parentKey) {
 		if (value === undefined) {
 			return undefined;
 		}
@@ -272,7 +299,7 @@
 			value = String(value);
 		}
 		if (isSensitiveKey(key)) {
-			return "[redacted]";
+			return parentKey === "properties" && isPropertyDescriptor(value) ? sanitizeSensitiveDescriptor(value, ctx) : "[redacted]";
 		}
 		if (typeof value === "string") {
 			if (value === "" && EMPTY_METADATA_KEYS[key] === true) {
@@ -290,7 +317,7 @@
 		if (Object.prototype.toString.call(value) === "[object Array]") {
 			var array = [];
 			value.forEach(function (item) {
-				var clean = sanitizeForMcp(item, ctx, key);
+				var clean = sanitizeForMcp(item, ctx, key, parentKey);
 				if (clean !== undefined) {
 					array.push(clean);
 				}
@@ -302,7 +329,7 @@
 			if (String(childKey).indexOf("__flow") === 0) {
 				return;
 			}
-			var clean = sanitizeForMcp(value[childKey], ctx, childKey);
+			var clean = sanitizeForMcp(value[childKey], ctx, childKey, key);
 			if (clean !== undefined) {
 				out[childKey] = clean;
 			}
@@ -3256,10 +3283,46 @@
 		return diagnostic;
 	}
 
+	// Diagnostics about how a block is called name the call that reads its contract (properties, outputs, errors and
+	// examples): agents otherwise read the library sources with shell tools.
+	var BLOCK_CONTRACT_DIAGNOSTICS = {
+		UNKNOWN_BLOCK_PROPERTY: true,
+		FLOWSCRIPT_PROPERTY_TYPE_MISMATCH: true,
+		FLOWSCRIPT_INVALID_BLOCK_CALL_SIGNATURE: true,
+		FLOWSCRIPT_BLOCK_ARGUMENTS_NAMED: true,
+		FLOWSCRIPT_TEXT_PROPERTY_PATH: true,
+		BLOCK_NOT_AVAILABLE_ON_TARGET: true,
+		INVALID_PROPERTY_VALUE: true,
+		MISSING_REQUIRED_PROPERTY: true
+	};
+
+	function withBlockContract(request, diagnostic) {
+		if (!diagnostic || typeof diagnostic !== "object" || diagnostic.contract) {
+			return diagnostic;
+		}
+		var code = String(diagnostic.code || "");
+		var block = "";
+		if (code === "UNKNOWN_BLOCK") {
+			var decision = diagnostic.candidateDecision || {};
+			block = String(decision.bestBlock || diagnostic.candidates && diagnostic.candidates[0] && diagnostic.candidates[0].block || "");
+		} else if (BLOCK_CONTRACT_DIAGNOSTICS[code] === true) {
+			block = String(diagnostic.block || "");
+		}
+		if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(block)) {
+			return diagnostic;
+		}
+		var project = String(toolArguments(request).project || "");
+		diagnostic.contract = "flow-block-get({ " + (project ? "project: \"" + project + "\", " : "") + "name: \"" + block + "\" })";
+		var sentence = "The contract of " + block + " (properties, outputs, errors, examples): " + diagnostic.contract +
+			"; never read library sources for it.";
+		diagnostic.next = diagnostic.next ? String(diagnostic.next) + " " + sentence : sentence;
+		return diagnostic;
+	}
+
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "workspaceGuides", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "workspaceGuides", "contract", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
@@ -3296,7 +3359,7 @@
 		}
 		var limit = diagnosticLimit(request);
 		var shown = diagnostics.slice(0, limit).map(function (diagnostic) {
-			return compactFlowCodeDiagnostic(withWorkspaceProviders(request, diagnostic));
+			return compactFlowCodeDiagnostic(withBlockContract(request, withWorkspaceProviders(request, diagnostic)));
 		});
 		diagnosticCount = Math.max(diagnosticCount, diagnostics.length);
 		return {
@@ -3374,7 +3437,9 @@
 			out.diagnostics = report.diagnostics;
 		}
 		if (value.warnings) {
-			out.warnings = (value.warnings || []).slice(0, 5).map(compactFlowCodeDiagnostic);
+			out.warnings = (value.warnings || []).slice(0, 5).map(function (warning) {
+				return compactFlowCodeDiagnostic(withBlockContract(request, warning));
+			});
 		}
 		if (value.inputVariables) {
 			out.inputVariables = (value.inputVariables || []).slice(0, 30);

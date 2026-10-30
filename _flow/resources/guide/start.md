@@ -186,6 +186,11 @@ After every tool call, check `result.error` in the structured result and read it
   when a complete assessment is requested.
 - Mutation tools and `flow-block-get` answer compactly; use `code-get` or
   `authoring-tree` for focused inspection.
+- The contract of a block (inputs, outputs, errors, examples) comes from
+  `flow-block-get({ project, name })` (its `longDescription` included) or
+  `authoring-palette`, never from library sources or other folders: no
+  `grep`, `sed` or `cat` in library or workspace folders. A diagnostic on a
+  block call gives that call in `contract`.
 - Do not run shell commands (`git status`, `sed`, `cat`, HTTP scripts) to
   confirm a generated Flow. Trust given `project`/`qname`; MCP results are the
   source of truth.

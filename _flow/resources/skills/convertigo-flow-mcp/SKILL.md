@@ -183,6 +183,12 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   friction with the source and the observed behavior instead of reading the
   generated code.
 - `authoring-palette` is contextual discovery for one parent path.
+- The contract of a block (inputs, outputs, errors, examples) comes from
+  `flow-block-get({ project, name })` or `authoring-palette`, never from
+  library sources or other folders: do not `grep`, `sed` or `cat` a library
+  or workspace folder to learn how to call a block. A diagnostic on a block
+  call gives that call in `contract`; the library guide
+  (`flow://lib/<library>/<guide>`) gives its configuration.
 - This endpoint also relays Convertigo MCP tools that apply to Flow projects:
   `scheduler-list`/`scheduler-apply` (schedule a Flow), `requestable-execute`
   (run a Flow or transaction, `authenticatedUser` to run it as a signed-in

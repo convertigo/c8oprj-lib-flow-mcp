@@ -78,6 +78,25 @@ const _meta = {
 		return target;
 	}
 
+	// The compact descriptor of lib_flow_engine leaves out longDescription, where blocks give their errors, examples and
+	// guide (date.add, sql.initialize...). flow-block-get keeps it: the contract of a block is never read in its sources.
+	function withLongDescription(ctx, args, result) {
+		var block = result && result.ok === true && result.block;
+		if (!block || typeof block !== "object" || block.longDescription || String(result.detail || "") !== "compact") {
+			return result;
+		}
+		try {
+			var full = ctx.callBlock("block.get", merge(merge({}, args), { detail: "full" }), { trace: false });
+			var text = full && full.descriptor && full.descriptor.longDescription;
+			if (text !== undefined && text !== null && String(text).trim() !== "") {
+				block.longDescription = String(text);
+			}
+		} catch (e) {
+			// the compact contract stays usable without it
+		}
+		return result;
+	}
+
 	function extraArgs(ctx, value) {
 		if (value === undefined || value === null || value === "") {
 			return {};
@@ -317,6 +336,9 @@ const _meta = {
 					}
 				} else {
 					result = ctx.callBlock(target, args, { trace: false });
+				}
+				if (target === "block.get") {
+					result = withLongDescription(ctx, args, result);
 				}
 				if (target === "authoring.palette") {
 					result = externalPaletteItems(ctx, mcp, args, result);

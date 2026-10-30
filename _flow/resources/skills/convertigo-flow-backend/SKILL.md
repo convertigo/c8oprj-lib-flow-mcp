@@ -23,6 +23,11 @@ Keep this role across backend lots instead of spawning a replacement agent.
   and use its blocks instead of a mock or a legacy connector. Read the guide
   of that library first when one is listed (`workspaceGuides`,
   `flow://lib/<library>/<guide>` in `resources/list`).
+- The contract of a block (inputs, outputs, errors, examples) comes from
+  `flow-block-get({ project, name })` and its `longDescription`, or from
+  `authoring-palette`, never from library sources or other folders. Call it
+  once for each block whose contract the guide or a diagnostic (`contract`)
+  does not give, before writing its call.
 - SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
   and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
   JDBC call or a Rhino block for SQL. Declare the tables in `schema.json` and

@@ -280,6 +280,16 @@ after validation succeeds.
 `flow-catalog` intentionally returns summary block/type contracts by default.
 Ask for `detail:"compact"` when property docs are useful.
 
+`flow-block-get` is the contract of a block for an agent, which must never read
+library sources to learn it: its compact answer keeps the `longDescription` of
+the block (errors, examples, guide), which the compact descriptor of
+lib_flow_engine leaves out, and a property named `password` or `token` in a
+contract stays a readable descriptor (its literal sample values hidden, a
+`${...}` symbol default shown). A `code-check`/`code-set` diagnostic on a block
+call (unknown property, type mismatch, call signature, unknown block with a
+candidate) carries `contract`, the `flow-block-get` call to make, also appended
+to its `next`.
+
 For iterative maintenance of other project resources, patch the text read, or
 send it whole with `content` and `baseHash`:
 
