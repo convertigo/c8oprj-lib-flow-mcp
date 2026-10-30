@@ -170,6 +170,37 @@
       return convert(yaml.load(text));
     }
   }
+  // Workspace libraries the generated Flows and pages call: sql.* (lib_flow_sql), data.* (lib_flow_crud_data), shared pages.
+  var LIBRARIES={sql:'lib_flow_sql',data:'lib_flow_crud_data'},FRONTEND_LIBRARY='lib_flow_frontbuilder_svelte';
+  function requiredReferences(c){var names=['lib_flow_sql','lib_flow_crud_data'];if(c&&c.frontend&&c.frontend.pages&&c.frontend.pages.length)names.push(FRONTEND_LIBRARY);return names;}
+  function projectReferences(args,fs){
+    var names=[];
+    try{var project=Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project),false);
+      if(project){var it=project.getReferenceList().iterator();while(it.hasNext()){var reference=it.next();try{names.push(String(reference.getParser().getProjectName()));}catch(ignore){}}return names;}}
+    catch(noStudio){}
+    // Standalone runtimes read the saved project definition.
+    var text=fs.read('c8oProject.yaml')||'',rx=/\[references\.ProjectSchemaReference\]:\s*\n\s*projectName:\s*['"]?([A-Za-z_][A-Za-z0-9_]*)/g,m;
+    while((m=rx.exec(text)))names.push(m[1]);
+    return names;
+  }
+  function referencePlan(args,fs,c){var present=projectReferences(args,fs),required=requiredReferences(c);return {required:required,present:required.filter(function(n){return present.indexOf(n)>=0;}),missing:required.filter(function(n){return present.indexOf(n)<0;})};}
+  function referenceFix(project,reference){return 'flow-project-reference({project:"'+project+'", reference:"'+reference+'"})';}
+  // The real causes of a failed SQL plan, never only the wrapper (FLOWSCRIPT_CANONICAL_INVALID): code, line, block, fix.
+  function planError(error,project){
+    error=error||{};
+    var out={code:String(error.code||error.flowSql&&error.flowSql.code||'FLOW_CRUD_SQL_PLAN_FAILED'),message:String(error.message||'SQL preview failed')};
+    if(error.hint)out.hint=String(error.hint);
+    var details=Array.isArray(error.details)?error.details:Array.isArray(error.diagnostics)?error.diagnostics:[];
+    out.diagnostics=details.filter(function(d){return d&&d.severity!=='warning'&&d.severity!=='info';}).slice(0,8).map(function(d){
+      var item={code:String(d.code||out.code),message:String(d.message||'')};
+      ['line','column','path','nodeId','hint','fix'].forEach(function(k){if(d[k]!==undefined&&d[k]!==null)item[k]=d[k];});
+      var block=d.block||(/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(item.message)||[])[1];
+      if(block){item.block=String(block);var library=LIBRARIES[item.block.split('.')[0]];
+        if(item.code==='UNKNOWN_BLOCK'&&library){item.reference=library;item.fix='Add the reference: '+referenceFix(project,library)+' (flow-crud-upsert adds it on apply), then preview again.';}}
+      return item;
+    });
+    return out;
+  }
   function schemaShape(value){var d=copy(value);delete d.version;return stable(d);}
   function runtimePlan(ctx,args,c,fs){
     var cfg=copy(c.config),prefix=c.normalized.facade.prefix||'crud',definition=cfg.sql.initializers[prefix],schema=JSON.parse(c.files['_flow/resources/sql/crud/schema.json']);
@@ -184,8 +215,8 @@
     }
     var source='const _flow = {sourceVersion:2}\nfunction CrudPlan({input,config,result}) {\n local.validation = sql.configCheck({live:false,onError:"throw"})\n local.plan = sql.initialize({initializer:'+JSON.stringify(prefix)+',dryRun:true,seed:'+(c.normalized.seed.enabled!==false && c.normalized.database.schemaPolicy!=='observe')+',verifyOnly:'+(c.normalized.database.schemaPolicy==='observe')+'})\n return local.plan\n}';
     var run;try{run=ctx.runFlowSource(source,cfg,{project:args.project,projectDir:args.projectDir,input:{},includeTrace:false});}
-    catch(error){return {ok:false,error:{code:String(error.code||error.flowSql&&error.flowSql.code||'FLOW_CRUD_SQL_PLAN_FAILED'),message:String(error.message||'SQL preview failed')}};}
-    if(run.ok===false||run.error)return {ok:false,error:run.error||run};
+    catch(error){return {ok:false,error:planError(error,args.project)};}
+    if(run.ok===false||run.error)return {ok:false,error:planError(run.error||run,args.project)};
     var result=run.result || run;result.newDatabase=newDatabase;return result;
   }
   function prepare(ctx,args){
@@ -194,7 +225,7 @@
     var raw=args.spec!==undefined?copy(args.spec):modelText?parseModel(modelText):oldText?JSON.parse(oldText):null;
     if(!raw)fail('Supply spec or create '+model.path);
     var normalized=model.normalize(raw,args.project,legacy),manifestPath='_flow/resources/sql/crud/manifest.json',priorText=fs.read(manifestPath),prior=JSON.parse(priorText||'{"files":{}}');
-    var diagnostics=normalized.diagnostics.slice(),c=null,changed=[],conflicts=[],sql=null,all={},version=raw.schemaVersion||prior.schemaVersion||1;
+    var diagnostics=normalized.diagnostics.slice(),c=null,changed=[],conflicts=[],sql=null,references=null,all={},version=raw.schemaVersion||prior.schemaVersion||1;
     if(prior.pending===true && prior.modelHash!==digest(stable(raw)))diagnostics.push({code:'FLOW_CRUD_PENDING_DIFFERENT_MODEL',severity:'error',message:'Resume the pending model before applying a different model.'});
     if(!diagnostics.some(function(d){return d.severity==='error';})){
       c=compile(raw,args.project,{model:model,legacy:legacy,ui:ui,schemaVersion:version});
@@ -205,13 +236,17 @@
       Object.keys(prior.files).forEach(function(p){if(!own(all,p)&&p!=='_flow/resources/sql/crud/spec.json')diagnostics.push({code:'FLOW_CRUD_REMOVAL_UNSUPPORTED',severity:'error',path:p});});
       if(!/(^|\n)\/_flow\/(\r?\n|$)/.test(fs.read('.httpignore')||''))diagnostics.push({code:'FLOW_CRUD_HTTPIGNORE_REQUIRED',severity:'error'});
       conflicts.forEach(function(p){diagnostics.push({code:'FLOW_CRUD_GENERATED_CONFLICT',severity:'error',path:p});});
+      references=referencePlan(args,fs,c);
       if(!diagnostics.some(function(d){return d.severity==='error';})){
-        sql=runtimePlan(ctx,args,c,fs);if(sql.ok===false||sql.error)diagnostics.push({code:sql.error&&sql.error.code||'FLOW_CRUD_PLAN_FAILED',severity:'error',details:sql.error||sql});
+        if(references.missing.length)sql={ok:true,skipped:true,reason:'FLOW_CRUD_REFERENCES_MISSING',message:'The SQL plan needs '+references.missing.join(', ')+'; apply adds the references, then plans and applies the schema of a new database (an existing database asks for a new preview).'};
+        else {sql=runtimePlan(ctx,args,c,fs);if(sql.ok===false||sql.error){var failure=sql.error||sql;
+          if(failure.diagnostics&&failure.diagnostics.length)failure.diagnostics.forEach(function(d){diagnostics.push(Object.assign({severity:'error',stage:'sql-plan',via:failure.code},d));});
+          else diagnostics.push({code:failure.code||'FLOW_CRUD_PLAN_FAILED',severity:'error',stage:'sql-plan',message:failure.message,details:failure});}}
       }
     }
     var databaseApplied=sql&&sql.ok!==false&&sql.plan&&sql.plan.statements.length===0&&(normalized.internal.database.schemaPolicy==='observe'||sql.previousVersion===version);
     var applied=!!databaseApplied && prior.pending!==true && prior.modelHash===digest(stable(raw)) && changed.length===0 && !diagnostics.length;
-    var plan={version:1,modelPath:model.path,modelRevision:digest(modelText||''),modelHash:digest(stable(raw)),schemaVersion:version,applied:applied,applicable:!diagnostics.some(function(d){return d.severity==='error';}),changed:changed,conflicts:conflicts,sql:sql,diagnostics:diagnostics,frontend:c?c.frontend:model.visual,generated: c?Object.keys(all).map(function(p){return {path:p,generated:true,owner:model.path,readOnly:true};}):[]};
+    var plan={version:1,modelPath:model.path,modelRevision:digest(modelText||''),modelHash:digest(stable(raw)),schemaVersion:version,applied:applied,applicable:!diagnostics.some(function(d){return d.severity==='error';}),changed:changed,conflicts:conflicts,references:references,sql:sql,diagnostics:diagnostics,frontend:c?c.frontend:model.visual,generated: c?Object.keys(all).map(function(p){return {path:p,generated:true,owner:model.path,readOnly:true};}):[]};
     plan.planHash=digest(stable({raw:raw,prior:priorText,model:modelText,artifacts:Object.keys(all).map(function(p){return [p,fs.read(p)];}),expected:all,sql:sql,version:3}));
     plan.studio=model.studio(raw,c,plan); // Avoid a cyclic plan -> studio -> plan value.
     plan.studio.migration={applied:plan.applied,applicable:plan.applicable,schemaVersion:version,sql:sql,diagnostics:diagnostics,planHash:plan.planHash};
@@ -219,9 +254,27 @@
   }
   function applyOrPreview(ctx,args){
     var prepared=prepare(ctx,args),plan=prepared.plan,c=prepared.compiled,fs=prepared.fs;
-    if(args.dryRun===true || !args.planHash)return Object.assign({ok:true,dryRun:true,status:plan.applied?'applied':plan.applicable?'pending':'blocked',requiresPlanHash:true},plan);
+    if(args.dryRun===true || !args.planHash){
+      var status=plan.applied?'applied':plan.applicable?'pending':'blocked',preview=Object.assign({ok:true,dryRun:true,status:status,requiresPlanHash:true},plan);
+      preview.next=status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.';
+      return preview;
+    }
     if(!plan.applicable)throw Error('FLOW_CRUD_PLAN_BLOCKED: '+JSON.stringify(plan.diagnostics));
     if(args.planHash!==plan.planHash)throw Error('FLOW_CRUD_PLAN_STALE: preview again; model, generated files or database plan changed');
+    var addedReferences=[];
+    if(plan.references&&plan.references.missing.length){
+      // The preview listed them: add each one, then plan the SQL that needed them.
+      plan.references.missing.forEach(function(reference){
+        var added=ctx.callBlock('project.reference',{project:args.project,reference:reference,dryRun:false},{trace:false}),value=added&&added.result!==undefined?added.result:added;
+        if(!value||value.ok===false||added.ok===false||added.error)throw Error('FLOW_CRUD_REFERENCE_FAILED: '+reference+' '+JSON.stringify(added&&added.error||added)+'; add it with '+referenceFix(args.project,reference)+', then preview again.');
+        addedReferences.push(reference);
+      });
+      ctx.cacheClear();
+      prepared=prepare(ctx,args);plan=prepared.plan;c=prepared.compiled;fs=prepared.fs;
+      if(!plan.applicable)throw Error('FLOW_CRUD_PLAN_BLOCKED: references '+addedReferences.join(', ')+' added; '+JSON.stringify(plan.diagnostics));
+      if(plan.references.missing.length)throw Error('FLOW_CRUD_REFERENCE_FAILED: still missing '+plan.references.missing.join(', '));
+      if(!plan.sql||plan.sql.newDatabase!==true&&plan.sql.plan&&plan.sql.plan.statements.length)throw Error('FLOW_CRUD_PLAN_STALE: references '+addedReferences.join(', ')+' added; the database already exists: preview again to review its SQL plan.');
+    }
     var modelSource=args.spec!==undefined?json(args.spec)+'\n':prepared.modelText || json(prepared.raw)+'\n';
     fs.write(prepared.model.path,modelSource);
     fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:true,files:prepared.all,previousFiles:prepared.prior.pending?prepared.prior.previousFiles||{}:prepared.prior.files})+'\n');
@@ -240,7 +293,7 @@
     fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:false,files:prepared.all})+'\n');
     if(own(prepared.prior.files,'_flow/resources/sql/crud/spec.json'))fs.remove('_flow/resources/sql/crud/spec.json');
     plan.studio.applied=true;plan.studio.migration.applied=true;plan.studio.migration.planWasApplied=true;
-    return {ok:true,applied:true,modelPath:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,changed:plan.changed,flowCount:Object.keys(c.flows).length,initialized:initialized,frontend:plan.frontend,studio:plan.studio};
+    return {ok:true,applied:true,addedReferences:addedReferences,modelPath:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,changed:plan.changed,flowCount:Object.keys(c.flows).length,initialized:initialized,frontend:plan.frontend,studio:plan.studio};
   }
   function upsert(ctx,args){
     if(args.dryRun===true||!args.planHash)return applyOrPreview(ctx,args);
@@ -265,5 +318,6 @@
     var fs=disk(root),path='_flow/flows/'+id(args.name)+'.flow.js',text=fs.read('_flow/resources/sql/crud/manifest.json'),manifest=JSON.parse(text||'{\"files\":{}}');
     if(own(manifest.files,path)||(fs.read(path)||'').indexOf('// @generated by flow-crud;')===0){var error=Error('This Flow belongs to _flow/data/model.yaml. Edit the model and apply its plan; call the generated Flow from a business Flow.');error.code='FLOW_CRUD_GENERATED_READ_ONLY';throw error;}
   }
-  return {compile:compile,upsert:upsert,proof:proof,prepare:prepare,assertWritable:assertWritable};
+  // applyUnlocked: callers that already hold the project lock (standalone tests).
+  return {compile:compile,upsert:upsert,proof:proof,prepare:prepare,applyUnlocked:applyOrPreview,assertWritable:assertWritable};
 }())
