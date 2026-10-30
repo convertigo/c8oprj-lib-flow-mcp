@@ -27,7 +27,9 @@ guide own the detailed workflow.
   same URI again after a successful response, including after compaction.
 - Without MCP `resources/read` in your client (Vibe lists tools only), read a
   guide with `flow-resource-get` and its `uri` (`flow://guide/<name>` or
-  `flow://lib/<library>/<guide>`): the text is in `structuredContent.text`.
+  `flow://lib/<library>/<guide>`), without `project`: it needs none, so read
+  `flow://guide/start` before creating the project. The text is in
+  `structuredContent.text`.
 
 Keep one specialist role through repair passes. Do not spawn a replacement
 specialist merely to continue the same application.

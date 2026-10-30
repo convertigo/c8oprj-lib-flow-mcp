@@ -1,6 +1,7 @@
 // An MCP client without resources/read (Vibe 3 lists tools only) reads the Flow MCP guides with flow-resource-get and
-// their uri: a guide, skill or library guide URI the project does not own is answered from resources/read, its text in
-// structuredContent; a project resource, or any other unknown URI, keeps the answer of flow-resource-get.
+// their uri: a guide, skill or library guide URI is answered from resources/read, its text in structuredContent, without
+// project or when the project does not answer it; a project resource, or any other unknown URI, keeps the answer of
+// flow-resource-get.
 // Run with Rhino: java -cp <rhino:rhino-tools:commons-io> org.mozilla.javascript.tools.shell.Main tests/resource-get-mcp-uri.js .
 var root = new java.io.File(arguments[0]).getCanonicalFile();
 var FileUtils = Packages.org.apache.commons.io.FileUtils;
@@ -13,7 +14,7 @@ var source = read("_flow/blocks/mcp/tools/call.block.js");
 var call = eval(source.substring(source.indexOf("(function")));
 
 var GUIDE = "# Frontend Svelte\n\nThe guide.";
-function run(args, projectOwns) {
+function run(args, projectOwns, projectError) {
 	var calls = [];
 	var written = {};
 	var request = { jsonrpc: "2.0", id: 17, method: "tools/call", params: { name: "flow-resource-get", arguments: args } };
@@ -26,6 +27,9 @@ function run(args, projectOwns) {
 		callBlock: function (blockId, props) {
 			calls.push(blockId);
 			if (blockId === "mcp.tool.flow.resource.get") {
+				if (projectError) {
+					return mcp.toolError(props.request, projectError, ctx);
+				}
 				return projectOwns
 					? mcp.jsonRpcResult(props.request.id, { content: [{ type: "text", text: "project resource" }], structuredContent: { ok: true, uri: args.uri, content: "own" } })
 					: mcp.toolError(props.request, { code: "UNKNOWN_RESOURCE", message: "Unknown Flow resource uri: " + args.uri }, ctx);
@@ -64,6 +68,27 @@ assert(other.calls.join(",") === "mcp.tool.flow.resource.get" && other.response.
 var missing = run({ project: "App", uri: "flow://guide/missing" }, false);
 assert(missing.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.read" && missing.response.result.structuredContent.error.code === "UNKNOWN_RESOURCE",
 	"an unknown guide keeps the tool error: " + JSON.stringify(missing.response));
+
+// Without project (F-01: the guides that tell how to start were refused before any project existed).
+["flow://guide/start", "flow://lib/lib_flow_sql/sql", "flow://skills/convertigo-flow-mcp/SKILL"].forEach(function (uri) {
+	var bare = run({ uri: uri }, false);
+	assert(bare.calls.join(",") === "mcp.resources.read", uri + " without project goes to resources/read alone: " + bare.calls);
+	assert(bare.response.result.structuredContent.text === GUIDE && bare.response.result.structuredContent.source === "resources/read" &&
+		!bare.response.result.isError && bare.response.id === 17, uri + " is read without project: " + JSON.stringify(bare.response));
+});
+var bareMissing = run({ uri: "flow://guide/missing" }, false);
+assert(bareMissing.calls.join(",") === "mcp.resources.read" && bareMissing.response.result.structuredContent.error.code === "UNKNOWN_RESOURCE" &&
+	/flow:\/\/guide\/start lists the guides/.test(bareMissing.response.result.structuredContent.error.hint),
+	"an unknown guide without project is an UNKNOWN_RESOURCE that names the start guide: " + JSON.stringify(bareMissing.response));
+var bareProject = run({ uri: "flow://App/resources/x.md" }, false);
+assert(bareProject.calls.join(",") === "mcp.tool.flow.resource.get", "a project resource uri without project still goes to the project tool");
+var barePath = run({ path: "_flow/engine.yaml", uri: "flow://guide/start" }, false);
+assert(barePath.calls.join(",") === "mcp.tool.flow.resource.get", "a path read is never redirected, even with a guide uri");
+// A project that does not answer (not created yet, not loaded) does not hide the guide.
+var notCreated = run({ project: "NotCreatedYet", uri: "flow://guide/start" }, false,
+	{ code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Convertigo project NotCreatedYet." });
+assert(notCreated.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.read" && notCreated.response.result.structuredContent.text === GUIDE,
+	"a guide stays readable when the named project fails: " + JSON.stringify(notCreated.response));
 
 var path = run({ project: "App", path: "_flow/resources/guide/x.md" }, false);
 assert(path.calls.join(",") === "mcp.tool.flow.resource.get", "a path read is not redirected");

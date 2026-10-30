@@ -20,7 +20,10 @@ Start here: the default Flow authoring route, the source contract, the project l
 | MCP JSONL tracing | `flow://guide/tracing` |
 | Ordered tags and named project configurations | `flow://guide/tags` |
 
-Guides are served whole by `resources/read`; read each one once per task.
+Guides are served whole by `resources/read`; read each one once per task. A
+client without `resources/read` calls `flow-resource-get({ uri })` with the
+same `flow://guide/`, `flow://lib/` or `flow://skills/` uri and no project: the
+text is in `structuredContent.text`.
 
 If `tools/list` advertises `report-create`, use that relayed tool for at most one
 concise product friction per turn: a missing capability or a workaround also counts, even when

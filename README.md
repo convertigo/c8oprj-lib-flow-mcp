@@ -361,7 +361,11 @@ The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 readable with `resources/read`.
 
 A client without `resources/read` (Vibe lists MCP tools only) reads the same
-resources with `flow-resource-get` and their `uri`: when the project owns no
-resource with that `flow://guide/`, `flow://lib/` or `flow://skills/` uri, the
-tool answers with the MCP resource, its text in `structuredContent.text`
-(`mcpResourceThroughTool` in `_flow/blocks/mcp/tools/call.block.js`).
+resources with `flow-resource-get` and their `uri`, its text in
+`structuredContent.text` (`mcpResourceThroughTool` in
+`_flow/blocks/mcp/tools/call.block.js`). A `flow://guide/`, `flow://lib/` or
+`flow://skills/` uri needs no project: without one the MCP resource answers at
+once, so an agent reads the start guide before creating its project. With a
+project, a project resource of that uri keeps precedence, and the MCP resource
+answers when the project has none or does not answer (a project not created
+yet). A project resource (`path`, or another uri) still requires `project`.

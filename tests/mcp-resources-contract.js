@@ -68,6 +68,22 @@ var unknown = call(41, "resources/read", { uri: "flow://guide/does-not-exist" })
 assertTrue(unknown.error && unknown.error.data && unknown.error.data.code === "FLOW_MCP_RESOURCE_ERROR",
   "Unknown resources must return FLOW_MCP_RESOURCE_ERROR");
 
+// flow-resource-get reads the same guides and skills without project, for clients without resources/read (Vibe).
+function tool(id, name, args) {
+  var response = call(id, "tools/call", { name: name, arguments: args });
+  assertTrue(response.result && response.result.structuredContent, name + " failed: " + JSON.stringify(response).substring(0, 500));
+  return response.result.structuredContent;
+}
+var startGuide = tool(42, "flow-resource-get", { uri: "flow://guide/start" });
+assertTrue(startGuide.ok === true && startGuide.text === readText("_flow/resources/guide/start.md") && startGuide.source === "resources/read",
+  "flow-resource-get must read flow://guide/start whole without project: " + JSON.stringify(startGuide).substring(0, 400));
+var routerSkill = tool(43, "flow-resource-get", { uri: "flow://skills/convertigo-flow-mcp/SKILL" });
+assertTrue(routerSkill.text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md"), "flow-resource-get must read a skill without project");
+var missingGuide = tool(44, "flow-resource-get", { uri: "flow://guide/does-not-exist" });
+assertTrue(missingGuide.error && missingGuide.error.code === "UNKNOWN_RESOURCE", "an unknown guide is UNKNOWN_RESOURCE: " + JSON.stringify(missingGuide));
+var projectPath = tool(45, "flow-resource-get", { path: "_flow/engine.yaml" });
+assertTrue(projectPath.error && /requires an explicit project/.test(projectPath.error.message), "a project resource still requires project: " + JSON.stringify(projectPath));
+
 // Guides name only tools advertised by tools/list, and show only the current source dialect.
 var tools = {};
 call(50, "tools/list").result.tools.forEach(function (tool) { tools[tool.name] = true; });

@@ -464,6 +464,13 @@ const _meta = {
 		if (toolName === "code-patch" && schema.properties.codepatch) {
 			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
 		}
+		if (toolName === "flow-resource-get") {
+			schema.properties.uri = {
+				type: "string",
+				description: "A resource uri returned by flow-resource-search, or a Flow MCP guide or skill (flow://guide/start, flow://lib/<library>/<guide>, flow://skills/<skill>/SKILL), which needs no project."
+			};
+			schema.properties.project.description = "Target Convertigo project name, not a filesystem path. Required for project resources; omit it to read a flow://guide/, flow://lib/ or flow://skills/ uri.";
+		}
 		if (toolName === "flow-resource-patch") {
 			schema.properties.scope = {
 				type: "string",
@@ -575,7 +582,7 @@ const _meta = {
 		} else if (name === "flow-resource-delete") {
 			description = "Deletes one project-local Flow resource. Requires project, path and optionally baseHash.";
 		} else if (name === "flow-resource-get") {
-			description = "Reads one project-local Flow resource preview. Requires project; use resources/read for flow:// guides.";
+			description = "Reads one project-local Flow resource preview (project and path or uri) with its hash for flow-resource-patch. Without project, a flow://guide/<name>, flow://lib/<library>/<guide> or flow://skills/<skill>/SKILL uri returns that guide or skill whole in structuredContent.text, for clients without resources/read.";
 		} else if (name === "flow-resource-patch") {
 			description = "Patches one project resource, or synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
 		} else if (name === "flow-cache-clear") {

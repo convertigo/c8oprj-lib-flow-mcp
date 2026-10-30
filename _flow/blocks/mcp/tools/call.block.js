@@ -96,19 +96,29 @@ const _meta = {
 	}
 
 	// An MCP client without resources/read (Vibe 3 lists MCP tools only) asks flow-resource-get for a guide or skill
-	// URI. When the project owns no such resource, the Flow MCP resource answers, its text in structuredContent as the
-	// other Flow tools return their data.
+	// URI. Without a project, or when the project does not answer it (no such resource, a project not created yet),
+	// the Flow MCP resource answers, its text in structuredContent as the other Flow tools return their data: the
+	// guides that tell how to start are readable before any project exists.
 	var MCP_RESOURCE_URI = /^flow:\/\/(?:guide|lib|skills)\//;
-	function unknownResource(response) {
-		var result = response && response.result;
-		var error = result && result.structuredContent && result.structuredContent.error;
-		var code = error && error.code || response && response.error && response.error.data && response.error.data.code;
-		return String(code || "") === "UNKNOWN_RESOURCE";
+	function filled(value) {
+		return value !== undefined && value !== null && String(value).trim() !== "";
 	}
-	function mcpResourceThroughTool(ctx, mcp, request, response) {
+	function mcpResourceUri(request) {
 		var args = request.params && request.params.arguments || {};
 		var uri = String(args.uri || "").trim();
-		if (!MCP_RESOURCE_URI.test(uri) || !unknownResource(response)) {
+		return !filled(args.path) && MCP_RESOURCE_URI.test(uri) ? uri : "";
+	}
+	function projectlessMcpResource(request) {
+		var args = request.params && request.params.arguments || {};
+		return mcpResourceUri(request) !== "" && !filled(args.project) && !filled(args.projectDir);
+	}
+	function failed(response) {
+		var result = response && response.result;
+		return !!(response && response.error || result && (result.isError === true || result.structuredContent && result.structuredContent.error));
+	}
+	function mcpResourceThroughTool(ctx, mcp, request, response) {
+		var uri = mcpResourceUri(request);
+		if (!uri || response && !failed(response)) {
 			return null;
 		}
 		var read = ctx.callBlock("mcp.resources.read", {
@@ -157,11 +167,20 @@ const _meta = {
 					ctx.write(out, relayed);
 					return relayed;
 				}
-				response = block
-					? ctx.callBlock(block, { request: request, out: out }, { trace: false })
-					: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
-				if (name === "flow-resource-get") {
-					response = mcpResourceThroughTool(ctx, mcp, request, response) || response;
+				if (block && name === "flow-resource-get" && projectlessMcpResource(request)) {
+					// A guide, skill or library guide needs no project: only a project resource does.
+					response = mcpResourceThroughTool(ctx, mcp, request, null) || mcp.toolError(request, {
+						code: "UNKNOWN_RESOURCE",
+						message: "Unknown Flow MCP resource: " + mcpResourceUri(request) + ".",
+						hint: "flow://guide/start lists the guides (flow://guide/<name>); library guides are flow://lib/<library>/<guide>. A project resource needs project and path."
+					}, ctx);
+				} else {
+					response = block
+						? ctx.callBlock(block, { request: request, out: out }, { trace: false })
+						: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
+					if (name === "flow-resource-get") {
+						response = mcpResourceThroughTool(ctx, mcp, request, response) || response;
+					}
 				}
 				// Older Flow wrappers can still return a JSON-RPC error. At the tools/call boundary it is a tool error.
 				if (response && response.error) {
