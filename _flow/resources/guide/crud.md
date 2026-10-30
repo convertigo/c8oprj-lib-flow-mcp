@@ -1,0 +1,328 @@
+# Flow CRUD Fast Path
+
+Build a data application from an entity model with flow-crud-upsert, then add hand-written business Flows and pages on top of what it generates.
+
+## When to use it
+
+Use it first, before writing any CRUD Flow or page by hand, when the
+application is mostly a set of entities with list, detail and form screens:
+reference data managed by an administrator, records with a status, relations
+between them, roles that may read or change each entity. One model gives the
+SQL schema and seed, the secured Flows, the session and the pages in seconds;
+your own work then goes to the business rules the model cannot express.
+
+Do not use it for an application without tables of records (an API relay, a
+FullSync application, a calculator): follow `flow://guide/start` instead.
+
+## The model
+
+`spec` uses the legacy Convertigo CRUD format. Everything but `entities` is
+optional: `project` defaults to the target project (another name is refused
+with its fix), a missing `database` is the HSQLDB development database of the
+project, `facade.prefix` defaults to `crud`, `seed` to two sample rows per
+entity, `security` to no role map (every signed-in user has the role
+`authenticated`), `ui` to every field.
+
+```json
+{
+  "facade": {"prefix": "desk"},
+  "database": {"mode": "hsqldb", "database": "desk", "connection": "desk"},
+  "security": {"principals": {"ada": "agent", "max": "manager"}, "demoLogin": true},
+  "entities": [
+    {"name": "teams", "label": "Teams",
+     "fields": [
+       {"name": "Id", "type": "INTEGER", "primary": true},
+       {"name": "Name", "type": "VARCHAR(80)", "required": true, "unique": true},
+       {"name": "Email", "type": "VARCHAR(120)"}],
+     "permissions": {"list": ["agent", "manager"], "read": ["agent", "manager"], "count": ["agent", "manager"], "save": ["manager"], "delete": ["manager"]}},
+    {"name": "tickets", "label": "Tickets",
+     "fields": [
+       {"name": "Id", "type": "INTEGER", "primary": true},
+       {"name": "Title", "type": "VARCHAR(120)", "required": true},
+       {"name": "Status", "type": "VARCHAR(16)", "required": true, "enum": ["open", "in_progress", "resolved"], "default": "open"},
+       {"name": "TeamId", "column": "team_id", "type": "INTEGER", "required": true},
+       {"name": "Assignee", "type": "VARCHAR(40)"},
+       {"name": "OpenedAt", "column": "opened_at", "type": "TIMESTAMP", "required": true, "auto": "create"},
+       {"name": "UpdatedAt", "column": "updated_at", "type": "TIMESTAMP", "required": true, "auto": "update"},
+       {"name": "ResolvedAt", "column": "resolved_at", "type": "TIMESTAMP"}],
+     "permissions": {"list": ["agent", "manager"], "read": ["agent", "manager"], "count": ["agent", "manager"], "create": ["agent", "manager"], "update": ["agent", "manager"], "delete": ["manager"]},
+     "ui": {
+       "listFields": ["title", "status", "team_id", "assignee", "updated_at"],
+       "detailFields": ["title", "status", "team_id", "assignee", "opened_at", "updated_at", "resolved_at"],
+       "formFields": ["title", "status", "team_id", "assignee", "resolved_at"],
+       "fieldLabels": {"team_id": "Team", "opened_at": "Opened", "updated_at": "Updated", "resolved_at": "Resolved"},
+       "fieldOptions": {"status": [{"value": "open", "label": "Open"}, {"value": "in_progress", "label": "In progress"}, {"value": "resolved", "label": "Resolved"}]}}},
+    {"name": "events", "label": "Events", "readOnly": true,
+     "fields": [
+       {"name": "Id", "type": "INTEGER", "primary": true},
+       {"name": "TicketId", "column": "ticket_id", "type": "INTEGER", "required": true},
+       {"name": "Kind", "type": "VARCHAR(16)", "required": true, "enum": ["created", "resolved"]},
+       {"name": "Actor", "type": "VARCHAR(40)", "required": true},
+       {"name": "LoggedAt", "column": "logged_at", "type": "TIMESTAMP", "required": true, "auto": "create"}],
+     "permissions": {"list": ["manager"], "read": ["manager"], "count": ["manager"]}}
+  ],
+  "relations": [
+    {"name": "ticket_team", "type": "many-to-one", "fromEntity": "tickets", "fromField": "team_id", "toEntity": "teams", "toField": "id", "required": true, "label": "Team"},
+    {"name": "event_ticket", "type": "many-to-one", "fromEntity": "events", "fromField": "ticket_id", "toEntity": "tickets", "toField": "id", "required": true, "label": "Ticket"}
+  ],
+  "seed": {"enabled": true, "data": {
+    "teams": [{"id": 1, "name": "Hardware", "email": "hardware@example.com"}, {"id": 2, "name": "Software"}],
+    "tickets": [{"id": 1, "title": "Laptop does not start", "status": "open", "team_id": 1, "assignee": "ada"},
+                {"id": 2, "title": "License renewal", "status": "in_progress", "team_id": 2, "assignee": "max"}]}},
+  "ui": {"title": "Service desk", "language": "en",
+         "navigation": [{"page": "my_tickets", "label": "My tickets", "permission": "tickets.list"}]}
+}
+```
+
+- Fields: `name`, optional `column` (default: the name in lower case,
+  `TeamId` becomes `teamid`; set `"column": "team_id"` for another), `type` (`VARCHAR(n)`, `TEXT`, `INTEGER`,
+  `BIGINT`, `DECIMAL(p,s)`, `BOOLEAN`, `DATE`, `TIMESTAMP`), `required`,
+  `unique`, `default`. Every other name in the model (ui lists, relations,
+  seed rows, permissions) uses the column name.
+- Key: one `INTEGER` field `Id` with `primary: true`, generated by the database.
+- `TIMESTAMP` is a local time to the millisecond. `auto: "create"` stamps it
+  at creation, `auto: "update"` at creation and every update, on the server;
+  callers and forms cannot set it, seeds leave it to the server.
+  `TIMESTAMP WITH TIME ZONE` is refused.
+- `enum` lists the allowed values, checked by the generated save Flow;
+  `ui.fieldOptions.<column>` gives their labels (badges take the tones info,
+  warning, success, neutral in order).
+- Relations are many-to-one, to the key of the target; the label shown is the
+  first text field of the target, or `ui.relationFields.<column>.optionLabelField`.
+- `seed.data` rows are keyed by column, with explicit ids; without `data`,
+  `rowsPerEntity` sample rows. A replayed seed never overwrites user writes.
+- `permissions.<operation>` (`list`, `read`, `count`, `create`, `update`,
+  `delete`, or `save` for create and update) is a role list, or `false`.
+  Default: reads for `authenticated`, `reader`, `editor`; writes for
+  `authenticated`, `editor`. `readOnly: true` generates no write Flow nor form.
+- `security.principals` maps each user name to its role;
+  `demoLogin: true` enables the demo sign-in with these accounts. The role
+  comes from this map only (see Limits).
+- `revision: "revision"` on an entity adds optimistic concurrency; omitted,
+  the last write wins.
+
+## Preview, apply, prove
+
+1. `flow-project-bootstrap({project, ui: true})` for a new project.
+2. `flow-crud-upsert({project, spec, dryRun: true})`. Read `status`,
+   `diagnostics` (each with `code`, `message` and, when known, `line`,
+   `block`, `fix`), `references.missing` and `sql.plan.statements`.
+   `blocked`: fix each error diagnostic and preview again.
+3. `flow-crud-upsert({project, spec, planHash})` with the `planHash` of the
+   preview. Apply adds the missing references (`lib_flow_sql`,
+   `lib_flow_crud_data`, `lib_flow_frontbuilder_svelte`), writes the model to
+   `_flow/data/model.yaml`, the Flows and pages, creates or migrates the
+   database and seeds it. `FLOW_CRUD_PLAN_STALE`: preview again.
+4. `flow-crud-proof({project})`: every generated file matches the model and
+   nothing is left to apply. Then prove rights over HTTP: sign in with each
+   demo account in its own cookie jar (`<prefix>_demo_login` with `user`) and
+   call the Flows; an anonymous call is refused.
+5. Build the pages with `frontend-svelte-action`.
+
+Without `spec`, both tools use the stored `_flow/data/model.yaml`.
+
+## What is generated and owned
+
+Every generated file starts with an `@generated` comment and belongs to the
+model: never edit it with `code-set` (refused) or by patching; change the model
+and apply again. A hand edit makes the next apply fail with
+`FLOW_CRUD_GENERATED_CONFLICT` and the proof report it.
+
+| Flow (prefix `desk`) | Inputs | Result |
+| --- | --- | --- |
+| `desk_<entity>_list` | `offset`, `limit` (1-200), `search`, `filter`, `orderBy`, `direction` | `resource`, `page.rows[]` (`key`, `values`, `canRead`, `canUpdate`, `canDelete`), `page.total` |
+| `desk_<entity>_read` | `id` | `row` (`key`, `values`, `displayValues` with relation labels); 404 when absent |
+| `desk_<entity>_count` | none | `rows[0].total` |
+| `desk_<entity>_options` | `labelField` | `rows[]` (`value`, `label`), at most 200 |
+| `desk_<entity>_save` | `id` (empty to create), `revision`, `patch` (object) | the data write result |
+| `desk_<entity>_delete` | `id`, `revision` | the data write result |
+| `desk_session` | none | `authenticated`, `user`, `role`, `permissions.<entity>.<operation>` |
+| `desk_demo_login`, `desk_logout` | `user` / none | sign in (demo only) / sign out |
+| `desk_initialize`, `desk_runtime_proof` | none | private: schema and seed / read-only checks |
+
+Each entity Flow checks the session and the role on the server, whatever
+calls it. Pages: `+layout.flow.svelte` (an `AppShell` with one link per
+entity and `ui.navigation`), the dashboard (`crud_dashboard`), `login`
+(`crud_login`) and, per entity, `<entity>` (`<entity>_list`),
+`<entity>/detail` and `<entity>/form`. SQL lives in
+`_flow/resources/sql/crud` (`schema.json`, `data.json`, the HSQLDB database).
+
+## Evolve the model
+
+Change the model and preview again; `schemaVersion` increases by itself.
+The database plan is additive: new entities, relations, and fields that are
+nullable or have a `default` (`ALTER TABLE ... ADD COLUMN ... DEFAULT`). A
+removed or renamed field is refused (`SQL_SCHEMA_MIGRATION_UNSUPPORTED`), and
+so is a removed entity (`FLOW_CRUD_REMOVAL_UNSUPPORTED`): add a new field and
+stop using the old one. A new required field on a filled table needs a
+`default`.
+
+## Add business logic
+
+Hand-written Flows and pages live next to the generated ones under their own
+names; apply never touches them.
+
+### Call the generated Flows
+
+A business Flow reuses the model rights by calling the generated Flows in the
+same session: `requestable.call` returns their result.
+
+```javascript
+local.session = requestable.call({ requestable: ".desk_session" })
+if (!local.session.permissions.tickets.update) {
+  throw({ code: "FORBIDDEN", message: "Role denied", status: 403 })
+}
+local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
+```
+
+The generated data sources (`tickets_read`, `tickets_write`) and named SQL
+live in the `_flow.config` of each generated Flow: your Flows do not inherit
+them, so `data.read({ source: "tickets_read" })` fails in a business Flow.
+Copy the connection instead (next section).
+
+### Business actions in a transaction
+
+For an operation over several tables, declare in the business Flow's own
+`_flow.config` the connection of `_flow/data/config.generated.json`
+(`sql.connections.<connection>`, same name and values) and your own named
+writes, with names of your own. `auto` stamps timestamps on the server here too.
+
+```javascript
+const _flow = {
+  sourceVersion: 2,
+  accessibility: "hidden",
+  authenticatedContextRequired: true,
+  inputs: { id: { type: "string" } },
+  config: {
+    sql: {
+      connections: {
+        desk: { url: "jdbc:hsqldb:file:.//_flow/resources/sql/crud/database/desk;shutdown=false", dialect: "hsqldb", driverClass: "org.hsqldb.jdbc.JDBCDriver", user: "root", password: "", nativeRead: true, nativeWrite: true },
+      },
+      writes: {
+        ticket_resolve_update: {
+          connection: "desk", operation: "update", minAffectedRows: 1, maxAffectedRows: 1,
+          sql: "UPDATE \"PUBLIC\".\"tickets\" SET \"status\"='resolved', \"resolved_at\"=:resolved_at, \"updated_at\"=:updated_at WHERE \"id\"=:id AND \"status\"<>'resolved'",
+          parameters: [{ name: "resolved_at", type: "timestamp", auto: "update" }, { name: "updated_at", type: "timestamp", auto: "update" }, { name: "id", type: "int64" }],
+        },
+        ticket_resolve_event: {
+          connection: "desk", operation: "insert", minAffectedRows: 1, maxAffectedRows: 1, generatedKey: { column: "id", type: "int64" },
+          sql: "INSERT INTO \"PUBLIC\".\"events\" (\"ticket_id\", \"kind\", \"actor\", \"logged_at\") VALUES (:ticket_id, 'resolved', :actor, :logged_at)",
+          parameters: [{ name: "ticket_id", type: "int64" }, { name: "actor", type: "string" }, { name: "logged_at", type: "timestamp", auto: "create" }],
+        },
+      },
+    },
+  },
+}
+
+function ticket_resolve({ input, config, result }) {
+  local.session = requestable.call({ requestable: ".desk_session" })
+  if (!local.session.permissions.tickets.update) {
+    throw({ code: "FORBIDDEN", message: "Role denied", status: 403 })
+  }
+  local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
+  local.done = sql.transaction({ steps: [
+    { id: "ticket", statement: "ticket_resolve_update", parameters: { id: input.id } },
+    { id: "event", statement: "ticket_resolve_event", parameters: { ticket_id: input.id, actor: local.session.user } },
+  ] })
+  result.resolved = local.done.committed
+}
+```
+
+Tables are `"PUBLIC"."<entity>"` on HSQLDB, columns the model column names,
+quoted. A second resolve fails with `SQL_WRITE_ROW_COUNT` (409) and rolls
+back. In production, override the connection once in the project
+configuration (`configs.<name>.sql.connections.desk` in `_flow/engine.yaml`,
+`flow://guide/tags`): it applies to generated and business Flows alike. If
+the model changes its database, update your copy.
+
+### Per-user data perimeter
+
+`rowPolicy` is not implemented (`FLOW_CRUD_ROW_POLICY_NOT_IMPLEMENTED`), and
+the generated list accepts any `filter` from its caller, so it cannot hold a
+perimeter. Restrict the generated entity Flows to the roles that may see every
+row, and give the others a business Flow whose filter comes from the server:
+a named read with `readOnly: true`, `expose: false`, the copied connection,
+and the user of `desk_session`.
+
+```javascript
+function my_tickets({ input, config, result }) {
+  local.session = requestable.call({ requestable: ".desk_session" })
+  if (!local.session.permissions.tickets.list) {
+    throw({ code: "FORBIDDEN", message: "Role denied", status: 403 })
+  }
+  local.mine = sql.query({ query: "my_tickets_rows", parameters: { user: local.session.user } })
+  result.rows = local.mine.rows
+}
+```
+
+With `my_tickets_rows` declared as
+`SELECT "id", "title", "status", "updated_at" FROM "PUBLIC"."tickets" WHERE "assignee"=:user`.
+Remember that the generated detail, form and save Flows of that entity still
+follow the role permissions, not the perimeter.
+
+### Pages next to the generated ones
+
+Write a page under its own route, for example
+`src/routes/my-tickets/+page.flow.svelte` with `code-set` and `sourceFile`. The
+generated root layout wraps it in the shell. Link it from the shell with
+`ui.navigation` in the model (`page` is its `page.id`; `permission`, as
+`<entity>.<operation>`, shows the link only when the session grants it), then
+apply. Load the session first, as the generated pages do:
+
+```svelte
+<script module>
+export const _flow = { sourceVersion: 2, page: { id: "my_tickets", title: "My tickets" } };
+</script>
+<FlowComponent $$id="my_tickets">
+<Variables><State $$id="viewReady" type="boolean" value={false} /></Variables>
+<Structure>
+<PageHeader $$id="header" title="My tickets" description="Tickets assigned to you." />
+<If $$id="ready" test="@page.viewReady"><Then>
+<DataTable $$id="mine" caption="My tickets" source="@.my_tickets.rows" rowKey="id" columns={[{"key":"title","path":"title","label":"Title"},{"key":"status","path":"status","label":"Status","format":"badge"}]} rowActions={[{"id":"open","label":"Open","page":"tickets_detail","query":{"id":"id"}},{"id":"resolve","label":"Resolve"}]}><Events><OnClick $$id="rowCommand"><Actions><CallSequence $$id="resolveTicket" requestable=".ticket_resolve"><Variables><Variable name="id" value="@event.value.row.id" /></Variables></CallSequence><CallSequence $$id="reloadMine" requestable=".my_tickets"><Variables></Variables></CallSequence></Actions></OnClick></Events></DataTable>
+</Then></If>
+<Status $$id="statusResolve" actionId="resolveTicket" successText="Ticket resolved." />
+</Structure>
+<Events><OnMount $$id="mount"><Actions><CallSequence $$id="loadSession" requestable=".desk_session"><Variables></Variables></CallSequence><If $$id="signedIn" test="@.desk_session.authenticated"><Then><CallSequence $$id="loadMine" requestable=".my_tickets"><Variables></Variables></CallSequence><SetValue $$id="markReady" target="page.viewReady" value={true} /></Then><Else><Navigate $$id="needLogin" page="crud_login"></Navigate></Else></If></Actions></OnMount></Events>
+</FlowComponent>
+```
+
+The generated pages, dashboard included, cannot be changed by hand: add a
+page instead of editing one.
+
+### CSV export
+
+Export what the user may see by calling the generated list, then `data.csv`
+with its `resource` and rows (`flow-block-get` gives the `data.csv` contract):
+
+```javascript
+local.list = requestable.call({ requestable: ".desk_tickets_list", input: { offset: 0, limit: 200 } })
+local.file = data.csv({ resource: local.list.resource, rows: local.list.page.rows, filename: "tickets.csv" })
+```
+
+A list returns at most 200 rows: call it again with the next `offset` until
+`page.total`, or export a named read of your own. If `data.csv` answers
+`DATA_CSV_SCHEMA_INVALID` on a `timestamp` field, your `lib_flow_crud_data`
+predates timestamp export: pass flat rows (`list.map` over `page.rows`) with
+typed `columns`. Serve the file from a `.bin` facade with `file.respond`
+(`flow://guide/multipage-roles`).
+
+### Scheduled jobs
+
+A job has no session, so the generated entity Flows refuse it
+(`UNAUTHENTICATED`). Write a private Flow that works through named SQL with
+the copied connection, as a business action does, bounded and idempotent;
+schedule it as `flow://guide/multipage-roles` shows.
+
+## Limits
+
+- Roles come only from `security.principals` (or `authenticated` for every
+  signed-in user when it is empty); they cannot come from `lib_UserManager`
+  or another identity provider yet. Outside a demo, sign in with that
+  provider and list its user names in `principals`.
+- No row policy: see the perimeter above.
+- Keys are one generated integer; no composite or text key.
+- Indexes are refused (`SQL_PORTABLE_INDEX_NOT_IMPLEMENTED`); relations are
+  many-to-one only, without cycles.
+- Removals and renames are not migrated.
+- Generated pages are in French except values set by the model (`ui.title`,
+  labels); `ui.language` sets the number and date formats.
