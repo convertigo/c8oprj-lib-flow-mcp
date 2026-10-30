@@ -513,6 +513,9 @@
 				parts.push("keys: " + keys.join(", "));
 			}
 		}
+		if (value.registration && value.registration.sessionNote) {
+			parts.push(String(value.registration.sessionNote).replace(/\.$/, ""));
+		}
 		parts.push(value.hints ? "Use structuredContent for data; pass hints=false after reading hints." : "Use structuredContent for data.");
 		return parts.join(". ");
 	}
@@ -1094,6 +1097,7 @@
 			unlockProjectFlags();
 		}
 		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
+		sessionReport(project, result);
 		try {
 			Engine.theApp.schemaManager.clearCache(String(project.getName()));
 			result.schemaCacheCleared = true;
@@ -1105,6 +1109,26 @@
 		}
 		result.message = result.created ? "Flow DBO created" : "Flow DBO updated";
 		return result;
+	}
+
+	// A promotion saves sources and the project declaration and leaves the HTTP sessions alone: the project reloaded
+	// keeps the authenticated user of each session (SessionAttribute.authenticatedUser, in the HTTP session). What a
+	// client logged in before loses after a pause is its session, closed after httpSessionTimeout idle seconds: 60 in
+	// the projects the bootstrap created before 1800 became its default, which looked like each promotion logging
+	// the client out. The answer says so.
+	function sessionReport(project, result) {
+		result.sessionsReset = false;
+		try {
+			var timeout = Number(project.getHttpSessionTimeout());
+			if (!isFinite(timeout)) return;
+			result.httpSessionTimeout = timeout;
+			if (timeout > 0 && timeout < 300) {
+				result.sessionNote = "Project " + String(project.getName()) + " closes an HTTP session idle for " + timeout +
+					" s (httpSessionTimeout): a client that logged in before a pause must log in again, promotion or not. " +
+					"For API clients and long tests, set the project property HTTP session timeout to 1800 (the Convertigo default).";
+			}
+		} catch (_ignoreSessionTimeout) {
+		}
 	}
 
 	function saveFlowDeclaration(project, flow, name, args, writeResult) {
@@ -3859,7 +3883,7 @@
 		}
 		var out = {};
 		["requested", "registered", "created", "updated", "saved", "projectSaved", "flowDeclarationSaved",
-			"saveMode", "refreshed", "schemaCacheCleared",
+			"saveMode", "refreshed", "schemaCacheCleared", "sessionsReset", "httpSessionTimeout", "sessionNote",
 			"qname", "message"].forEach(function (key) {
 			if (registration[key] !== undefined && registration[key] !== null && registration[key] !== "") {
 				out[key] = registration[key];
@@ -4609,6 +4633,7 @@
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,
 		registerFlowDbo: registerFlowDbo,
+		_sessionReport: sessionReport,
 		syncFlowInputsDbo: syncFlowInputsDbo,
 		_markFastSavedClean: markFastSavedClean,
 		applyNamedFlowMutation: applyNamedFlowMutation,
