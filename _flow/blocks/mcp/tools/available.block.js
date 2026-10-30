@@ -68,6 +68,8 @@ const _meta = {
 		"flow-object-remove": true,
 		"flow-output-schema": true,
 		"flow-fullsync-scaffold": true,
+		"flow-crud-upsert": true,
+		"flow-crud-proof": true,
 		"flow-project-bootstrap": true,
 		"flow-project-metadata": true,
 		"flow-project-reference": true,
