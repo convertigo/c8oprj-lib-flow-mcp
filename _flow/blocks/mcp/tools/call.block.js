@@ -160,6 +160,13 @@ const _meta = {
 					ctx.write(out, response);
 					return response;
 				}
+				// A constructor sub-agent of a parallel build writes only the side of the project it owns.
+				var scopeRefusal = mcp.subagentScopeRefusal(ctx, request);
+				if (scopeRefusal) {
+					response = mcp.toolError(request, scopeRefusal, ctx);
+					ctx.write(out, response);
+					return response;
+				}
 				var block = toolMap(ctx)[name];
 				// Relayed answers belong to the legacy MCP: do not rewrap or normalize them.
 				if (!block && mcp.legacyRelayTool(name)) {

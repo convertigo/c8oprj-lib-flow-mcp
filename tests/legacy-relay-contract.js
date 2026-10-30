@@ -91,12 +91,16 @@ try {
 	assert(/Relayed to the Convertigo MCP/.test(tools[0].description), "relayed tools say so");
 	assert(seen[0].query === "jsonOnly=true" && seen[0].body.method === "tools/list", "tools/list on the Convertigo MCP endpoint");
 	assert(mcp.legacyRelayTools(ctx).length === 2 && seen.length === 2, "each list refreshes caller-dependent descriptors");
-	// The Flow facade offers the verifier profile alone: the constructor builds legacy objects, not Flow sources.
+	// The Flow facade offers the verifier and the Flow constructor, for one side of a parallel build.
 	var subagent = tools[1].inputSchema.properties;
-	assert(JSON.stringify(subagent.profile.enum) === JSON.stringify(["verifier"]) && subagent.profile["default"] === "verifier",
-		"subagent-run is relayed with the verifier profile only: " + JSON.stringify(subagent.profile));
+	assert(JSON.stringify(subagent.profile.enum) === JSON.stringify(["verifier", "constructor"]) && subagent.profile["default"] === "verifier",
+		"subagent-run is relayed with the verifier and the constructor: " + JSON.stringify(subagent.profile));
+	assert(/Flow tools only/.test(subagent.profile.description) && /fullstack-paperboard/.test(subagent.profile.description),
+		"the constructor profile is the Flow one: " + subagent.profile.description);
 	assert(/openUrl of frontend-svelte-action dev\.sync or dev\.open/.test(subagent.inputs.description) && subagent.runId.type === "string",
 		"the verifier inputs name the viewer URL, runId stays: " + JSON.stringify(subagent.inputs));
+	assert(/scope \(required\): backend .* or frontend/.test(subagent.inputs.description) && /scope backend or frontend/.test(tools[1].description),
+		"the constructor inputs name the scope: " + subagent.inputs.description);
 	assert(!/approver/.test(JSON.stringify(tools)) && /sign in as the demo user/.test(subagent.inputs.properties.paths.description),
 		"relayed descriptions are neutral: " + JSON.stringify(subagent.inputs.properties.paths));
 	assert(/Relayed to the Convertigo MCP/.test(tools[1].description) && /runId alone/.test(tools[1].description), "the descriptor says how to collect a run");
@@ -141,12 +145,48 @@ try {
 	assert(collected.result.structuredContent.report.verdict === "passed" &&
 		/^status=finished\. runId=verify-20261030-120000-0123abcd\. verdict=passed\. The two paths passed/.test(collected.result.content[0].text),
 		"the finished answer summarizes the verdict: " + collected.result.content[0].text);
+	// The constructor goes through for the Flow pack only: the relay adds inputs.pack "flow" to a call that names the
+	// project and the side it owns, and refuses the others before any hop.
 	var beforeConstructor = seen.length;
-	var constructor = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 62, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "Constructor", task: "Build", inputs: { project: "App" } } } });
-	assert(seen.length === beforeConstructor && constructor.id === 62 && constructor.result.structuredContent.error.code === "SUBAGENT_PROFILE_NOT_RELAYED" &&
-		/flow tools yourself/i.test(constructor.result.structuredContent.error.hint), "the constructor is refused before any hop: " + JSON.stringify(constructor));
+	var refusedCalls = [
+		[{ profile: "Constructor", task: "Build", inputs: { project: "App" } }, "SUBAGENT_SCOPE_REQUIRED", "no scope"],
+		[{ profile: "constructor", task: "Build", inputs: { project: "App", scope: "everything" } }, "SUBAGENT_SCOPE_REQUIRED", "an unknown scope"],
+		[{ profile: "constructor", task: "Build", inputs: { scope: "backend" } }, "SUBAGENT_SCOPE_REQUIRED", "no project"],
+		[{ profile: "constructor", task: "Build" }, "SUBAGENT_SCOPE_REQUIRED", "no inputs"],
+		[{ profile: "auditor", task: "Audit", inputs: { project: "App", scope: "backend" } }, "SUBAGENT_PROFILE_NOT_RELAYED", "an unknown profile"]
+	];
+	refusedCalls.forEach(function (refused, index) {
+		var answer = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 70 + index, method: "tools/call", params: { name: "subagent-run", arguments: refused[0] } });
+		assert(seen.length === beforeConstructor && answer.id === 70 + index && answer.result.structuredContent.error.code === refused[1],
+			"a constructor with " + refused[2] + " is refused before any hop: " + JSON.stringify(answer));
+	});
+	assert(/scope:\\?"backend\\?"/.test(JSON.stringify(mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 62, method: "tools/call",
+		params: { name: "subagent-run", arguments: { profile: "constructor", task: "Build", inputs: { project: "App" } } } }).result.structuredContent.error.hint)),
+		"the refusal shows the call to make");
+	var constructorArgs = { profile: "Constructor", task: "Fill the bodies of the contract Flows.", waitSec: 5,
+		inputs: { project: "App", scope: "Backend", pack: "convertigo", contracts: ["App.ListItems: {status} -> {items[]}"] } };
+	var constructor = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 65, method: "tools/call", params: { name: "subagent-run", arguments: constructorArgs } });
+	var constructorCall = seen[seen.length - 1];
+	assert(seen.length === beforeConstructor + 1 && constructor.id === 65 && constructorCall.body.params.name === "subagent-run", "the Flow constructor is relayed");
+	assert(JSON.stringify(constructorCall.body.params.arguments) === JSON.stringify({ profile: "constructor", task: "Fill the bodies of the contract Flows.", waitSec: 5,
+		inputs: { project: "App", scope: "backend", pack: "flow", contracts: ["App.ListItems: {status} -> {items[]}"] } }),
+		"the relayed constructor always carries the Flow pack and a normalized scope: " + JSON.stringify(constructorCall.body.params.arguments));
+	assert(constructorArgs.inputs.pack === "convertigo" && constructorArgs.profile === "Constructor", "the client arguments are left untouched");
+	mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 66, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "constructor", task: "Pages",
+		inputs: "{\"project\":\"App\",\"scope\":\"frontend\"}" } } });
+	assert(JSON.stringify(seen[seen.length - 1].body.params.arguments.inputs) === JSON.stringify({ project: "App", scope: "frontend", pack: "flow" }),
+		"inputs given as JSON text are read too: " + JSON.stringify(seen[seen.length - 1].body.params.arguments));
 	mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 63, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "constructor", runId: "build-20261030-120000-0123abcd" } } });
-	assert(seen.length === beforeConstructor + 1, "a runId is always collected, whatever the profile");
+	assert(seen.length === beforeConstructor + 3 && JSON.stringify(seen[seen.length - 1].body.params.arguments) ===
+		JSON.stringify({ profile: "constructor", runId: "build-20261030-120000-0123abcd" }), "a runId is always collected, whatever the profile");
+	// A constructor session (its run and scope headers) never starts another sub-agent of that kind.
+	headers["X-Convertigo-Subagent-Run"] = "build-20261030-120000-0123abcd";
+	headers["X-Convertigo-Subagent-Scope"] = "backend";
+	var nested = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 67, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "constructor", task: "More",
+		inputs: { project: "App", scope: "frontend" } } } });
+	assert(seen.length === beforeConstructor + 3 && nested.result.structuredContent.error.code === "SUBAGENT_NESTED", "a constructor does not start a constructor: " + JSON.stringify(nested));
+	delete headers["X-Convertigo-Subagent-Run"];
+	delete headers["X-Convertigo-Subagent-Scope"];
 	var verification = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 64, method: "tools/call", params: { name: "browser-verify", arguments: { url: "http://x/", checks: ["Title"] } } });
 	assert(/^status=running\. verificationId=verify-20261030-120001-89abcdef\. Call the same tool again with verificationId alone/.test(verification.result.content[0].text),
 		"a running browser-verify says how to collect it: " + verification.result.content[0].text);

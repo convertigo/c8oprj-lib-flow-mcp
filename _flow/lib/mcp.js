@@ -4201,9 +4201,11 @@
 		"scheduler-list": true,
 		"subagent-run": true
 	};
-	// subagent-run, verifier profile only: the constructor builds legacy objects in a Vibe session that keeps only the
-	// MCP server named Convertigo, never Flow sources through convertigo-flow.
-	var RELAYED_SUBAGENT_PROFILES = ["verifier"];
+	// subagent-run: the verifier, and the constructor of the Flow pack only. A constructor relayed here always carries
+	// inputs.pack "flow": lib_ConvertigoMCP then runs its Vibe session with the convertigo-flow server alone (the same
+	// token and headers), on one side of the project (inputs.scope), never the legacy objects of the Convertigo pack.
+	var RELAYED_SUBAGENT_PROFILES = ["verifier", "constructor"];
+	var FLOW_CONSTRUCTOR_SCOPES = ["backend", "frontend"];
 	var LEGACY_RELAY_HEADERS = ["User-Agent", "Authorization", "X-Convertigo-Agent-Provider", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
 		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
@@ -4290,42 +4292,108 @@
 		return node;
 	}
 
-	// The Flow facade of subagent-run: the verifier profile alone, with its inputs.
+	// The Flow facade of subagent-run: the verifier, and the constructor of one side of a parallel build.
 	function relayedSubagentDescriptor(tool) {
 		var properties = tool.inputSchema && tool.inputSchema.properties;
 		if (properties && properties.profile) {
 			properties.profile.enum = RELAYED_SUBAGENT_PROFILES.slice(0);
 			properties.profile["default"] = "verifier";
 			properties.profile.description = "verifier: functional and visual browser proofs on the Studio viewer, read-only, by a vision model. " +
-				"The only profile of the Flow MCP: build Flows and pages yourself with the Flow tools.";
+				"constructor: a write-capable sub-agent with the Flow tools only, for one side of a parallel build " +
+				"(flow://guide/fullstack-paperboard); one per scope and project at a time.";
 		}
 		if (properties && properties.inputs) {
-			properties.inputs.description = "url: the viewer URL (openUrl of frontend-svelte-action dev.sync or dev.open); paths: one plain-language " +
-				"user journey per item (sign in, go through pages, fill and submit a form); checks: acceptance criteria with the exact expected texts; " +
-				"hints: demo accounts, expected values, what just changed; viewport: desktop (default), mobile or <width>x<height>.";
+			properties.inputs.description = "verifier: url, the viewer URL (openUrl of frontend-svelte-action dev.sync or dev.open); paths: one " +
+				"plain-language user journey per item (sign in, go through pages, fill and submit a form); checks: acceptance criteria with the exact " +
+				"expected texts; hints: demo accounts, expected values, what just changed; viewport: desktop (default), mobile or <width>x<height>. " +
+				"constructor: project (required), scope (required): backend (Flows, project blocks, engine.yaml, tests) or frontend " +
+				"(_flow/frontbuilder sources, theme, assets); contracts: the Flows with their inputs and output fields; notes: rules and values that matter.";
 		}
-		tool.description = String(tool.description || "") + " Flow: profile verifier only. A call answers within about 50 s: " +
-			"while it answers status:\"running\", call subagent-run again with runId alone.";
+		tool.description = String(tool.description || "") + " Flow: profile verifier, or constructor with inputs.scope backend or frontend. " +
+			"A call answers within about 50 s (start a constructor with waitSec 5): while it answers status:\"running\", call subagent-run " +
+			"again with runId alone.";
 		return tool;
 	}
 
-	function relayedSubagentRefusal(request) {
+	function relayRequestHeader(ctx, name) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			var servletRequest = context && context.httpServletRequest;
+			var value = servletRequest ? servletRequest.getHeader(name) : null;
+			return value === null || value === undefined ? "" : String(value).trim();
+		} catch (e) {
+			return "";
+		}
+	}
+
+	function subagentInputs(value) {
+		if (value && typeof value === "object" && !Array.isArray(value)) {
+			return copyJson(value);
+		}
+		if (typeof value === "string" && /^\s*\{/.test(value)) {
+			try {
+				var parsed = JSON.parse(value);
+				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+					return parsed;
+				}
+			} catch (e) {
+			}
+		}
+		return {};
+	}
+
+	function subagentRelayError(code, message, hint, details) {
+		var error = new Error(message);
+		error.code = code;
+		error.hint = hint;
+		error.details = details;
+		return error;
+	}
+
+	// The subagent-run request the relay forwards, or the refusal answered before any hop: {request} or {error}.
+	function relayedSubagentRequest(ctx, request) {
 		var params = request && request.params || {};
 		if (String(params.name || "") !== "subagent-run") {
-			return null;
+			return { request: request };
 		}
 		var args = params.arguments && typeof params.arguments === "object" ? params.arguments : {};
 		var profile = String(args.profile === undefined || args.profile === null ? "" : args.profile).trim().toLowerCase();
-		if (String(args.runId || "").trim() !== "" || profile === "" || RELAYED_SUBAGENT_PROFILES.indexOf(profile) !== -1) {
-			return null;
+		if (String(args.runId || "").trim() !== "" || profile === "" || profile === "verifier") {
+			return { request: request };
 		}
-		var error = new Error("subagent-run profile " + profile + " is not available through the Flow MCP: the constructor builds legacy " +
-			"Convertigo objects with the Convertigo MCP, not Flows or Flow Svelte pages.");
-		error.code = "SUBAGENT_PROFILE_NOT_RELAYED";
-		error.hint = "Build with the Flow tools yourself (code-set, code-run, code-promote), then prove the result with " +
-			"subagent-run({profile:\"verifier\", task, inputs:{url, paths, checks}}).";
-		error.details = { profile: profile, profiles: RELAYED_SUBAGENT_PROFILES.slice(0) };
-		return error;
+		if (profile !== "constructor") {
+			return { error: subagentRelayError("SUBAGENT_PROFILE_NOT_RELAYED", "subagent-run profile " + profile + " is not available through the Flow MCP.",
+				"Use profile verifier for a browser proof, or constructor with inputs.scope backend or frontend for one side of a parallel build.",
+				{ profile: profile, profiles: RELAYED_SUBAGENT_PROFILES.slice(0) }) };
+		}
+		if (relayRequestHeader(ctx, "X-Convertigo-Subagent-Run") !== "" || relayRequestHeader(ctx, "X-Convertigo-Subagent-Scope") !== "") {
+			return { error: subagentRelayError("SUBAGENT_NESTED", "A constructor sub-agent does not start sub-agents: the main agent does.",
+				"Put what is missing in the openIssues of your report.", { profile: profile }) };
+		}
+		var inputs = subagentInputs(args.inputs);
+		var project = String(inputs.project || "").trim();
+		var scope = String(inputs.scope || "").trim().toLowerCase();
+		if (project === "" || FLOW_CONSTRUCTOR_SCOPES.indexOf(scope) === -1) {
+			return { error: subagentRelayError("SUBAGENT_SCOPE_REQUIRED", "A Flow constructor needs inputs.project and inputs.scope backend or frontend: " +
+				"the one project it builds in and the side of it that it owns.",
+				"subagent-run({profile:\"constructor\", task, inputs:{project:\"<project>\", scope:\"backend\", contracts, notes}, waitSec:5}), " +
+				"then the same with scope frontend; see the Parallel Build of flow://guide/fullstack-paperboard.",
+				{ project: project, scope: scope, scopes: FLOW_CONSTRUCTOR_SCOPES.slice(0) }) };
+		}
+		if (isServerProject(ctx, project)) {
+			return { error: subagentRelayError("SUBAGENT_SCOPE_REQUIRED", "A Flow constructor never builds in " + project + ", the project serving this MCP endpoint.",
+				"Pass the application project in inputs.project.", { project: project }) };
+		}
+		inputs.project = project;
+		inputs.scope = scope;
+		inputs.pack = "flow";
+		var forwardedArgs = copyJson(args);
+		forwardedArgs.profile = "constructor";
+		forwardedArgs.inputs = inputs;
+		var forwarded = copyJson(request);
+		forwarded.params = copyJson(params);
+		forwarded.params.arguments = forwardedArgs;
+		return { request: forwarded };
 	}
 
 	// The text content of a relayed answer that carries structuredContent only. A sub-agent or a verification still
@@ -4377,16 +4445,16 @@
 	}
 
 	function legacyRelayCall(ctx, request) {
-		var refusal = relayedSubagentRefusal(request);
-		if (refusal) {
-			return toolError(request, refusal, ctx);
+		var subagent = relayedSubagentRequest(ctx, request);
+		if (subagent.error) {
+			return toolError(request, subagent.error, ctx);
 		}
 		try {
 			var answer = legacyPost(ctx, {
 				jsonrpc: "2.0",
 				id: request.id === undefined ? null : request.id,
 				method: "tools/call",
-				params: request.params || {}
+				params: subagent.request.params || {}
 			}, 600);
 			answer.id = request.id === undefined ? null : request.id;
 			// The relay asks jsonOnly=true, and lib_ConvertigoMCP then answers a successful call with structuredContent
@@ -4405,6 +4473,93 @@
 		}
 	}
 
+	// A constructor sub-agent of a parallel build (relayed subagent-run, profile constructor, Flow pack) owns one side of
+	// its project: its session sends X-Convertigo-Subagent-Scope. Its writes to the other side, the project-level
+	// operations and the browser proofs are refused: the main agent integrates, saves, proves and keeps PROGRESS.md.
+	var SUBAGENT_SCOPES = { backend: true, frontend: true };
+	var SUBAGENT_PROGRESS_FILE = "docs/generated/PROGRESS.md";
+	var MAIN_AGENT_TOOLS = {
+		"browser-verify": true, "flow-project-bootstrap": true, "flow-project-remove": true, "marketplace-import": true,
+		"project-save": true, "report-create": true, "scheduler-apply": true, "subagent-run": true
+	};
+	var BACKEND_WRITE_TOOLS = {
+		"flow-block-code-patch": true, "flow-block-code-set": true, "flow-block-mock": true, "flow-code-discard": true,
+		"flow-code-patch": true, "flow-code-promote": true, "flow-code-set": true, "flow-fullsync-scaffold": true,
+		"flow-object-remove": true, "flow-schema-reset": true, "flow-sync-inputs": true
+	};
+	var FRONTEND_WRITE_TOOLS = {
+		"frontend-svelte-action": true, "frontend-svelte-asset-import": true, "frontend-svelte-code-patch": true,
+		"frontend-svelte-code-set": true, "frontend-svelte-mutate": true
+	};
+
+	function frontendSourceArguments(args) {
+		return !!(args.sourceFile || args.sourcePath || String(args.kind || args.type || "").toLowerCase() === "source" ||
+			(String(args.target || "").toLowerCase() === "frontend" && !args.block && !args.blockName));
+	}
+
+	// The side a tool call writes: "backend", "frontend", "main" (the main agent's own operations) or "" (a read, or
+	// a write that belongs to no side).
+	function subagentCallSide(name, args) {
+		args = args || {};
+		if (MAIN_AGENT_TOOLS[name] === true) {
+			return "main";
+		}
+		if (BACKEND_WRITE_TOOLS[name] === true) {
+			return "backend";
+		}
+		if (FRONTEND_WRITE_TOOLS[name] === true) {
+			return "frontend";
+		}
+		if (/^code-(?:set|patch|promote|discard)$/.test(name)) {
+			return frontendSourceArguments(args) ? "frontend" : "backend";
+		}
+		if (name === "authoring-mutate") {
+			var surface = String(args.surface || "").toLowerCase();
+			if (surface === "frontend" || frontendSourceArguments(args)) {
+				return "frontend";
+			}
+			return surface === "" ? "" : "backend";
+		}
+		if (name === "flow-resource-patch" || name === "flow-resource-delete") {
+			if (String(args.scope || "").toLowerCase() === "engine-internal") {
+				return "main";
+			}
+			var path = String(args.path || "").replace(/\\/g, "/").replace(/^(?:\.\/|\/)+/, "");
+			if (path === SUBAGENT_PROGRESS_FILE) {
+				return "main";
+			}
+			if (path.indexOf("_flow/frontbuilder/") === 0) {
+				return "frontend";
+			}
+			return path.indexOf("_flow/") === 0 || path.indexOf("libs/") === 0 ? "backend" : "";
+		}
+		return "";
+	}
+
+	// The refusal of a call outside the scope of the constructor session that sends it, else null.
+	function subagentScopeRefusal(ctx, request) {
+		var scope = relayRequestHeader(ctx, "X-Convertigo-Subagent-Scope").toLowerCase();
+		if (SUBAGENT_SCOPES[scope] !== true) {
+			return null;
+		}
+		var name = toolName(request || {});
+		var side = subagentCallSide(name, toolArguments(request || {}));
+		if (side === "" || side === scope) {
+			return null;
+		}
+		var error = new Error(side === "main"
+			? name + " belongs to the main agent: it integrates both sides, saves the project, runs the browser proofs and keeps " +
+				SUBAGENT_PROGRESS_FILE + ". This constructor owns the " + scope + " only."
+			: "This constructor owns the " + scope + " of the project: " + name + " writes the " + side +
+				", which another constructor or the main agent owns.");
+		error.code = "SUBAGENT_SCOPE";
+		error.hint = scope === "frontend"
+			? "Bind to the Flows as their contract says; put a missing or wrong field (Flow, field, why) in the openIssues of your report."
+			: "Keep the agreed inputs and output fields; put what the pages need from the frontend in the openIssues of your report.";
+		error.details = { scope: scope, tool: name, side: side };
+		return error;
+	}
+
 	return {
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
@@ -4413,6 +4568,8 @@
 		legacyRelayTool: legacyRelayTool,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,
+		subagentScopeRefusal: subagentScopeRefusal,
+		_subagentCallSide: subagentCallSide,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
 		requestValue: requestValue,

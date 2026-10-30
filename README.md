@@ -246,10 +246,20 @@ of the legacy endpoint, which drives the Studio viewer of the conversation (its
 relayed). A long run answers `status:"running"` with a `runId` (a
 `verificationId` for `browser-verify`), and the same tool called with it alone
 waits again; the relayed text content says so, since some clients show the text
-alone. `subagent-run` is offered with its `verifier` profile only: the
-`constructor` profile builds legacy objects in a Vibe session that keeps the
-`Convertigo` MCP server alone, so the relay refuses it with
-`SUBAGENT_PROFILE_NOT_RELAYED` before any hop (`RELAYED_SUBAGENT_PROFILES`).
+alone. `subagent-run` is offered with its `verifier` profile and with the
+`constructor` of the Flow pack, for one side of a parallel build
+(`flow://guide/fullstack-paperboard`): the relay requires `inputs.project` and
+`inputs.scope` (`backend` or `frontend`) and always forwards `inputs.pack:"flow"`,
+so lib_ConvertigoMCP runs that Vibe session with the `convertigo-flow` server
+alone (the same token and headers), one constructor per scope and project. A
+constructor without scope (`SUBAGENT_SCOPE_REQUIRED`), started from a
+constructor session (`SUBAGENT_NESTED`) or another profile
+(`SUBAGENT_PROFILE_NOT_RELAYED`) is refused before any hop. A constructor
+session sends `X-Convertigo-Subagent-Scope`: the `tools/call` dispatcher refuses
+its writes to the other side and the main agent's operations (`project-save`,
+browser proofs, sub-agents, `docs/generated/PROGRESS.md`, bootstrap and removal)
+with `SUBAGENT_SCOPE` (`subagentScopeRefusal`); without that header nothing
+changes.
 
 ## FlowScript code tools
 
