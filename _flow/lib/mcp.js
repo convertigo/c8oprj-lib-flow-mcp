@@ -4160,8 +4160,18 @@
 					var property = properties[key] || {};
 					return key !== "id" && property.hidden !== true && property.category !== "Information";
 				});
+				// every property, the texts of the interface (labels, placeholders) last: a cut at 24 in alphabetical
+				// order dropped source, selectable and selected of a DataTable
+				var text = function (key) { return /(?:Label|Text|Placeholder)$/.test(key); };
+				names = names.filter(function (key) { return !text(key); }).concat(names.filter(text));
+				if (item && item.events && typeof item.events === "object") {
+					var handlers = Object.keys(item.events).map(function (key) {
+						return String(item.events[key] && item.events[key].handler || ("On" + key.charAt(0).toUpperCase() + key.substring(1)));
+					});
+					if (handlers.length) out.events = handlers;
+				}
 				if (names.length) {
-					out.properties = names.slice(0, 24).map(function (key) {
+					out.properties = names.map(function (key) {
 						var property = properties[key] || {};
 						return key + ":" + String(property.type || property.kind || "unknown") +
 							(Object.prototype.toString.call(property.enum) === "[object Array]" && property.enum.length <= 8

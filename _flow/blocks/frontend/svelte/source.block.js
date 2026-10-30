@@ -974,11 +974,14 @@ const _meta = {
 			var blocks = [];
 			selectedStandardItems.forEach(function (item) {
 				var tag = String(item.tag || item.insert && item.insert.tag || "");
-				blocks.push({
+				var starter = {
 					tag: tag,
 					properties: compactProperties(item.properties),
 					slots: sourceSlots(item.slots)
-				});
+				};
+				// the handlers of the events the block raises, in its Events slot (OnClick, OnSelectionChange...)
+				if (Array.isArray(item.events) && item.events.length) starter.events = item.events.slice();
+				blocks.push(starter);
 			});
 			var portableBlocks = [];
 			var seenPortable = {};

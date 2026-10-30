@@ -30,7 +30,7 @@ var result = block.run({
 			{ id: "svelte.text", tag: "Text", properties: {
 				text: { type: "string", intents: ["literal", "source"] },
 				currency: { type: "string", intents: ["literal"], hidden: true }
-			}, slots: {} },
+			}, slots: {}, events: ["OnClick"] },
 			{ id: "frontbuilder.svelte.callSequence", tag: "CallSequence", properties: {}, slots: {} },
 			{ id: "svelte.futurePanel", tag: "FuturePanel", properties: { title: { type: "string", intents: ["literal"] } }, slots: { children: {} } },
 			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text", properties: { text: { type: "string", intents: ["literal", "source"] } } },
@@ -45,6 +45,11 @@ var result = block.run({
 var starterText = result.authoringContract.blocks.filter(function (item) { return item.tag === "Text"; })[0];
 assertTrue(starterText && starterText.properties.text && starterText.properties.currency === undefined,
 	"The starter contract offered a hidden property: " + JSON.stringify(starterText));
+
+// a block gives the handlers of the events it raises (a DataTable: OnClick, OnSelectionChange), a block raising none has none
+var starterCall = result.authoringContract.blocks.filter(function (item) { return item.tag === "CallSequence"; })[0];
+assertTrue(JSON.stringify(starterText.events) === '["OnClick"]' && starterCall && starterCall.events === undefined,
+	"The starter contract lost the handlers of the events of a block: " + JSON.stringify([starterText, starterCall]));
 
 var tags = result.authoringContract.blocks.map(function (item) { return item.tag; });
 assertTrue(tags.indexOf("Text") !== -1 && tags.indexOf("CallSequence") !== -1 &&
