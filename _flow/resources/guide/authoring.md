@@ -190,6 +190,12 @@ if({
 result.rows = local.rows
 ```
 
+A slot (`$$then`, `$$else`, `$$nodes`, `$$try`, `$$catch`) takes a function
+body. The method form `$$then() { ... }` and an arrow function with a block
+body `$$then: () => { ... }` are the same slot; an arrow with an expression
+body, an async function or a function under a name the block does not declare
+as a slot is refused, and the refusal names the slots of the block.
+
 Collections are created typed, then mutated explicitly: `json.array({ path,
 itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
 `json.put({ path, key, value })`. Destinations are static `local.`/`result.`
