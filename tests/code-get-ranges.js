@@ -35,4 +35,28 @@ var browser = read("code-get",{block:"sample.probe",target:"frontend",startLine:
 assert(browser.code === "  return 17;","Browser implementation range ignored");
 var already = {ok:true,code:"bounded",revision:"rev",partial:true,startLine:3,endLine:3,totalLines:10};
 assert(read("code-get",{sourceFile:"page.flow.svelte",startLine:3,endLine:3},already).code === "bounded","Frontend source sliced twice");
+// Through the public router: the code dispatcher must hand the range to the block read.
+var engineDir = new java.io.File(arguments.length > 1 ? arguments[1] : "../lib_flow_engine/_flow").getCanonicalFile();
+var __flowEngineDir = String(engineDir.getAbsolutePath());
+var __flowProjectDir = String(project.getAbsolutePath());
+var engine = eval(String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(engineDir, "Engine.js"), "UTF-8")));
+var router = String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(project, "_flow/flows/McpServer.flow.js"), "UTF-8"));
+function codeGet(args) {
+  var execution = JSON.parse(engine.run(JSON.stringify({flowSource:router,includeTrace:false,
+    input:{request:JSON.stringify({jsonrpc:"2.0",id:2,method:"tools/call",params:{name:"code-get",arguments:args}})}})));
+  assert(execution.ok === true, "Router crashed: " + JSON.stringify(execution));
+  return execution.result.result;
+}
+var whole = codeGet({projectDir:__flowProjectDir,block:"sample.formatGreeting"}).structuredContent;
+var lines = whole.code.split("\n");
+["block","name"].forEach(function(key) {
+  var args = {projectDir:__flowProjectDir,startLine:3,endLine:5,revision:whole.revision};
+  args[key] = "sample.formatGreeting";
+  if (key === "name") args.kind = "block";
+  var bounded = codeGet(args).structuredContent;
+  assert(bounded.code === lines.slice(2, 5).join("\n") && bounded.partial === true && bounded.totalLines === lines.length,
+    "Router ignored the range of a block read by " + key + ": " + JSON.stringify(bounded).substring(0, 300));
+});
+var outside = codeGet({projectDir:__flowProjectDir,block:"sample.formatGreeting",startLine:1,endLine:lines.length + 1});
+assert(outside.isError === true && outside.structuredContent.error.code === "CODE_RANGE_INVALID", "A range outside the block must be a readable tool error");
 print("code-get ranges: " + count + " assertions passed");
