@@ -73,6 +73,7 @@ try {
 	assert(mcp.legacyRelayTools(ctx).length === 1 && seen.length === 2, "each list refreshes caller-dependent descriptors");
 
 	assert(mcp.legacyRelayTool("scheduler-apply") && mcp.legacyRelayTool("requestable-execute"), "relayed tools");
+	assert(mcp.legacyRelayTool("browser-verify"), "the visual verifier is relayed for models without vision");
 	["databaseobject-tree-apply", "batch-call", "project-delete", "mobile-builder-open", "code-set", "nocode-report-create", ""].forEach(function (name) {
 		assert(!mcp.legacyRelayTool(name), name + " is not relayed");
 	});

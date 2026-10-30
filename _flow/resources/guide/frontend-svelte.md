@@ -317,6 +317,14 @@ give `OnInput` the same `@event.value`. To submit several fields together,
 place them with a `Button type="submit"` in a `Form` and run the save from
 `Form` > `Events` > `OnSubmit`, reading the page states.
 
+A choice control keeps its choice the same way with `OnChange`; its `OnInput`
+receives the same value (except a `Combobox`, whose `OnInput` gives the typed
+query). `@event.value` is the chosen option value with its type (`Select`,
+`RadioGroup`; `""` for the placeholder), an ISO date `YYYY-MM-DD`
+(`DatePicker`), `HH:mm` (`TimePicker`), a number or `{ lower, upper }`
+(`Range`), the item value as a string (`Segment`) or one value per column
+(`WheelPicker`).
+
 ```svelte
 <Input $$id="noteInput" label="Note" value="@page.note"><Events>
   <OnInput $$id="typed"><Actions>
@@ -373,8 +381,9 @@ the running actions, `serial` queues it (at most 16), `parallel` runs both;
 Expert `debounceMs` first waits for a pause. The defaults fit the common case:
 `OnClick`, `OnSubmit` and `Interval` drop, `OnChange` and `OnAfterNavigate`
 keep the latest. A
-control (Button, Input, Select...) stays disabled while the actions it
-triggered run, so a double click never starts them twice; set
+control stays disabled while the actions of a `drop` event run (`OnClick`,
+`OnSubmit` by default), so a double click never starts them twice; a field
+whose `OnChange` or `OnInput` runs actions stays editable and keeps its focus. Set
 `<OnClick reentrancy="parallel">` only for harmless repeats such as a counter,
 never for an order or a payment. Lifecycle actions (`OnMount`, `Interval`,
 `Timeout`) still running when their page or component is destroyed are

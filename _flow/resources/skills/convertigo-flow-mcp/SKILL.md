@@ -165,7 +165,9 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   user), `log-view`, `project-list-symbols`, `project-save` (saves the frontend sources
   and tags of a project), `marketplace-*`,
   `project-security-audit`, `image-describe`, `rag-query` and read-only
-  `databaseobject-*`. Use them instead of a workaround.
+  `databaseobject-*`, and `browser-verify` (a vision model checks a page of the
+  viewer: the way to prove the rendering for a model without vision). Use
+  them instead of a workaround.
 - Flow libraries are not on the marketplace yet: the ones you can use are
   already in this workspace (`flow-catalog`, `project-list`). Do not search or
   import the marketplace for Flow capabilities.

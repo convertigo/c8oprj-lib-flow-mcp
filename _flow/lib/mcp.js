@@ -4116,6 +4116,7 @@
 	// to a Flow project are listed and called through this endpoint, so that one MCP serves both. The call goes back
 	// to the server over HTTP with the headers of the client (the two endpoints share their tokens).
 	var LEGACY_RELAY_TOOLS = {
+		"browser-verify": true,
 		"databaseobject-schema": true,
 		"databaseobject-search": true,
 		"databaseobject-tree-get": true,
