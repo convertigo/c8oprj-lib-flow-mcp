@@ -104,10 +104,13 @@ and Java sources are project resources: read one with
   line N, and is refused when M disagrees (`PATCH_INSERT_AMBIGUOUS`).
 - `content` replaces the whole text instead, with `baseHash`: simpler for many
   changes or a short file such as `_flow/engine.yaml`.
-- `fromFile` copies a file of the Convertigo workspace into the resource, byte
-  for byte, instead of sending its text: `fromFile:"notes/guide.md"` with
-  `path:"docs/guide.md"`. Its path is relative to the workspace, outside its
-  hidden and private folders; replacing an existing resource needs `baseHash`.
+- `fromFile` copies a file of the Convertigo workspace or of the folder of the
+  projects (in the Studio, the folder holding the projects and the documents a
+  user puts next to them) into the resource, byte for byte, instead of sending
+  its text: `fromFile:"notes/guide.md"` with `path:"docs/guide.md"`. Its path is
+  relative to one of them (the workspace first) or absolute, outside hidden
+  folders, the `_private` folders of projects and the private folders of the
+  workspace; replacing an existing resource needs `baseHash`.
 - The text is written as computed, line for line, and the answer gives the new
   `hash` for the next change: do not read the resource again in between. An
   engine configuration change made by another tool (`authoring-mutate` or a

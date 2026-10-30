@@ -489,7 +489,7 @@ const _meta = {
 			};
 			schema.properties.fromFile = {
 				type: "string",
-				description: "Instead of patch or content: a file of the Convertigo workspace (path relative to it) copied into the resource as it is, byte for byte, such as a document to keep under docs/. Not from hidden or private workspace folders (configuration, jwt, studio...). baseHash is required to replace an existing resource."
+				description: "Instead of patch or content: a file of the Convertigo workspace or of the folder of the projects (in the Studio, where its projects and the documents next to them are), by a path relative to one of them (the workspace first) or its absolute path, copied into the resource as it is, byte for byte, such as a document to keep under docs/. Not from hidden folders, _private folders of projects, or private workspace folders (configuration, jwt, studio...). baseHash is required to replace an existing resource."
 			};
 			schema.properties.baseHash = {
 				type: "string",
