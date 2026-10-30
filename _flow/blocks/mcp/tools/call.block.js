@@ -104,6 +104,12 @@ const _meta = {
 			var out = props.out || "local.response";
 			var response;
 			try {
+				// An expired leased MCP token was let through to read why it is refused (jwt.guardRequest): no tool runs.
+				if (request.__flowMcpTokenExpired) {
+					response = mcp.toolError(request, request.__flowMcpTokenExpired, ctx);
+					ctx.write(out, response);
+					return response;
+				}
 				var block = toolMap(ctx)[name];
 				// Relayed answers belong to the legacy MCP: do not rewrap or normalize them.
 				if (!block && mcp.legacyRelayTool(name)) {

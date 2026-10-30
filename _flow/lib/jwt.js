@@ -26,6 +26,19 @@
 	var MIN_MANAGED_SECONDS = 300;
 	var MAX_MANAGED_SECONDS = 86400;
 	var LAST_USED_WRITE_INTERVAL_MS = 300000;
+	// A managed token of the Tigo panel created with idleSeconds by lib_ConvertigoMCP is leased: its payload carries
+	// lease: "turn", its JWT exp only caps its life, and its real validity is a lease the engine keeps in the store the
+	// server shares between projects. The Agent Bridge gives this endpoint the same bearer as lib_ConvertigoMCP, so both
+	// follow one contract: context.server.get(MANAGED_LEASES_KEY) is a java.util.concurrent.ConcurrentHashMap from the
+	// token id (JWT kid, managed_<32 hex>) to a JSON string {idleMs, expiresAt, maxAt}. Every call a lease authenticates
+	// slides it to min(now + idleMs, maxAt), and an update only replaces the exact previous string
+	// (replace(key, old, new)), so an ended or revoked lease is never revived. This endpoint never creates a lease: a
+	// missing one (revoked, or the engine restarted since the token was issued) means the token expired.
+	var MANAGED_LEASES_KEY = "lib_ConvertigoMCP.managedTokenLeases";
+	var MANAGED_LEASE_ID = /^managed_[0-9a-f]{32}$/;
+	var LEASE_SLIDE_MIN_MS = 30000;
+	var MANAGED_EXPIRED_HINT = "Send a new message in the Tigo panel: it renews the authorization. The work done so far is kept.";
+	var EXPIRED_TOOL_CALL_ADVICE = "Do not call Convertigo tools again in this turn: tell the user.";
 	var ADMIN_TOOL_NAMES = {
 		"flow-token-status": true,
 		"flow-token-create": true,
@@ -569,8 +582,9 @@
 		}
 	}
 
-	function invalid(code, message) {
-		return {
+	// hint: what the user does about a refused token, only for an expired leased token today.
+	function invalid(code, message, hint) {
+		var result = {
 			status: "error",
 			authenticated: false,
 			error: {
@@ -578,6 +592,97 @@
 				message: String(message || "Flow MCP token is invalid.")
 			}
 		};
+		if (trim(hint).length) {
+			result.error.hint = String(hint);
+		}
+		return result;
+	}
+
+	// The store the server shares between projects (Context.server, also Engine.theApp.getShareServerMap()).
+	function sharedStore(ctx) {
+		try {
+			var contextObject = convertigoContext(ctx);
+			if (contextObject && contextObject.server) {
+				return contextObject.server;
+			}
+		} catch (_noContextServer) {}
+		try {
+			var app = Engine.theApp;
+			return app ? app.getShareServerMap() : null;
+		} catch (_noServerStore) {
+			return null;
+		}
+	}
+
+	// The lease of a token, with the exact string it was read from (the only value an update may replace). An
+	// unreadable lease is no lease.
+	function readLease(leases, tokenId) {
+		var text = leases.get(tokenId);
+		if (text === null || text === undefined) {
+			return null;
+		}
+		try {
+			var lease = JSON.parse(String(text));
+			return lease && isFinite(Number(lease.expiresAt)) && isFinite(Number(lease.idleMs))
+				? { text: text, lease: lease }
+				: null;
+		} catch (_unreadableLease) {
+			return null;
+		}
+	}
+
+	// Moves the end of a live lease to nowMs + its idle time (within its cap), when that moves it by
+	// LEASE_SLIDE_MIN_MS at least. An ended lease stays ended, and a lease removed or replaced meanwhile is not
+	// overwritten: the next attempt reads it again.
+	function slideLease(leases, tokenId, nowMs) {
+		for (var attempt = 0; attempt < 3; attempt++) {
+			var current = readLease(leases, tokenId);
+			if (current === null || !(nowMs < Number(current.lease.expiresAt))) {
+				return current === null ? null : current.lease;
+			}
+			var next = nowMs + Number(current.lease.idleMs);
+			if (Number(current.lease.maxAt) > 0) {
+				next = Math.min(next, Number(current.lease.maxAt));
+			}
+			if (next - Number(current.lease.expiresAt) < LEASE_SLIDE_MIN_MS) {
+				return current.lease;
+			}
+			current.lease.expiresAt = next;
+			if (leases.replace(tokenId, current.text, JSON.stringify(current.lease))) {
+				return current.lease;
+			}
+		}
+		var latest = readLease(leases, tokenId);
+		return latest === null ? null : latest.lease;
+	}
+
+	// An expired leased token, its signature checked: it may still open an MCP session (see guardRequest).
+	function managedExpired(message) {
+		var refusal = invalid("expired_token", message, MANAGED_EXPIRED_HINT);
+		refusal.error.handshake = true;
+		return refusal;
+	}
+
+	// A leased token is refused once its lease is gone (revoked, or the engine restarted) or ended (no activity for its
+	// idle time). Otherwise this call slides it.
+	function checkManagedLease(ctx, tokenId) {
+		var lease = null;
+		try {
+			var store = tokenId.length ? sharedStore(ctx) : null;
+			var leases = store ? store.get(MANAGED_LEASES_KEY) : null;
+			lease = leases === null || leases === undefined ? null : slideLease(leases, tokenId, java.lang.System.currentTimeMillis());
+		} catch (_unreadableLeases) {
+			lease = null;
+		}
+		if (lease === null) {
+			return managedExpired("MCP token expired: this engine holds no lease for it any more (revoked, or the engine "
+				+ "restarted since it was issued).");
+		}
+		if (!(java.lang.System.currentTimeMillis() < Number(lease.expiresAt))) {
+			return managedExpired("MCP token expired: its conversation used it last at " + isoDate(Number(lease.expiresAt) - Number(lease.idleMs))
+				+ " and a token stays valid " + Math.round(Number(lease.idleMs) / 60000) + " min without a turn using it.");
+		}
+		return null;
 	}
 
 	function updateLastUsed(file, record, nowMs) {
@@ -634,7 +739,8 @@
 		return file === null ? { retry: true, missing: true } : { file: file, record: parseJsonFile(file) };
 	}
 
-	function validate(token) {
+	// ctx: the Flow or Convertigo context, for the lease of a leased managed token (see MANAGED_LEASES_KEY).
+	function validate(token, ctx) {
 		var raw = trim(token);
 		if (!raw.length) {
 			return invalid("missing_token", "A Flow MCP bearer token is required.");
@@ -657,11 +763,14 @@
 		if (String(payload.iss || "") !== ISSUER || String(payload.aud || "") !== AUDIENCE) {
 			return invalid("invalid_token_claims", "The Flow MCP bearer token issuer or audience is invalid.");
 		}
+		// A leased token has its signature checked before its dates, as in lib_ConvertigoMCP: an expired one is a token
+		// this engine issued, which may still open a session to read why it is refused. The others keep their order.
+		var leased = trim(payload.kind) === "managed" && trim(payload.lease) === "turn";
 		var nowSeconds = Math.floor(java.lang.System.currentTimeMillis() / 1000);
-		if (payload.exp !== null && payload.exp !== undefined && nowSeconds >= Number(payload.exp)) {
+		if (!leased && payload.exp !== null && payload.exp !== undefined && nowSeconds >= Number(payload.exp)) {
 			return invalid("expired_token", "The Flow MCP bearer token has expired.");
 		}
-		if (payload.nbf !== null && payload.nbf !== undefined && nowSeconds < Number(payload.nbf)) {
+		if (!leased && payload.nbf !== null && payload.nbf !== undefined && nowSeconds < Number(payload.nbf)) {
 			return invalid("token_not_yet_valid", "The Flow MCP bearer token is not valid yet.");
 		}
 		var signingInput = parts[0] + "." + parts[1];
@@ -672,9 +781,18 @@
 		if (!signaturesEqual(parts[2], expected)) {
 			return invalid("invalid_token_signature", "The Flow MCP bearer token signature is invalid.");
 		}
+		if (leased) {
+			nowSeconds = Math.floor(java.lang.System.currentTimeMillis() / 1000);
+			if (payload.exp !== null && payload.exp !== undefined && nowSeconds >= Number(payload.exp)) {
+				return managedExpired("MCP token expired: it reached its expiry date (" + isoDate(Number(payload.exp) * 1000) + ").");
+			}
+			if (payload.nbf !== null && payload.nbf !== undefined && nowSeconds < Number(payload.nbf)) {
+				return invalid("token_not_yet_valid", "The Flow MCP bearer token is not valid yet.");
+			}
+		}
 		var kind = trim(payload.kind) || "durable";
 		if (kind === "managed") {
-			return {
+			var managed = {
 				status: "ok",
 				authenticated: true,
 				kind: "managed",
@@ -682,6 +800,16 @@
 				user: trim(payload.sub),
 				payload: payload
 			};
+			if (leased) {
+				// Only a managed_ id can hold a lease: any other kid finds none.
+				var leaseId = MANAGED_LEASE_ID.test(trim(header.kid)) ? trim(header.kid) : "";
+				var leaseRefusal = checkManagedLease(ctx, leaseId);
+				if (leaseRefusal !== null) {
+					return leaseRefusal;
+				}
+				managed.tokenId = leaseId;
+			}
+			return managed;
 		}
 		if (kind !== "durable") {
 			return invalid("invalid_token_kind", "The Flow MCP bearer token kind is invalid.");
@@ -753,7 +881,7 @@
 		if (isAdminToolRequest(request) && isWebAdmin(ctx)) {
 			return { status: "ok", authenticated: true, kind: "web-admin", scope: "mcp:tokens", user: currentAdminUser(ctx) };
 		}
-		return validate(bearerToken(ctx));
+		return validate(bearerToken(ctx), ctx);
 	}
 
 	function applyUnauthorizedResponse(ctx, retryable) {
@@ -782,14 +910,38 @@
 		} catch (_noRequest) {}
 	}
 
+	// Set by guardRequest only, on the tools/call of an expired leased token: mcp.tools.call answers it as the tool error.
+	var TOKEN_EXPIRED_MARKER = "__flowMcpTokenExpired";
+
 	function guardRequest(ctx, request) {
+		var single = request !== null && typeof request === "object" && !Array.isArray(request);
+		if (single) {
+			delete request[TOKEN_EXPIRED_MARKER];
+		}
 		var authentication = authenticateRequest(ctx, request);
 		if (authentication && authentication.authenticated === true) {
 			markPrincipal(ctx, authentication);
 			return request;
 		}
-		applyUnauthorizedResponse(ctx, authentication && authentication.retryable === true);
 		var error = authentication && authentication.error ? authentication.error : {};
+		// An expired leased token (its signature checked) still opens a session, as in lib_ConvertigoMCP: Vibe opens one
+		// for each tool call (initialize, notifications/initialized, tools/call) and drops the server on a 401. Nothing
+		// runs under it, no principal is marked, and its tools/call is answered as the tool error with what to do.
+		if (error.handshake === true && single) {
+			var method = typeof request.method === "string" ? request.method : "";
+			if (method === "initialize" || method === "ping" || /^notifications\//.test(method)) {
+				return request;
+			}
+			if (method === "tools/call" && (typeof request.id === "string" || typeof request.id === "number")) {
+				request[TOKEN_EXPIRED_MARKER] = {
+					code: String(error.code || "expired_token"),
+					message: String(error.message || "MCP token expired.") + (error.hint ? " " + error.hint : "") + " " + EXPIRED_TOOL_CALL_ADVICE,
+					hint: String(error.hint || "")
+				};
+				return request;
+			}
+		}
+		applyUnauthorizedResponse(ctx, authentication && authentication.retryable === true);
 		return {
 			jsonrpc: "2.0",
 			id: request && request.id !== undefined ? request.id : null,
