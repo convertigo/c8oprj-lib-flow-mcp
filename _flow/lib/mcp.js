@@ -2960,7 +2960,9 @@
 			read: function (file) {
 				return flowEngine != null ? String(flowEngine.getSource(absolute(file))) : readUtf8(file);
 			},
-			// sources: { absolutePath: text }. Validated as a whole by the FlowEngine.
+			// sources: { absolutePath: text }. Validated as a whole by the FlowEngine. Every caller notifies the written
+			// sources (FlowEngineBridge.notifySourceMutation), which invalidates the data caches of their project and of
+			// the projects using it: those of every other project, their authoring answers and source snapshots, stay.
 			write: function (sources) {
 				var paths = Object.keys(sources || {});
 				if (flowEngine == null) {
@@ -2974,7 +2976,6 @@
 					map.put(path, String(sources[path]));
 				});
 				flowEngine.setSources(map);
-				Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.invalidateDataCaches();
 				Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(flowEngine);
 				return { paths: paths, draft: true };
 			}
