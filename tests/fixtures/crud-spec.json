@@ -1,0 +1,143 @@
+{
+  "specVersion": 1,
+  "schemaVersion": 2,
+  "database": {
+    "dialect": "hsqldb",
+    "connection": "crud",
+    "url": "jdbc:hsqldb:file:.//_flow/resources/sql/crud/database/catalog;shutdown=false",
+    "driverClass": "org.hsqldb.jdbc.JDBCDriver",
+    "user": "SA",
+    "password": ""
+  },
+  "facade": {
+    "prefix": "crud"
+  },
+  "security": {
+    "principals": {
+      "editor": "editor",
+      "reader": "reader"
+    },
+    "demoLogin": true
+  },
+  "entities": [
+    {
+      "name": "companies",
+      "label": "Entreprises",
+      "key": [
+        "id"
+      ],
+      "revision": "revision",
+      "fields": [
+        {
+          "name": "id",
+          "type": "int64",
+          "identity": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "length": 120
+        }
+      ],
+      "ui": {
+        "labelField": "name",
+        "listFields": [
+          "name"
+        ],
+        "formFields": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "employees",
+      "label": "Employés",
+      "key": [
+        "id"
+      ],
+      "revision": "revision",
+      "fields": [
+        {
+          "name": "id",
+          "type": "int64",
+          "identity": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "length": 120
+        },
+        {
+          "name": "companyId",
+          "type": "int64"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "length": 24,
+          "default": "active"
+        }
+      ],
+      "ui": {
+        "labelField": "name",
+        "listFields": [
+          "name",
+          "companyId",
+          "status"
+        ],
+        "formFields": [
+          "name",
+          "companyId",
+          "status"
+        ]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "name": "employeeCompany",
+      "from": {
+        "entity": "employees",
+        "field": "companyId"
+      },
+      "to": {
+        "entity": "companies",
+        "field": "id"
+      },
+      "kind": "many-to-one",
+      "labelField": "name"
+    }
+  ],
+  "seed": {
+    "demo": true,
+    "reset": false,
+    "data": {
+      "companies": [
+        {
+          "id": "1",
+          "name": "Analytical Engines",
+          "revision": "1"
+        },
+        {
+          "id": "2",
+          "name": "Compilers Inc",
+          "revision": "1"
+        }
+      ],
+      "employees": [
+        {
+          "id": "1",
+          "name": "Ada Lovelace",
+          "companyId": "1",
+          "revision": "1"
+        },
+        {
+          "id": "2",
+          "name": "Grace Hopper",
+          "companyId": "2",
+          "revision": "1"
+        }
+      ]
+    }
+  }
+}

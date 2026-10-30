@@ -1,7 +1,7 @@
 /* MCP authoring compiler. No SQL runtime: generated Flows call the SQL/data libraries. */
 (function () {
   function fail(message) { throw new Error('FLOW_CRUD_SPEC_INVALID: ' + message); }
-  function id(value) { if (!/^[A-Za-z_][A-Za-z0-9_]{0,47}$/.test(String(value))) fail('Invalid identifier: ' + value); return String(value); }
+  function id(value) { if (['__proto__','constructor','prototype'].indexOf(String(value))>=0 || !/^[A-Za-z_][A-Za-z0-9_]{0,47}$/.test(String(value))) fail('Invalid identifier: ' + value); return String(value); }
   function json(value) { return JSON.stringify(value, null, 2); }
   function own(o,k) { return Object.prototype.hasOwnProperty.call(o,k); }
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
@@ -9,13 +9,14 @@
   function xml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
   function compile(raw, project) {
     var s=copy(raw), entities={}, relations=s.relations || [], files={}, flows={}, tables=[], seed=[], sources={}, queries={}, writes={};
-    id(project);
+    id(project);if(['__proto__','constructor','prototype'].indexOf(project)>=0)fail('Reserved project name');
     if(s.specVersion!==1 || !Number.isInteger(s.schemaVersion) || s.schemaVersion<1) fail('specVersion:1 and positive schemaVersion required');
     if(!Array.isArray(s.entities) || !s.entities.length || s.entities.length>32) fail('1..32 entities required');
+    if(s.seed && s.seed.reset===true && s.seed.demo!==true)fail('Reset needs explicit demo:true');
     var prefix=id(s.facade && s.facade.prefix || 'crud'), db=s.database || {}, connection=id(db.connection || 'crud');
     if(['hsqldb','postgresql'].indexOf(db.dialect)<0) fail('Only Querydsl-qualified HSQLDB/PostgreSQL');
     if(db.dialect==='hsqldb' && /;shutdown=true/i.test(db.url || '')) fail('Use shutdown=false for concurrent requests');
-    if(db.password) fail('Use server secret symbols; literal passwords are not accepted');
+    if(db.password && !/^\$\{[A-Za-z0-9_.-]+\.secret=?\}$/.test(db.password)) fail('Use server secret symbols; literal passwords are not accepted');
     if(!s.security || !s.security.principals || Object.keys(s.security.principals).length===0) fail('Explicit server principal/role mapping required');
     Object.keys(s.security.principals).forEach(function(p){if(['editor','reader'].indexOf(s.security.principals[p])<0) fail('Role must be editor or reader');});
     s.entities.forEach(function(e){
@@ -37,6 +38,7 @@
       var from=entities[r.from.entity],to=entities[r.to.entity];if(!from||!to)fail('Unknown relation entity');
       var ff=from.fields.filter(function(f){return f.name===r.from.field;})[0],tf=to.fields.filter(function(f){return f.name===r.to.field;})[0];
       if(!ff||!tf||ff.type!==tf.type||r.to.field!==to.key[0])fail('Relation must target compatible primary key');
+      if(r.labelField && r.labelField!==to.ui.labelField)fail('Prototype relation labels use the target entity ui.labelField');
     });
     var visited={},active={};function visit(e){if(active[e.name])fail('Cyclic relations unsupported');if(visited[e.name])return;active[e.name]=true;relations.filter(function(r){return r.from.entity===e.name;}).forEach(function(r){visit(entities[r.to.entity]);});delete active[e.name];visited[e.name]=true;tables.push(e);}
     s.entities.forEach(visit);
@@ -60,6 +62,13 @@
         writes[e.name+'_delete']={connection:connection,operation:'delete',sql:'DELETE FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id AND '+quote(e.revision)+'=:revision',parameters:[{name:'id',type:'int64'},{name:'revision',type:'int64'}],minAffectedRows:1,maxAffectedRows:1};
       }
     });
+    // Validate declarations at authoring time, before any generated file is written.
+    Object.keys(queries).concat(Object.keys(writes)).forEach(function(name){
+      var declaration=queries[name] || writes[name],used={},declared={},match,rx=/:([A-Za-z_][A-Za-z0-9_]*)/g;
+      while((match=rx.exec(declaration.sql)))used[match[1]]=true;
+      declaration.parameters.forEach(function(p){if(own(declared,p.name)||!own(used,p.name))fail('Unused/duplicate named parameter '+name+'.'+p.name);declared[p.name]=true;});
+      Object.keys(used).forEach(function(p){if(!own(declared,p))fail('Undeclared named parameter '+name+'.'+p);});
+    });
     var config={sql:{connections:{},initializers:{},queries:queries,writes:writes},data:{providers:{sql:{implementation:'sql.table'}},sources:sources},crud:{principals:s.security.principals,demoLogin:s.security.demoLogin===true}};
     config.sql.connections[connection]={url:db.url,dialect:db.dialect,driverClass:db.driverClass,user:db.user || '',password:db.password || '',nativeRead:true,nativeWrite:true};
     config.sql.initializers[prefix]={connection:connection,schemaFile:'_flow/resources/sql/crud/schema.json',dataFile:'_flow/resources/sql/crud/data.json',demo:!!(s.seed && s.seed.demo)};
@@ -78,12 +87,12 @@
     flow(prefix+'_demo_login',{user:{type:'string'}},'  if (!config.crud.demoLogin) {\n    throw({code:"FORBIDDEN",message:"Demo login disabled",status:403})\n  }\n  local.role = object.get({source:config.crud.principals,key:input.user})\n  if (local.role !== "editor" && local.role !== "reader") {\n    throw({code:"FORBIDDEN",message:"Unknown demo account",status:403})\n  }\n  local.user = session.authenticate({user:input.user})\n  return {authenticated:true}',true);
     // Login must be HTTP-reachable only in an explicitly enabled demo. Its guard always remains server-side.
     flows[prefix+'_demo_login']=flows[prefix+'_demo_login'].replace('"accessibility": "private"','"accessibility": "hidden"');
-    function page(route,pid,title,structure,events,state){var root='_flow/frontbuilder/svelte/model/'+project+'/src/routes/'+route;
+    function page(route,pid,title,structure,events,state){var statuses=[],match,seenStatus={},rx=/<CallSequence \$\$id="([^"]+)"/g;while((match=rx.exec(structure+(events||'')))){if(!seenStatus[match[1]])statuses.push('<Status $$id="status_'+match[1]+'" actionId="'+match[1]+'" text="" showSuccess={false} />');seenStatus[match[1]]=true;}structure+=statuses.join('');var root='_flow/frontbuilder/svelte/model/'+project+'/src/routes/'+route;
       files[root+'+page.flow.svelte']='<script module>\nexport const _flow = '+json({sourceVersion:2,page:{id:pid,title:title}})+';\n</script>\n<FlowComponent $$id="'+pid+'" label="'+xml(title)+'">\n'+(state?'<Variables>'+state+'</Variables>':'')+'\n<Structure><PageShell $$id="shell" padding="24px" gap="16px"><Children><Text $$id="title" text="'+xml(title)+'" />'+structure+'</Children></PageShell></Structure>\n'+(events?'<Events><OnMount $$id="load"><Actions>'+events+'</Actions></OnMount></Events>':'')+'\n</FlowComponent>\n';}
     function call(n,vars){return '<CallSequence $$id="call_'+n+'" requestable=".'+n+'"><Variables>'+(vars||'')+'</Variables></CallSequence>';}
     function variable(n,value){return '<Variable name="'+n+'" value="'+xml(value)+'" />';}
     function link(pid,label){return '<LinkButton $$id="link_'+pid+'" label="'+xml(label)+'" page="'+pid+'" />';}
-    page('crud/', 'crud_home','CRUD Flow',ordered.map(function(e){return link(e.name+'_list',e.label || e.name);}).join('')+'<Button $$id="login" label="Connexion démo"><Events><OnClick $$id="loginClick"><Actions>'+call(prefix+'_demo_login',variable('user','editor'))+'</Actions></OnClick></Events></Button>','');
+    page('crud/', 'crud_home','CRUD Flow',ordered.map(function(e){return link(e.name+'_list',e.label || e.name);}).join('')+'<Button $$id="login" label="Connexion démo"><Events><OnClick $$id="loginClick"><Actions>'+call(prefix+'_demo_login',variable('user','editor'))+'<Navigate $$id="signedIn" page="'+ordered[0].name+'_list" /></Actions></OnClick></Events></Button>','');
     ordered.forEach(function(e){var n=prefix+'_'+e.name,k=e.key[0],detail=e.name+'_detail',form=e.name+'_form',list=e.name+'_list';
       var rows='<ForEach $$id="rows" source="@.'+n+'_list.page.rows" context="row"><Children>'+e.ui.listFields.map(function(f){return '<Text $$id="field_'+f+'" text="@row.values.'+f+'" />';}).join('')+'<Button $$id="open" label="Détail"><Events><OnClick $$id="openClick"><Actions><Navigate $$id="goDetail" page="'+detail+'"><Query>'+variable('id','@row.key.'+k)+'</Query></Navigate></Actions></OnClick></Events></Button></Children></ForEach>';
       page(e.name+'/',list,e.label || e.name,link('crud_home','Accueil')+link(form,'Nouveau')+rows,call(n+'_list'));
@@ -91,11 +100,11 @@
       if(!e.readOnly)detailBody+='<Button $$id="edit" label="Modifier"><Events><OnClick $$id="editClick"><Actions><Navigate $$id="goEdit" page="'+form+'"><Query>'+variable('id','@route.query.id')+'</Query></Navigate></Actions></OnClick></Events></Button><Button $$id="delete" label="Supprimer"><Events><OnClick $$id="deleteClick"><Actions>'+call(n+'_delete',variable('id','@route.query.id')+variable('revision','@.'+n+'_read.row.values.'+e.revision))+'<Navigate $$id="deleted" page="'+list+'" /></Actions></OnClick></Events></Button>';
       page(e.name+'/detail/',detail,e.name+' · détail',detailBody,call(n+'_read',variable('id','@route.query.id')));
       var defaults={};e.ui.formFields.forEach(function(f){var field=e.fields.filter(function(x){return x.name===f;})[0];defaults[f]=own(field,'default')?field.default:'';});
-      var controls=e.ui.formFields.map(function(f){var field=e.fields.filter(function(x){return x.name===f;})[0],rel=relations.filter(function(r){return r.from.entity===e.name&&r.from.field===f;})[0],tag=rel?'Select':'Input';return '<'+tag+' $$id="input_'+f+'" name="'+f+'" label="'+xml(field.label || f)+'" value="@page.form.'+f+'" required={'+(!field.nullable)+'}'+(rel?' options="@.'+prefix+'_'+rel.to.entity+'_options.rows"':'')+'><Events><OnChange $$id="change_'+f+'"><Actions><SetValue $$id="keep_'+f+'" target="page.form.'+f+'" value="@event.value" /></Actions></OnChange></Events></'+tag+'>';}).join('');
-      var load=relations.filter(function(r){return r.from.entity===e.name;}).map(function(r){return call(prefix+'_'+r.to.entity+'_options');}).join('')+'<If $$id="editing" condition={!!route.query.id}><Then>'+call(n+'_read',variable('id','@route.query.id'))+'<SetValue $$id="loadForm" target="page.form" value="@.'+n+'_read.row.values" /><SetValue $$id="loadRevision" target="page.revision" value="@.'+n+'_read.row.values.'+e.revision+'" /></Then></If>';
+      var controls=e.ui.formFields.map(function(f){var field=e.fields.filter(function(x){return x.name===f;})[0],rel=relations.filter(function(r){return r.from.entity===e.name&&r.from.field===f;})[0],tag=rel?'Select':'Input';return '<'+tag+' $$id="input_'+f+'" name="'+f+'" label="'+xml(field.label || f)+'" value="@page.form.'+f+'" required={'+(!field.nullable)+'}'+(rel?' options="@.'+prefix+'_'+rel.to.entity+'_options.rows"':'')+'><Events><OnChange $$id="change_'+f+'"><Actions><JsonPut $$id="keep_'+f+'" path="page.form" key="'+f+'" value="@event.value" /></Actions></OnChange></Events></'+tag+'>';}).join('');
+      var load=relations.filter(function(r){return r.from.entity===e.name;}).map(function(r){return call(prefix+'_'+r.to.entity+'_options');}).join('')+'<If $$id="editing" test="@route.query.id"><Then>'+call(n+'_read',variable('id','@route.query.id'))+'<SetValue $$id="loadForm" target="page.form" value="@.'+n+'_read.row.values" /><SetValue $$id="loadRevision" target="page.revision" value="@.'+n+'_read.row.values.'+e.revision+'" /></Then></If>';
       // Only writable values enter the patch: projected identity/revision remain outside form state.
-      load=load.replace('<SetValue $$id="loadForm" target="page.form" value="@.'+n+'_read.row.values" />',function(){return e.ui.formFields.map(function(f){return '<SetValue $$id="load_'+f+'" target="page.form.'+f+'" value="@.'+n+'_read.row.values.'+f+'" />';}).join('');});
-      page(e.name+'/form/',form,e.name+' · formulaire',link(list,'Liste')+'<Form $$id="editorForm"><Children>'+controls+'<Button $$id="save" label="Enregistrer" type="submit" /></Children><Events><OnSubmit $$id="submit"><Actions>'+call(n+'_save',variable('id','@route.query.id')+variable('revision','@page.revision')+variable('patch','@page.form'))+'<Navigate $$id="saved" page="'+list+'" /></Actions></OnSubmit></Events></Form>',load,'<State $$id="form" type="object" value={'+JSON.stringify(defaults)+'} /><State $$id="revision" type="string" value="" />');
+      load=load.replace('<SetValue $$id="loadForm" target="page.form" value="@.'+n+'_read.row.values" />',function(){return e.ui.formFields.map(function(f){return '<JsonPut $$id="load_'+f+'" path="page.form" key="'+f+'" value="@.'+n+'_read.row.values.'+f+'" />';}).join('');});
+      page(e.name+'/form/',form,e.name+' · formulaire',link(list,'Liste')+'<Form $$id="editorForm"><Children>'+controls+'<Button $$id="save" label="Enregistrer" type="submit" /></Children><Events><OnSubmit $$id="submit"><Actions><JsonStringify $$id="serializedPatch" value="@page.form" />'+call(n+'_save',variable('id','@route.query.id')+variable('revision','@page.revision')+variable('patch','@serializedPatch'))+'<Navigate $$id="saved" page="'+list+'" /></Actions></OnSubmit></Events></Form>',load,'<State $$id="form" type="object" value={'+JSON.stringify(defaults)+'} /><State $$id="revision" type="string" value="" />');
     });
     files['_flow/resources/sql/crud/schema.json']=json({version:s.schemaVersion,tables:tables})+'\n';
     files['_flow/resources/sql/crud/data.json']=json({tables:seed})+'\n';
@@ -112,6 +121,7 @@
     if(!args.project || String(args.project).indexOf('lib_')===0)fail('Explicit application project required');
     var compiled=compile(args.spec,args.project),fs=disk(args.projectDir),manifestPath='_flow/resources/sql/crud/manifest.json',prior=JSON.parse(fs.read(manifestPath)||'{"files":{}}'),all=copy(compiled.files),changed=[];
     Object.keys(compiled.flows).forEach(function(n){all['_flow/flows/'+n+'.flow.js']=compiled.flows[n];});
+    if(!/(^|\n)\/_flow\/(\r?\n|$)/.test(fs.read('.httpignore')||''))fail('Protect /_flow/ with .httpignore before generation');
     Object.keys(all).forEach(function(p){var live=fs.read(p);if(live!==null && live!==all[p] && (!own(prior.files,p)||prior.files[p]!==live))throw new Error('FLOW_CRUD_GENERATED_CONFLICT: '+p);if(live!==all[p])changed.push(p);});
     Object.keys(prior.files).forEach(function(p){if(!own(all,p))throw new Error('FLOW_CRUD_REMOVAL_UNSUPPORTED: '+p);});
     if(args.dryRun===true)return {ok:true,dryRun:true,changed:changed,entities:compiled.entities,schemaVersion:compiled.schemaVersion};

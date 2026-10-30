@@ -19,11 +19,13 @@ const _meta = {
     },
     "project": {
       "kind": "text",
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "spec": {
       "kind": "literal",
-      "type": "object"
+      "type": "object",
+      "required": true
     },
     "dryRun": {
       "kind": "literal",

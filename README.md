@@ -442,3 +442,9 @@ once, so an agent reads the start guide before creating its project. With a
 project, a project resource of that uri keeps precedence, and the MCP resource
 answers when the project has none or does not answer (a project not created
 yet). A project resource (`path`, or another uri) still requires `project`.
+
+The local CRUD authoring tool accepts legacy-shaped entity models with `flow-crud-upsert`.
+The model is stored in `_flow/data/model.yaml`; preview returns the required `planHash`
+for application. Generated Flows and resources belong to that model.
+`flow-crud-proof` verifies the applied model, generated artifacts and read-only SQL plan.
+See `_flow/resources/data/model.schema.json` and `tests/fixtures/legacy-crud`.

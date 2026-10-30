@@ -7,7 +7,7 @@ const _meta = {
     "mcp",
     "crud-fastpath"
   ],
-  "description": "Flow CRUD proof: declarative schema, generated facades and Flow Svelte pages.",
+  "description": "Checks generated CRUD artifacts and executes private schema/count proof; independent HTTP sessions and browser tests prove end-user rights and UI.",
   "properties": {
     "request": {
       "kind": "expression",
@@ -19,15 +19,8 @@ const _meta = {
     },
     "project": {
       "kind": "text",
-      "type": "string"
-    },
-    "spec": {
-      "kind": "literal",
-      "type": "object"
-    },
-    "dryRun": {
-      "kind": "literal",
-      "type": "boolean"
+      "type": "string",
+      "required": true
     }
   },
   "outputs": {
