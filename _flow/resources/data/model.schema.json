@@ -183,6 +183,14 @@
                     ]
                   },
                   "description": "Optional common-format extension: scalar allowed values, validated by generated server writes. UI labels remain in ui.fieldOptions."
+                },
+                "auto": {
+                  "type": "string",
+                  "enum": [
+                    "create",
+                    "update"
+                  ],
+                  "description": "Optional local TIMESTAMP server policy: create fills at creation only; update fills at creation and every update. Caller values are refused."
                 }
               }
             }

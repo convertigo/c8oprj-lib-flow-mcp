@@ -12,7 +12,7 @@ for(const file of fs.readdirSync(root).filter(n=>/^spec_.*\.json$/.test(n))){
  check(Object.keys(c.files).some(p=>p.endsWith('.flow.svelte')) && c.frontend.pages.length>0 && c.frontend.providerVersion==='0.2.6',file+' shared component generation');
  check(c.normalized.entities.every(e=>!e.revision),file+' no invented revision');
  check(c.normalized.entities.every(e=>c.config.data.sources[e.name+'_write']?.versionColumn===undefined),file+' explicit unversioned mutations');
- check(c.config.sql.connections[Object.keys(c.config.sql.connections)[0]].url.endsWith(';shutdown=false'),file+' concurrent HSQLDB connection policy');
+ check(c.normalized.database.dialect!=='hsqldb'||c.config.sql.connections[Object.keys(c.config.sql.connections)[0]].url.endsWith(';shutdown=false'),file+' concurrent HSQLDB connection policy');
  check(c.normalized.entities.every(e=>c.normalized.seed.data[e.name].every(r=>r[e.key[0]]!==null)),file+' deterministic seed replay identities');
  check(!Object.keys(c.files).includes('_flow/engine.yaml'),file+' engine is not the model store');
 }
@@ -24,7 +24,8 @@ check(c.config.data.sources.employees_write.versionColumn==='revision','revision
 check(c.flows.hr_employees_save.includes('local.role !== "manager"') && c.flows.hr_employees_save.includes('if (true)'),'entity and operation permissions in generated server Flow');
 check(Object.values(c.files).some(t=>t.includes('<Select $$id="input_company_id"')),'relation select planned with real backend options');
 const timestamp=structuredClone(raw);timestamp.entities[1].fields.push({name:'CreatedAt',type:'TIMESTAMP'});
-const ts=model.normalize(timestamp,raw.project,legacy);check(ts.internal.entities[1].fields.some(f=>f.type==='timestamp')&&ts.diagnostics.some(d=>d.code==='SQL_PORTABLE_TIMESTAMP_REQUIRED'),'timestamp retains semantics and blocks lossy apply');
+const ts=model.normalize(timestamp,raw.project,legacy);check(ts.internal.entities[1].fields.some(f=>f.type==='timestamp')&&!ts.diagnostics.some(d=>d.severity==='error'),'local millisecond timestamp is supported');
+const zoned=structuredClone(raw);zoned.entities[1].fields.push({name:'ZonedAt',type:'TIMESTAMP WITH TIME ZONE'});check(model.normalize(zoned,raw.project,legacy).diagnostics.some(d=>d.code==='SQL_TIMESTAMP_WITH_TIME_ZONE_UNSUPPORTED'),'zoned timestamp is explicitly refused');
 const index=structuredClone(raw);index.entities[1].indexes=[{name:'employees_company_idx',columns:['company_id']}];check(model.normalize(index,raw.project,legacy).diagnostics.some(d=>d.code==='SQL_PORTABLE_INDEX_NOT_IMPLEMENTED'),'unsupported indexes never silently ignored');
 const row=structuredClone(raw);row.entities[1].rowPolicy={field:'company_id',sessionClaim:'company'};check(model.normalize(row,raw.project,legacy).diagnostics.some(d=>d.code==='FLOW_CRUD_ROW_POLICY_NOT_IMPLEMENTED'),'unsupported row access fails closed');
 const observed=structuredClone(raw);observed.database.schemaPolicy='observe';const o=compiler.compile(observed,raw.project,{model,legacy,ui});check(o.flows.hr_initialize.includes('verifyOnly:true')&&JSON.parse(o.files['_flow/resources/sql/crud/data.json']).tables.every(t=>t.rows.length===0),'observe disables schema and seed mutation without disabling application data writes');

@@ -18,8 +18,9 @@
     if(!Array.isArray(s.entities) || !s.entities.length || s.entities.length>32) fail('1..32 entities required');
     if(s.seed && s.seed.reset===true && s.seed.demo!==true)fail('Reset needs explicit demo:true');
     var prefix=id(s.facade && s.facade.prefix || 'crud'), db=s.database || {}, connection=id(db.connection || 'crud');
-    if(['hsqldb','postgresql'].indexOf(db.dialect)<0) fail('Only Querydsl-qualified HSQLDB/PostgreSQL');
+    if(['hsqldb','postgresql','mariadb'].indexOf(db.dialect)<0) fail('Only Querydsl-qualified HSQLDB/PostgreSQL/MariaDB');
     if(db.dialect==='hsqldb' && /;shutdown=true/i.test(db.url || '')) fail('Use shutdown=false for concurrent requests');
+    function quote(n){return db.dialect==='mariadb'?'`'+id(n)+'`':'\"'+id(n)+'\"';}
     if(db.schema)id(db.schema);
     if(db.password && !/^\$\{[A-Za-z0-9_.-]+\.secret=?\}$/.test(db.password)) fail('Use server secret symbols; literal passwords are not accepted');
     s.security=s.security||{};s.security.principals=s.security.principals||{};
@@ -30,7 +31,7 @@
       Object.keys(e.permissions||{}).forEach(function(operation){if(['list','read','count','create','update','save','delete'].indexOf(operation)<0)fail('Unknown permission operation '+operation);});
       if(!Array.isArray(e.fields) || e.fields.length>120) fail('Bounded fields required');
       var seen={}; e.fields.forEach(function(f){id(f.name);if(own(seen,f.name))fail('Duplicate field');seen[f.name]=true;
-        if(['string','int64','decimal','boolean','date'].indexOf(f.type)<0)fail('Unsupported type');
+        if(['string','int64','decimal','boolean','date','timestamp'].indexOf(f.type)<0)fail('Unsupported type');
         if(f.type==='string' && (!Number.isInteger(f.length) || f.length<1 || f.length>65536))fail('Bounded string length required');
         if(own(f,'default') && f.default!==null){if((f.type==='int64'||f.type==='decimal') && typeof f.default!=='string')fail('Exact numeric defaults are strings');if(f.type==='boolean' && typeof f.default!=='boolean')fail('Boolean default required');}
       });
@@ -52,21 +53,21 @@
     s.entities.forEach(visit);
     var ordered=tables;tables=[];
     ordered.forEach(function(e){
-      var columns=e.fields.map(function(f){var c={name:f.column||f.name,type:f.type};['nullable','identity','length','precision','scale','default'].forEach(function(k){if(own(f,k))c[k]=f[k];});return c;});
+      var columns=e.fields.map(function(f){var c={name:f.column||f.name,type:f.type};['nullable','identity','length','precision','scale','default','auto'].forEach(function(k){if(own(f,k))c[k]=f[k];});return c;});
       var table={name:e.name,columns:columns,primaryKey:e.key};
       table.unique=e.fields.filter(function(f){return f.unique;}).map(function(f){return {name:id(e.name+'_'+f.name+'_uq'),columns:[f.name]};});
       table.foreignKeys=relations.filter(function(r){return r.from.entity===e.name;}).map(function(r){return {name:r.name,columns:[r.from.field],references:{table:r.to.entity,columns:[r.to.field]}};});tables.push(table);
       seed.push({table:e.name,key:e.key,rows:(s.seed && s.seed.data && s.seed.data[e.name]) || []});
-      var source={provider:'sql',connection:connection,schema:db.schema,table:e.name,readOnly:true,includeTotal:true,requireProjection:true,fields:e.fields.map(function(f){return {name:f.name,column:f.column||f.name,label:f.label || f.name};})};
+      var source={provider:'sql',connection:connection,schema:db.schema,table:e.name,readOnly:true,includeTotal:true,requireProjection:true,fields:e.fields.map(function(f){var out={name:f.name,column:f.column||f.name,label:f.label || f.name};if(f.auto)out.auto=f.auto;return out;})};
       sources[e.name+'_read']=source;
       if(!e.readOnly){var writable=copy(source);writable.readOnly=false;if(e.revision)writable.versionColumn=e.revision;writable.writableFields=e.fields.filter(function(f){return !f.identity && f.name!==e.revision && !f.readOnly;}).map(function(f){return f.name;});sources[e.name+'_write']=writable;}
       var qtable=quote(db.schema || (db.dialect==='postgresql'?'public':'PUBLIC'))+'.'+quote(e.name), cols=e.fields.map(function(f){return quote(f.column||f.name);}).join(', ');
       queries[e.name+'_count']={connection:connection,readOnly:true,expose:false,sql:'SELECT COUNT(*) AS "total" FROM '+qtable,parameters:[],columns:[{name:'total',type:'int64',nullable:false}]};
       queries[e.name+'_read']={connection:connection,readOnly:true,expose:false,sql:'SELECT '+cols+' FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id',parameters:[{name:'id',type:'int64'}],columns:e.fields.map(function(f){return {name:f.name,type:f.type,nullable:f.nullable===true};})};
       queries[e.name+'_options']={connection:connection,readOnly:true,expose:false,maxRows:200,sql:'SELECT '+quote(e.key[0])+' AS "value", '+quote(e.ui.labelField)+' AS "label" FROM '+qtable+' ORDER BY '+quote(e.key[0]),parameters:[],columns:[{name:'value',type:'int64',nullable:false},{name:'label',type:e.fields.filter(function(f){return f.name===e.ui.labelField;})[0].type,nullable:false}]};
-      if(!e.readOnly){var fields=e.fields.filter(function(f){return !f.identity && f.name!==e.revision && !f.readOnly;}),params=fields.map(function(f){var p={name:f.name,type:f.type,nullable:f.nullable===true};if(own(f,'default'))p.default=f.default;return p;});
+      if(!e.readOnly){var fields=e.fields.filter(function(f){return !f.identity && f.name!==e.revision && (!f.readOnly||f.auto);}),updateFields=fields.filter(function(f){return f.auto!=='create';});function parameters(items){return items.map(function(f){var p={name:f.name,type:f.type,nullable:f.nullable===true};if(f.auto)p.auto=f.auto;if(own(f,'default'))p.default=f.default;return p;});}var params=parameters(fields);
         writes[e.name+'_insert']={connection:connection,operation:'insert',sql:'INSERT INTO '+qtable+' ('+fields.map(function(f){return quote(f.column||f.name);}).join(', ')+') VALUES ('+fields.map(function(f){return ':'+f.name;}).join(', ')+')',parameters:params,generatedKey:{column:e.key[0],type:'int64'},minAffectedRows:1,maxAffectedRows:1};
-        writes[e.name+'_update']={connection:connection,operation:'update',sql:'UPDATE '+qtable+' SET '+fields.map(function(f){return quote(f.column||f.name)+'=:'+f.name;}).join(', ')+(e.revision?', '+quote(e.revision)+'='+quote(e.revision)+'+1':'')+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:params.concat([{name:'id',type:'int64'}]).concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
+        writes[e.name+'_update']={connection:connection,operation:'update',sql:'UPDATE '+qtable+' SET '+updateFields.map(function(f){return quote(f.column||f.name)+'=:'+f.name;}).join(', ')+(e.revision?', '+quote(e.revision)+'='+quote(e.revision)+'+1':'')+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:parameters(updateFields).concat([{name:'id',type:'int64'}]).concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
         writes[e.name+'_delete']={connection:connection,operation:'delete',sql:'DELETE FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:[{name:'id',type:'int64'}].concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
       }
     });

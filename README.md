@@ -459,8 +459,21 @@ Optional common model extensions are `permissions` per entity/operation,
 validation; labels in `ui.fieldOptions`), `indexes`, `database.schemaPolicy`
 (`managed` or schema-observing `observe`) and import `provenance`.
 Index and row-policy declarations are preserved but block application until their
-complete generic implementations exist. TIMESTAMP also blocks explicitly; it is
-never converted to DATE or a string. Only HSQLDB is runtime-qualified locally.
+complete generic implementations exist. SQL `TIMESTAMP` maps to portable
+`timestamp`: a local date-time without timezone, to the millisecond, in JSON
+`yyyy-MM-dd'T'HH:mm:ss[.SSS]` (canonical reads include `.SSS`). Offset values and
+`TIMESTAMP WITH TIME ZONE` are explicitly refused. It is never reduced to DATE.
+The legacy normalizer has no automatic timestamp notation. The optional common
+extension `entities[].fields[].auto` is `create` (creation
+only) or `update` (creation and every update). It applies only to TIMESTAMP;
+the SQL provider fills it from the server clock and refuses client values.
+Automatic fields are read-only in generated forms. Manual fields use the shared
+Input's native `datetime-local` control with `step=0.001`; Text and the existing
+DataTable `format: "datetime"` localize display without application CSS.
+Inclusive interval filters use `{field:"closed_at",op:"between",value:[from,to]}`;
+sorting remains server-side. Required additive columns need a literal typed
+`default` to backfill existing rows; `auto` alone is not a migration default.
+Only HSQLDB is qualified through the complete HTTP/browser CRUD application.
 Foreign keys can be added after columns through Querydsl; destructive schema
 changes remain refused. Applying files, Flows and DDL has no global transaction;
 the model-owned manifest journals pending application and supports resumption.

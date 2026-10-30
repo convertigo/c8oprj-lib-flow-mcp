@@ -13,6 +13,7 @@
   if(t==='DECIMAL')return {type:'decimal',precision:12,scale:2};
   if(t==='BOOLEAN'||t==='BOOL'||t==='BIT')return {type:'boolean'};
   if(t==='DATE')return {type:'date'};
+  if(/^TIMESTAMPTZ(?:\(\d+\))?$/.test(t))return {type:'timestamp',timezone:'offset'};
   if(/^(TIMESTAMP|DATETIME)(?:\(\d+\))?(?: WITH(?:OUT)? TIME ZONE)?$/.test(t))return {type:'timestamp',timezone:/WITH TIME ZONE$/.test(t)?'offset':'local'};
   error('Unsupported SQL type '+t+'; no lossy conversion is performed');
  }
@@ -36,7 +37,7 @@
   var normalized=legacy.normalize(input),diagnostics=[],rawEntities=input.entities||[],security=clone(input.security||{});
   security.principals=security.principals||{};
   var db=normalized.database,mode=db.mode,s={project:project,specVersion:1,schemaVersion:input.schemaVersion||1,security:security,facade:clone(normalized.facade),ui:clone(normalized.ui),entities:[],relations:[],seed:{demo:normalized.seed.reset===true||input.seed&&input.seed.demo===true,enabled:normalized.seed.enabled,reset:normalized.seed.reset,data:{}}};
-  s.database={dialect:mode,connection:input.database.connection||db.connector,url:input.database.url||'',driverClass:input.database.driverClass||db.driver.jdbcDriverClassName,user:db.user,password:db.password,schema:input.database.schema,schemaPolicy:input.database.schemaPolicy||'managed'};
+  s.database={dialect:mode,connection:input.database.connection||db.connector,url:input.database.url||'',driverClass:input.database.driverClass||db.driver.jdbcDriverClassName,user:db.user,password:db.password,schema:input.database.schema||(mode==='mariadb'?db.database:undefined),schemaPolicy:input.database.schemaPolicy||'managed'};
   if(['managed','observe'].indexOf(s.database.schemaPolicy)<0)error('database.schemaPolicy must be managed or observe');
   if(!s.database.url){
    if(mode==='hsqldb')s.database.url='jdbc:hsqldb:file:.//_flow/resources/sql/crud/database/'+db.database+';shutdown=false';
@@ -45,7 +46,7 @@
   // JSON cloning removes driver functions in the upstream normalizer. Compose only approved connection forms.
   if(!s.database.url || s.database.url.indexOf('jdbc:')!==0)error('Configure a server-owned JDBC connection');
   if(mode==='hsqldb')s.database.driverClass='org.hsqldb.jdbc.JDBCDriver';
-  if(['hsqldb','postgresql'].indexOf(mode)<0)diagnostics.push({code:'SQL_DIALECT_NOT_QUALIFIED',severity:'error',dialect:mode,message:'Model accepted; portable schema application is qualified only on HSQLDB/PostgreSQL.'});
+  if(['hsqldb','postgresql','mariadb'].indexOf(mode)<0)diagnostics.push({code:'SQL_DIALECT_NOT_QUALIFIED',severity:'error',dialect:mode,message:'Model accepted; portable schema application is qualified only on HSQLDB/PostgreSQL/MariaDB.'});
   if(s.database.password && !/^\$\{[A-Za-z0-9_.-]+\.secret=?\}$/.test(s.database.password))diagnostics.push({code:'MODEL_SECRET_REFERENCE_REQUIRED',severity:'error',message:'Legacy model parsed; move inline credentials to a server secret symbol before storing/applying the model.'});
   s.ui.title=input.ui&&input.ui.title||project;
   var aliases={};
@@ -66,7 +67,8 @@
     if(f.defaultValue!==null && f.defaultValue!==undefined)field.default=scalar(f.defaultValue,field);
     if(rf.readOnly===true)field.readOnly=true;
     if(rf.enum!==undefined){if(!Array.isArray(rf.enum)||!rf.enum.length||rf.enum.length>128)error('enum is a bounded nonempty array');field.enum=rf.enum.map(function(v){if(v===null||typeof v==='object')error('enum contains only non-null scalars');return scalar(v,field);});if(field.enum.some(function(v,i){return field.enum.indexOf(v)!==i;}))error('enum contains duplicate values');if(has(field,'default')&&field.enum.indexOf(field.default)<0)error('default must belong to enum');}
-    if(p.type==='timestamp')diagnostics.push({code:'SQL_PORTABLE_TIMESTAMP_REQUIRED',severity:'error',entity:e.name,field:f.column,portableType:'timestamp',timezone:p.timezone,message:'TIMESTAMP is preserved as a timestamp; this SQL library does not yet implement a lossless portable timestamp. No DATE/string substitution.'});
+    if(p.type==='timestamp'&&p.timezone==='offset')diagnostics.push({code:'SQL_TIMESTAMP_WITH_TIME_ZONE_UNSUPPORTED',severity:'error',entity:e.name,field:f.column,message:'TIMESTAMP WITH TIME ZONE is not supported; use a local millisecond TIMESTAMP.'});
+    if(rf.auto!==undefined){if(p.type!=='timestamp'||p.timezone==='offset'||['create','update'].indexOf(rf.auto)<0)error('auto is create or update on a local TIMESTAMP');field.auto=rf.auto;field.readOnly=true;}
     out.fields.push(field);
    });
    if(out.key.length!==1 || !out.fields.some(function(f){return f.name===key&&f.identity&&f.type==='int64';}))diagnostics.push({code:'FLOW_CRUD_KEY_NOT_QUALIFIED',severity:'error',entity:e.name,message:'Model accepted; runtime create currently requires a generated int64 key.'});
@@ -84,6 +86,7 @@
    var result=[];for(var rowIndex=0;rowIndex<count;rowIndex++){
     var row={};out.fields.forEach(function(f){
      var original=e.fields.filter(function(x){return x.column===f.column;})[0],value;
+     if(f.auto)return;
      if(explicit){if(!has(rows[rowIndex],f.column))return;value=rows[rowIndex][f.column];}
      else {
       var relation=s.relations.filter(function(r){return r.from.entity===e.name&&r.from.field===f.name;})[0];
