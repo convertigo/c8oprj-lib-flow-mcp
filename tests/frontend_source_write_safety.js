@@ -8,6 +8,7 @@ var StandardCharsets = Packages.java.nio.charset.StandardCharsets;
 var notificationRequests = [];
 var treeRequests = [];
 var treeResponse = null;
+var duringTreeCheck = null;
 var contractResponse = null;
 
 function assertTrue(condition, message) {
@@ -45,6 +46,7 @@ function context(props) {
 		},
 		authoringTreeSource: function (request) {
 			treeRequests.push(request);
+			if (duringTreeCheck) duringTreeCheck();
 			return treeResponse || { ok: true, diagnostics: [], children: [] };
 		},
 		authoringContractSource: function (request) {
@@ -319,5 +321,47 @@ var modelCheck = run({
 });
 assertTrue(modelCheck.ok === false && modelCheck.diagnostics[0].code === "FRONTEND_FLOW_COMPONENT_REQUIRED",
 	"Raw provider syntax must not weaken the FlowComponent contract of application model sources.");
+
+// The check of a source runs before the write lock, held only for the revision check and the write: the write of
+// another source, started while a check is in progress (seconds on cold caches), does not wait for it.
+var otherSourceFile = "_flow/frontbuilder/svelte/model/Test/src/routes/other/+page.flow.svelte";
+var concurrentWrite = null;
+var beforeCheckedWrite = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile
+});
+var concurrentFailure = [];
+duringTreeCheck = function () {
+	duringTreeCheck = null;
+	var done = new java.util.concurrent.CountDownLatch(1);
+	new java.lang.Thread(new java.lang.Runnable({ run: function () {
+		try {
+			concurrentWrite = run({
+				operation: "set",
+				projectDir: String(root.getAbsolutePath()),
+				sourceFile: otherSourceFile,
+				code: first
+			});
+		} catch (e) {
+			concurrentFailure.push(String(e && e.message || e));
+		} finally {
+			done.countDown();
+		}
+	}})).start();
+	if (!done.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+		concurrentFailure.push("the write of another source waited for the check in progress");
+	}
+};
+var checkedWrite = run({
+	operation: "set",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: beforeCheckedWrite.revision,
+	code: third
+});
+assertTrue(concurrentFailure.length === 0 && concurrentWrite && concurrentWrite.written === true &&
+	checkedWrite.written === true && checkedWrite.code === third,
+	"A write must not hold the write lock while its source is checked: " + concurrentFailure.join(", "));
 
 print("frontend source write safety tests passed");

@@ -1262,10 +1262,21 @@ const _meta = {
 		return false;
 	}
 
+	// The source is checked before the write lock, which covers only the revision check and the write: a check
+	// takes seconds on cold caches, and the writes of other sources would wait for it. A source changed meanwhile
+	// still refuses the write with its stale revision.
 	function write(ctx, props, path, source) {
+		assertSetRevision(ctx, props, path);
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
-		var draft = persist(ctx, props, path, source);
+		var draft;
+		sourceWriteLock.lock();
+		try {
+			assertSetRevision(ctx, props, path);
+			draft = persist(ctx, props, path, source);
+		} finally {
+			sourceWriteLock.unlock();
+		}
 		notifySourceMutation(ctx, props, path);
 		var saved = read(ctx, props, path, false);
 		saved.draft = draft;
@@ -1296,51 +1307,47 @@ const _meta = {
 				if (props.code === undefined || props.code === null) {
 					throw new Error("code-set requires code for a Flow Svelte source.");
 				}
-				sourceWriteLock.lock();
-				try {
-					assertSetRevision(ctx, props, path);
-					result = write(ctx, props, path, String(props.code));
-				} finally {
-					sourceWriteLock.unlock();
-				}
+				result = write(ctx, props, path, String(props.code));
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
 				var edits = props.edits !== undefined && props.edits !== null ? props.edits : undefined;
 				if (!patch && edits === undefined) throw new Error("code-patch requires codepatch (a unified diff) or edits ([{ oldText, newText }]) for a Flow Svelte source.");
 				if (!props.revision) throw new Error("code-patch requires the revision returned by code-get.");
+				assertSetRevision(ctx, props, path);
+				var patchRequest = {
+					projectDir: props.projectDir,
+					path: path.relative,
+					baseHash: props.revision,
+					patch: patch,
+					edits: edits,
+					dryRun: true,
+					validate: false,
+					includeContent: true
+				};
+				var sources = sourceStore(ctx, props);
+				if (sources.drafts && sources.dirty(path.file)) {
+					patchRequest.baseContent = sources.read(path.file);
+				}
+				var preview = ctx.resourcePatch(patchRequest);
+				var validation = validate(ctx, props, path, String(preview.content));
+				requireValid(validation);
+				var patchedDraft;
 				sourceWriteLock.lock();
 				try {
 					assertSetRevision(ctx, props, path);
-					var patchRequest = {
-						projectDir: props.projectDir,
-						path: path.relative,
-						baseHash: props.revision,
-						patch: patch,
-						edits: edits,
-						dryRun: true,
-						validate: false,
-						includeContent: true
-					};
-					var sources = sourceStore(ctx, props);
-					if (sources.drafts && sources.dirty(path.file)) {
-						patchRequest.baseContent = sources.read(path.file);
-					}
-					var preview = ctx.resourcePatch(patchRequest);
-					var validation = validate(ctx, props, path, String(preview.content));
-					requireValid(validation);
-					var patchedDraft = persist(ctx, props, path, String(preview.content));
-					notifySourceMutation(ctx, props, path);
-					result = read(ctx, props, path, false);
-					result.draft = patchedDraft;
-					result.hunks = preview.hunks;
-					result.oldRevision = String(props.revision);
-					result.diagnostics = validation.diagnostics;
-					result.errorCount = validation.errorCount;
-					result.warningCount = validation.warningCount;
-					result.written = true;
+					patchedDraft = persist(ctx, props, path, String(preview.content));
 				} finally {
 					sourceWriteLock.unlock();
 				}
+				notifySourceMutation(ctx, props, path);
+				result = read(ctx, props, path, false);
+				result.draft = patchedDraft;
+				result.hunks = preview.hunks;
+				result.oldRevision = String(props.revision);
+				result.diagnostics = validation.diagnostics;
+				result.errorCount = validation.errorCount;
+				result.warningCount = validation.warningCount;
+				result.written = true;
 			} else {
 				throw new Error("Unsupported Flow Svelte source operation: " + operation);
 			}
