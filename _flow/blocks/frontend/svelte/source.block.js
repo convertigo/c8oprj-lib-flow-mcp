@@ -740,6 +740,8 @@ const _meta = {
 			}
 			try {
 				var drafts = checkedDrafts(ctx, props, path, source);
+				// The checked source needs its builder only: the Flow block catalog (each FlowScript block compiled)
+				// and the component catalog of the builder are not projected, as the authoring-tree tool does.
 				var tree = ctx.authoringTreeSource({
 					projectDir: String(props.projectDir),
 					surface: "frontend",
@@ -748,7 +750,9 @@ const _meta = {
 					detail: "compact",
 					maxDepth: 20,
 					includeDefinition: false,
-					includeBindings: false
+					includeBindings: false,
+					includeFlowCatalog: false,
+					includeFrontendCatalog: false
 				});
 				var treeError = projectedError(tree);
 				if (!tree || tree.ok === false || tree.error || treeError) {

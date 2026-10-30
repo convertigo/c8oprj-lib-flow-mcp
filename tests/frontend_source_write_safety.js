@@ -108,6 +108,10 @@ assertTrue(treeRequests.length === 1 && treeRequests[0].detail === "compact" &&
 	treeRequests[0].maxDepth === 20 && treeRequests[0].includeDefinition === false &&
 	treeRequests[0].includeBindings === false,
 	"Frontend validation should request the compact tree shape without hydrated definitions or bindings.");
+// The Flow block catalog compiles every FlowScript block of the project and its libraries (seconds after each
+// cache refresh of the Studio) and the component catalog is not checked: the builder alone is projected.
+assertTrue(treeRequests[0].includeFlowCatalog === false && treeRequests[0].includeFrontendCatalog === false,
+	"Frontend validation should project the builder without the Flow block and component catalogs.");
 assertTrue(created.sourceFile === sourceFile, "Creation should report the written source.");
 assertTrue(notificationRequests.length === 1 &&
 	notificationRequests[0].projectDir === String(root.getAbsolutePath()) &&
