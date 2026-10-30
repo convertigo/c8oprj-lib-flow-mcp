@@ -346,6 +346,21 @@ const _meta = {
 		}
 	}
 
+	// fromFile: a file of the Convertigo workspace copied into the resource by lib_flow_engine, byte for byte (no
+	// normalization of its lines), from a path confined to the workspace; an existing resource needs its baseHash.
+	function importWorkspaceFile(ctx, args, path, withText) {
+		if (withText) {
+			throw failure("INVALID_ARGUMENTS", "Pass fromFile alone: it replaces patch and content.");
+		}
+		var result = ctx.resourcePatch(args);
+		result.mode = "fromFile";
+		result.hash = result.newHash;
+		result.next = result.dryRun === true
+			? "Dry run: nothing written. Send the same call without dryRun to import it."
+			: "Imported as it is, byte for byte. Pass hash as baseHash to the next flow-resource-patch of this resource.";
+		return result;
+	}
+
 	// A project resource: a unified patch applied here hunk by hunk (headers, offsets and unique context accepted), or
 	// content, the whole new text. lib_flow_engine then writes that text as one replacement hunk checked against the
 	// hash read here, with its own path rules, validation and working copy guard.
@@ -364,9 +379,12 @@ const _meta = {
 		if (hasContent && text !== null) {
 			throw failure("INVALID_ARGUMENTS", "Pass either patch (a unified diff) or content (the whole new text), not both.");
 		}
-		if (!hasContent && text === null) {
+		if (!hasContent && text === null && !filled(args.fromFile)) {
 			throw failure("INVALID_PATCH", "flow-resource-patch needs patch (a unified diff) or content (the whole new text, with baseHash).",
 				"Read the resource with flow-resource-get, then send a unified diff of it, or its whole new text as content with the hash as baseHash.");
+		}
+		if (filled(args.fromFile)) {
+			return importWorkspaceFile(ctx, args, path, text !== null || hasContent);
 		}
 		var current = currentResource(ctx, patchLib, args);
 		if (filled(args.baseHash) && String(args.baseHash) !== current.hash) {
