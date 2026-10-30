@@ -54,7 +54,10 @@ may replay the sign-in instead of completing the sign-out.
 Declare the facades that pages call with `_flow.accessibility:"hidden"` and
 `authenticatedContextRequired:true`. `hidden` hides discovery but does not
 forbid HTTP; `private` is for internal calls. Write these names in lowercase in
-FlowScript. Keep the initializations and the scheduled job private.
+FlowScript. Keep the initializations and the scheduled job private. The Studio
+runs private Flows over HTTP too (Studio mode); a server refuses them to anyone
+but an administrator: prove a refusal on a server, not with an anonymous call
+to the Studio.
 
 For each read or write, call `CurrentUser` again. The server chooses `ownerId`
 and the rights. In a named read, join the mandatory perimeter to the optional

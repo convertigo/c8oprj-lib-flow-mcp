@@ -45,6 +45,24 @@ try {
 		"The compact registration keeps the session report: " + JSON.stringify(promoted.structuredContent.registration));
 	assert(promoted.content[0].text.indexOf("idle for 60 s") !== -1, "and the text says it: " + promoted.content[0].text);
 
+	// code-promote of a private Flow in the Studio says that the Studio runs it over HTTP anyway (Studio mode): an agent
+	// read the anonymous answer of the Studio as a security defect of the Flow. Not on a server, not for another Flow.
+	function engineMode(studio) { return { isStudioMode: function () { return studio; } }; }
+	var privateSource = { code: 'const _flow = {\n  "sourceVersion": 2,\n  "accessibility": "private",\n}\n\nfunction Reset({ input, result }) {\n  result.ok = true\n}\n' };
+	var studioPrivate = {}, serverPrivate = {}, studioHidden = {}, bodyOnly = {};
+	mcp._accessibilityReport(engineMode(true), privateSource, studioPrivate);
+	mcp._accessibilityReport(engineMode(false), privateSource, serverPrivate);
+	mcp._accessibilityReport(engineMode(true), { code: privateSource.code.replace('"private"', '"hidden"') }, studioHidden);
+	mcp._accessibilityReport(engineMode(true), { code: 'const _flow = { sourceVersion: 2 }\nfunction Notes({ result }) {\n  result.text = "accessibility: \'private\'"\n}\n' }, bodyOnly);
+	assert(/Studio mode/.test(studioPrivate.accessibilityNote || "") && /refuses it over HTTP/.test(studioPrivate.accessibilityNote),
+		"A private Flow promoted in the Studio says the Studio runs it anyway: " + JSON.stringify(studioPrivate));
+	assert(serverPrivate.accessibilityNote === undefined && studioHidden.accessibilityNote === undefined && bodyOnly.accessibilityNote === undefined,
+		"No note on a server, for a hidden Flow or for a text of the body: " + JSON.stringify([serverPrivate, studioHidden, bodyOnly]));
+	var promotedPrivate = mcp.toolResponse({ id: 8, params: { name: "code-promote", arguments: { name: "Reset" } } },
+		{ ok: true, name: "Reset", promoted: true, registration: Object.assign({ requested: true, registered: true, qname: "Tickets.Reset" }, studioPrivate) }, {}).result;
+	assert(promotedPrivate.structuredContent.registration.accessibilityNote === studioPrivate.accessibilityNote &&
+		promotedPrivate.content[0].text.indexOf("Studio mode") !== -1, "The compact registration and its text keep the note: " + JSON.stringify(promotedPrivate));
+
 	print("promote-session-report OK (" + count + " checks)");
 } finally {
 	FileUtils.deleteDirectory(target);

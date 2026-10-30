@@ -49,7 +49,10 @@ Keep this role across backend lots instead of spawning a replacement agent.
   are Convertigo global symbols ending with `.secret`, referenced with a
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
 - Declare `accessibility: "private"` in `_flow` for every Flow a frontend or
-  external client does not call; `public` or `hidden` only for those.
+  external client does not call; `public` or `hidden` only for those. A
+  server refuses a private Flow over HTTP to anyone but an administrator; the
+  Studio runs it anyway (Studio mode), so an anonymous call answering in the
+  Studio is not a defect to guard against in the Flow.
 - `throw({ code, message, status })` what must interrupt the caller; return
   a normal result (`ok: false` and a reason) for an outcome it handles. Catch
   a block that may fail with `try` (`$$try`, `$$catch`, error path), never

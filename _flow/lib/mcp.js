@@ -516,6 +516,9 @@
 		if (value.registration && value.registration.sessionNote) {
 			parts.push(String(value.registration.sessionNote).replace(/\.$/, ""));
 		}
+		if (value.registration && value.registration.accessibilityNote) {
+			parts.push(String(value.registration.accessibilityNote).replace(/\.$/, ""));
+		}
 		parts.push(value.hints ? "Use structuredContent for data; pass hints=false after reading hints." : "Use structuredContent for data.");
 		return parts.join(". ");
 	}
@@ -1098,6 +1101,7 @@
 		}
 		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
 		sessionReport(project, result);
+		accessibilityReport(Engine, writeResult, result);
 		try {
 			Engine.theApp.schemaManager.clearCache(String(project.getName()));
 			result.schemaCacheCleared = true;
@@ -1129,6 +1133,31 @@
 			}
 		} catch (_ignoreSessionTimeout) {
 		}
+	}
+
+	// The Studio runs every requestable over HTTP, a private one included (Studio mode, for the tests of the developer),
+	// where a server refuses a private requestable to anyone but an administrator: an anonymous HTTP call to a private
+	// Flow answers in the Studio, which an agent read as a security defect of the Flow. The promotion of a private Flow
+	// in the Studio says so.
+	function accessibilityReport(Engine, writeResult, result) {
+		try {
+			if (Engine.isStudioMode() !== true || !declaresPrivateAccessibility(writeResult)) return;
+			result.accessibilityNote = STUDIO_PRIVATE_NOTE;
+		} catch (_ignoreAccessibility) {
+		}
+	}
+
+	var STUDIO_PRIVATE_NOTE = "Private Flow: a server refuses it over HTTP to anyone but an administrator; this Studio runs every " +
+		"requestable over HTTP (Studio mode), so an anonymous call answering here proves nothing about access.";
+
+	// @return whether the saved source declares _flow.accessibility private (its header, before the function)
+	function declaresPrivateAccessibility(writeResult) {
+		var code = writeResult && (writeResult.code !== undefined && writeResult.code !== null ? writeResult.code : writeResult.source);
+		if (code === undefined || code === null) return false;
+		var text = String(code);
+		var body = text.search(/(^|\n)\s*(?:async\s+)?(?:function|flow)\s+[A-Za-z_$]/);
+		var header = body < 0 ? text : text.substring(0, body);
+		return /(^|[\s{,])["']?accessibility["']?\s*:\s*["']private["']/i.test(header);
 	}
 
 	function saveFlowDeclaration(project, flow, name, args, writeResult) {
@@ -3883,7 +3912,7 @@
 		}
 		var out = {};
 		["requested", "registered", "created", "updated", "saved", "projectSaved", "flowDeclarationSaved",
-			"saveMode", "refreshed", "schemaCacheCleared", "sessionsReset", "httpSessionTimeout", "sessionNote",
+			"saveMode", "refreshed", "schemaCacheCleared", "sessionsReset", "httpSessionTimeout", "sessionNote", "accessibilityNote",
 			"qname", "message"].forEach(function (key) {
 			if (registration[key] !== undefined && registration[key] !== null && registration[key] !== "") {
 				out[key] = registration[key];
@@ -5001,6 +5030,7 @@
 		searchWorkspace: searchWorkspace,
 		registerFlowDbo: registerFlowDbo,
 		_sessionReport: sessionReport,
+		_accessibilityReport: accessibilityReport,
 		syncFlowInputsDbo: syncFlowInputsDbo,
 		_markFastSavedClean: markFastSavedClean,
 		applyNamedFlowMutation: applyNamedFlowMutation,
