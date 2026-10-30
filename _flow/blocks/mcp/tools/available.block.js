@@ -405,7 +405,7 @@ const _meta = {
 					};
 					schema.properties.reveal = {
 						type: "boolean",
-						description: "For canonical frontend source writes, refresh and reveal the affected source in the Studio project tree."
+						description: "For canonical frontend source writes, refresh and reveal the affected source in the Studio project tree, after the answer: the write never waits for the Studio."
 					};
 				}
 			}
