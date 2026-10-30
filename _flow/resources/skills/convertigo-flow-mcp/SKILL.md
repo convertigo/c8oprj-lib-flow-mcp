@@ -19,6 +19,8 @@ guide own the detailed workflow.
   `convertigo-flow`, never from the Legacy server named `convertigo`.
 - Full-stack work: use both specialists and read
   `flow://guide/fullstack-paperboard` once.
+- Several pages with sign-in, roles, a per-user data perimeter, an export or
+  a scheduled job: then read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
   feature needs them. Do not load every guide pre-emptively.
 - Record every successfully read guide URI for the current turn. Never read the

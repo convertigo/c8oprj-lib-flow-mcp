@@ -1,51 +1,141 @@
-# Application Flow multi-pages avec rôles
+# Flow Multi-Page Application with Roles
 
-Cette recette construit une petite application de réservation de salles : un utilisateur voit ses réservations ; un gestionnaire voit toutes les réservations et le journal. Le sample `sampleFlowRoles` est une démonstration locale, avec une connexion de démonstration désactivée par défaut.
+Ordered recipe for a multi-page Flow application with a session, roles, a server-side data perimeter, a CSV export, a scheduled job and an audit journal.
 
-## 1. Préparer les contrats
+This recipe builds a small room-booking application: a user sees their own
+bookings; a manager sees every booking and the journal. Its demonstration
+sign-in is disabled by default.
 
-Lire `flow://guide/start`, `flow://guide/authoring` et `flow://guide/frontend-svelte`. Ajouter les références proposées par `flow-catalog` : `lib_flow_sql`, `lib_flow_crud_data`, `lib_flow_frontend_data_svelte` et le frontbuilder Svelte. Lire `flow://lib/lib_flow_sql/sql` pour la configuration et `flow://lib/lib_flow_crud_data/csv` pour l'export. Inspecter les contrats réels avant d'écrire les appels ; un catalogue disponible ne prouve pas qu'une connexion est configurée.
+## 1. Prepare the contracts
 
-Créer d'abord le schéma, les données de démonstration et les Flows serveur, puis les pages. Déclarer les paramètres typés ; les identifiants `int64` restent des textes. Déclarer `items: {type:"object"}` pour un tableau d'objets. Les symboles de plateforme appartiennent à la configuration, avec des valeurs de démonstration désactivées par défaut ; aucun secret dans le source, les sorties ou les journaux.
+Read `flow://guide/start`, `flow://guide/authoring` and
+`flow://guide/frontend-svelte`. Add the references that `flow-catalog`
+proposes: `lib_flow_sql`, `lib_flow_crud_data`, `lib_flow_frontend_data_svelte`
+and the Svelte frontbuilder. Read `flow://lib/lib_flow_sql/sql` for the
+configuration and `flow://lib/lib_flow_crud_data/csv` for the export. Inspect
+the real contracts before writing the calls; an available catalog does not
+prove that a connection is configured.
 
-## 2. Installer les données et la session
+Create the schema, the demonstration data and the server Flows first, then the
+pages. Declare typed parameters; `int64` identifiers stay strings. Declare
+`items: {type:"object"}` for an array of objects. Platform symbols belong to
+the configuration, with demonstration values disabled by default; no secret in
+the source, the outputs or the logs.
 
-Configurer `config.sql.connections`, le schéma et les données séparés, puis appeler `sql.initialize`. HSQLDB est une base de développement : chemin relatif au projet sous `_flow/resources/sql/`, hors `_private`, protégé par `.httpignore`. Un CAR remplace cette base ; utiliser un SGBD externe en production. Ignorer dans Git les fichiers de base créés par les tests. Une initialisation rejouée doit préserver les écritures de l'utilisateur ; une remise à zéro reste explicite et réservée à la démonstration.
+## 2. Set up the data and the session
 
-En production, appeler un fournisseur d'authentification réel, par exemple les Flows de `lib_UserManager`. `session.authenticate` établit une identité ; il ne vérifie pas un mot de passe. Un sélecteur Alice/Bob/Gestionnaire n'est acceptable que derrière une configuration de démonstration, jamais comme écran de connexion de production.
+Configure `config.sql.connections`, the separate schema and data, then call
+`sql.initialize`. HSQLDB is a development database: its path is relative to
+the project, under `_flow/resources/sql/`, outside `_private`, protected by
+`.httpignore`. A CAR replaces this database; use an external DBMS in
+production. Ignore in Git the database files that tests create. A replayed
+initialization must keep the user's writes; a reset stays explicit and
+reserved for the demonstration.
 
-Créer un Flow `CurrentUser` qui lit `session.authenticatedUser`, recherche le compte côté serveur, vérifie qu'il est actif et retourne son rôle. Ne prendre ni identité ni rôle depuis la page. Refuser une session absente (`UNAUTHENTICATED`, 401) ou un compte désactivé/non autorisé (`FORBIDDEN`, 403). Un Flow public de contrôle de session peut répondre normalement `{authenticated:false}` pour l'accueil anonyme. Pour la déconnexion, appeler `session.authenticate({user:""})`, effacer l’état affiché et désactiver le rejeu automatique des identifiants ; le cookie ne doit plus autoriser une lecture protégée. Dans son `CallSequence`, passer une `Variable` nommée `__disableAutologin` avec `value={true}` : sinon le SDK peut rejouer la connexion au lieu de terminer la déconnexion.
+In production, call a real authentication provider, for example the Flows of
+`lib_UserManager`. `session.authenticate` establishes an identity; it does not
+check a password. An Alice/Bob/Manager picker is acceptable only behind a
+demonstration configuration, never as a production sign-in screen.
 
-## 3. Imposer le périmètre côté serveur
+Create a `CurrentUser` Flow that reads `session.authenticatedUser`, looks the
+account up on the server, checks that it is active and returns its role. Take
+neither the identity nor the role from the page. Refuse a missing session
+(`UNAUTHENTICATED`, 401) or a disabled or unauthorized account (`FORBIDDEN`,
+403). A public session-check Flow may answer `{authenticated:false}` normally
+for the anonymous home page. To sign out, call `session.authenticate({user:""})`,
+clear the displayed state and disable the automatic replay of credentials; the
+cookie must no longer authorize a protected read. In its `CallSequence`, pass a
+`Variable` named `__disableAutologin` with `value={true}`: otherwise the SDK
+may replay the sign-in instead of completing the sign-out.
 
-Déclarer les façades appelées par les pages avec `_flow.accessibility:"hidden"` et `authenticatedContextRequired:true`. `hidden` masque la découverte mais n'interdit pas HTTP ; `private` est destiné aux appels internes. Écrire ces noms en minuscules dans FlowScript. Garder les initialisations et le traitement planifié privés.
+## 3. Enforce the perimeter on the server
 
-Pour chaque lecture ou écriture, rappeler `CurrentUser`. Le serveur choisit `ownerId` et les droits. Dans une lecture nommée, joindre le périmètre obligatoire au filtre facultatif, par exemple `(:manage=TRUE OR OWNER_ID=:ownerId) AND (:status='' OR STATUS=:status)`. `manage` et `ownerId` viennent du serveur. Les requêtes exposées par une façade ne deviennent pas publiques automatiquement : déclarer `readOnly:true`, garder `expose:false` et utiliser des paramètres liés. `SQL_QUERY_READONLY_REQUIRED` signale l'oubli du premier attribut.
+Declare the facades that pages call with `_flow.accessibility:"hidden"` and
+`authenticatedContextRequired:true`. `hidden` hides discovery but does not
+forbid HTTP; `private` is for internal calls. Write these names in lowercase in
+FlowScript. Keep the initializations and the scheduled job private.
 
-Préférer `sql.table` et `data.read`/`data.write` pour le CRUD. Une requête nommée convient à une jointure bornée. Valider filtres, colonnes et tri sur des listes blanches ; ne jamais concaténer du SQL fourni par le client. Refuser un filtre non autorisé (`BOOKING_FILTER_INVALID`) et un tri inconnu (`BOOKING_ORDER_INVALID`). Pour une modification, relire la ligne, vérifier son propriétaire ou le rôle gestionnaire, puis transmettre sa révision au contrat data. Ne pas accepter un patch arbitraire du navigateur.
+For each read or write, call `CurrentUser` again. The server chooses `ownerId`
+and the rights. In a named read, join the mandatory perimeter to the optional
+filter, for example
+`(:manage=TRUE OR OWNER_ID=:ownerId) AND (:status='' OR STATUS=:status)`.
+`manage` and `ownerId` come from the server. Queries that a facade exposes do
+not become public automatically: declare `readOnly:true`, keep `expose:false`
+and use bound parameters. `SQL_QUERY_READONLY_REQUIRED` reports a missing
+`readOnly:true`.
 
-## 4. Construire des pages distinctes
+Prefer `sql.table` and `data.read`/`data.write` for CRUD. A named query suits a
+bounded join. Validate filters, columns and sorts against allowlists; never
+concatenate SQL supplied by the client. Refuse an unauthorized filter and an
+unknown sort with application codes, for example `BOOKING_FILTER_INVALID` and
+`BOOKING_ORDER_INVALID`. For an update, read the row again, check its owner or
+the manager role, then pass its revision to the data contract. Do not accept an
+arbitrary patch from the browser.
 
-Créer les pages cibles avant les liens : accueil/connexion, mes réservations, gestion et journal. Un Layout porte la navigation et `PageContent`. Chaque page contrôle la session avant de charger ses données. Les liens de gestion sont visibles seulement au gestionnaire ; le serveur applique toujours le même contrôle.
+## 4. Build distinct pages
 
-Afficher chargement, vide et erreurs avec les composants standard et `Status`. Après `CallSequence`, utiliser les résultats déclarés et des actions de palette ; une chaîne utilisateur doit continuer même si son panneau disparaît. Rafraîchir la session du Layout après une navigation. Ne pas employer un HTTP 200 de la route comme preuve que la grille est alimentée.
+Create the target pages before the links: home/sign-in, my bookings,
+management and journal. A Layout carries the navigation and `PageContent`. Each
+page checks the session before loading its data. Management links are visible
+to the manager only; the server always applies the same check.
 
-Adapter une réponse Resource/Page avec `dataUi.gridPage`, puis lier ses colonnes et lignes à la DataGrid. Un dataset client doit être explicitement complet et borné ; au-delà, renvoyer une erreur de limite plutôt qu'une liste tronquée présentée comme complète. Les métadonnées `filterOps` et `sortable` doivent refléter les seuls filtres et tris acceptés par le serveur.
+Show the loading, empty and error states with the standard components and
+`Status`. After `CallSequence`, use the declared results and palette actions; a
+user chain must continue even if its panel disappears. Refresh the session of
+the Layout after a navigation. Do not take an HTTP 200 of the route as proof
+that the grid is filled.
 
-## 5. Exporter la même liste
+Adapt a Resource/Page response with `dataUi.gridPage`, then bind its columns and
+rows to the DataGrid. A client dataset must be explicitly complete and bounded;
+beyond that, return a limit error rather than a truncated list presented as
+complete. The `filterOps` and `sortable` metadata must reflect only the filters
+and sorts that the server accepts.
 
-Lire aussi `flow://lib/lib_flow_frontend_data_svelte/csv`. La DataGrid en mode export serveur produit une photographie de ses filtres, tri et colonnes. Enchaîner `DataUiGridExportRequest`, `CallSequence` et `FileDownload`. Utiliser les variantes `filterJson` et `columnsJson` aux frontières HTTP lorsque nécessaire ; parser puis valider côté serveur.
+## 5. Export the same list
 
-La façade d'export réutilise le contrôle d'accès et la lecture filtrée ; la pagination de l'écran ne réduit pas l'export. Utiliser `data.csv` pour des lignes déjà complètes, ou `data.exportCsv` pour une source data. Fixer une borne de lignes et d'octets. Le CSV français utilise `;`, UTF-8 avec BOM et `dd/MM/yyyy`, avec neutralisation des formules. Une façade `.bin` utilise `file.respond` pour `Content-Type` et `Content-Disposition`. Tester également ses erreurs et son refus anonyme.
+Also read `flow://lib/lib_flow_frontend_data_svelte/csv`. The DataGrid in
+server export mode produces a snapshot of its filters, sort and columns. Chain
+`DataUiGridExportRequest`, `CallSequence` and `FileDownload`. Use the
+`filterJson` and `columnsJson` variants at HTTP boundaries when needed; parse
+then validate them on the server.
 
-## 6. Planifier et tracer
+The export facade reuses the access check and the filtered read; the paging of
+the screen does not reduce the export. Use `data.csv` for rows that are already
+complete, or `data.exportCsv` for a data source. Set a bound on rows and bytes.
+A French CSV uses `;`, UTF-8 with a BOM and `dd/MM/yyyy`, with formula
+neutralization. A `.bin` facade uses `file.respond` for `Content-Type` and
+`Content-Disposition`. Also test its errors and its anonymous refusal.
 
-Un traitement autonome ne dépend pas du cookie d'un navigateur. Il appelle un Flow privé dédié, borné, qui vérifie sa configuration, utilise `date.today`/`date.add` dans le fuseau choisi et produit un résultat comptable. Inspecter `scheduler-list`, puis créer le job avec le relais `scheduler-apply` ; conserver un nom propre au projet. Tester une exécution réelle et l'idempotence avant d'activer une fréquence régulière.
+## 6. Schedule and trace
 
-En démonstration, enregistrer une notification `SIMULATED` et une entrée de journal dans la même `sql.transaction`, avec une clé unique de répétition. Ne pas prétendre avoir envoyé un message. Pour un envoi réel, utiliser `email.send` et le SMTP de plateforme ; commencer avec un serveur de capture. Ne pas journaliser de mot de passe, jeton ni corps sensible. Le journal persistant contient acteur, opération, objet et date ; l'accès est contrôlé côté serveur. Un journal écrit après une mutation n'est pas atomique avec elle : utiliser une transaction si cette garantie est nécessaire.
+A standalone job does not depend on a browser cookie. It calls a dedicated,
+bounded private Flow that checks its configuration, uses
+`date.today`/`date.add` in the chosen time zone and returns a countable result.
+Inspect `scheduler-list`, then create the job with the relayed
+`scheduler-apply`; keep a name specific to the project. Test a real run and its
+idempotence before enabling a regular schedule.
 
-## 7. Prouver le parcours
+In a demonstration, record a `SIMULATED` notification and a journal entry in
+the same `sql.transaction`, with a unique replay key. Do not claim that a
+message was sent. For a real sending, use `email.send` and the platform SMTP;
+start with a capture server. Never log a password, a token or a sensitive body.
+The persistent journal holds the actor, the operation, the object and the date;
+its access is checked on the server. A journal entry written after a mutation is
+not atomic with it: use a transaction when that guarantee is needed.
 
-Tester les dates et les contrats dans des Flows de test privés. Pour HTTP, ouvrir une session et conserver son cookie dans un jar distinct pour Alice, Bob et le gestionnaire ; une connexion `code-run` ne prouve pas la session de l'appel HTTP suivant. Vérifier : anonyme refusé, données cloisonnées, identité falsifiée ignorée, mutation d'autrui refusée, rôle révoqué relu, révision périmée, filtre/tri invalides, CSV identique à la liste filtrée, job rejoué sans doublon, journal et déconnexion avec ancien cookie inutilisable.
+## 7. Prove the path
 
-Enfin ouvrir le viewer, naviguer avec chaque rôle, vérifier les lignes visibles, les appels réseau et le fichier téléchargé. Après chaque outil MCP, lire `result.error`, son code et son message avant de réessayer. `FLOW_INPUT_REQUIRED` et `FLOW_INPUT_TYPE_INVALID` indiquent un contrat d'entrée ; `FLOW_CODE_UNSAVED_WORKING_COPY` demande de reprendre la révision indiquée. Conserver tests et sources dans Git, sans données d'exécution ni secrets.
+Test the dates and the contracts in private test Flows. For HTTP, open a
+session and keep its cookie in a separate jar for Alice, Bob and the manager; a
+sign-in through `code-run` does not prove the session of the next HTTP call.
+Check: anonymous access refused, data partitioned, forged identity ignored,
+another user's mutation refused, revoked role read again, stale revision,
+invalid filter or sort, CSV identical to the filtered list, job replayed without
+duplicates, journal, and sign-out with the old cookie unusable.
+
+Finally open the viewer, navigate with each role, and check the visible rows,
+the network calls and the downloaded file. After each MCP tool, read
+`result.error`, its code and its message before retrying. `FLOW_INPUT_REQUIRED`
+and `FLOW_INPUT_TYPE_INVALID` point to an input contract;
+`FLOW_CODE_UNSAVED_WORKING_COPY` asks to resume from the given revision. Keep
+tests and sources in Git, without runtime data or secrets.
