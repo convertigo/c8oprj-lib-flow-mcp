@@ -554,7 +554,9 @@ palette tag, never `RunAxiom`) for reusable browser logic. For FullSync, read
 `flow://guide/fullsync`. `Status` displays the action named by its `actionId`:
 a spinner line while it runs, its error in place, and a success toast with
 its `successText` (nothing without one, so a load shows no stray message;
-`successDisplay="inline"` keeps the message in the page).
+`successDisplay="inline"` keeps the message in the page). The toast stays on
+screen when the chain then navigates (`CallSequence`, then `Navigate` back to
+the list): no query parameter is needed to confirm on the next page.
 
 ### Clocks And Timers
 
