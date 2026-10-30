@@ -58,6 +58,11 @@ Keep this role across backend lots instead of spawning a replacement agent.
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before
   handing the result back to the orchestrator.
+- In a parallel build (`flow://guide/fullstack-paperboard`) you own
+  `_flow/flows`, the project blocks, `engine.yaml` and the tests. Keep the
+  inputs and output fields of the contracts in `docs/generated/PROGRESS.md`:
+  a change the pages would see goes to the main agent first. Never write
+  `PROGRESS.md`; on a revision conflict, read again and redo the change.
 - Do not edit Convertigo YAML, generated output, or frontend sources. Delete a
   Flow, a connector or a `.flow.js` left without its Flow with
   `flow-object-remove` (dry run first).

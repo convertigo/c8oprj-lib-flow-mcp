@@ -11,7 +11,7 @@ Start here: the default Flow authoring route, the source contract, the project l
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` |
-| Backend plus Svelte application | `flow://guide/fullstack-paperboard` |
+| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` |
 | Several pages with sign-in, roles and a per-user data perimeter | `flow://guide/multipage-roles` |
 | Svelte-only frontend | `flow://guide/frontend-svelte` |
 | Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |

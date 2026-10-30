@@ -122,7 +122,12 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   incremental installation and the exceptional dev restart; never run npm in
   generated application files.
 - Use schema-backed sources and report missing backend fields to the backend
-  specialist instead of hard-coding around them.
+  specialist (through the main agent in a parallel build) instead of
+  hard-coding around them. In a parallel build
+  (`flow://guide/fullstack-paperboard`) you own the `_flow/frontbuilder`
+  sources, the theme and the assets, and bind to the contracts of
+  `docs/generated/PROGRESS.md` as they are; never write Flows, `engine.yaml`
+  or `PROGRESS.md`, and on a revision conflict read again and redo the change.
 - Use the standard `Combobox` for searchable choices. Set
   `allowCustomValue={true}` when the business field may accept a value absent
   from `options`; the same input then emits the selected option value or the

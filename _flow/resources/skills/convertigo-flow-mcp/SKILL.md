@@ -18,7 +18,14 @@ guide own the detailed workflow.
   `flow://guide/frontend-svelte` once from the server named exactly
   `convertigo-flow`, never from the Legacy server named `convertigo`.
 - Full-stack work: use both specialists and read
-  `flow://guide/fullstack-paperboard` once.
+  `flow://guide/fullstack-paperboard` once. For several Flows and pages,
+  follow its Parallel Build: you set the contract (data model, each Flow
+  with its inputs, outputs and a demo-shaped body, `docs/generated/PROGRESS.md`),
+  then a backend and a frontend specialist build at the same time, each
+  owning its files, and you integrate and prove. Run them as your own
+  write-capable sub-agents (Claude Code, Codex), or in Vibe as two relayed
+  `subagent-run` constructors with `inputs.scope` `backend` and `frontend`.
+  A small app, or no such sub-agent: stay sequential.
 - Several pages with sign-in, roles, a per-user data perimeter, an export or
   a scheduled job: then read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
@@ -206,8 +213,9 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   `databaseobject-*`, `browser-verify` (a vision model checks a page of the
   viewer: the way to prove the rendering for a model without vision) and
   `subagent-run` with `profile:"verifier"` (a vision sub-agent walks
-  multi-step paths in the viewer and reports, see Browser Proofs). Use them
-  instead of a workaround.
+  multi-step paths in the viewer and reports, see Browser Proofs) or
+  `profile:"constructor"` (a write-capable Flow sub-agent for one side of a
+  parallel build). Use them instead of a workaround.
 - Flow libraries are not on the marketplace yet: the ones you can use are
   already in this workspace (`flow-catalog`, `project-list`). Do not search or
   import the marketplace for Flow capabilities.
