@@ -12,7 +12,9 @@
     var normalized=services.model?services.model.normalize(raw,project,services.legacy):{internal:copy(raw),legacy:false,diagnostics:[]};
     if(normalized.diagnostics.some(function(d){return d.severity==='error';}))fail(JSON.stringify(normalized.diagnostics));
     var isLegacy=normalized.legacy,s=normalized.internal; if(services.schemaVersion)s.schemaVersion=services.schemaVersion;
-    var entities={}, relations=s.relations || [], files={}, flows={}, tables=[], seed=[], sources={}, queries={}, writes={};
+    // Optional sections take the defaults of the normalizer, whichever format and caller.
+    s.facade=s.facade||{};s.ui=s.ui||{};s.ui.title=s.ui.title||project;s.seed=s.seed||{};s.relations=s.relations||[];
+    var entities={}, relations=s.relations, files={}, flows={}, tables=[], seed=[], sources={}, queries={}, writes={};
     id(project);if(['__proto__','constructor','prototype'].indexOf(project)>=0)fail('Reserved project name');
     if(s.specVersion!==1 || !Number.isInteger(s.schemaVersion) || s.schemaVersion<1) fail('specVersion:1 and positive schemaVersion required');
     if(!Array.isArray(s.entities) || !s.entities.length || s.entities.length>32) fail('1..32 entities required');

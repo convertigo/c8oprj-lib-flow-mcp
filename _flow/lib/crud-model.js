@@ -29,12 +29,15 @@
  function normalize(raw,project,legacy){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))error('Expected an entity model');
   if(raw.modelVersion!==undefined && raw.modelVersion!==1)error('Unsupported modelVersion');
-  if(raw.project && raw.project!==project)error('spec.project differs from target project');
+  // spec.project is optional: it defaults to the target project. A different name usually means the wrong target.
+  var projectDiagnostics=raw.project!==undefined&&raw.project!==null&&raw.project!==''&&String(raw.project)!==String(project)?[{code:'FLOW_CRUD_SPEC_PROJECT_MISMATCH',severity:'error',specProject:String(raw.project),project:String(project),message:'spec.project is "'+raw.project+'" but the target project is "'+project+'".',fix:'Remove spec.project (it defaults to the target project) or set it to "'+project+'"; check that "'+project+'" is the intended target.'}]:[];
   // Read compatibility for the earlier experiment, without making it the public format.
-  if(raw.specVersion===1){var old=clone(raw);old.project=project;old.database.schemaPolicy=old.database.schemaPolicy||'managed';return {internal:old,legacy:false,diagnostics:[],model:clone(raw)};}
+  if(raw.specVersion===1){var old=clone(raw);old.project=project;old.database=old.database||{};old.database.schemaPolicy=old.database.schemaPolicy||'managed';old.facade=old.facade||{};old.facade.prefix=old.facade.prefix||'crud';old.security=old.security||{};old.security.principals=old.security.principals||{};old.seed=old.seed||{};if(old.seed.enabled===undefined)old.seed.enabled=true;old.seed.data=old.seed.data||{};old.ui=old.ui||{};old.ui.title=old.ui.title||project;old.relations=old.relations||[];return {internal:old,legacy:false,diagnostics:projectDiagnostics,model:clone(raw)};}
   if(!legacy)error('Legacy normalizer unavailable');
-  var input=clone(raw);input.project=project;input.database=input.database||{};
-  var normalized=legacy.normalize(input),diagnostics=[],rawEntities=input.entities||[],security=clone(input.security||{});
+  var input=clone(raw);input.project=project;
+  // Without a database section, the application uses the HSQLDB development database stored in the project.
+  if(input.database===undefined||input.database===null)input.database={mode:'hsqldb',database:String(project).toLowerCase()};
+  var normalized=legacy.normalize(input),diagnostics=projectDiagnostics.slice(),rawEntities=input.entities||[],security=clone(input.security||{});
   security.principals=security.principals||{};
   var db=normalized.database,mode=db.mode,s={project:project,specVersion:1,schemaVersion:input.schemaVersion||1,security:security,facade:clone(normalized.facade),ui:clone(normalized.ui),entities:[],relations:[],seed:{demo:normalized.seed.reset===true||input.seed&&input.seed.demo===true,enabled:normalized.seed.enabled,reset:normalized.seed.reset,data:{}}};
   s.database={dialect:mode,connection:input.database.connection||db.connector,url:input.database.url||'',driverClass:input.database.driverClass||db.driver.jdbcDriverClassName,user:db.user,password:db.password,schema:input.database.schema||(mode==='mariadb'?db.database:undefined),schemaPolicy:input.database.schemaPolicy||'managed'};
