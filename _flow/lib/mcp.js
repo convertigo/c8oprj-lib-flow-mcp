@@ -432,6 +432,32 @@
 		return out;
 	}
 
+	// The diagnostics of a refusal in the text of the result: a client that shows the text alone (structuredContent
+	// ignored) read "FlowScript validation failed." and nothing it could fix. Line, code, construction and fix of the
+	// first diagnostics; the hint of the error when it has none.
+	function errorDiagnosticLines(error) {
+		var details = error && error.details;
+		var diagnostics = error && Array.isArray(error.diagnostics) ? error.diagnostics
+			: Array.isArray(details) ? details : details && Array.isArray(details.diagnostics) ? details.diagnostics : [];
+		var errors = diagnostics.filter(function (diagnostic) { return diagnostic && diagnostic.severity !== "warning"; });
+		var lines = errors.slice(0, 5).map(function (diagnostic) {
+			var where = [diagnostic.line ? "line " + diagnostic.line : "", diagnostic.block ? diagnostic.block + (diagnostic.property ? "." + diagnostic.property : "") : ""]
+				.filter(function (part) { return part; }).join(", ");
+			var text = "\n- " + (where ? where + ": " : "") + (diagnostic.code ? diagnostic.code + ": " : "") + String(diagnostic.message || "");
+			if (diagnostic.expression && String(diagnostic.message || "").indexOf(String(diagnostic.expression)) === -1) {
+				text += " (" + String(diagnostic.expression).substring(0, 200) + ")";
+			}
+			return text + (diagnostic.hint ? "\n  Fix: " + String(diagnostic.hint) : "");
+		});
+		if (errors.length > lines.length) {
+			lines.push("\n- " + (errors.length - lines.length) + " more in structuredContent.error.diagnostics.");
+		}
+		if (!lines.length && error && error.hint) {
+			return " Fix: " + String(error.hint);
+		}
+		return lines.join("");
+	}
+
 	function valueKeys(value) {
 		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
 			return value[key] !== undefined;
@@ -444,7 +470,8 @@
 			return String(value);
 		}
 		if (value.error) {
-			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error) + ". See structuredContent.error.";
+			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
+				errorDiagnosticLines(value.error) + " See structuredContent.error.";
 		}
 		var parts = [];
 		if (value.ok === true) {
@@ -3322,7 +3349,7 @@
 	function compactFlowCodeDiagnostic(diagnostic) {
 		diagnostic = diagnostic || {};
 		var out = {};
-		["severity", "phase", "code", "line", "message", "block", "property", "path", "actual", "candidateDecision", "workspaceProviders", "workspaceGuides", "contract", "next"].forEach(function (key) {
+		["severity", "phase", "code", "line", "message", "block", "property", "path", "expression", "actual", "candidateDecision", "workspaceProviders", "workspaceGuides", "contract", "next"].forEach(function (key) {
 			if (diagnostic[key] !== undefined && diagnostic[key] !== null && diagnostic[key] !== "") {
 				out[key] = diagnostic[key];
 			}
