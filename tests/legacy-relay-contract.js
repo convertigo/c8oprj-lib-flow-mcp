@@ -55,7 +55,7 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 		if (body.method === "tools/call" && body.params.name === "subagent-run") {
 			var subagentArgs = body.params.arguments || {};
 			answer = { jsonrpc: "2.0", id: body.id, result: { structuredContent: subagentArgs.runId
-				? { status: "finished", runId: subagentArgs.runId, profile: "verifier", report: { verdict: "passed", summary: "The two paths passed: the list shows 3 posts." } }
+				? { status: "finished", runId: subagentArgs.runId, profile: "verifier", report: { verdict: "passed", summary: "The two paths passed: the list shows 3 requests." } }
 				: { status: "running", runId: "verify-20261030-120000-0123abcd", profile: "verifier", elapsedMs: 50000, activity: [{ at: 1, turn: 3, text: "Signed in" }],
 					message: "The sub-agent is still working. Call the same tool again with this runId alone to wait for its report." } } };
 		}
@@ -124,9 +124,9 @@ try {
 	// subagent-run: the arguments and the viewer headers reach the legacy tool; a running answer says how to collect it.
 	headers["X-Convertigo-Viewer-Debug-Port"] = "9333";
 	headers["X-Convertigo-Conversation-Id"] = "fixture-subagent";
-	var verifierArgs = { profile: "verifier", task: "Prove the sign-in and the declaration of two posts.",
-		inputs: { url: "http://127.0.0.1:18080/convertigo/projects/App/DisplayObjects/mobile/", paths: ["Sign in as rpca.demo / demo", "Select two posts and declare them"],
-			checks: ["Both statuses become \"À jour\""], hints: "demo accounts: rpca.demo / demo" } };
+	var verifierArgs = { profile: "verifier", task: "Prove the sign-in and the submission of two requests.",
+		inputs: { url: "http://127.0.0.1:18080/convertigo/projects/App/DisplayObjects/mobile/", paths: ["Sign in as member.demo / demo", "Select two requests and submit them"],
+			checks: ["Both statuses become \"Submitted\""], hints: "demo accounts: member.demo / demo" } };
 	var started = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 60, method: "tools/call", params: { name: "subagent-run", arguments: verifierArgs } });
 	var startCall = seen[seen.length - 1];
 	assert(JSON.stringify(startCall.body.params.arguments) === JSON.stringify(verifierArgs) && startCall.body.params.name === "subagent-run",
