@@ -53,7 +53,12 @@ may replay the sign-in instead of completing the sign-out.
 
 Declare the facades that pages call with `_flow.accessibility:"hidden"` and
 `authenticatedContextRequired:true`. `hidden` hides discovery but does not
-forbid HTTP; `private` is for internal calls. Write these names in lowercase in
+forbid HTTP; `private` is for internal calls. Without a signed-in user,
+`authenticatedContextRequired` refuses the call before the Flow runs, with
+HTTP 200 and the engine error `{ code: "-1", message: "Authentication
+required" }`: a `CallSequence` fails on it as on any error, but a client that
+tests the status, or wants the code of the application, needs the Flow to check
+the user itself and `throw({ code, message, status: 401 })`. Write these names in lowercase in
 FlowScript. Keep the initializations and the scheduled job private. The Studio
 runs private Flows over HTTP too (Studio mode); a server refuses them to anyone
 but an administrator: prove a refusal on a server, not with an anonymous call
@@ -138,7 +143,12 @@ not atomic with it: use a transaction when that guarantee is needed.
 
 ## 7. Prove the path
 
-Test the dates and the contracts in private test Flows. For HTTP, open a
+Test the dates and the contracts in private test Flows named `test_...`: their
+steps may call the same requestable several times in order, which stays a
+warning for them (`FLOWSCRIPT_REPEATED_EXTERNAL_CALLS`). To run a step as a
+user, call `session.authenticate({ user })` then `requestable.call`; a project
+block taking the user, the requestable and its input keeps each step on one
+line, and `session.authenticate({ user: "" })` ends the scenario. For HTTP, open a
 session and keep its cookie in a separate jar for Alice, Bob and the manager; a
 sign-in through `code-run` does not prove the session of the next HTTP call.
 Check: anonymous access refused, data partitioned, forged identity ignored,
