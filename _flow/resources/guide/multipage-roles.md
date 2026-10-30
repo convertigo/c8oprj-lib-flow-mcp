@@ -104,8 +104,14 @@ server export mode produces a snapshot of its filters, sort and columns. Chain
 then validate them on the server.
 
 The export facade reuses the access check and the filtered read; the paging of
-the screen does not reduce the export. Use `data.csv` for rows that are already
-complete, or `data.exportCsv` for a data source. Set a bound on rows and bytes.
+the screen does not reduce the export. Use `data.exportCsv` for a data source:
+it reads every page with the same filter and sort. Use `data.csv` for rows that
+are already complete: rows computed by the Flow as flat objects with typed
+`columns` (`{ field, header, type }`; type `string` by default, `integer`,
+`decimal`, `boolean`, `date` or `date-time`) and no `resource`, or the
+`{ key, values }` rows of `data.read` with their `resource`. Do not write a CSV
+encoder by hand; `flow-block-get` for `data.csv` gives its contract. Set a
+bound on rows and bytes.
 A French CSV uses `;`, UTF-8 with a BOM and `dd/MM/yyyy`, with formula
 neutralization. A `.bin` facade uses `file.respond` for `Content-Type` and
 `Content-Disposition`. Also test its errors and its anonymous refusal.

@@ -79,11 +79,21 @@ function Greeting({ input, config, result }) {
   `try({ error: "local.failure", $$try: function () { ... }, $$catch: function () { ... } })`;
   catch reads `local.failure.code` / `.message` / `.status`.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
-  those characters), an expression is a value with its type (`input.name`,
-  `left + 1`, `!local.entity`, `local.items[0]`, `current["media:thumbnail"]`,
-  null-safe), a template literal composes text (`` `Hello ${input.name}` ``),
-  an object literal is a value (`select: { title: current.title }`). Studio
-  shows the same: a text, an expression, or a text with `${…}` parts. `===`
+  those characters), on a property of kind expression too (`day:
+  "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
+  as `where: "current.active"` is refused with the expression to write,
+  `where: current.active`), an expression is a value with its type
+  (`input.name`, `left + 1`, `!local.entity`, `local.items[0]`,
+  `local.rows[local.rows.length - 1]`, `local.byId[input.id]`,
+  `current["media:thumbnail"]`, null-safe), a template literal composes text
+  (`` `Hello ${input.name}` ``), an object literal is a value (`select: {
+  title: current.title }`). Strings take the escapes of JavaScript (`"\r\n"`,
+  `"\t"`, `"\uFEFF"`, `"\u{1F600}"`, `"\\"`), in values and in expressions;
+  a regular expression literal is refused: test a pattern with `text.match({
+  text, pattern: "^[0-9]+$" })` and read `.matched`. A local never takes the
+  name of a scope (`input`, `config`, `local`, `result`, `request`,
+  `current`, `parent`, `trace`). Studio shows the same: a text, an
+  expression, or a text with `${…}` parts. `===`
   and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
   loose. Methods chain as in JavaScript, on a path, a call or a parenthesis
   (`input.q.trim().toLowerCase().includes(local.term)`,

@@ -372,13 +372,42 @@ label; `@event.value` is then the selected value or the typed text, so one
 backend Flow must resolve an existing id or create the value and reject an
 empty label. Do not emulate this with `Input`, `ForEach` and buttons.
 
-An `Input` value only displays its binding: typing never writes the state
-back. Keep the text with an event and `@event.value`: `OnInput` runs on each
-keystroke, `OnChange` when the edit is committed (leaving the field);
-`SearchField`, `ChatComposer`, `Combobox` (its typed query) and `OtpInput`
-give `OnInput` the same `@event.value`. To submit several fields together,
-place them with a `Button type="submit"` in a `Form` and run the save from
-`Form` > `Events` > `OnSubmit`, reading the page states.
+An `Input` or `Textarea` value only displays its binding: typing never writes
+the state back. Keep the text with an event and `@event.value`: `OnInput` runs
+on each keystroke, `OnChange` when the edit is committed (leaving the field).
+A free text on several lines (a comment, a description) is a `Textarea`
+(`rows`, `maxlength`, `placeholder`, `required`), never a one-line `Input`;
+its `@event.value` keeps the line breaks. `SearchField`, `ChatComposer`,
+`Combobox` (its typed query) and `OtpInput` give `OnInput` the same
+`@event.value`. To submit several fields together, place them with a
+`Button type="submit"` in a `Form` and run the save from `Form` > `Events` >
+`OnSubmit`, reading the page states.
+
+An `AlertDialog` runs the confirmed command from `OnConfirm` (`@event.value`
+is `"confirm"`) and a refusal from `OnCancel` (`"cancel"`, `"escape"` or
+`"backdrop"`); `OnClose` runs each time it closes (`@event.value.reason`).
+Bind its `open` to a page State that a Button sets to `true`: an
+`AlertDialog`, `Modal`, `Drawer`, `ActionSheet` or `Popover` sets that State
+back to `false` when it closes, so the next `SetValue` opens it again. A
+widget runs a handler only for an event it emits (listed in its palette
+entry) or a browser event of its element; any other one (an `OnConfirm` on a
+`Button`) is refused with `FRONTEND_WIDGET_EVENT_UNKNOWN`.
+
+A `DataTable` keeps its row actions on the right of a wide table and, with
+`layout="auto"` (the default), shows one card per row once it is narrower
+than 640px; `layout="table"` keeps the table. `selectable={true}` adds row
+checkboxes and a Select all checkbox; bind `selected="@page.picked"`: the
+State holds the keys (`rowKey`) of the selected rows, for a bulk action
+Button, and `OnSelectionChange` gives the same keys as `@event.value`
+(`@event.source` row, all or none). Select all takes the filtered rows, or
+the loaded page with `serverSide={true}`. A column `format` may be a date
+pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`.
+
+A French application sets `locale="fr-FR"` (or binds it to the language
+State) on `DataTable`, `DatePicker`, `Select` and `DisplayModeControl`: their
+texts left at their default follow it (the empty choice of `Select`, the
+labels of `DisplayModeControl`, the announcements of `DatePicker`); a text
+written in the block is kept.
 
 A choice control keeps its choice the same way with `OnChange`; its `OnInput`
 receives the same value (except a `Combobox`, whose `OnInput` gives the typed
@@ -403,7 +432,8 @@ FlowComponent -> Variables -> State / Derived / DerivedBy / Translations
 FlowComponent -> Events -> OnMount / OnAfterNavigate / OnDestroy / Effect / PreEffect / Interval / Timeout
 FlowComponent -> Structure -> PageShell
 Button -> Events -> OnClick -> Actions -> CallSequence -> Variables
-Input -> Events -> OnInput / OnChange -> Actions -> SetValue / portable block
+Input / Textarea -> Events -> OnInput / OnChange -> Actions -> SetValue / portable block
+AlertDialog -> Events -> OnConfirm / OnCancel -> Actions -> CallSequence
 ForEach -> Children -> Card
 If -> Then / Else
 Layout -> PageContent
