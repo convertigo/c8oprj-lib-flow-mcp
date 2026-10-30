@@ -113,8 +113,15 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   not infer free-text support from its placeholder or empty-state label. Keep
   existing-id versus custom-label resolution in one backend Flow and reject
   empty labels before persistence.
-- Prove the visible workflow through the host-managed Playwright connection to
-  the current viewer. Do not open a separate browser or use raw CDP.
+- Prove the visible workflow on the current viewer, never in a separate
+  browser or through raw CDP. Delegate a multi-step proof (sign-in, a path
+  through several pages, a form submitted then a list checked) to one relayed
+  `subagent-run({profile:"verifier", task, inputs:{url, paths, checks,
+  hints}})` with `url` set to the `openUrl` of `dev.sync` or `dev.open`; while
+  it answers `status:"running"`, call it again with its `runId` alone. Use
+  `browser-verify` for one visual check of a page, and the host-managed
+  Playwright connection only for one quick DOM or timing evaluation: no
+  `browser_snapshot` per step, no long click sequences in your own context.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
   also confirm that referenced images load without 404 responses.
 - Do not call `flow-app-progress` on the simple fast path unless a structural

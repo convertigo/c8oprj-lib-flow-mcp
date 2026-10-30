@@ -4133,8 +4133,12 @@
 		"report-create": true,
 		"requestable-execute": true,
 		"scheduler-apply": true,
-		"scheduler-list": true
+		"scheduler-list": true,
+		"subagent-run": true
 	};
+	// subagent-run, verifier profile only: the constructor builds legacy objects in a Vibe session that keeps only the
+	// MCP server named Convertigo, never Flow sources through convertigo-flow.
+	var RELAYED_SUBAGENT_PROFILES = ["verifier"];
 	var LEGACY_RELAY_HEADERS = ["User-Agent", "Authorization", "X-Convertigo-Agent-Provider", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version",
 		"MCP-Protocol-Version", "X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Conversation-Id",
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
@@ -4199,6 +4203,68 @@
 		return JSON.parse(body);
 	}
 
+	// The Flow facade of subagent-run: the verifier profile alone, with its inputs.
+	function relayedSubagentDescriptor(tool) {
+		var properties = tool.inputSchema && tool.inputSchema.properties;
+		if (properties && properties.profile) {
+			properties.profile.enum = RELAYED_SUBAGENT_PROFILES.slice(0);
+			properties.profile["default"] = "verifier";
+			properties.profile.description = "verifier: functional and visual browser proofs on the Studio viewer, read-only, by a vision model. " +
+				"The only profile of the Flow MCP: build Flows and pages yourself with the Flow tools.";
+		}
+		if (properties && properties.inputs) {
+			properties.inputs.description = "url: the viewer URL (openUrl of frontend-svelte-action dev.sync or dev.open); paths: one plain-language " +
+				"user journey per item (sign in, go through pages, fill and submit a form); checks: acceptance criteria with the exact expected texts; " +
+				"hints: demo accounts, expected values, what just changed; viewport: desktop (default), mobile or <width>x<height>.";
+		}
+		tool.description = String(tool.description || "") + " Flow: profile verifier only. A call answers within about 50 s: " +
+			"while it answers status:\"running\", call subagent-run again with runId alone.";
+		return tool;
+	}
+
+	function relayedSubagentRefusal(request) {
+		var params = request && request.params || {};
+		if (String(params.name || "") !== "subagent-run") {
+			return null;
+		}
+		var args = params.arguments && typeof params.arguments === "object" ? params.arguments : {};
+		var profile = String(args.profile === undefined || args.profile === null ? "" : args.profile).trim().toLowerCase();
+		if (String(args.runId || "").trim() !== "" || profile === "" || RELAYED_SUBAGENT_PROFILES.indexOf(profile) !== -1) {
+			return null;
+		}
+		var error = new Error("subagent-run profile " + profile + " is not available through the Flow MCP: the constructor builds legacy " +
+			"Convertigo objects with the Convertigo MCP, not Flows or Flow Svelte pages.");
+		error.code = "SUBAGENT_PROFILE_NOT_RELAYED";
+		error.hint = "Build with the Flow tools yourself (code-set, code-run, code-promote), then prove the result with " +
+			"subagent-run({profile:\"verifier\", task, inputs:{url, paths, checks}}).";
+		error.details = { profile: profile, profiles: RELAYED_SUBAGENT_PROFILES.slice(0) };
+		return error;
+	}
+
+	// The text content of a relayed answer that carries structuredContent only. A sub-agent or a verification still
+	// running must say how to collect it, also to a client that shows the text content alone.
+	function relaySummary(value) {
+		if (value && typeof value === "object" && !value.error && /^(?:running|finished)$/.test(String(value.status || "")) &&
+				(value.runId || value.verificationId)) {
+			var id = value.runId ? "runId=" + value.runId : "verificationId=" + value.verificationId;
+			var parts = ["status=" + value.status, id];
+			if (value.status === "running") {
+				if (value.message) parts.push(String(value.message));
+				else parts.push("Call the same tool again with " + (value.runId ? "runId" : "verificationId") + " alone to wait for the report.");
+			} else {
+				var report = value.report && typeof value.report === "object" ? value.report : value;
+				if (report.verdict) parts.push("verdict=" + report.verdict);
+				if (report.summary) {
+					var summary = String(report.summary);
+					parts.push(summary.length > 600 ? summary.substring(0, 600) + "…" : summary);
+				}
+			}
+			parts.push("Use structuredContent for data.");
+			return parts.join(". ");
+		}
+		return textSummary(value === undefined ? {} : value);
+	}
+
 	// The relayed tool descriptors, or [] when lib_ConvertigoMCP does not answer (the Flow tools stay available).
 	function legacyRelayTools(ctx) {
 		if (!legacyRelayEnabled()) {
@@ -4215,7 +4281,7 @@
 			}).map(function (tool) {
 				var copy = JSON.parse(JSON.stringify(tool));
 				copy.description = String(copy.description || "") + LEGACY_RELAY_NOTE;
-				return copy;
+				return String(copy.name) === "subagent-run" ? relayedSubagentDescriptor(copy) : copy;
 			});
 		} catch (e) {
 			tools = [];
@@ -4224,6 +4290,10 @@
 	}
 
 	function legacyRelayCall(ctx, request) {
+		var refusal = relayedSubagentRefusal(request);
+		if (refusal) {
+			return toolError(request, refusal, ctx);
+		}
 		try {
 			var answer = legacyPost(ctx, {
 				jsonrpc: "2.0",
@@ -4238,7 +4308,7 @@
 			if (answer && answer.result && Object.prototype.toString.call(answer.result.content) !== "[object Array]") {
 				answer.result.content = [{
 					type: "text",
-					text: textSummary(answer.result.structuredContent === undefined ? {} : answer.result.structuredContent)
+					text: relaySummary(answer.result.structuredContent)
 				}];
 			}
 			return answer;

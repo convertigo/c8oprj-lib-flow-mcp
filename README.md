@@ -240,6 +240,17 @@ On a server, a shared bearer alone does not establish the No Code user identity
 required by Tigo feedback. If the legacy endpoint omits the tool, it stays absent;
 `nocode-report-create` is not exposed through this endpoint.
 
+`browser-verify` and `subagent-run` hand browser proofs to a vision sub-agent
+of the legacy endpoint, which drives the Studio viewer of the conversation (its
+`X-Convertigo-Viewer-Debug-Port` and `X-Convertigo-Conversation-Id` headers are
+relayed). A long run answers `status:"running"` with a `runId` (a
+`verificationId` for `browser-verify`), and the same tool called with it alone
+waits again; the relayed text content says so, since some clients show the text
+alone. `subagent-run` is offered with its `verifier` profile only: the
+`constructor` profile builds legacy objects in a Vibe session that keeps the
+`Convertigo` MCP server alone, so the relay refuses it with
+`SUBAGENT_PROFILE_NOT_RELAYED` before any hop (`RELAYED_SUBAGENT_PROFILES`).
+
 ## FlowScript code tools
 
 `code-*` is the default source surface for agents:

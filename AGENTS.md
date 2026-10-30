@@ -82,6 +82,7 @@ for Studio-visible frontend writes, pass reveal:true so the virtual tree is reco
 after the first frontend code-get of every turn, call frontend-svelte-action with actionId dev.ensure and wait:false before mutation
 import local or generated images with frontend-svelte-asset-import and reuse the returned resources/... URL unchanged
 before Playwright, call frontend-svelte-action with actionId dev.open and require browserControlReady:true
+multi-step browser proofs (sign-in, several pages, forms) go to the relayed subagent-run with profile:"verifier" and the viewer openUrl; browser-verify for one visual check; Playwright only for one quick evaluation
 code-set with block:"ns.name" and the complete _meta + implementation only when reusable vocabulary is needed
 flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments, Java sources (libs/src) and other resources
 ```

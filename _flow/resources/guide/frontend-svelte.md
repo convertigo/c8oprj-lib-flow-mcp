@@ -601,3 +601,23 @@ failure, allow one focused browser diagnostic instead of an exploratory test
 campaign. Do not infer that a network-backed component works from its
 container size: for maps, confirm one tile image has `naturalWidth > 0`, and
 apply the equivalent resource check to other visualizations.
+
+Delegate a multi-step proof (sign-in, a path through several pages, a form
+submitted then the list that shows the result) to a verifier sub-agent: its
+clicks, snapshots and waits stay out of your context, and its vision model
+also checks the rendering.
+
+```text
+subagent-run({ profile:"verifier",
+  task:"Prove that a signed-in RPCA declares two posts.",
+  inputs:{ url:"<openUrl of dev.sync or dev.open>",
+    paths:["Sign in as rpca.demo / demo", "Select two posts, declare them"],
+    checks:["Both statuses become \"Up to date\""],
+    hints:"demo accounts: rpca.demo / demo" } })
+-> status:"running", runId -> subagent-run({ runId }) until the report
+```
+
+Use `browser-verify` with `checks` for one visual check of the current page,
+and a Playwright evaluation only for one DOM or timing measure. The verifier is
+read-only: fix what it reports with the Flow tools, then run it again on the
+failed paths only.

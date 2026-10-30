@@ -21,13 +21,20 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 			provider: exchange.getRequestHeaders().getFirst("X-Convertigo-Agent-Provider"),
 			cookie: exchange.getRequestHeaders().getFirst("Cookie"),
 			conversation: String(exchange.getRequestHeaders().getFirst("X-Convertigo-Conversation-Id")),
+			viewerPort: String(exchange.getRequestHeaders().getFirst("X-Convertigo-Viewer-Debug-Port")),
 			body: body
 		});
 		var answer = body.method === "tools/list"
 			? { jsonrpc: "2.0", id: body.id, result: { tools: [
 				{ name: "scheduler-apply", description: "Schedules.", inputSchema: { type: "object" } },
 				{ name: "databaseobject-tree-apply", description: "Mutates.", inputSchema: { type: "object" } },
-				{ name: "code-set", description: "Not the Flow one.", inputSchema: { type: "object" } }
+				{ name: "code-set", description: "Not the Flow one.", inputSchema: { type: "object" } },
+				{ name: "subagent-run", description: "Hand a piece of work to a sub-agent.", inputSchema: { type: "object", properties: {
+					profile: { type: "string", enum: ["verifier", "constructor"], default: "verifier", description: "verifier or constructor." },
+					task: { type: "string" },
+					inputs: { type: "object", additionalProperties: true, description: "verifier: url, paths... constructor: project..." },
+					runId: { type: "string" }
+				}, additionalProperties: false } }
 			] } }
 			: { jsonrpc: "2.0", id: body.id, result: { content: [{ type: "text", text: "ok" }], structuredContent: { echoed: body.params } } };
 		// Model the legacy endpoint's live consent check, including a different caller.
@@ -41,6 +48,17 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 			var value = allowed ? feedback : { error: { message: "Reporting is disabled" } };
 			if (allowed) reports++;
 			answer.result = { isError: !allowed, content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value };
+		}
+		// subagent-run answers status running with a runId, then the report when called again with that runId alone.
+		if (body.method === "tools/call" && body.params.name === "subagent-run") {
+			var subagentArgs = body.params.arguments || {};
+			answer = { jsonrpc: "2.0", id: body.id, result: { structuredContent: subagentArgs.runId
+				? { status: "finished", runId: subagentArgs.runId, profile: "verifier", report: { verdict: "passed", summary: "The two paths passed: the list shows 3 posts." } }
+				: { status: "running", runId: "verify-20261030-120000-0123abcd", profile: "verifier", elapsedMs: 50000, activity: [{ at: 1, turn: 3, text: "Signed in" }],
+					message: "The sub-agent is still working. Call the same tool again with this runId alone to wait for its report." } } };
+		}
+		if (body.method === "tools/call" && body.params.name === "browser-verify") {
+			answer = { jsonrpc: "2.0", id: body.id, result: { structuredContent: { status: "running", verificationId: "verify-20261030-120001-89abcdef", elapsedMs: 50000 } } };
 		}
 		// lib_ConvertigoMCP answers a jsonOnly=true call with structuredContent only.
 		if (body.method === "tools/call" && body.params.arguments.structuredOnly) {
@@ -67,13 +85,21 @@ try {
 	} }; } };
 
 	var tools = mcp.legacyRelayTools(ctx);
-	assert(tools.length === 1 && tools[0].name === "scheduler-apply", "only listed relay tools are kept: " + JSON.stringify(tools));
+	assert(tools.length === 2 && tools[0].name === "scheduler-apply" && tools[1].name === "subagent-run", "only listed relay tools are kept: " + JSON.stringify(tools));
 	assert(/Relayed to the Convertigo MCP/.test(tools[0].description), "relayed tools say so");
 	assert(seen[0].query === "jsonOnly=true" && seen[0].body.method === "tools/list", "tools/list on the Convertigo MCP endpoint");
-	assert(mcp.legacyRelayTools(ctx).length === 1 && seen.length === 2, "each list refreshes caller-dependent descriptors");
+	assert(mcp.legacyRelayTools(ctx).length === 2 && seen.length === 2, "each list refreshes caller-dependent descriptors");
+	// The Flow facade offers the verifier profile alone: the constructor builds legacy objects, not Flow sources.
+	var subagent = tools[1].inputSchema.properties;
+	assert(JSON.stringify(subagent.profile.enum) === JSON.stringify(["verifier"]) && subagent.profile["default"] === "verifier",
+		"subagent-run is relayed with the verifier profile only: " + JSON.stringify(subagent.profile));
+	assert(/openUrl of frontend-svelte-action dev\.sync or dev\.open/.test(subagent.inputs.description) && subagent.runId.type === "string",
+		"the verifier inputs name the viewer URL, runId stays: " + JSON.stringify(subagent.inputs));
+	assert(/Relayed to the Convertigo MCP/.test(tools[1].description) && /runId alone/.test(tools[1].description), "the descriptor says how to collect a run");
 
 	assert(mcp.legacyRelayTool("scheduler-apply") && mcp.legacyRelayTool("requestable-execute"), "relayed tools");
 	assert(mcp.legacyRelayTool("browser-verify"), "the visual verifier is relayed for models without vision");
+	assert(mcp.legacyRelayTool("subagent-run"), "the verifier sub-agent is relayed for multi-step browser proofs");
 	["databaseobject-tree-apply", "batch-call", "project-delete", "mobile-builder-open", "code-set", "nocode-report-create", ""].forEach(function (name) {
 		assert(!mcp.legacyRelayTool(name), name + " is not relayed");
 	});
@@ -90,6 +116,38 @@ try {
 		"a structuredContent-only answer gets a text content: " + JSON.stringify(structuredOnly));
 	assert(/^OK\. Saved\. .*structuredContent/.test(structuredOnly.result.content[0].text), "the text summarizes the result: " + structuredOnly.result.content[0].text);
 	assert(structuredOnly.result.structuredContent.project === "P" && structuredOnly.id === 43, "the structured result and the id stay intact");
+
+	// subagent-run: the arguments and the viewer headers reach the legacy tool; a running answer says how to collect it.
+	headers["X-Convertigo-Viewer-Debug-Port"] = "9333";
+	headers["X-Convertigo-Conversation-Id"] = "fixture-subagent";
+	var verifierArgs = { profile: "verifier", task: "Prove the sign-in and the declaration of two posts.",
+		inputs: { url: "http://127.0.0.1:18080/convertigo/projects/App/DisplayObjects/mobile/", paths: ["Sign in as rpca.demo / demo", "Select two posts and declare them"],
+			checks: ["Both statuses become \"À jour\""], hints: "demo accounts: rpca.demo / demo" } };
+	var started = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 60, method: "tools/call", params: { name: "subagent-run", arguments: verifierArgs } });
+	var startCall = seen[seen.length - 1];
+	assert(JSON.stringify(startCall.body.params.arguments) === JSON.stringify(verifierArgs) && startCall.body.params.name === "subagent-run",
+		"the verifier arguments are forwarded intact: " + JSON.stringify(startCall.body.params));
+	assert(startCall.viewerPort === "9333" && startCall.conversation === "fixture-subagent", "the viewer port and the conversation reach the sub-agent");
+	assert(started.id === 60 && started.result.structuredContent.status === "running" && started.result.structuredContent.runId === "verify-20261030-120000-0123abcd",
+		"the running answer keeps its runId: " + JSON.stringify(started));
+	assert(/^status=running\. runId=verify-20261030-120000-0123abcd\. The sub-agent is still working\. Call the same tool again with this runId alone/.test(started.result.content[0].text),
+		"the text content of a running answer says how to collect it: " + started.result.content[0].text);
+	var collected = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 61, method: "tools/call", params: { name: "subagent-run", arguments: { runId: "verify-20261030-120000-0123abcd" } } });
+	assert(JSON.stringify(seen[seen.length - 1].body.params.arguments) === JSON.stringify({ runId: "verify-20261030-120000-0123abcd" }), "the runId call is forwarded alone");
+	assert(collected.result.structuredContent.report.verdict === "passed" &&
+		/^status=finished\. runId=verify-20261030-120000-0123abcd\. verdict=passed\. The two paths passed/.test(collected.result.content[0].text),
+		"the finished answer summarizes the verdict: " + collected.result.content[0].text);
+	var beforeConstructor = seen.length;
+	var constructor = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 62, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "Constructor", task: "Build", inputs: { project: "App" } } } });
+	assert(seen.length === beforeConstructor && constructor.id === 62 && constructor.result.structuredContent.error.code === "SUBAGENT_PROFILE_NOT_RELAYED" &&
+		/flow tools yourself/i.test(constructor.result.structuredContent.error.hint), "the constructor is refused before any hop: " + JSON.stringify(constructor));
+	mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 63, method: "tools/call", params: { name: "subagent-run", arguments: { profile: "constructor", runId: "build-20261030-120000-0123abcd" } } });
+	assert(seen.length === beforeConstructor + 1, "a runId is always collected, whatever the profile");
+	var verification = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 64, method: "tools/call", params: { name: "browser-verify", arguments: { url: "http://x/", checks: ["Title"] } } });
+	assert(/^status=running\. verificationId=verify-20261030-120001-89abcdef\. Call the same tool again with verificationId alone/.test(verification.result.content[0].text),
+		"a running browser-verify says how to collect it: " + verification.result.content[0].text);
+	delete headers["X-Convertigo-Viewer-Debug-Port"];
+	delete headers["X-Convertigo-Conversation-Id"];
 
 	headers["X-Convertigo-Agent-Provider"] = "claude";
 	var claudeTools = mcp.legacyRelayTools(ctx);
@@ -120,16 +178,16 @@ try {
 	assert(created.result.content[0].text === JSON.stringify(feedback), "legacy text stays intact");
 	assert(seen[seen.length - 1].conversation === "fixture-conversation", "conversation context reaches the legacy endpoint");
 	headers.Authorization = "Bearer other-client";
-	assert(mcp.legacyRelayTools(ctx).length === 1, "another caller does not inherit consent-sensitive descriptors");
+	assert(mcp.legacyRelayTools(ctx).length === 2, "another caller does not inherit consent-sensitive descriptors");
 	assert(mcp.legacyRelayCall(ctx, reportRequest).result.isError === true && reports === 1, "another caller cannot create a report");
 	headers.Authorization = "Bearer client-token";
 	consent = false;
-	assert(mcp.legacyRelayTools(ctx).length === 1, "revoked consent disappears on the next list");
+	assert(mcp.legacyRelayTools(ctx).length === 2, "revoked consent disappears on the next list");
 	assert(mcp.legacyRelayCall(ctx, reportRequest).result.isError === true && reports === 1, "revocation is checked again at execution");
 	unavailable = true;
 	assert(mcp.legacyRelayTools(ctx).length === 0, "an unavailable endpoint cannot reuse a stale descriptor");
 	unavailable = false;
-	assert(mcp.legacyRelayTools(ctx).length === 1, "endpoint recovery is immediately visible");
+	assert(mcp.legacyRelayTools(ctx).length === 2, "endpoint recovery is immediately visible");
 	java.lang.System.setProperty("convertigo.flow.mcp.legacyRelay", "false");
 	assert(!mcp.legacyRelayTool("scheduler-apply"), "the relay can be disabled");
 	java.lang.System.clearProperty("convertigo.flow.mcp.legacyRelay");

@@ -101,6 +101,28 @@ initial value, waits, and verifies the changed value. List/select tabs only
 when the viewer target is ambiguous; do not split one assertion across
 `browser_find` and several evaluations.
 
+## Browser Proofs
+
+Keep long Playwright sequences out of your context: each snapshot, click and
+wait stays in it for the rest of the task.
+
+- A multi-step proof (sign in, go through several pages, fill and submit a
+  form, check a list after a write) goes to one relayed
+  `subagent-run({profile:"verifier", task, inputs:{url, paths, checks,
+  hints}})`. `url` is the `openUrl` returned by `dev.sync` or `dev.open`;
+  `paths` lists the user journeys in plain language, `checks` the exact
+  expected texts, `hints` the demo accounts and values. A vision model drives
+  the Studio viewer and returns a short report (verdict, checks, defects,
+  screenshots). While it answers `status:"running"`, call `subagent-run`
+  again with its `runId` alone; never start a second run meanwhile. Keep the
+  default `waitSec`.
+- One visual check of the current page (layout, a rendered image, a label)
+  is one relayed `browser-verify` call with its `checks`.
+- Use Playwright yourself only for one quick evaluation of DOM state or
+  timing; never a `browser_snapshot` per step.
+- The verifier is read-only: fix what it reports with the Flow tools, then
+  run it again on the failed paths only.
+
 ## Backend Source Loop
 
 Use FlowScript code tools, not Flow tree/YAML editing:
@@ -165,9 +187,11 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   user), `log-view`, `project-list-symbols`, `project-save` (saves the frontend sources
   and tags of a project), `marketplace-*`,
   `project-security-audit`, `image-describe`, `rag-query` and read-only
-  `databaseobject-*`, and `browser-verify` (a vision model checks a page of the
-  viewer: the way to prove the rendering for a model without vision). Use
-  them instead of a workaround.
+  `databaseobject-*`, `browser-verify` (a vision model checks a page of the
+  viewer: the way to prove the rendering for a model without vision) and
+  `subagent-run` with `profile:"verifier"` (a vision sub-agent walks
+  multi-step paths in the viewer and reports, see Browser Proofs). Use them
+  instead of a workaround.
 - Flow libraries are not on the marketplace yet: the ones you can use are
   already in this workspace (`flow-catalog`, `project-list`). Do not search or
   import the marketplace for Flow capabilities.

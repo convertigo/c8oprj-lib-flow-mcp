@@ -143,7 +143,10 @@ source, including a structured literal for intentionally static content.
     - `code-run` for backend behavior;
     - `flow-output-schema` when downstream pickers or requestable schemas
       matter;
-    - browser smoke in the live dev viewer for the requested visible workflow;
+    - browser smoke in the live dev viewer for the requested visible workflow:
+      a multi-step workflow (sign-in, several pages, a form) through one
+      relayed `subagent-run` with `profile:"verifier"` and the viewer
+      `openUrl`, one visual check through `browser-verify`;
     - production build only for deployment or an explicit production check.
     For temporal requirements, sample the relevant visible value twice at
     least one second apart. For visual requirements, inspect the rendered
