@@ -7,7 +7,7 @@ const _meta = {
     "mcp",
     "crud-fastpath", "crud-model", "crud-legacy", "crud-ui", "project-starter"
   ],
-  "description": "Checks generated CRUD artifacts and executes private schema/count proof; independent HTTP sessions and browser tests prove end-user rights and UI.",
+  "description": "Checks an application applied by flow-crud-upsert: the stored model is applied, every generated Flow, page and SQL resource still matches it (a hand edit is reported), and the read-only SQL plan has nothing left to run. Call it after apply and after any model change: {project:\"MyApp\"}. It does not prove end-user rights or pages: sign in over HTTP with each role and check the pages.",
   "properties": {
     "request": {
       "kind": "expression",
