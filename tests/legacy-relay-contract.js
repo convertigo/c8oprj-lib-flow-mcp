@@ -32,7 +32,9 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 				{ name: "subagent-run", description: "Hand a piece of work to a sub-agent.", inputSchema: { type: "object", properties: {
 					profile: { type: "string", enum: ["verifier", "constructor"], default: "verifier", description: "verifier or constructor." },
 					task: { type: "string" },
-					inputs: { type: "object", additionalProperties: true, description: "verifier: url, paths... constructor: project..." },
+					inputs: { type: "object", additionalProperties: true, description: "verifier: url, paths... constructor: project...", properties: {
+						paths: { type: "array", description: "Paths to walk and check, in plain language, in order (at most 8). For example: Log in as the demo RPCA (rpca.demo / demo), select two posts, declare them, check that both statuses become \"À jour\"." }
+					} },
 					runId: { type: "string" }
 				}, additionalProperties: false } }
 			] } }
@@ -95,6 +97,8 @@ try {
 		"subagent-run is relayed with the verifier profile only: " + JSON.stringify(subagent.profile));
 	assert(/openUrl of frontend-svelte-action dev\.sync or dev\.open/.test(subagent.inputs.description) && subagent.runId.type === "string",
 		"the verifier inputs name the viewer URL, runId stays: " + JSON.stringify(subagent.inputs));
+	assert(!/RPCA|rpca\./.test(JSON.stringify(tools)) && /sign in as the demo user/.test(subagent.inputs.properties.paths.description),
+		"relayed descriptions are neutral: " + JSON.stringify(subagent.inputs.properties.paths));
 	assert(/Relayed to the Convertigo MCP/.test(tools[1].description) && /runId alone/.test(tools[1].description), "the descriptor says how to collect a run");
 
 	assert(mcp.legacyRelayTool("scheduler-apply") && mcp.legacyRelayTool("requestable-execute"), "relayed tools");

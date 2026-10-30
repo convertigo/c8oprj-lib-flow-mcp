@@ -4268,6 +4268,28 @@
 		return JSON.parse(body);
 	}
 
+	// A legacy description may illustrate a field with an example taken from one business application: the Flow MCP
+	// keeps its catalogue neutral and gives a generic example instead.
+	var NEUTRAL_RELAY_EXAMPLE = "For example: sign in as the demo user, open a record, change a field and save it, " +
+		"then check that the list shows the new value.";
+	function neutralRelayDescriptions(node) {
+		if (Array.isArray(node)) {
+			node.forEach(neutralRelayDescriptions);
+		} else if (node && typeof node === "object") {
+			for (var key in node) {
+				if (!Object.prototype.hasOwnProperty.call(node, key)) {
+					continue;
+				}
+				if (key === "description" && typeof node[key] === "string" && /\bRPCA\b|rpca\.demo/i.test(node[key])) {
+					node[key] = node[key].replace(/For example:[\s\S]*$/, NEUTRAL_RELAY_EXAMPLE);
+				} else {
+					neutralRelayDescriptions(node[key]);
+				}
+			}
+		}
+		return node;
+	}
+
 	// The Flow facade of subagent-run: the verifier profile alone, with its inputs.
 	function relayedSubagentDescriptor(tool) {
 		var properties = tool.inputSchema && tool.inputSchema.properties;
@@ -4344,7 +4366,7 @@
 			tools = (answer && answer.result && answer.result.tools || []).filter(function (tool) {
 				return tool && LEGACY_RELAY_TOOLS[String(tool.name)] === true;
 			}).map(function (tool) {
-				var copy = JSON.parse(JSON.stringify(tool));
+				var copy = neutralRelayDescriptions(JSON.parse(JSON.stringify(tool)));
 				copy.description = String(copy.description || "") + LEGACY_RELAY_NOTE;
 				return String(copy.name) === "subagent-run" ? relayedSubagentDescriptor(copy) : copy;
 			});
