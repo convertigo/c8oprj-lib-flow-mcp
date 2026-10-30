@@ -1,0 +1,1435 @@
+/* Legacy normalization snapshot, preview/0.2.29 @ a58b5a0.
+ * Source: convertigo/c8oprj-lib-c8o-mcp, js/crud_naming.js, crud_spec.js, crud_seed.js.
+ * Kept verbatim inside this module to preserve accepted keys and semantics.
+ * The upstream clone remains read-only. */
+(function () {
+var C8O={util:{parseObjectInput:function(value){return typeof value==='string'?JSON.parse(value):JSON.parse(JSON.stringify(value));}}};
+if (typeof C8O === "undefined") {
+  var C8O = {};
+}
+
+C8O.crudNaming = C8O.crudNaming || {};
+
+(function () {
+  if (C8O.crudNaming._initialized === true) {
+    return;
+  }
+  C8O.crudNaming._initialized = true;
+
+  C8O.crudNaming.ucfirst = function (ctx, value) {
+    var text = ctx.trimmed(value);
+    if (!text.length) {
+      return "";
+    }
+    return text.substring(0, 1).toUpperCase() + text.substring(1);
+  };
+
+  C8O.crudNaming.pascalize = function (ctx, value) {
+    var text = ctx.trimmed(value);
+    if (!text.length) {
+      return "";
+    }
+    var parts = String(text).split(/[^A-Za-z0-9]+/);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var part = ctx.trimmed(parts[i]);
+      if (!part.length) {
+        continue;
+      }
+      out.push(C8O.crudNaming.ucfirst(ctx, part));
+    }
+    return out.join("");
+  };
+
+  C8O.crudNaming.singularize = function (ctx, name) {
+    var text = ctx.trimmed(name);
+    if (!text.length) {
+      return text;
+    }
+    if (/ies$/i.test(text)) {
+      return text.substring(0, text.length - 3) + "y";
+    }
+    if (/ses$/i.test(text)) {
+      return text.substring(0, text.length - 2);
+    }
+    if (/s$/i.test(text) && text.length > 1) {
+      return text.substring(0, text.length - 1);
+    }
+    return text;
+  };
+
+  C8O.crudNaming.pluralize = function (ctx, name) {
+    var text = ctx.trimmed(name);
+    if (!text.length) {
+      return text;
+    }
+    if (/y$/i.test(text)) {
+      return text.substring(0, text.length - 1) + "ies";
+    }
+    if (/s$/i.test(text)) {
+      return text;
+    }
+    return text + "s";
+  };
+
+  C8O.crudNaming.semanticToken = function (ctx, value) {
+    var text = ctx.trimmed(value);
+    if (!text.length) {
+      return "";
+    }
+    try {
+      var Normalizer = Packages.java.text.Normalizer;
+      var Form = Packages.java.text.Normalizer.Form;
+      text = String(Normalizer.normalize(text, Form.NFD));
+    } catch (_ignoreNormalizer) {}
+    text = text
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9]+/g, "")
+      .toLowerCase();
+    return text;
+  };
+
+  C8O.crudNaming.semanticFieldToken = function (ctx, field) {
+    var parts = [];
+    if (field) {
+      parts.push(field.column);
+      parts.push(field.name);
+      parts.push(field.label);
+    }
+    return C8O.crudNaming.semanticToken(ctx, parts.join(" "));
+  };
+
+  C8O.crudNaming.semanticEntityToken = function (ctx, entity) {
+    var parts = [];
+    if (entity) {
+      parts.push(entity.name);
+      parts.push(entity.singular);
+      parts.push(entity.label);
+      parts.push(entity.displayLabel);
+      parts.push(entity.routeSegment);
+    }
+    return C8O.crudNaming.semanticToken(ctx, parts.join(" "));
+  };
+
+  C8O.crudNaming.tokenMatches = function (ctx, token, patterns) {
+    var text = C8O.crudNaming.semanticToken(ctx, token);
+    var values = ctx.ensureArray(patterns);
+    for (var i = 0; i < values.length; i++) {
+      var pattern = C8O.crudNaming.semanticToken(ctx, values[i]);
+      if (pattern.length && text.indexOf(pattern) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  C8O.crudNaming.humanizeIdentifier = function (ctx, value) {
+    var text = ctx.trimmed(value).replace(/[_\-]+/g, " ");
+    if (!text.length) {
+      return "";
+    }
+    return text.replace(/\b([a-z])/g, function (_all, char) {
+      return String(char).toUpperCase();
+    });
+  };
+
+  C8O.crudNaming.normalizeEntityNames = function (ctx, rawEntity, fallbackName) {
+    var raw = rawEntity || {};
+    var baseName = ctx.optionalNormalizedIdentifier(raw.name || raw.entity || fallbackName || "") || "unnamed";
+    var explicitPlural = ctx.optionalNormalizedIdentifier(raw.plural || "");
+    var explicitSingular = ctx.optionalNormalizedIdentifier(raw.singular || "");
+    var pluralName = explicitPlural || (explicitSingular.length ? C8O.crudNaming.pluralize(ctx, explicitSingular) : C8O.crudNaming.pluralize(ctx, baseName));
+    var singularName = explicitSingular || C8O.crudNaming.singularize(ctx, pluralName);
+    var routeSegment = ctx.normalizedIdentifier(raw.routeSegment || pluralName).replace(/_/g, "-").toLowerCase();
+    var displayLabel = ctx.trimmed(raw.displayLabel || raw.label || C8O.crudNaming.humanizeIdentifier(ctx, pluralName));
+    return {
+      name: pluralName,
+      singular: singularName,
+      routeSegment: routeSegment,
+      displayLabel: displayLabel
+    };
+  };
+})();
+
+if (typeof C8O === "undefined") {
+  var C8O = {};
+}
+
+C8O.crudSpec = C8O.crudSpec || {};
+
+(function () {
+  function driverProfiles() {
+    return {
+      hsqldb: {
+        id: "hsqldb",
+        technology: "HSQLDB",
+        jdbcDriverClassName: "org.hsqldb.jdbcDriver",
+        defaultPort: 9001,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:hsqldb:file:./database/" + databaseSpec.database + ";shutdown=true";
+        },
+        // HSQLDB numbers an identity from 0 by default: a demo seed that references id 1 got the wrong parent.
+        identityColumn: "INTEGER GENERATED BY DEFAULT AS IDENTITY (START WITH 1) PRIMARY KEY",
+        autoIncrementKeyword: "",
+        booleanType: "BOOLEAN",
+        textType: "LONGVARCHAR"
+      },
+      postgresql: {
+        id: "postgresql",
+        technology: "PostgreSQL",
+        jdbcDriverClassName: "org.postgresql.Driver",
+        defaultPort: 5432,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:postgresql://" + databaseSpec.host + ":" + databaseSpec.port + "/" + databaseSpec.database;
+        },
+        identityColumn: "SERIAL PRIMARY KEY",
+        autoIncrementKeyword: "SERIAL",
+        booleanType: "BOOLEAN",
+        textType: "TEXT"
+      },
+      mariadb: {
+        id: "mariadb",
+        technology: "MariaDB",
+        jdbcDriverClassName: "org.mariadb.jdbc.Driver",
+        defaultPort: 3306,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:mariadb://" + databaseSpec.host + ":" + databaseSpec.port + "/" + databaseSpec.database;
+        },
+        identityColumn: "INT AUTO_INCREMENT PRIMARY KEY",
+        autoIncrementKeyword: "AUTO_INCREMENT",
+        booleanType: "BOOLEAN",
+        textType: "TEXT"
+      },
+      mysql: {
+        id: "mysql",
+        technology: "MySQL",
+        jdbcDriverClassName: "com.mysql.jdbc.Driver",
+        defaultPort: 3306,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:mysql://" + databaseSpec.host + ":" + databaseSpec.port + "/" + databaseSpec.database;
+        },
+        identityColumn: "INT AUTO_INCREMENT PRIMARY KEY",
+        autoIncrementKeyword: "AUTO_INCREMENT",
+        booleanType: "BOOLEAN",
+        textType: "TEXT"
+      },
+      sqlserver: {
+        id: "sqlserver",
+        technology: "SQLServer",
+        jdbcDriverClassName: "net.sourceforge.jtds.jdbc.Driver",
+        defaultPort: 1433,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:jtds:sqlserver://" + databaseSpec.host + ":" + databaseSpec.port + "/" + databaseSpec.database;
+        },
+        identityColumn: "INT IDENTITY(1,1) PRIMARY KEY",
+        autoIncrementKeyword: "",
+        booleanType: "BIT",
+        textType: "VARCHAR(MAX)"
+      },
+      oracle: {
+        id: "oracle",
+        technology: "Oracle",
+        jdbcDriverClassName: "oracle.jdbc.driver.OracleDriver",
+        defaultPort: 1521,
+        urlBuilder: function (databaseSpec) {
+          return "jdbc:oracle:thin:@//" + databaseSpec.host + ":" + databaseSpec.port + "/" + databaseSpec.database;
+        },
+        identityColumn: "NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY",
+        autoIncrementKeyword: "",
+        booleanType: "NUMBER(1)",
+        textType: "CLOB"
+      }
+    };
+  }
+
+  var ENGINE_LIST = "hsqldb, postgresql, mariadb, mysql, sqlserver or oracle";
+
+  // Agents write the engine in these fields too (driverFamily is the name crud-status answers with). They count only
+  // when they name an engine: "SQL" is no engine.
+  var ENGINE_ALIAS_FIELDS = ["type", "connectorType", "driverFamily"];
+
+  // A value written as text (a JavaScript or Java string, a number), or "" for an object.
+  function textOf(ctx, value) {
+    var text = ctx.trimmed(value);
+    return /^\[object /.test(text) ? "" : text;
+  }
+
+  // The engine an engine name designates (HSQLDB, Postgres, SQL Server, mssql...), or "".
+  function engineId(ctx, value) {
+    var token = textOf(ctx, value).toLowerCase().replace(/[^a-z0-9]/g, "");
+    token = { hsql: "hsqldb", postgres: "postgresql", maria: "mariadb", mssql: "sqlserver" }[token] || token;
+    return token.length && driverProfiles().hasOwnProperty(token) ? token : "";
+  }
+
+  // The engine comes from database.mode (or technology), then from an alias field, then, when lookup names the
+  // connector upsert-crud writes into, from that connector if it already exists (ctx.connectorEngine reads its JDBC
+  // driver). A driver read from a connector carries source "connector".
+  C8O.crudSpec.normalizeDriver = function (ctx, databaseSpec, lookup) {
+    var raw = databaseSpec || {};
+    var explicit = textOf(ctx, raw.mode || raw.technology);
+    var engine = engineId(ctx, explicit);
+    if (explicit.length && !engine) {
+      throw new Error("Unsupported database.mode \"" + explicit + "\": use " + ENGINE_LIST +
+        ", or leave mode out when database.connector names an existing SQL connector of the project.");
+    }
+    var notEngines = [];
+    for (var i = 0; !engine && i < ENGINE_ALIAS_FIELDS.length; i++) {
+      var aliasValue = raw[ENGINE_ALIAS_FIELDS[i]];
+      engine = engineId(ctx, aliasValue);
+      if (!engine && textOf(ctx, aliasValue).length) {
+        notEngines.push("database." + ENGINE_ALIAS_FIELDS[i] + " \"" + textOf(ctx, aliasValue) + "\" is not one of them.");
+      }
+    }
+    var source = "spec";
+    var existing = null;
+    if (!engine && lookup && ctx.connectorEngine) {
+      existing = ctx.connectorEngine(lookup.project, lookup.connector);
+      engine = existing ? engineId(ctx, existing.engine) : "";
+      source = "connector";
+    }
+    if (!engine) {
+      var message = "spec.database.mode is required: " + ENGINE_LIST + ", for example \"database\": {\"mode\": \"hsqldb\"" +
+        (lookup && lookup.connector ? ", \"connector\": \"" + lookup.connector + "\"" : "") + "}." +
+        " It can be left out when database.connector names an existing SQL connector of the project.";
+      if (notEngines.length) {
+        message += " " + notEngines.join(" ");
+      }
+      if (existing) {
+        message += " Connector " + existing.name + " uses the JDBC driver " + (existing.jdbcDriverClassName || "(none)") +
+          ", which upsert-crud does not generate for.";
+      }
+      throw new Error(message);
+    }
+    var profile = ctx.clone(driverProfiles()[engine]);
+    profile.source = source;
+    return profile;
+  };
+
+  C8O.crudSpec.inferDriverFamilyFromConnector = function (ctx, connector) {
+    var jdbcClass = "";
+    try {
+      jdbcClass = ctx.trimmed(connector && connector.getJdbcDriverClassName ? connector.getJdbcDriverClassName() : "");
+    } catch (_ignoreJdbcClass) {
+      jdbcClass = "";
+    }
+    if (!jdbcClass.length) {
+      return "";
+    }
+    if (jdbcClass.indexOf("postgresql") !== -1) {
+      return "postgresql";
+    }
+    if (jdbcClass.indexOf("mariadb") !== -1) {
+      return "mariadb";
+    }
+    if (jdbcClass.indexOf("mysql") !== -1) {
+      return "mysql";
+    }
+    if (jdbcClass.indexOf("jtds") !== -1 || jdbcClass.indexOf("sqlserver") !== -1) {
+      return "sqlserver";
+    }
+    if (jdbcClass.indexOf("oracle") !== -1) {
+      return "oracle";
+    }
+    if (jdbcClass.indexOf("hsqldb") !== -1) {
+      return "hsqldb";
+    }
+    return jdbcClass;
+  };
+
+  // A connector name written as such or as a QName (Project.cn:appdb); anything else is no name.
+  function connectorName(ctx, value) {
+    return textOf(ctx, value).split(".").pop().replace(/^cn:/, "");
+  }
+
+  C8O.crudSpec.normalizeDatabaseSpec = function (ctx, spec) {
+    var raw = spec.database && typeof spec.database === "object" ? spec.database : {};
+    // spec.connector is where agents also put the connector name.
+    var connector = ctx.trimmed(connectorName(ctx, raw.connector) || connectorName(ctx, spec.connector) || spec.project + "db") || "appdb";
+    var driver = C8O.crudSpec.normalizeDriver(ctx, raw, { project: ctx.trimmed(spec.project), connector: connector });
+    return {
+      mode: driver.id,
+      technology: driver.technology,
+      // "connector": the engine was read from the existing connector, which keeps its connection settings.
+      source: driver.source,
+      connector: connector,
+      host: ctx.trimmed(raw.host || "localhost"),
+      port: raw.port != null && String(raw.port).length ? String(raw.port) : String(driver.defaultPort),
+      database: ctx.trimmed(raw.database || ctx.normalizedIdentifier(spec.project)),
+      user: ctx.trimmed(raw.user || (driver.id === "postgresql" ? "postgres" : (driver.id === "oracle" ? "system" : "root"))),
+      password: raw.password == null ? "" : String(raw.password),
+      driver: driver
+    };
+  };
+
+  function normalizeDefaultValue(value) {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return value;
+    }
+    return String(value);
+  }
+
+  C8O.crudSpec.normalizeField = function (ctx, field, entityName, index) {
+    var rawField = field || {};
+    var rawName = ctx.trimmed(rawField.name || rawField.column || "");
+    if (!rawName.length) {
+      throw new Error("Field #" + index + " for entity " + entityName + " is missing name");
+    }
+    var isPrimary = ctx.toBoolean(rawField.primary, false) || ctx.toBoolean(rawField.primaryKey, false);
+    return {
+      name: rawName,
+      column: ctx.normalizedIdentifier(rawField.column || rawName),
+      type: ctx.trimmed(rawField.type || "VARCHAR(255)"),
+      label: ctx.trimmed(rawField.label || rawName),
+      primary: isPrimary,
+      generated: ctx.toBoolean(rawField.generated, false),
+      unique: isPrimary ? true : ctx.toBoolean(rawField.unique, false),
+      required: rawField.required == null ? isPrimary : ctx.toBoolean(rawField.required, false),
+      // Column default (string, number or boolean): the value of the rows that exist when upsert-crud adds the column.
+      defaultValue: normalizeDefaultValue(rawField["default"] !== undefined ? rawField["default"] : rawField.defaultValue),
+      references: rawField.references && typeof rawField.references === "object" ? ctx.clone(rawField.references) : null
+    };
+  };
+
+  function normalizedLookupKeys(ctx, value) {
+    var primary = ctx.normalizedIdentifier(value || "");
+    if (!primary.length) {
+      return [];
+    }
+    var keys = [primary];
+    var compact = primary.replace(/_/g, "");
+    if (compact.length && compact !== primary) {
+      keys.push(compact);
+    }
+    return keys;
+  }
+
+  function findSeedFieldByKey(ctx, entity, rawKey) {
+    var lookupKeys = normalizedLookupKeys(ctx, rawKey);
+    if (!lookupKeys.length) {
+      return null;
+    }
+    var fields = ctx.ensureArray(entity && entity.fields);
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      if (!field) {
+        continue;
+      }
+      var fieldKeys = normalizedLookupKeys(ctx, field.column || field.name || "");
+      var nameKeys = normalizedLookupKeys(ctx, field.name || field.column || "");
+      for (var lookupIndex = 0; lookupIndex < lookupKeys.length; lookupIndex++) {
+        var currentKey = lookupKeys[lookupIndex];
+        if (fieldKeys.indexOf(currentKey) !== -1 || nameKeys.indexOf(currentKey) !== -1) {
+          return field;
+        }
+      }
+    }
+    return null;
+  }
+
+  function shouldAssignImplicitSeedPrimary(field) {
+    var type = String(field && field.type || "").toUpperCase();
+    return /^(INT|INTEGER|BIGINT|SMALLINT|DECIMAL|NUMERIC|NUMBER|SERIAL)\b/.test(type) || String(field && field.column || "") === "id";
+  }
+
+  function normalizeSeedData(ctx, entities, rawSeedData) {
+    if (!rawSeedData || typeof rawSeedData !== "object" || Array.isArray(rawSeedData)) {
+      return {};
+    }
+    var normalized = {};
+    var entityKeys = Object.keys(rawSeedData);
+    for (var entityIndex = 0; entityIndex < entityKeys.length; entityIndex++) {
+      var rawEntityKey = entityKeys[entityIndex];
+      var entity = C8O.crudSpec.findEntityByName(ctx, entities, rawEntityKey);
+      if (!entity) {
+        throw new Error("seed.data contains an unknown entity: " + rawEntityKey + ". Key it by an entity name of the spec: " +
+          C8O.crudSpec.entityNamesOf(ctx, entities).join(", ") + ".");
+      }
+      var rawRows = ctx.ensureArray(rawSeedData[rawEntityKey]);
+      var normalizedRows = [];
+      for (var rowIndex = 0; rowIndex < rawRows.length; rowIndex++) {
+        var rawRow = rawRows[rowIndex];
+        if (!rawRow || typeof rawRow !== "object" || Array.isArray(rawRow)) {
+          throw new Error("seed.data." + entity.name + "[" + rowIndex + "] must be an object");
+        }
+        var row = {};
+        var rawRowKeys = Object.keys(rawRow);
+        for (var keyIndex = 0; keyIndex < rawRowKeys.length; keyIndex++) {
+          var rawKey = rawRowKeys[keyIndex];
+          var field = findSeedFieldByKey(ctx, entity, rawKey);
+          if (!field) {
+            throw new Error("seed.data." + entity.name + "[" + rowIndex + "] contains an unknown field: " + rawKey);
+          }
+          row[field.column] = rawRow[rawKey];
+        }
+        if (entity.primaryField && row[entity.primaryField.column] == null && shouldAssignImplicitSeedPrimary(entity.primaryField)) {
+          row[entity.primaryField.column] = rowIndex + 1;
+        }
+        normalizedRows.push(row);
+      }
+      normalized[entity.name] = normalizedRows;
+    }
+    return normalized;
+  }
+
+  C8O.crudSpec.normalizeEntityUi = function (ctx, rawUi) {
+    var source = rawUi && typeof rawUi === "object" ? rawUi : {};
+
+    function normalizeFieldRefs(value) {
+      var entries = ctx.ensureArray(value);
+      var seen = {};
+      var normalized = [];
+      for (var i = 0; i < entries.length; i++) {
+        var token = ctx.normalizedIdentifier(entries[i]);
+        if (!token.length || seen[token]) {
+          continue;
+        }
+        seen[token] = true;
+        normalized.push(token);
+      }
+      return normalized;
+    }
+
+    var fieldLabels = {};
+    var rawFieldLabels = source.fieldLabels && typeof source.fieldLabels === "object" ? source.fieldLabels : {};
+    var rawFieldLabelKeys = Object.keys(rawFieldLabels);
+    for (var index = 0; index < rawFieldLabelKeys.length; index++) {
+      var rawKeys = normalizedLookupKeys(ctx, rawFieldLabelKeys[index]);
+      var rawValue = ctx.trimmed(rawFieldLabels[rawFieldLabelKeys[index]]);
+      if (!rawKeys.length || !rawValue.length) {
+        continue;
+      }
+      for (var rawKeyIndex = 0; rawKeyIndex < rawKeys.length; rawKeyIndex++) {
+        fieldLabels[rawKeys[rawKeyIndex]] = rawValue;
+      }
+    }
+
+    var relationFields = {};
+    var rawRelationFields = source.relationFields && typeof source.relationFields === "object" ? source.relationFields : {};
+    var relationFieldKeys = Object.keys(rawRelationFields);
+    for (var relationIndex = 0; relationIndex < relationFieldKeys.length; relationIndex++) {
+      var relationKeys = normalizedLookupKeys(ctx, relationFieldKeys[relationIndex]);
+      if (!relationKeys.length) {
+        continue;
+      }
+      var rawRelation = rawRelationFields[relationFieldKeys[relationIndex]];
+      if (!rawRelation || typeof rawRelation !== "object") {
+        continue;
+      }
+      var control = ctx.trimmed(rawRelation.control || "").toLowerCase();
+      if (control !== "autocomplete" && control !== "select") {
+        control = "";
+      }
+      var optionLabelField = ctx.normalizedIdentifier(rawRelation.optionLabelField || "");
+      var optionValueField = ctx.normalizedIdentifier(rawRelation.optionValueField || "");
+      var placeholder = ctx.trimmed(rawRelation.placeholder || "");
+      for (var relationKeyIndex = 0; relationKeyIndex < relationKeys.length; relationKeyIndex++) {
+        relationFields[relationKeys[relationKeyIndex]] = {
+          control: control,
+          optionLabelField: optionLabelField,
+          optionValueField: optionValueField,
+          placeholder: placeholder
+        };
+      }
+    }
+
+    // A field with a fixed set of values is a select ({priorite: ["basse", "normale", "haute"]}, or {value, label}
+    // items): agents built it by hand after every generation (usage tests 29/10). fieldDefaults seeds the create form.
+    var fieldOptions = {};
+    var rawFieldOptions = source.fieldOptions && typeof source.fieldOptions === "object" ? source.fieldOptions : {};
+    var rawFieldOptionKeys = Object.keys(rawFieldOptions);
+    for (var optionIndex = 0; optionIndex < rawFieldOptionKeys.length; optionIndex++) {
+      var optionKey = ctx.normalizedIdentifier(rawFieldOptionKeys[optionIndex]);
+      var options = ctx.ensureArray(rawFieldOptions[rawFieldOptionKeys[optionIndex]]).map(function (item) {
+        var value = item && typeof item === "object" ? item.value : item;
+        var label = item && typeof item === "object" && item.label != null ? item.label : value;
+        return value == null ? null : { value: String(value), label: ctx.trimmed(String(label)) || String(value) };
+      }).filter(function (item) { return item !== null; });
+      if (optionKey.length && options.length) {
+        fieldOptions[optionKey] = options;
+      }
+    }
+    var fieldDefaults = {};
+    var rawFieldDefaults = source.fieldDefaults && typeof source.fieldDefaults === "object" ? source.fieldDefaults : {};
+    var rawFieldDefaultKeys = Object.keys(rawFieldDefaults);
+    for (var defaultIndex = 0; defaultIndex < rawFieldDefaultKeys.length; defaultIndex++) {
+      var defaultKey = ctx.normalizedIdentifier(rawFieldDefaultKeys[defaultIndex]);
+      var defaultValue = rawFieldDefaults[rawFieldDefaultKeys[defaultIndex]];
+      if (defaultKey.length && defaultValue !== null && defaultValue !== undefined && typeof defaultValue !== "object") {
+        fieldDefaults[defaultKey] = String(defaultValue);
+      }
+    }
+
+    // List filters, applied to the loaded rows: {field, label, options} is a select on one field (its options, or the
+    // field's fieldOptions), {search: [fields], label} a text searched in those fields. Agents edited the managed list
+    // panel by hand for a status filter and a title search, which a later kit run overwrites (usage tests 29/10, S3).
+    var listFilters = ctx.ensureArray(source.listFilters).map(function (item) {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+      var searchFields = ctx.ensureArray(item.search).map(function (f) { return ctx.normalizedIdentifier(f); }).filter(function (f) { return f.length; });
+      if (searchFields.length) {
+        return { kind: "search", fields: searchFields, label: ctx.trimmed(item.label || "") };
+      }
+      var filterField = ctx.normalizedIdentifier(item.field || "");
+      if (!filterField.length) {
+        return null;
+      }
+      var filterOptions = ctx.ensureArray(item.options).map(function (option) {
+        var value = option && typeof option === "object" ? option.value : option;
+        var optionLabel = option && typeof option === "object" && option.label != null ? option.label : value;
+        return value == null ? null : { value: String(value), label: ctx.trimmed(String(optionLabel)) || String(value) };
+      }).filter(function (option) { return option !== null; });
+      return { kind: "select", field: filterField, label: ctx.trimmed(item.label || ""), options: filterOptions };
+    }).filter(function (item) { return item !== null; });
+
+    return {
+      listFields: normalizeFieldRefs(source.listFields),
+      detailFields: normalizeFieldRefs(source.detailFields),
+      formFields: normalizeFieldRefs(source.formFields),
+      fieldLabels: fieldLabels,
+      actionLabel: ctx.trimmed(source.actionLabel || ""),
+      relationFields: relationFields,
+      fieldOptions: fieldOptions,
+      fieldDefaults: fieldDefaults,
+      listFilters: listFilters
+    };
+  };
+
+  C8O.crudSpec.normalizeEntity = function (ctx, rawEntity) {
+    if (!rawEntity || typeof rawEntity !== "object") {
+      throw new Error("Each entity must be an object");
+    }
+    var naming = ctx.normalizeEntityNames(rawEntity, "");
+    if (!naming.name.length) {
+      throw new Error("Entity name is required");
+    }
+    var normalized = {
+      name: naming.name,
+      // The name the spec gave, so seed.data and relations find the entity by it even when plural/singular rename it.
+      sourceName: ctx.optionalNormalizedIdentifier ? ctx.optionalNormalizedIdentifier(rawEntity.name || rawEntity.entity || "") : "",
+      singular: naming.singular,
+      label: naming.displayLabel,
+      displayLabel: naming.displayLabel,
+      routeSegment: naming.routeSegment,
+      ui: C8O.crudSpec.normalizeEntityUi(ctx, rawEntity.ui),
+      fields: [],
+      primaryField: null
+    };
+    var rawFields = ctx.ensureArray(rawEntity.fields);
+    for (var i = 0; i < rawFields.length; i++) {
+      var field = C8O.crudSpec.normalizeField(ctx, rawFields[i], naming.name, i + 1);
+      normalized.fields.push(field);
+      if (field.primary && normalized.primaryField == null) {
+        normalized.primaryField = field;
+      }
+    }
+    if (normalized.primaryField == null) {
+      normalized.primaryField = {
+        name: "Id",
+        column: "id",
+        type: "INT",
+        label: "Id",
+        primary: true,
+        generated: true,
+        unique: true,
+        required: true,
+        references: null
+      };
+      normalized.fields.unshift(normalized.primaryField);
+    }
+    return normalized;
+  };
+
+  C8O.crudSpec.findEntityByName = function (ctx, entities, entityName) {
+    var given = ctx.normalizedIdentifier(entityName || "");
+    var expected = ctx.pluralize(given);
+    var entries = ctx.ensureArray(entities);
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i] && entries[i].name === expected) {
+        return entries[i];
+      }
+    }
+    // The entity as the spec named it (Company with plural "Sociétés"), or its singular.
+    for (var j = 0; j < entries.length; j++) {
+      var entry = entries[j];
+      if (entry && (entry.sourceName === given || entry.singular === given || entry.name === given)) {
+        return entry;
+      }
+    }
+    return null;
+  };
+
+  C8O.crudSpec.entityNamesOf = function (ctx, entities) {
+    return ctx.ensureArray(entities).map(function (entry) {
+      return entry && (entry.sourceName || entry.name);
+    }).filter(function (name) { return !!name; });
+  };
+
+  C8O.crudSpec.findField = function (ctx, entity, predicate) {
+    var fields = ctx.ensureArray(entity && entity.fields);
+    for (var i = 0; i < fields.length; i++) {
+      if (predicate(fields[i], i)) {
+        return fields[i];
+      }
+    }
+    return null;
+  };
+
+  function relationMapKey(ctx, fromEntityName, fromFieldName) {
+    return ctx.pluralize(ctx.normalizedIdentifier(fromEntityName || "")) + "::" + ctx.normalizedIdentifier(fromFieldName || "");
+  }
+
+  function relationLabelAlias(ctx, fromFieldName) {
+    var column = ctx.normalizedIdentifier(fromFieldName || "");
+    return column.length ? (column + "__label") : "__label";
+  }
+
+  function normalizeFieldReference(ctx, rawReference) {
+    if (!rawReference || typeof rawReference !== "object") {
+      return null;
+    }
+    var targetEntity = ctx.pluralize(ctx.normalizedIdentifier(rawReference.entity || ""));
+    if (!targetEntity.length) {
+      return null;
+    }
+    return {
+      entity: targetEntity,
+      field: ctx.normalizedIdentifier(rawReference.field || "id")
+    };
+  }
+
+  function entityRelationUiConfig(ctx, entity, fieldColumn) {
+    var relationFields = entity && entity.ui && entity.ui.relationFields && typeof entity.ui.relationFields === "object"
+      ? entity.ui.relationFields
+      : {};
+    var keys = normalizedLookupKeys(ctx, fieldColumn || "");
+    for (var i = 0; i < keys.length; i++) {
+      if (relationFields[keys[i]]) {
+        return ctx.clone(relationFields[keys[i]]);
+      }
+    }
+    return {};
+  }
+
+  function preferredRelationLabelField(ctx, entity) {
+    if (!entity) {
+      return null;
+    }
+    var preferred = [
+      ["displayname", "display_name", "name", "nom", "nomcommun", "commonname", "title", "titre"],
+      ["firstname", "prenom", "lastname", "surname", "nomscientifique", "scientificname"],
+      ["email", "city", "ville", "industry", "secteur", "category", "categorie", "venue", "badge"]
+    ];
+    for (var p = 0; p < preferred.length; p++) {
+      for (var i = 0; i < preferred[p].length; i++) {
+        var expected = ctx.normalizedIdentifier(preferred[p][i]);
+        var preferredField = C8O.crudSpec.findField(ctx, entity, function (field) {
+          if (!field || field.primary === true) {
+            return false;
+          }
+          var token = ctx.normalizedIdentifier(field.column || field.name);
+          return token === expected;
+        });
+        if (preferredField) {
+          return preferredField;
+        }
+      }
+    }
+    var uniqueField = C8O.crudSpec.findField(ctx, entity, function (field) {
+      return field && !field.primary && !field.references && field.unique === true;
+    });
+    if (uniqueField) {
+      return uniqueField;
+    }
+    var semanticField = C8O.crudSpec.findField(ctx, entity, function (field) {
+      return field && !field.primary && !field.references;
+    });
+    if (semanticField) {
+      return semanticField;
+    }
+    return entity.primaryField || null;
+  }
+
+  function normalizeRelationDefinition(ctx, spec, rawRelation) {
+    if (!rawRelation || typeof rawRelation !== "object") {
+      return null;
+    }
+    // {from: "Contact.CompanyId", to: "Company"} is the short form of fromEntity/fromField and toEntity/toField.
+    if (!rawRelation.fromEntity && typeof rawRelation.from === "string" && rawRelation.from.indexOf(".") > 0) {
+      rawRelation = ctx.clone ? ctx.clone(rawRelation) : JSON.parse(JSON.stringify(rawRelation));
+      rawRelation.fromEntity = rawRelation.from.split(".")[0];
+      rawRelation.fromField = rawRelation.fromField || rawRelation.from.split(".").slice(1).join(".");
+    }
+    if (!rawRelation.toEntity && typeof rawRelation.to === "string" && rawRelation.to.length) {
+      rawRelation.toEntity = rawRelation.to.split(".")[0];
+      rawRelation.toField = rawRelation.toField || rawRelation.to.split(".").slice(1).join(".") || "id";
+    }
+    if (!ctx.trimmed(rawRelation.fromEntity || "").length || !ctx.trimmed(rawRelation.fromField || rawRelation.toField || "").length ||
+        !ctx.trimmed(rawRelation.toEntity || "").length) {
+      throw new Error("Invalid relation definition: fromEntity, fromField and toEntity are required (toField defaults to id), " +
+        "for example {\"fromEntity\": \"contacts\", \"fromField\": \"company_id\", \"toEntity\": \"companies\"} " +
+        "or {\"from\": \"contacts.company_id\", \"to\": \"companies\"}. Got " + JSON.stringify(rawRelation) + ".");
+    }
+    var rawType = ctx.trimmed(rawRelation.type || "many-to-one").toLowerCase();
+    var source = {
+      name: ctx.trimmed(rawRelation.name || ""),
+      type: rawType,
+      required: rawRelation.required == null ? null : ctx.toBoolean(rawRelation.required, false),
+      label: ctx.trimmed(rawRelation.label || "")
+    };
+    if (rawType === "one-to-many") {
+      source.fromEntity = ctx.pluralize(ctx.normalizedIdentifier(rawRelation.toEntity || ""));
+      source.fromField = ctx.normalizedIdentifier(rawRelation.toField || "");
+      source.toEntity = ctx.pluralize(ctx.normalizedIdentifier(rawRelation.fromEntity || ""));
+      source.toField = ctx.normalizedIdentifier(rawRelation.fromField || "id");
+      source.inputType = "one-to-many";
+    } else {
+      source.fromEntity = ctx.pluralize(ctx.normalizedIdentifier(rawRelation.fromEntity || ""));
+      source.fromField = ctx.normalizedIdentifier(rawRelation.fromField || "");
+      source.toEntity = ctx.pluralize(ctx.normalizedIdentifier(rawRelation.toEntity || ""));
+      source.toField = ctx.normalizedIdentifier(rawRelation.toField || "id");
+      source.inputType = "many-to-one";
+      source.type = "many-to-one";
+    }
+    if (!source.fromEntity.length || !source.fromField.length || !source.toEntity.length || !source.toField.length) {
+      throw new Error("Invalid relation definition: fromEntity/fromField/toEntity/toField are required");
+    }
+    var rawFrom = rawType === "one-to-many" ? rawRelation.toEntity : rawRelation.fromEntity;
+    var rawTo = rawType === "one-to-many" ? rawRelation.fromEntity : rawRelation.toEntity;
+    var fromEntity = C8O.crudSpec.findEntityByName(ctx, spec.entities, source.fromEntity) || C8O.crudSpec.findEntityByName(ctx, spec.entities, rawFrom);
+    var toEntity = C8O.crudSpec.findEntityByName(ctx, spec.entities, source.toEntity) || C8O.crudSpec.findEntityByName(ctx, spec.entities, rawTo);
+    source.fromEntity = fromEntity ? fromEntity.name : source.fromEntity;
+    source.toEntity = toEntity ? toEntity.name : source.toEntity;
+    if (!fromEntity) {
+      throw new Error("Unknown relation fromEntity: " + source.fromEntity);
+    }
+    if (!toEntity) {
+      throw new Error("Unknown relation toEntity: " + source.toEntity);
+    }
+    var targetField = C8O.crudSpec.findField(ctx, toEntity, function (field) {
+      return ctx.normalizedIdentifier(field && (field.column || field.name)) === source.toField;
+    });
+    if (!targetField) {
+      throw new Error("Unknown relation toField `" + source.toField + "` on entity " + toEntity.name);
+    }
+    if (!source.label.length) {
+      source.label = ctx.trimmed(toEntity.singular || toEntity.displayLabel || toEntity.label || toEntity.name);
+    }
+    if (!source.name.length) {
+      source.name = ctx.normalizedIdentifier(fromEntity.singular + "_" + toEntity.singular);
+    }
+    source.toFieldType = ctx.trimmed(targetField.type || "INT");
+    return source;
+  }
+
+  function ensureRelationField(ctx, spec, relation) {
+    var fromEntity = C8O.crudSpec.findEntityByName(ctx, spec.entities, relation.fromEntity);
+    var toEntity = C8O.crudSpec.findEntityByName(ctx, spec.entities, relation.toEntity);
+    if (!fromEntity || !toEntity) {
+      return null;
+    }
+    var targetField = C8O.crudSpec.findField(ctx, toEntity, function (field) {
+      return ctx.normalizedIdentifier(field && (field.column || field.name)) === relation.toField;
+    }) || toEntity.primaryField;
+    var field = C8O.crudSpec.findField(ctx, fromEntity, function (candidate) {
+      return ctx.normalizedIdentifier(candidate && (candidate.column || candidate.name)) === relation.fromField;
+    });
+    if (!field) {
+      field = {
+        name: relation.fromField,
+        column: relation.fromField,
+        type: targetField && ctx.trimmed(targetField.type).length ? targetField.type : "INT",
+        label: relation.label || relation.fromField,
+        primary: false,
+        generated: false,
+        unique: false,
+        required: relation.required === true,
+        references: null
+      };
+      fromEntity.fields.push(field);
+    }
+    field.references = {
+      entity: toEntity.name,
+      field: targetField ? targetField.column : relation.toField
+    };
+    if (relation.required != null) {
+      field.required = relation.required === true;
+    }
+    if (!ctx.trimmed(field.label).length && ctx.trimmed(relation.label).length) {
+      field.label = relation.label;
+    }
+    if (!fromEntity.primaryField && field.primary) {
+      fromEntity.primaryField = field;
+    }
+    relation.fromField = field.column;
+    relation.toField = targetField ? targetField.column : relation.toField;
+    relation.labelAlias = relationLabelAlias(ctx, relation.fromField);
+    relation.ui = relation.ui || {};
+    var relationUi = entityRelationUiConfig(ctx, fromEntity, relation.fromField);
+    var labelField = ctx.normalizedIdentifier(relationUi.optionLabelField || "");
+    if (!labelField.length) {
+      var preferred = preferredRelationLabelField(ctx, toEntity);
+      labelField = ctx.normalizedIdentifier(preferred && (preferred.column || preferred.name) || relation.toField);
+    }
+    relation.ui.control = ctx.trimmed(relationUi.control || "").toLowerCase();
+    if (relation.ui.control !== "autocomplete" && relation.ui.control !== "select") {
+      relation.ui.control = "select";
+    }
+    relation.ui.optionLabelField = labelField || relation.toField;
+    relation.ui.optionValueField = ctx.normalizedIdentifier(relationUi.optionValueField || relation.toField || "id");
+    relation.ui.placeholder = ctx.trimmed(relationUi.placeholder || ("Select " + (relation.label || fromEntity.singular || "value")));
+    return relation;
+  }
+
+  C8O.crudSpec.normalizeRelations = function (ctx, spec, rawRelations) {
+    var entries = [];
+    var explicit = ctx.ensureArray(rawRelations);
+    var relationMap = {};
+    var priorities = {};
+
+    function upsertRelation(relation, priority) {
+      if (!relation) {
+        return;
+      }
+      var key = relationMapKey(ctx, relation.fromEntity, relation.fromField);
+      var currentPriority = priorities.hasOwnProperty(key) ? priorities[key] : -1;
+      if (priority < currentPriority) {
+        return;
+      }
+      relationMap[key] = relation;
+      priorities[key] = priority;
+    }
+
+    for (var entityIndex = 0; entityIndex < spec.entities.length; entityIndex++) {
+      var entity = spec.entities[entityIndex];
+      var fields = ctx.ensureArray(entity && entity.fields);
+      for (var fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
+        var field = fields[fieldIndex];
+        var normalizedReference = normalizeFieldReference(ctx, field && field.references);
+        if (!normalizedReference) {
+          continue;
+        }
+        upsertRelation({
+          name: ctx.normalizedIdentifier(entity.singular + "_" + normalizedReference.entity),
+          type: "many-to-one",
+          inputType: "many-to-one",
+          fromEntity: entity.name,
+          fromField: field.column,
+          toEntity: normalizedReference.entity,
+          toField: normalizedReference.field,
+          required: field.required === true,
+          label: ctx.trimmed(field.label || ""),
+          ui: {}
+        }, 1);
+      }
+    }
+
+    for (var explicitIndex = 0; explicitIndex < explicit.length; explicitIndex++) {
+      upsertRelation(normalizeRelationDefinition(ctx, spec, explicit[explicitIndex]), 2);
+    }
+
+    var crm = C8O.crudSpec.findEntityByName(ctx, spec.entities, "contacts") && C8O.crudSpec.findEntityByName(ctx, spec.entities, "companies");
+    if (crm) {
+      upsertRelation({
+        name: "contact_company",
+        type: "many-to-one",
+        inputType: "many-to-one",
+        fromEntity: "contacts",
+        fromField: "company_id",
+        toEntity: "companies",
+        toField: "id",
+        required: true,
+        label: "Company",
+        ui: {}
+      }, 0);
+    }
+
+    var relationKeys = Object.keys(relationMap);
+    relationKeys.sort();
+    for (var relationIndex = 0; relationIndex < relationKeys.length; relationIndex++) {
+      var applied = ensureRelationField(ctx, spec, relationMap[relationKeys[relationIndex]]);
+      if (applied) {
+        entries.push(applied);
+      }
+    }
+    return entries;
+  };
+
+  C8O.crudSpec.applyCrmDefaults = function (ctx, spec) {
+    var contacts = C8O.crudSpec.findEntityByName(ctx, spec.entities, "contacts");
+    var companies = C8O.crudSpec.findEntityByName(ctx, spec.entities, "companies");
+    var isCrm = !!(contacts && companies);
+    if (!spec.seed.profile.length) {
+      spec.seed.profile = isCrm ? "crm" : "realistic";
+    }
+    if (!isCrm) {
+      return spec;
+    }
+    if (ctx.trimmed(spec.ui.variant).toLowerCase() === "dashboard" || ctx.trimmed(spec.ui.variant).toLowerCase() === "entity-pages" || !ctx.trimmed(spec.ui.variant).length) {
+      spec.ui.variant = "master-detail";
+    }
+    return spec;
+  };
+
+  C8O.crudSpec.crmRelationContext = function (ctx, spec) {
+    var contacts = C8O.crudSpec.findEntityByName(ctx, spec && spec.entities, "contacts");
+    var companies = C8O.crudSpec.findEntityByName(ctx, spec && spec.entities, "companies");
+    if (!contacts || !companies) {
+      return null;
+    }
+    var relationField = C8O.crudSpec.findField(ctx, contacts, function (field) {
+      return field && field.references && ctx.pluralize(ctx.normalizedIdentifier(field.references.entity)) === companies.name;
+    });
+    if (!relationField) {
+      relationField = C8O.crudSpec.findField(ctx, contacts, function (field) {
+        var column = ctx.normalizedIdentifier(field && field.column);
+        return column === "company_id" || column === "companyid";
+      });
+      if (relationField && !relationField.references) {
+        relationField.references = {
+          entity: companies.name,
+          field: companies.primaryField ? companies.primaryField.column : "id"
+        };
+      }
+    }
+    if (!relationField) {
+      return null;
+    }
+    return {
+      contacts: contacts,
+      companies: companies,
+      relationField: relationField
+    };
+  };
+
+  C8O.crudSpec.normalizeSpec = function (ctx, specInput) {
+    var spec = C8O.util.parseObjectInput(specInput, {
+      label: "spec",
+      allowEmpty: false
+    });
+    var result = {
+      project: ctx.trimmed(spec.project),
+      starter: ctx.trimmed(spec.starter || "ngx").toLowerCase(),
+      facade: spec.facade && typeof spec.facade === "object" ? ctx.clone(spec.facade) : {},
+      seed: spec.seed && typeof spec.seed === "object" ? ctx.clone(spec.seed) : {},
+      ui: spec.ui && typeof spec.ui === "object" ? ctx.clone(spec.ui) : {},
+      entities: [],
+      relations: []
+    };
+    if (!result.project.length) {
+      throw new Error("spec.project is required");
+    }
+    result.database = C8O.crudSpec.normalizeDatabaseSpec(ctx, spec);
+    var rawEntities = ctx.ensureArray(spec.entities);
+    if (!rawEntities.length) {
+      throw new Error("spec.entities must contain at least one entity");
+    }
+    for (var i = 0; i < rawEntities.length; i++) {
+      result.entities.push(C8O.crudSpec.normalizeEntity(ctx, rawEntities[i]));
+    }
+    result.facade.prefix = ctx.trimmed(result.facade.prefix || "crud");
+    result.facade.publicListSequence = ctx.trimmed(result.facade.publicListSequence || "");
+    result.seed.enabled = result.seed.enabled == null ? true : ctx.toBoolean(result.seed.enabled, true);
+    result.seed.reset = ctx.toBoolean(result.seed.reset, false);
+    result.seed.profile = ctx.trimmed(result.seed.profile || "");
+    result.seed.rowsPerEntity = parseInt(result.seed.rowsPerEntity, 10);
+    result.seed.data = normalizeSeedData(ctx, result.entities, result.seed.data);
+    result.ui.entryPage = ctx.trimmed(result.ui.entryPage || "Home");
+    result.ui.variant = ctx.trimmed(result.ui.variant || "entity-pages");
+    result.ui.language = ctx.trimmed(result.ui.language || "").toLowerCase().substring(0, 2);
+    C8O.crudSpec.applyCrmDefaults(ctx, result);
+    result.relations = C8O.crudSpec.normalizeRelations(ctx, result, spec.relations);
+    if (isNaN(result.seed.rowsPerEntity) || result.seed.rowsPerEntity <= 0) {
+      result.seed.rowsPerEntity = result.seed.profile === "crm" ? 20 : 2;
+    }
+    return result;
+  };
+
+  C8O.crudSpec.relationMapKey = relationMapKey;
+  C8O.crudSpec.relationLabelAlias = relationLabelAlias;
+  C8O.crudSpec.entityRelationUiConfig = entityRelationUiConfig;
+  C8O.crudSpec.preferredRelationLabelField = preferredRelationLabelField;
+})();
+
+if (typeof C8O === "undefined") {
+  var C8O = {};
+}
+
+C8O.crudSeed = C8O.crudSeed || {};
+
+(function () {
+  function relationForField(ctx, spec, entity, field) {
+    var relations = ctx.ensureArray(spec && spec.relations);
+    var entityName = ctx.pluralize(ctx.normalizedIdentifier(entity && entity.name));
+    var fieldColumn = ctx.normalizedIdentifier(field && (field.column || field.name));
+    for (var i = 0; i < relations.length; i++) {
+      var relation = relations[i];
+      if (!relation || relation.type !== "many-to-one") {
+        continue;
+      }
+      if (ctx.pluralize(ctx.normalizedIdentifier(relation.fromEntity)) === entityName &&
+        ctx.normalizedIdentifier(relation.fromField) === fieldColumn) {
+        return relation;
+      }
+    }
+    return null;
+  }
+
+  function normalizedFieldType(ctx, fieldValue) {
+    return ctx.trimmed(fieldValue && fieldValue.type).toUpperCase().replace(/\(.*\)/, "");
+  }
+
+  function explicitSeedRowsForEntity(spec, entity) {
+    var seedData = spec && spec.seed && spec.seed.data;
+    if (!seedData || typeof seedData !== "object") {
+      return [];
+    }
+    var rows = seedData[entity && entity.name];
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  function hasExplicitSeedDataForEntity(spec, entity) {
+    var seedData = spec && spec.seed && spec.seed.data;
+    return !!seedData && typeof seedData === "object" && Object.prototype.hasOwnProperty.call(seedData, entity && entity.name);
+  }
+
+  function rowHasOwnColumn(row, column) {
+    return !!row && Object.prototype.hasOwnProperty.call(row, String(column || ""));
+  }
+
+  function seedLiteral(ctx, spec, value, fieldValue) {
+    if (value === null || value === undefined) {
+      return "NULL";
+    }
+    if (typeof value === "number") {
+      return String(value);
+    }
+    if (typeof value === "boolean") {
+      if (/^(POSTGRESQL|HSQLDB|MARIADB|MYSQL)$/.test(String(spec.database.driver.id || "").toUpperCase())) {
+        return value ? "TRUE" : "FALSE";
+      }
+      return value ? "1" : "0";
+    }
+    var type = normalizedFieldType(ctx, fieldValue);
+    if (/^(INT|INTEGER|BIGINT|SMALLINT|DECIMAL|NUMERIC|NUMBER|DOUBLE|FLOAT|REAL)$/.test(type) && /^-?[0-9]+(?:\.[0-9]+)?$/.test(String(value))) {
+      return String(value);
+    }
+    return "'" + ctx.escapeSqlString(String(value)) + "'";
+  }
+
+  C8O.crudSeed.sampleValueForField = function (ctx, entity, field, rowIndex) {
+    var FIRST_NAMES = ["Camille", "Nora", "Leo", "Ines", "Arthur", "Maya", "Jules", "Sarah", "Lucas", "Emma"];
+    var LAST_NAMES = ["Martin", "Bernard", "Petit", "Robert", "Richard", "Dubois", "Moreau", "Simon", "Laurent", "Michel"];
+    var CITIES = ["Paris", "Lyon", "Bordeaux", "Nantes", "Lille", "Toulouse", "Marseille", "Rennes"];
+    var INDUSTRIES = ["Software", "Health", "Retail", "Education", "Finance", "Services"];
+    var CATEGORIES = ["Dinner", "Culture", "Outdoor", "Music", "Cinema", "Family"];
+    var DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var STATUSES = ["active", "lead", "draft", "confirmed"];
+    var CONSERVATION_STATUSES = ["Least Concern", "Near Threatened", "Vulnerable", "Protected", "Monitoring"];
+    var COMMENTS = [
+      "Prefers small groups and central venues.",
+      "Available after work during the week.",
+      "Would like a quieter option this month.",
+      "Happy to help with coordination.",
+      "Interested if the venue is easy to reach."
+    ];
+    var COMPANY_NAMES = ["Blue Orbit", "North Harbor", "Golden Fern", "Urban Echo", "Silver Maple", "Bright Atlas"];
+    var GROUP_NAMES = ["City Explorers", "Weekend Makers", "Food Lovers", "Culture Circle", "Sunset Club"];
+    var OUTING_TITLES = ["Sunset Picnic", "Jazz Night", "Street Food Tour", "Museum Late Opening", "Riverside Brunch"];
+    var ANIMAL_COMMON_NAMES = ["Renard roux", "Loutre d'Europe", "Blaireau européen", "Lynx boréal", "Cerf élaphe", "Hérisson d'Europe"];
+    var INSECT_COMMON_NAMES = ["Machaon", "Lucane cerf-volant", "Coccinelle à sept points", "Abeille charpentière", "Grand capricorne", "Paon-du-jour"];
+    var PLANT_COMMON_NAMES = ["Chêne sessile", "Pin sylvestre", "Digitale pourpre", "Orchidée abeille", "Achillée millefeuille", "Primevère officinale"];
+    var SCIENTIFIC_NAMES = ["Vulpes vulpes", "Lutra lutra", "Meles meles", "Lynx lynx", "Papilio machaon", "Quercus petraea"];
+    var ORDERS = ["Carnivora", "Coleoptera", "Lepidoptera", "Fagales", "Rosales", "Primates"];
+    var FAMILIES = ["Canidae", "Mustelidae", "Cervidae", "Papilionidae", "Fagaceae", "Rosaceae"];
+    var HABITATS = ["Mixed woodland", "Wetland edge", "Urban park", "Coastal meadow", "Mountain forest", "Riverside hedgerow"];
+    var REGIONS = ["Occitanie", "Bretagne", "Normandie", "Provence-Alpes-Cote d'Azur", "Nouvelle-Aquitaine", "Auvergne-Rhone-Alpes"];
+    var USAGES = ["Observation", "Biodiversity survey", "Educational trail", "Community garden", "Protected habitat", "Seasonal inventory"];
+    var base = rowIndex + 1;
+    var column = ctx.normalizedIdentifier(field && (field.column || field.name));
+    var semantic = ctx.semanticFieldToken(field);
+    var entityName = ctx.normalizedIdentifier(entity && entity.name);
+    var entitySemantic = ctx.semanticEntityToken(entity);
+    if (field.primary) {
+      return null;
+    }
+
+    function pick(list) {
+      return list[rowIndex % list.length];
+    }
+
+    function isNumericField(fieldValue) {
+      var type = normalizedFieldType(ctx, fieldValue);
+      return /^(INT|INTEGER|BIGINT|SMALLINT|DECIMAL|NUMERIC|NUMBER|DOUBLE|FLOAT|REAL)$/.test(type);
+    }
+
+    function isBooleanField(fieldValue) {
+      var type = normalizedFieldType(ctx, fieldValue);
+      return /^(BOOLEAN|BIT)$/.test(type);
+    }
+
+    if (isBooleanField(field)) {
+      return rowIndex % 2 === 0;
+    }
+    if (isNumericField(field)) {
+      if (column.indexOf("year") !== -1) {
+        return 2020 + (rowIndex % 6);
+      }
+      if (column.indexOf("score") !== -1 || column.indexOf("rank") !== -1 || column.indexOf("priority") !== -1) {
+        return (rowIndex % 5) + 1;
+      }
+      return base;
+    }
+    if (ctx.tokenMatches(semantic, ["email", "courriel", "mail"])) {
+      var first = FIRST_NAMES[rowIndex % FIRST_NAMES.length].toLowerCase();
+      var last = LAST_NAMES[rowIndex % LAST_NAMES.length].toLowerCase();
+      return first + "." + last + base + "@example.test";
+    }
+    if (ctx.tokenMatches(semantic, ["firstname", "prenom", "givenname"])) {
+      return pick(FIRST_NAMES);
+    }
+    if (ctx.tokenMatches(semantic, ["lastname", "surname", "nomdefamille"])) {
+      return pick(LAST_NAMES);
+    }
+    if (ctx.tokenMatches(semantic, ["phone", "telephone", "tel", "mobile"])) {
+      return "+33 6 " + String(10 + (base % 80)) + " " + String(10 + ((base + 7) % 80)) + " " + String(10 + ((base + 13) % 80)) + " " + String(10 + ((base + 19) % 80));
+    }
+    if (ctx.tokenMatches(semantic, ["statutconservation", "conservationstatus"])) {
+      return pick(CONSERVATION_STATUSES);
+    }
+    if (ctx.tokenMatches(semantic, ["status", "statut"])) {
+      return pick(STATUSES);
+    }
+    if (ctx.tokenMatches(semantic, ["city", "ville"])) {
+      return pick(CITIES);
+    }
+    if (ctx.tokenMatches(semantic, ["country", "pays"])) {
+      return ["France", "Belgium", "Spain", "Italy"][rowIndex % 4];
+    }
+    if (ctx.tokenMatches(semantic, ["industry", "secteur"])) {
+      return pick(INDUSTRIES);
+    }
+    if (ctx.tokenMatches(semantic, ["category", "categorie"])) {
+      return pick(CATEGORIES);
+    }
+    if (ctx.tokenMatches(semantic, ["preferredday", "jour", "day"])) {
+      return pick(DAYS);
+    }
+    if (ctx.tokenMatches(semantic, ["vote", "preference", "choix"])) {
+      return ["yes", "maybe", "no"][rowIndex % 3];
+    }
+    if (ctx.tokenMatches(semantic, ["comment", "note", "description", "resume", "summary"])) {
+      return pick(COMMENTS);
+    }
+    if (ctx.tokenMatches(semantic, ["title", "titre"])) {
+      return pick(OUTING_TITLES) + " " + base;
+    }
+    if (ctx.tokenMatches(semantic, ["nomscientifique", "scientificname"])) {
+      return pick(SCIENTIFIC_NAMES);
+    }
+    if (ctx.tokenMatches(semantic, ["nomcommun", "commonname"])) {
+      if (entitySemantic.indexOf("insect") !== -1) {
+        return pick(INSECT_COMMON_NAMES);
+      }
+      if (entitySemantic.indexOf("plant") !== -1 || entitySemantic.indexOf("plante") !== -1) {
+        return pick(PLANT_COMMON_NAMES);
+      }
+      return pick(ANIMAL_COMMON_NAMES);
+    }
+    if (ctx.tokenMatches(semantic, ["ordre", "order"])) {
+      return pick(ORDERS);
+    }
+    if (ctx.tokenMatches(semantic, ["famille", "family"])) {
+      return pick(FAMILIES);
+    }
+    if (ctx.tokenMatches(semantic, ["habitat"])) {
+      return pick(HABITATS);
+    }
+    if (ctx.tokenMatches(semantic, ["region", "territoire", "zone"])) {
+      return pick(REGIONS);
+    }
+    if (ctx.tokenMatches(semantic, ["usage", "use"])) {
+      return pick(USAGES);
+    }
+    if (ctx.tokenMatches(semantic, ["website", "siteweb", "url"])) {
+      return "https://demo" + base + ".example.test";
+    }
+    if (ctx.tokenMatches(semantic, ["name", "nom"])) {
+      if (entityName === "companies") {
+        return pick(COMPANY_NAMES) + " " + base;
+      }
+      if (entityName === "groups") {
+        return pick(GROUP_NAMES) + " " + base;
+      }
+      if (entitySemantic.indexOf("insect") !== -1) {
+        return pick(INSECT_COMMON_NAMES);
+      }
+      if (entitySemantic.indexOf("plant") !== -1 || entitySemantic.indexOf("plante") !== -1) {
+        return pick(PLANT_COMMON_NAMES);
+      }
+      if (entitySemantic.indexOf("animal") !== -1 || entitySemantic.indexOf("faune") !== -1) {
+        return pick(ANIMAL_COMMON_NAMES);
+      }
+      return ctx.ucfirst(entity.singular) + " " + base;
+    }
+    return ctx.ucfirst(field.label || field.name) + " " + base;
+  };
+
+  C8O.crudSeed.pickSeedLookupField = function (ctx, entity) {
+    var preferred = ["name", "displayname", "nom", "nomcommun", "nomscientifique", "email", "title", "titre", "firstname", "prenom", "city", "ville", "venue", "scheduledday", "badge"];
+    for (var p = 0; p < preferred.length; p++) {
+      var preferredField = ctx.findField(entity, function (field) {
+        return !field.primary && ctx.semanticFieldToken(field) === ctx.semanticToken(preferred[p]);
+      });
+      if (preferredField) {
+        return preferredField;
+      }
+    }
+    var uniqueField = ctx.findField(entity, function (field) {
+      return !field.primary && !field.references && field.unique === true;
+    });
+    if (uniqueField) {
+      return uniqueField;
+    }
+    var semanticField = ctx.findField(entity, function (field) {
+      var token = ctx.semanticFieldToken(field);
+      return !field.primary && !field.references && token.length > 0 && token !== "id";
+    });
+    if (semanticField) {
+      return semanticField;
+    }
+    var firstField = ctx.findField(entity, function (field) {
+      return !field.primary && !field.references;
+    });
+    if (firstField) {
+      return firstField;
+    }
+    var relationalFallback = ctx.findField(entity, function (field) {
+      return !field.primary;
+    });
+    return relationalFallback || (entity && entity.primaryField) || null;
+  };
+
+  C8O.crudSeed.renderSeedValue = function (ctx, spec, entity, field, rowIndex) {
+    if (field.primary) {
+      return "DEFAULT";
+    }
+    if (field.references && field.references.entity) {
+      var targetEntity = ctx.findEntityByName(spec.entities, field.references.entity);
+      var relation = relationForField(ctx, spec, entity, field);
+      var lookupField = null;
+      if (relation && relation.ui && relation.ui.optionLabelField) {
+        lookupField = ctx.findField(targetEntity, function (candidate) {
+          return ctx.normalizedIdentifier(candidate && (candidate.column || candidate.name)) === ctx.normalizedIdentifier(relation.ui.optionLabelField);
+        });
+      }
+      lookupField = lookupField || C8O.crudSeed.pickSeedLookupField(ctx, targetEntity);
+      if (targetEntity && lookupField) {
+        var explicitRows = explicitSeedRowsForEntity(spec, targetEntity);
+        if (explicitRows.length) {
+          var explicitRow = explicitRows[rowIndex % explicitRows.length] || {};
+          var explicitId = explicitRow[targetEntity.primaryField && targetEntity.primaryField.column];
+          if (explicitId != null && explicitId !== "") {
+            return seedLiteral(ctx, spec, explicitId, targetEntity.primaryField);
+          }
+          var explicitLookupValue = explicitRow[lookupField.column];
+          if (explicitLookupValue != null && explicitLookupValue !== "") {
+            return "(SELECT " + targetEntity.primaryField.column + " FROM " + targetEntity.name + " WHERE " + lookupField.column + " = " + seedLiteral(ctx, spec, explicitLookupValue, lookupField) + ")";
+          }
+        }
+        var targetValue = C8O.crudSeed.sampleValueForField(ctx, targetEntity, lookupField, rowIndex % Math.max(1, spec.seed.rowsPerEntity));
+        return "(SELECT " + targetEntity.primaryField.column + " FROM " + targetEntity.name + " WHERE " + lookupField.column + " = " + seedLiteral(ctx, spec, targetValue, lookupField) + ")";
+      }
+    }
+    return seedLiteral(ctx, spec, C8O.crudSeed.sampleValueForField(ctx, entity, field, rowIndex), field);
+  };
+
+  function buildExplicitSeedSql(ctx, spec, entity, rows) {
+    if (!rows.length) {
+      return "";
+    }
+    var entityFields = ctx.ensureArray(entity && entity.fields);
+    var insertFields = [];
+    for (var fieldIndex = 0; fieldIndex < entityFields.length; fieldIndex++) {
+      var entityField = entityFields[fieldIndex];
+      for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        if (rowHasOwnColumn(rows[rowIndex], entityField.column)) {
+          insertFields.push(entityField);
+          break;
+        }
+      }
+    }
+    if (!insertFields.length) {
+      return "";
+    }
+    var values = [];
+    for (var row = 0; row < rows.length; row++) {
+      var currentRow = rows[row] || {};
+      var rowValues = [];
+      for (var insertIndex = 0; insertIndex < insertFields.length; insertIndex++) {
+        var insertField = insertFields[insertIndex];
+        if (!rowHasOwnColumn(currentRow, insertField.column)) {
+          rowValues.push(insertField.primary ? "DEFAULT" : "NULL");
+          continue;
+        }
+        rowValues.push(seedLiteral(ctx, spec, currentRow[insertField.column], insertField));
+      }
+      values.push("  (" + rowValues.join(", ") + ")");
+    }
+    var statement = "INSERT INTO " + entity.name + " (" + insertFields.map(function (item) { return item.column; }).join(", ") + ") VALUES\n" + values.join(",\n") + ";";
+    var includesPrimary = insertFields.some(function (field) {
+      return field && field.primary === true;
+    });
+    if (includesPrimary && String(spec && spec.database && spec.database.driver && spec.database.driver.id || "").toLowerCase() === "sqlserver") {
+      return "SET IDENTITY_INSERT " + entity.name + " ON;\n" + statement + "\nSET IDENTITY_INSERT " + entity.name + " OFF;";
+    }
+    return statement;
+  }
+
+  C8O.crudSeed.buildSeedSql = function (ctx, spec, entity) {
+    if (spec.seed.enabled !== true) {
+      return "";
+    }
+    var explicitRows = explicitSeedRowsForEntity(spec, entity);
+    if (hasExplicitSeedDataForEntity(spec, entity)) {
+      return buildExplicitSeedSql(ctx, spec, entity, explicitRows);
+    }
+    var fields = [];
+    for (var i = 0; i < entity.fields.length; i++) {
+      if (!entity.fields[i].primary) {
+        fields.push(entity.fields[i]);
+      }
+    }
+    if (!fields.length) {
+      return "";
+    }
+    var rowCount = Math.max(1, spec.seed.rowsPerEntity);
+    var values = [];
+    for (var row = 0; row < rowCount; row++) {
+      var rowValues = [];
+      for (var j = 0; j < fields.length; j++) {
+        rowValues.push(C8O.crudSeed.renderSeedValue(ctx, spec, entity, fields[j], row));
+      }
+      values.push("  (" + rowValues.join(", ") + ")");
+    }
+    return "INSERT INTO " + entity.name + " (" + fields.map(function (item) { return item.column; }).join(", ") + ") VALUES\n" + values.join(",\n") + ";";
+  };
+
+  C8O.crudSeed.relationForField = relationForField;
+})();
+
+
+function context(){
+ var trimmed=function(v){return String(v==null?'':v).trim();};
+ var ctx={trimmed:trimmed,clone:function(v){return JSON.parse(JSON.stringify(v));},ensureArray:function(v){return Array.isArray(v)?v:v==null?[]:[v];},toBoolean:function(v,d){return v==null?d:v===true||v==='true';},normalizedIdentifier:function(v){return trimmed(v).replace(/[^A-Za-z0-9_]/g,'_').toLowerCase()||'unnamed';}};
+ ctx.optionalNormalizedIdentifier=function(v){return trimmed(v)?ctx.normalizedIdentifier(v):'';};
+ Object.keys(C8O.crudNaming).forEach(function(k){if(typeof C8O.crudNaming[k]==='function')ctx[k]=function(){return C8O.crudNaming[k].apply(null,[ctx].concat(Array.prototype.slice.call(arguments)));};});
+ ctx.findEntityByName=function(entities,n){return C8O.crudSpec.findEntityByName(ctx,entities,n);};
+ ctx.findField=function(e,p){return C8O.crudSpec.findField(ctx,e,p);};
+ return ctx;
+}
+return {normalize:function(raw){return C8O.crudSpec.normalizeSpec(context(),raw);},sample:function(e,f,i){return C8O.crudSeed.sampleValueForField(context(),e,f,i);}};
+}())

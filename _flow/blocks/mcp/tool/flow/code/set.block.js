@@ -28,6 +28,7 @@ const _meta = {
     },
   },
   "runtime": "rhino",
+  "uses": ["mcp", "crud-fastpath"],
 }
 
 (function () {
@@ -50,6 +51,7 @@ const _meta = {
 			var mcp = ctx.lib("mcp");
 			var request = mcp.requestValue(ctx, props.request);
 			var response = mcp.runToolBlock(ctx, request, {}, function (args) {
+				ctx.lib("crud-fastpath").assertWritable(ctx, args);
 				mcp.assertProjectSaveAllowed(args);
 				mcp.assertFlowNameFree(args);
 				var write = ctx.flowCodeSet(args);

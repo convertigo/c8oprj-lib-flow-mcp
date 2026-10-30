@@ -5,9 +5,9 @@ const _meta = {
   "runtime": "rhino",
   "uses": [
     "mcp",
-    "crud-fastpath"
+    "crud-fastpath", "crud-model", "crud-legacy"
   ],
-  "description": "Flow CRUD upsert: declarative schema, generated facades and Flow Svelte pages.",
+  "description": "Preview or apply a legacy-shaped model, portable SQL and owned CRUD artifacts; frontend component plan.",
   "properties": {
     "request": {
       "kind": "expression",
@@ -22,10 +22,11 @@ const _meta = {
       "type": "string",
       "required": true
     },
+    "planHash": {"kind":"text","type":"string","description":"Hash from the preceding dry-run; application refuses a stale plan."},
     "spec": {
       "kind": "literal",
       "type": "object",
-      "required": true
+      "description":"Optional legacy CRUD spec; omitted reads _flow/data/model.yaml."
     },
     "dryRun": {
       "kind": "literal",

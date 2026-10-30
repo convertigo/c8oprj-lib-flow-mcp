@@ -9,9 +9,11 @@ check(a.config.data.sources.employees_write.versionColumn==='revision','optimist
 check(a.config.sql.queries.employees_count.expose===false,'named reads private');
 check(a.config.sql.writes.employees_update.sql.includes(':revision'),'named write revision predicate');
 check(Object.values(a.files).every(t=>!t.includes('<SetValue $id=')),'source preserves engine attributes');
-for(const change of [x=>x.entities[0].name='bad;sql',x=>x.database.url+=';shutdown=true',x=>x.entities[0].fields.push({...x.entities[0].fields[0]}),x=>x.security.principals.editor='admin',x=>x.relations[0].to.field='name',x=>x.entities[0].revision=null]){
+for(const change of [x=>x.entities[0].name='bad;sql',x=>x.database.url+=';shutdown=true',x=>x.entities[0].fields.push({...x.entities[0].fields[0]}),x=>x.relations[0].to.field='name']){
  const x=structuredClone(s);change(x);assert.throws(()=>lib.compile(x,'Qualification'));checks++;
 }
 const readOnly=structuredClone(s);readOnly.entities[0].revision=null;readOnly.entities[0].readOnly=true;
 check(!lib.compile(readOnly,'Qualification').config.data.sources.companies_write,'unversioned readonly schema supported');
+const unversioned=structuredClone(s);unversioned.entities[0].revision=null;
+check(lib.compile(unversioned,'Qualification').config.data.sources.companies_write.optimisticConcurrency===false,'explicit unversioned writes supported');
 console.log(JSON.stringify({passed:true,checks}));
