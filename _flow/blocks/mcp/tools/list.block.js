@@ -41,23 +41,36 @@ const _flow = {
 }
 
 function mcp_tools_list({ input, config, result }) {
-  local.tools = mcp.tools.available({
-    $$id: "availableTools",
-    out: "local.tools",
-  })
-  local.payload = json.object({
-    $$id: "payload",
-    $$fields: function () {
-      json.field({
-        $$id: "tools",
-        key: "tools",
-        value: local.tools,
+  local.response = mcp.stable({
+    $$id: "keptToolsList",
+    $$comment: "The descriptors change with the blocks, the MCP library and the relayed catalog of the caller only.",
+    request: input.request,
+    out: "local.response",
+    $$nodes: function () {
+      local.tools = mcp.tools.available({
+        $$id: "availableTools",
+        out: "local.tools",
+      })
+      local.payload = json.object({
+        $$id: "payload",
+        $$fields: function () {
+          json.field({
+            $$id: "tools",
+            key: "tools",
+            value: local.tools,
+          })
+        },
+      })
+      local.response = mcp.response.result({
+        $$id: "response",
+        request: input.request,
+        result: local.payload,
+        out: "local.response",
       })
     },
   })
-  mcp.response.result({
-    $$id: "response",
-    request: input.request,
-    result: local.payload,
+  return({
+    $$id: "returnResponse",
+    value: local.response,
   })
 }

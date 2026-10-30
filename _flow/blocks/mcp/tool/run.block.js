@@ -324,6 +324,12 @@ const _meta = {
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
+				// flow-catalog and authoring-palette: the result kept for the same prepared arguments and revisions.
+				var kept = mcp.stableToolLookup(ctx, request, target, args);
+				if (kept && kept.response) {
+					ctx.write(props.out || "local.response", kept.response);
+					return kept.response;
+				}
 				var result;
 				if (target === "authoring.mutate") {
 					if (args.mutation && String(args.mutation.op || "") === "insertProvider") {
@@ -351,6 +357,7 @@ const _meta = {
 					result = syncFrontendDevAfterMutation(ctx, args, result);
 				}
 				response = mcp.toolResponse(request, result, ctx);
+				mcp.stableKeep(ctx, request, kept, response);
 			} catch (e) {
 				response = mcp.toolError(request, e, ctx);
 			}

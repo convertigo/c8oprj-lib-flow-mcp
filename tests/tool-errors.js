@@ -60,7 +60,7 @@ ctx.blockNames=function(){throw error;};
 try { var unexpected=dispatcher.run(ctx,{props:{request:request}}); verify(unexpected,true); }
 catch (e) { assert(false,'Catalog lookup exception escaped tools/call: '+e); }
 var legacy={jsonrpc:'2.0',id:17,error:{code:-32000,message:'Legacy response stays unchanged'}};
-var relayMcp={requestValue:mcp.requestValue,subagentScopeRefusal:mcp.subagentScopeRefusal,legacyRelayTool:function(){return true;},legacyRelayCall:function(){return legacy;}};
+var relayMcp={requestValue:mcp.requestValue,subagentScopeRefusal:mcp.subagentScopeRefusal,legacyRelayTool:function(){return true;},legacyRelayCall:function(){return legacy;},stableToolCalled:function(){}};
 ctx.blockNames=function(){return [];};ctx.lib=function(){return relayMcp;};
 assert(dispatcher.run(ctx,{props:{request:request}})===legacy,'Legacy JSON-RPC response was rewrapped');
 print('tool-errors OK ('+checks+' checks)');

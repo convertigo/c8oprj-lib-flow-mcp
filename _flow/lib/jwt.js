@@ -899,6 +899,9 @@
 	// The authenticated principal of an MCP request, for the protected authoring primitives of lib_flow_engine
 	// (config.mutate...): a server-side request attribute, which a client cannot send.
 	var PRINCIPAL_ATTRIBUTE = "com.convertigo.flow.principal";
+	// The authenticated caller of an MCP request (kind, scope, user, token id, never the token), for the results
+	// mcp.js keeps (stableCaller): set only here, after a successful authentication.
+	var CALLER_ATTRIBUTE = "com.convertigo.flow.mcp.caller";
 
 	function markPrincipal(ctx, authentication) {
 		try {
@@ -906,6 +909,22 @@
 			var httpRequest = contextObject && contextObject.httpServletRequest;
 			if (httpRequest !== null && httpRequest !== undefined && authentication.kind !== "internal") {
 				httpRequest.setAttribute(PRINCIPAL_ATTRIBUTE, "mcp:" + (trim(authentication.user) || trim(authentication.tokenId) || authentication.kind));
+				httpRequest.setAttribute(CALLER_ATTRIBUTE, JSON.stringify({
+					kind: trim(authentication.kind),
+					scope: trim(authentication.scope),
+					user: trim(authentication.user),
+					tokenId: trim(authentication.tokenId)
+				}));
+			}
+		} catch (_noRequest) {}
+	}
+
+	function forgetCaller(ctx) {
+		try {
+			var contextObject = convertigoContext(ctx);
+			var httpRequest = contextObject && contextObject.httpServletRequest;
+			if (httpRequest !== null && httpRequest !== undefined && typeof httpRequest.removeAttribute === "function") {
+				httpRequest.removeAttribute(CALLER_ATTRIBUTE);
 			}
 		} catch (_noRequest) {}
 	}
@@ -918,6 +937,7 @@
 		if (single) {
 			delete request[TOKEN_EXPIRED_MARKER];
 		}
+		forgetCaller(ctx);
 		var authentication = authenticateRequest(ctx, request);
 		if (authentication && authentication.authenticated === true) {
 			markPrincipal(ctx, authentication);

@@ -170,7 +170,12 @@ const _meta = {
 				var block = toolMap(ctx)[name];
 				// Relayed answers belong to the legacy MCP: do not rewrap or normalize them.
 				if (!block && mcp.legacyRelayTool(name)) {
-					var relayed = mcp.legacyRelayCall(ctx, request);
+					var relayed;
+					try {
+						relayed = mcp.legacyRelayCall(ctx, request);
+					} finally {
+						mcp.stableToolCalled(name);
+					}
 					ctx.write(out, relayed);
 					return relayed;
 				}
@@ -198,6 +203,8 @@ const _meta = {
 			} catch (error) {
 				response = mcp.toolError(request, error, ctx);
 			}
+			// A tool that may have written (even when it failed) drops the kept project answers.
+			mcp.stableToolCalled(name);
 			ctx.write(out, response);
 			return response;
 		}

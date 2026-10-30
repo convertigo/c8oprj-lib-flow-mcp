@@ -112,7 +112,8 @@ function dispatch(name, args, relayed) {
 				toolError: mcp.toolError,
 				subagentScopeRefusal: mcp.subagentScopeRefusal,
 				legacyRelayTool: function () { return relayed === true; },
-				legacyRelayCall: function () { calls.push("relay"); return { jsonrpc: "2.0", id: 9, result: { content: [], structuredContent: { ok: true } } }; }
+				legacyRelayCall: function () { calls.push("relay"); return { jsonrpc: "2.0", id: 9, result: { content: [], structuredContent: { ok: true } } }; },
+				stableToolCalled: function () {}
 			};
 		},
 		blockNames: function () { return relayed === true ? [] : ["mcp.tool.code.set", "mcp.tool.code.get"]; },

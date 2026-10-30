@@ -4476,9 +4476,9 @@
 		if (!legacyRelayEnabled()) {
 			return [];
 		}
-		// Catalog visibility depends on the current caller and feedback consent.
-		// Fetch once per tools/list; never share a consent-sensitive descriptor or
-		// retain one after consent is withdrawn. tools/call still makes only one hop.
+		// Catalog visibility depends on the current caller and feedback consent: a
+		// tools/list is kept per caller, relayed headers and consent inputs only
+		// (legacyRelayRevision). tools/call still makes only one hop.
 		var tools = [];
 		try {
 			var answer = legacyPost(ctx, { jsonrpc: "2.0", id: "flow-relay-list", method: "tools/list", params: {} }, 30);
@@ -4611,7 +4611,374 @@
 		return error;
 	}
 
-	return {
+	// Stable results: what tools/list, the guides and skills (resources/read, flow-resource-get of a flow:// uri),
+	// flow-catalog and authoring-palette answer stays the same while nothing it is computed from changes. The result is
+	// kept as JSON text for every runtime of the server and answered again in the envelope of the new request, with its
+	// id. It is kept and served after authentication only: every key starts with the caller jwt.guardRequest records on
+	// the HTTP request, a server-side attribute a client cannot send; a request without one (refused, or an expired
+	// leased token let through for its handshake) is neither answered from the store nor kept. Each key holds what its
+	// result depends on (stableToolsListKey, stableResourceKey, stableToolLookup); a time-to-live bounds what no revision
+	// tells (files changed outside Convertigo, the legacy endpoint), any other tool call drops the project answers and
+	// flow-cache-clear drops them all. Errors, partial answers, mutations, runs and logs are never kept.
+	var STABLE_RESULTS = "lib_flow_mcp.stableResults.v1";
+	var STABLE_STATE = "lib_flow_mcp.stableResultsState.v1";
+	var STABLE_CALLER_ATTRIBUTE = "com.convertigo.flow.mcp.caller";
+	var STABLE_MAX_ENTRIES = 256;
+	var STABLE_MAX_CHARS = 8 * 1024 * 1024;
+	var STABLE_TTL_MS = { "tools/list": 120000, resource: 600000, tool: 30000 };
+	// The request headers an answer may depend on besides its arguments: its presentation (Vibe errors, public URLs,
+	// viewer and reveal modes), the agent host and the sub-agent session.
+	var STABLE_HEADERS = ["User-Agent", "Host", "X-Forwarded-Proto", "X-Forwarded-Host", "X-Convertigo-Agent-Provider",
+		"X-Convertigo-Agent-Profile", "X-Convertigo-Guidance-Version", "Convertigo-Guidance-Version", "MCP-Protocol-Version",
+		"X-Convertigo-Viewer-Debug-Port", "X-Convertigo-Reveal-Mode", "X-Convertigo-Subagent-Run", "X-Convertigo-Subagent-Scope"];
+	// The tools kept, by the capability they run (mcp.tool.run).
+	var STABLE_TOOLS = { "flow-catalog": "block.list", "authoring-palette": "authoring.palette", "frontend-svelte-palette": "authoring.palette" };
+	// The tools that write nothing: a call of any other one (a mutation, a run, an unknown tool) drops the kept project
+	// answers, which the next calls compute again.
+	var STABLE_READ_TOOLS = {};
+	["flow-catalog", "authoring-palette", "frontend-svelte-palette", "authoring-tree", "frontend-svelte-tree", "frontend-svelte-actions",
+		"flow-block-get", "flow-block-mock-list", "flow-list", "flow-search", "flow-library-search", "flow-resource-get",
+		"flow-resource-search", "flow-requestable-list", "flow-requestable-schema", "flow-cache-info", "code-get", "code-rg",
+		"code-status", "code-check", "code-analyze", "tags-get", "project-list", "project-list-symbols", "log-view", "rag-query",
+		"marketplace-list", "marketplace-describe", "databaseobject-schema", "databaseobject-search", "databaseobject-tree-get",
+		"scheduler-list", "image-describe", "browser-verify"].forEach(function (name) {
+		STABLE_READ_TOOLS[name] = true;
+	});
+	var STABLE_RESOURCE_URI = /^flow:\/\/(guide|skills|lib)\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*)$/;
+
+	function sha256Hex(text) {
+		var digest = Packages.java.security.MessageDigest.getInstance("SHA-256")
+			.digest(new Packages.java.lang.String(String(text)).getBytes(StandardCharsets.UTF_8));
+		return String(Packages.java.util.HexFormat.of().formatHex(digest));
+	}
+
+	function stableServletRequest(ctx) {
+		try {
+			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
+			return context && context.httpServletRequest || null;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// The authenticated caller (kind, scope, user, token id), null for a request without one. A call without an HTTP
+	// request is the server's own, authenticated as internal by jwt.authenticateRequest.
+	function stableCaller(ctx) {
+		var http = stableServletRequest(ctx);
+		if (!http) {
+			return "internal";
+		}
+		try {
+			var caller = http.getAttribute(STABLE_CALLER_ATTRIBUTE);
+			return caller === null || caller === undefined || String(caller) === "" ? null : String(caller);
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function stableHeaderValues(ctx, names) {
+		var http = stableServletRequest(ctx);
+		return names.map(function (name) {
+			var value = null;
+			try {
+				value = http ? http.getHeader(name) : null;
+			} catch (e) {
+			}
+			return name + "=" + (value === null || value === undefined ? "" : String(value));
+		});
+	}
+
+	function stableFileFingerprint(file) {
+		return file && file.isFile() ? canonicalPath(file) + "#" + file.lastModified() + ":" + file.length() : "missing";
+	}
+
+	function stableBridge() {
+		try {
+			var bridge = Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge;
+			return typeof bridge.cacheGeneration === "function" && typeof bridge.dataGeneration === "function" ? bridge : null;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// The generation of the Flow caches of the server: flow-cache-clear and an engine reloaded change it.
+	function stableGeneration() {
+		var bridge = stableBridge();
+		return bridge ? "generation:" + bridge.cacheGeneration() : "generation:none";
+	}
+
+	// What the files of a project answer: the revision of the data caches of every project (a write Convertigo is told
+	// about, a project loaded, deployed or reloaded) and of this one, which follows the projects it uses.
+	function stableProjectRevision(projectDir) {
+		var bridge = stableBridge();
+		if (!bridge) {
+			return "data:none";
+		}
+		return "data:" + bridge.dataGeneration() + ":" + (projectDir ? bridge.metadataSourceRevision(String(projectDir)) : "");
+	}
+
+	// The code answering: the blocks of the catalog the request runs with (their files, the references and the drafts,
+	// lib_flow_engine blocks.__flowCatalogFingerprint), this library, and the cache generation. Null for a catalog of no
+	// known revision: nothing is then kept.
+	function stableCodeRevision(ctx) {
+		var catalog = ctx && ctx.blocks && ctx.blocks.__flowCatalogFingerprint;
+		if (!catalog) {
+			return null;
+		}
+		var library = api.__flowFile ? new File(String(api.__flowFile)) : null;
+		return sha256Hex(String(catalog)) + "\n" + stableFileFingerprint(library) + "\n" + stableGeneration();
+	}
+
+	// The project lib_ConvertigoMCP as loaded: a reload, a deployment or an edit of its tools changes it.
+	function legacyProjectRevision() {
+		try {
+			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+			if (Engine.theApp == null || Engine.theApp.databaseObjectsManager == null) {
+				return "legacy:standalone";
+			}
+			var project = Engine.theApp.databaseObjectsManager.getLoadedProjectByName("lib_ConvertigoMCP");
+			if (project == null) {
+				return "legacy:absent";
+			}
+			var bridge = stableBridge();
+			return "legacy:" + System.identityHashCode(project) + ":" + project.getVersion() + ":" + project.getLastChange() + ":" +
+				(bridge ? bridge.metadataSourceRevision(String(project.getDirPath())) : "");
+		} catch (e) {
+			return "legacy:unknown";
+		}
+	}
+
+	// What lib_ConvertigoMCP reads to list report-create (js/reporting.js resolveMode and tigoMode): the mcp.report.mode
+	// and assistant.feedback.policy symbols, the Studio mode, the choice of the user in agents/feedback/settings.json and
+	// the server feedback key. Null when they cannot be read: the list is then not kept.
+	function feedbackConsentRevision() {
+		try {
+			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+			var dbom = Engine.theApp != null ? Engine.theApp.databaseObjectsManager : null;
+			var workspace = String(Engine.USER_WORKSPACE_PATH || "");
+			var settings = new File(workspace, "agents/feedback/settings.json");
+			var settingsDigest = !settings.isFile() ? "missing" : settings.length() > 65536 ? stableFileFingerprint(settings)
+				: sha256Hex(String(new Packages.java.lang.String(Files.readAllBytes(settings.toPath()), StandardCharsets.UTF_8)));
+			return ["consent", String(Engine.isStudioMode()),
+				dbom ? String(dbom.getCompiledValue("${mcp.report.mode=off}")) : "",
+				dbom ? String(dbom.symbolsGetValue("assistant.feedback.policy")) : "",
+				settingsDigest,
+				stableFileFingerprint(new File(workspace, "agents/feedback/server-key")),
+				sha256Hex(String(System.getenv("TIGO_FEEDBACK_KEY") || ""))].join("\n");
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// What the descriptors relayed from lib_ConvertigoMCP depend on, null when it cannot be told: the headers relayed
+	// (the bearer, the provider whose gateway tools leave its catalog, the guidance version...), the endpoint, the
+	// legacy project as loaded and the feedback consent.
+	function legacyRelayRevision(ctx) {
+		if (!legacyRelayEnabled()) {
+			return "relay:off";
+		}
+		var http = stableServletRequest(ctx);
+		if (!http) {
+			return "relay:none";
+		}
+		var consent = feedbackConsentRevision();
+		if (consent === null) {
+			return null;
+		}
+		var endpoint;
+		try {
+			endpoint = String(http.getScheme()) + "://" + Number(http.getLocalPort()) + String(http.getContextPath() || "");
+		} catch (e) {
+			return null;
+		}
+		return ["relay", endpoint].concat(stableHeaderValues(ctx, LEGACY_RELAY_HEADERS), [legacyProjectRevision(), consent]).join("\n");
+	}
+
+	function stableStore() {
+		return sharedMap(STABLE_RESULTS);
+	}
+
+	function stableEpochCounter() {
+		var state = sharedMap(STABLE_STATE);
+		state.putIfAbsent("epoch", new Packages.java.util.concurrent.atomic.AtomicLong());
+		return state.get("epoch");
+	}
+
+	function stableEntry(kind, parts, ttl) {
+		return { kind: kind, entry: kind + ":" + sha256Hex(JSON.stringify(parts)), ttl: ttl };
+	}
+
+	function stableRead(key) {
+		var store = stableStore();
+		var kept = store.get(key.entry);
+		if (kept == null) {
+			return null;
+		}
+		if (Number(System.nanoTime()) - Number(kept.getKey().getKey()) > key.ttl * 1000000) {
+			store.remove(key.entry, kept);
+			return null;
+		}
+		return JSON.parse(String(kept.getValue()));
+	}
+
+	function stableWrite(key, value) {
+		var text = JSON.stringify(value);
+		if (text === undefined || text.length > STABLE_MAX_CHARS / 8) {
+			return;
+		}
+		var Entry = Packages.java.util.AbstractMap.SimpleImmutableEntry;
+		var Long = Packages.java.lang.Long;
+		var store = stableStore();
+		// Stored at System.nanoTime(): one clock for every runtime of the JVM, for the age and the order of the entries.
+		store.put(key.entry, new Entry(new Entry(Long.valueOf(System.nanoTime()), Long.valueOf(text.length)),
+			new Packages.java.lang.String(text)));
+		// Bounded: the oldest entries leave first, past the count or the size.
+		var entries = [];
+		var chars = 0;
+		var iterator = store.entrySet().iterator();
+		while (iterator.hasNext()) {
+			var each = iterator.next();
+			var meta = each.getValue().getKey();
+			entries.push({ key: each.getKey(), value: each.getValue(), at: Number(meta.getKey()), chars: Number(meta.getValue()) });
+			chars += Number(meta.getValue());
+		}
+		entries.sort(function (a, b) { return a.at - b.at; });
+		for (var i = 0, count = entries.length; i < entries.length && (count > STABLE_MAX_ENTRIES || chars > STABLE_MAX_CHARS); i++) {
+			if (store.remove(entries[i].key, entries[i].value)) {
+				count--;
+				chars -= entries[i].chars;
+			}
+		}
+	}
+
+	// A result worth keeping: a success, complete, without a note meant for this call only.
+	function stableSucceeded(response) {
+		var result = response && !response.error ? response.result : null;
+		if (!result || typeof result !== "object" || result.isError === true) {
+			return false;
+		}
+		var data = result.structuredContent;
+		return !(data && typeof data === "object" && (data.error || data.ok === false || data.partial === true ||
+			data.operatorNote !== undefined || data.responseBudget !== undefined));
+	}
+
+	function stableAnswer(ctx, request, kept) {
+		var response = { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, result: kept.result };
+		traceJsonl(ctx, "response", request, response);
+		return response;
+	}
+
+	// tools/list: the Flow descriptors (blocks, this library) and the relayed ones (stableRevision of the relay), for
+	// this caller, its headers and its page.
+	function stableToolsListKey(ctx, request) {
+		var caller = stableCaller(ctx);
+		var code = caller === null ? null : stableCodeRevision(ctx);
+		var relay = code === null ? null : legacyRelayRevision(ctx);
+		if (relay === null) {
+			return null;
+		}
+		var params = request.params && typeof request.params === "object" ? request.params : {};
+		return stableEntry("tools/list", [caller, code, relay, String(params.cursor || ""), String(params.limit || "")]
+			.concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS["tools/list"]);
+	}
+
+	// The file of a guide or skill: flow://guide/<name> and flow://skills/<skill>/SKILL in this project
+	// (_flow/resources/**.md, mcp.resources.read), flow://lib/<project>/<guide> in a loaded library (libraryGuides).
+	function stableResourceFile(ctx, uri) {
+		var match = STABLE_RESOURCE_URI.exec(String(uri || ""));
+		if (!match || /(^|\/)\.\.?(\/|$)/.test(match[2])) {
+			return null;
+		}
+		if (match[1] === "lib") {
+			var library = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(match[2]);
+			if (!library || library[1] === "lib_flow_mcp") {
+				return null;
+			}
+			var target = loadedProjectTargets().filter(function (each) { return each.project === library[1]; })[0];
+			return target ? new File(String(target.projectDir), "_flow/resources/guide/" + library[2] + ".md") : null;
+		}
+		var root = knownProjectDir(ctx);
+		return root ? new File(root, "_flow/resources/" + match[1] + "/" + match[2] + ".md") : null;
+	}
+
+	// resources/read of a guide or skill: its uri and the hash of its content, for this caller.
+	function stableResourceKey(ctx, request) {
+		var uri = String(request.params && request.params.uri || "");
+		var file = stableResourceFile(ctx, uri);
+		var caller = file && file.isFile() ? stableCaller(ctx) : null;
+		var code = caller === null ? null : stableCodeRevision(ctx);
+		if (code === null) {
+			return null;
+		}
+		var content = sha256Hex(String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)));
+		return stableEntry("resource", [caller, uri, canonicalPath(file), content, code], STABLE_TTL_MS.resource);
+	}
+
+	// The kept answer of a request of the mcp.stable block (tools/list, resources/read), or the key to keep it under,
+	// computed before its answer; null when it is not kept.
+	function stableLookup(ctx, request) {
+		var method = request && request.method;
+		var key = method === "tools/list" ? stableToolsListKey(ctx, request)
+			: method === "resources/read" ? stableResourceKey(ctx, request)
+				: null;
+		if (!key) {
+			return null;
+		}
+		var kept = stableRead(key);
+		return { key: key, response: kept ? stableAnswer(ctx, request, kept) : null };
+	}
+
+	// flow-catalog and authoring-palette: their prepared arguments (the target project, its working copies and tag
+	// context), what the files of the project answer, the mutations made through this endpoint, the code, the caller
+	// and its headers. A call with a deadline of its own is not kept.
+	function stableToolLookup(ctx, request, target, args) {
+		var name = toolName(request);
+		if (STABLE_TOOLS[name] !== target || !args || args.answerBefore !== undefined && args.answerBefore !== null &&
+				String(args.answerBefore) !== "") {
+			return null;
+		}
+		var caller = stableCaller(ctx);
+		var code = caller === null ? null : stableCodeRevision(ctx);
+		if (code === null) {
+			return null;
+		}
+		var key = stableEntry("tool", [name, target, caller, sha256Hex(JSON.stringify(args)), stableProjectRevision(args.projectDir),
+			String(stableEpochCounter().get()), code].concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS.tool);
+		var kept = stableRead(key);
+		return { key: key, response: kept ? stableAnswer(ctx, request, kept) : null };
+	}
+
+	function stableKeep(ctx, request, lookup, response) {
+		if (lookup && lookup.key && !lookup.response && stableSucceeded(response)) {
+			stableWrite(lookup.key, { result: response.result });
+		}
+	}
+
+	function stableClear(kind) {
+		var store = stableStore();
+		if (!kind) {
+			store.clear();
+			return;
+		}
+		var keys = store.keySet().toArray();
+		for (var i = 0; i < keys.length; i++) {
+			if (String(keys[i]).indexOf(kind + ":") === 0) {
+				store.remove(keys[i]);
+			}
+		}
+	}
+
+	// After a tools/call: a tool that may write drops the kept project answers; flow-cache-clear drops them all.
+	function stableToolCalled(name) {
+		name = String(name || "");
+		if (STABLE_READ_TOOLS[name] === true) {
+			return;
+		}
+		stableEpochCounter().incrementAndGet();
+		stableClear(name === "flow-cache-clear" ? "" : "tool");
+	}
+
+	var api = {
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
 		libraryGuides: libraryGuides,
@@ -4658,7 +5025,14 @@
 		traceJsonl: traceJsonl,
 		runToolBlock: runToolBlock,
 		notification: notification,
+		stableLookup: stableLookup,
+		stableToolLookup: stableToolLookup,
+		stableKeep: stableKeep,
+		stableToolCalled: stableToolCalled,
+		_stableClear: stableClear,
+		_stableSize: function () { return Number(stableStore().size()); },
 		_normalizeConvertigoYamlObjectHeaders: normalizeConvertigoYamlObjectHeaders,
 		_normalizeConvertigoFlowProjectVersion: normalizeConvertigoFlowProjectVersion
 	};
+	return api;
 }())

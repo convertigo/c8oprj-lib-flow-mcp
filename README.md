@@ -102,6 +102,43 @@ When adding a new operation, ask whether the underlying behavior is:
 - MCP authoring behavior: keep it here;
 - project-specific glue: keep it in the target project, preferably private.
 
+## Stable results
+
+Some answers stay the same while nothing they are computed from changes:
+`tools/list` (relayed tools included), the guides and skills (`resources/read`,
+and `flow-resource-get` of a `flow://guide|lib|skills` uri), `flow-catalog` and
+`authoring-palette`. Their result is kept as JSON text for every runtime of the
+server and answered again in the envelope of the new request, with its id
+(stable results in `_flow/lib/mcp.js`, block `mcp.stable` for `tools/list` and
+`resources/read`, `mcp.tool.run` for the two tools). Some agent hosts (Vibe)
+call `tools/list` before each tool call: the relayed catalog alone costs a
+round trip to the legacy endpoint.
+
+- Only after authentication: every key starts with the caller
+  `jwt.guardRequest` records on the HTTP request (kind, scope, user and token
+  id; never the token), a server-side attribute a client cannot send. A refused
+  request, or an expired leased token let through for its handshake, is neither
+  answered from the store nor kept.
+- The key holds what the result depends on: the request headers it may read
+  (agent provider and profile, guidance version, user agent, host...), the
+  revision of the block catalog the request runs with
+  (`blocks.__flowCatalogFingerprint`), this library and the cache generation of
+  the server. `tools/list` adds the relayed headers (the bearer included), the
+  legacy project as loaded and the feedback consent inputs that list
+  `report-create` (`mcp.report.mode`, `assistant.feedback.policy`,
+  `agents/feedback/settings.json`, the server feedback key); a guide adds the
+  hash of its content; the two tools add their prepared arguments (target
+  project, working copies, tag context) and the data revision of the projects.
+- Invalidation: a revision that changes is another key; any `tools/call` of a
+  tool that may write (anything but the read tools of `STABLE_READ_TOOLS`)
+  drops the kept tool answers; `flow-cache-clear` drops everything. A
+  time-to-live bounds what no revision tells (files changed outside Convertigo,
+  the legacy endpoint): 2 min for `tools/list`, 30 s for the tools, 10 min for
+  a guide. At most 256 entries and 8M characters, the oldest leaving first.
+- Never kept: errors, partial answers (`partial`, `responseBudget`), an answer
+  carrying an `operatorNote`, a call with its own `answerBefore`, and every
+  other method or tool (mutations, runs, logs).
+
 ## Tools
 
 `tools/list` advertises only the tools named in `PUBLIC_TOOLS`
@@ -229,9 +266,11 @@ disables the relay.
 
 `report-create` is also relayed when the legacy catalog advertises it. The
 legacy endpoint owns consent, validation and feedback storage; the relay never
-enables reporting or sends feedback externally. Each `tools/list` refreshes the
-legacy catalog for the current caller, so consent changes and provider-specific
-schemas are not shared or cached. Each relayed `tools/call` remains one HTTP hop.
+enables reporting or sends feedback externally. A `tools/list` is kept for its
+caller, its relayed headers and the feedback consent inputs (see Stable
+results): a consent change, another caller or another provider is listed again
+from the legacy endpoint at the next `tools/list`. Each relayed `tools/call`
+remains one HTTP hop.
 The relay asks the legacy endpoint for `jsonOnly=true` answers, which carry
 `structuredContent` only on success; it adds the `content` summary a
 `CallToolResult` requires, or MCP clients that validate it (the MCP Python SDK

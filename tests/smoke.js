@@ -896,7 +896,9 @@ var fakeMcp = {
 	toolError: function (_request, error) { throw error; },
 	_enrichSveltePaletteMutations: function (_args, value) { return value; },
 	persistSourceMutationResult: function (_request, _args, value) { return value; },
-	frontendCreateSourceSpec: function () { return null; }
+	frontendCreateSourceSpec: function () { return null; },
+	stableToolLookup: function () { return null; },
+	stableKeep: function () {}
 };
 var fakeRunCtx = {
 	props: function () { return { request: { params: { name: "authoring-palette" } }, target: "authoring.palette", out: "local.response" }; },
