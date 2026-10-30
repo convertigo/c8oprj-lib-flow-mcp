@@ -1,7 +1,7 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
-  "description": "Applies a revision-checked unified patch to one Flow Svelte source.",
+  "description": "Applies a revision-checked unified patch or exact text edits to one Flow Svelte source.",
   "icon": "mdi:source-branch-sync",
   "properties": {
     "request": {
@@ -22,7 +22,27 @@ const _meta = {
     "codepatch": {
       "kind": "text",
       "type": "string",
-      "description": "Git-style unified diff against the retrieved source, with numbered @@ -old,count +new,count @@ hunk headers.",
+      "description": "Git-style unified diff against the retrieved source, with numbered @@ -old,count +new,count @@ hunk headers. Send codepatch or edits, not both.",
+    },
+    "edits": {
+      "kind": "literal",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "oldText": {
+            "type": "string",
+          },
+          "newText": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "oldText",
+          "newText",
+        ],
+      },
+      "description": "Exact replacements applied in order: [{ oldText, newText }], each oldText found exactly once in the source.",
     },
     "reveal": {
       "kind": "literal",

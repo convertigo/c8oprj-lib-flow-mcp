@@ -46,6 +46,11 @@ const _meta = {
       "type": "string",
       "description": "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.",
     },
+    "edits": {
+      "kind": "literal",
+      "type": "array",
+      "description": "Exact replacements applied in order instead of codepatch: [{ oldText, newText }], each oldText found exactly once.",
+    },
     "pattern": {
       "kind": "text",
       "type": "string",
@@ -1293,7 +1298,8 @@ const _meta = {
 				}
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
-				if (!patch) throw new Error("code-patch requires codepatch for a Flow Svelte source.");
+				var edits = props.edits !== undefined && props.edits !== null ? props.edits : undefined;
+				if (!patch && edits === undefined) throw new Error("code-patch requires codepatch (a unified diff) or edits ([{ oldText, newText }]) for a Flow Svelte source.");
 				if (!props.revision) throw new Error("code-patch requires the revision returned by code-get.");
 				sourceWriteLock.lock();
 				try {
@@ -1303,6 +1309,7 @@ const _meta = {
 						path: path.relative,
 						baseHash: props.revision,
 						patch: patch,
+						edits: edits,
 						dryRun: true,
 						validate: false,
 						includeContent: true

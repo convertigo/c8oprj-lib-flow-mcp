@@ -462,7 +462,12 @@ const _meta = {
 			};
 		}
 		if (toolName === "code-patch" && schema.properties.codepatch) {
-			schema.properties.codepatch.description = "Git-style unified diff with numbered hunk headers such as @@ -1,1 +1,1 @@; do not use *** Begin Patch wrappers or bare @@ headers.";
+			schema.properties.codepatch.description = "Format 1, a unified diff: git-style hunks with numbered headers such as @@ -3,1 +3,1 @@, an unchanged line starting with a space, a removed one with -, an added one with +; no *** Begin Patch wrapper, no bare @@ header. Send codepatch or edits, not both.";
+		}
+		if ((toolName === "code-patch" || toolName === "flow-code-patch" || toolName === "flow-block-code-patch" || toolName === "frontend-svelte-code-patch") && schema.properties.edits) {
+			schema.properties.edits.description = "Format 2, exact replacements applied in order: [{ \"oldText\": \"local.price = 10\", \"newText\": \"local.price = 12\" }]. " +
+				"Each oldText is copied from the code read (spaces and line breaks included) and must be found exactly once in the code as the edits before it left it; " +
+				"otherwise nothing is written (EDIT_TEXT_NOT_FOUND, EDIT_TEXT_NOT_UNIQUE with the lines). Simpler than a diff for a targeted change.";
 		}
 		if (toolName === "flow-resource-get") {
 			schema.properties.uri = {
@@ -535,7 +540,7 @@ const _meta = {
 		if (name === "code-set") {
 			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code. A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-patch") {
-			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation. Safe backend corrections return fixes and the complete corrected code.";
+			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation, with the revision read by code-get and either codepatch (a unified diff) or edits ([{ oldText, newText }], exact replacements, each oldText unique). Safe backend corrections return fixes and the complete corrected code.";
 		} else if (name === "code-check") {
 			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch). A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-promote") {
