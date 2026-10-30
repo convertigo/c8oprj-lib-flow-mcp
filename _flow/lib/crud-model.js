@@ -76,7 +76,7 @@
    var label=out.fields.filter(function(f){return f.type==='string'&&!f.identity;})[0];out.ui.labelField=label?label.name:key;
    s.entities.push(out);
   });
-  normalized.relations.forEach(function(r){s.relations.push({name:r.name,kind:'many-to-one',from:{entity:r.fromEntity,field:r.fromField},to:{entity:r.toEntity,field:r.toField},labelField:r.ui.optionLabelField});});
+  normalized.relations.forEach(function(r){var target=s.entities.filter(function(e){return e.name===r.toEntity;})[0],wanted=r.ui.optionLabelField,field=target.fields.filter(function(f){return f.name.replace(/_/g,'')===wanted.replace(/_/g,'');})[0];s.relations.push({name:r.name,kind:'many-to-one',from:{entity:r.fromEntity,field:r.fromField},to:{entity:r.toEntity,field:r.toField},labelField:field?field.name:wanted==='unnamed'?target.ui.labelField:wanted});});
   normalized.entities.forEach(function(e,i){
    var out=s.entities[i],explicit=has(normalized.seed.data,e.name),rows=explicit?normalized.seed.data[e.name]:[],count=explicit?rows.length:normalized.seed.rowsPerEntity;
    if(!normalized.seed.enabled || s.database.schemaPolicy==='observe'){s.seed.data[e.name]=[];return;}

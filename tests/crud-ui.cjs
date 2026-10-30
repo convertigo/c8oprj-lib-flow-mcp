@@ -5,6 +5,7 @@ const raw=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/legacy-crud/s
 const check=(v,n)=>{assert(v,n);checks.push(n)};
 raw.security={principals:{admin:'admin',staff:'staff'},demoLogin:true};raw.entities[1].fields.push({name:'Status',column:'status',type:'VARCHAR(16)',enum:['active','inactive'],required:true,default:'active'});raw.entities[1].permissions={list:['admin','staff'],read:['admin','staff'],create:['admin'],update:['admin'],delete:['admin']};
 raw.entities[1].ui.detailFields=['first_name','company_id','status'];raw.entities[1].ui.formFields=['first_name','company_id','status'];
+raw.entities[1].ui.relationFields={company_id:{optionLabelField:'city'}};
 const c=compiler.compile(raw,raw.project,{model,legacy,ui}),files=Object.entries(c.files).filter(([p])=>p.endsWith('.flow.svelte')),text=files.map(([,s])=>s).join('\n');
 check(files.length===9&&c.frontend.pages.length===8,'two entities generate layout, dashboard, login and six entity pages');
 for(const tag of ['AppShell','DataTable','FormSection','StatCard','StatusBadge','Select'])check(text.includes('<'+tag+' '),'shared '+tag+' used');
@@ -16,6 +17,9 @@ check(c.flows.hr_employees_save.includes('INVALID_ENUM')&&c.flows.hr_employees_s
 check(c.flows.hr_session.includes('"create": (local.role === "admin")'),'session DTO derives entity rights from server role');
 check(!('versionColumn' in c.config.data.sources.employees_write),'unversioned source uses native SQL default');
 check(!('optimisticConcurrency' in c.config.data.sources.employees_write),'no duplicated SQL revision switch');
+check(c.config.sql.queries.companies_opt_city.sql.includes('\"city\" AS \"label\"'),'legacy relation label overrides use named queries');
+check(text.includes('@options_employee_company.rows'),'relation controls have independent result bindings');
+check(text.includes('viewReadyGuard')&&!text.includes('<SetValue $$id=\"viewReady\"'),'page waits for fresh role-bound data with unique state/action IDs');
 const studio=model.studio(raw,c,{applied:false,applicable:true});check(studio.generated.pages.length===8&&studio.generated.layouts.length===1,'Studio separates layouts from generated pages');
 const bad=JSON.parse(JSON.stringify(raw));bad.entities[1].fields.at(-1).default='unknown';assert.throws(()=>compiler.compile(bad,bad.project,{model,legacy,ui}),/default must belong to enum/);checks.push('enum default is validated before apply');
 console.log(JSON.stringify({passed:true,count:checks.length,checks}));

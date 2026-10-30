@@ -45,6 +45,7 @@
       var from=entities[r.from.entity],to=entities[r.to.entity];if(!from||!to)fail('Unknown relation entity');
       var ff=from.fields.filter(function(f){return f.name===r.from.field;})[0],tf=to.fields.filter(function(f){return f.name===r.to.field;})[0];
       if(!ff||!tf||ff.type!==tf.type||r.to.field!==to.key[0])fail('Relation must target compatible primary key');
+      if(r.labelField&&!to.fields.some(function(f){return f.name===r.labelField;}))fail('Unknown relation optionLabelField');
 
     });
     var visited={},active={};function visit(e){if(active[e.name])fail('Cyclic relations unsupported');if(visited[e.name])return;active[e.name]=true;relations.filter(function(r){return r.from.entity===e.name;}).forEach(function(r){visit(entities[r.to.entity]);});delete active[e.name];visited[e.name]=true;tables.push(e);}
@@ -69,6 +70,7 @@
         writes[e.name+'_delete']={connection:connection,operation:'delete',sql:'DELETE FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:[{name:'id',type:'int64'}].concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
       }
     });
+    var optionQueries={};ordered.forEach(function(e){var choices={};choices[e.ui.labelField]=e.name+'_options';relations.filter(function(r){return r.to.entity===e.name&&r.labelField;}).forEach(function(r){if(own(choices,r.labelField))return;var name=id(e.name+'_opt_'+r.labelField),q=copy(queries[e.name+'_options']),f=e.fields.filter(function(f){return f.name===r.labelField;})[0];q.sql=q.sql.replace(quote(e.ui.labelField)+' AS \"label\"',quote(r.labelField)+' AS \"label\"');q.columns[1].type=f.type;q.columns[1].nullable=f.nullable===true;queries[name]=q;choices[r.labelField]=name;});optionQueries[e.name]=choices;});
     // Validate declarations at authoring time, before any generated file is written.
     Object.keys(queries).concat(Object.keys(writes)).forEach(function(name){
       var declaration=queries[name] || writes[name],used={},declared={},match,rx=/:([A-Za-z_][A-Za-z0-9_]*)/g;
@@ -77,6 +79,7 @@
       Object.keys(used).forEach(function(p){if(!own(declared,p))fail('Undeclared named parameter '+name+'.'+p);});
     });
     var config={sql:{connections:{},initializers:{},queries:queries,writes:writes},data:{providers:{sql:{implementation:'sql.table'}},sources:sources},crud:{principals:s.security.principals,hasPrincipalMap:Object.keys(s.security.principals).length>0,demoLogin:s.security.demoLogin===true}};
+    config.crud.optionQueries=optionQueries;
     config.crud.enums={};ordered.forEach(function(e){config.crud.enums[e.name]={};e.fields.forEach(function(f){if(f.enum)config.crud.enums[e.name][f.name]=f.enum;});});
     config.crud.generated={owner:services.model?services.model.path:'_flow/data/model.yaml',queries:Object.keys(queries),writes:Object.keys(writes),sources:Object.keys(sources)};
     config.sql.connections[connection]={url:db.url,dialect:db.dialect,driverClass:db.driverClass,user:db.user || '',password:db.password || '',nativeRead:true,nativeWrite:true};
@@ -112,7 +115,7 @@
         if(!f.enum&&f.type==='string')return;
         body+='  local.value = object.get({source:local.patch,key:"'+f.name+'",defaultValue:null})\n';
         if(f.nullable)body+='  if (local.value === "") {\n    json.put({path:"local.patch",key:"'+f.name+'",value:null})\n    local.value = null\n  }\n';
-        if(f.type==='boolean')body+='  if (local.value === "true") {\n    json.put({path:"local.patch",key:"'+f.name+'",value:true})\n  }\n  if (local.value === "false") {\n    json.put({path:"local.patch",key:"'+f.name+'",value:false})\n  }\n';
+        if(f.type==='boolean')body+='  if (local.value === "true") {\n    json.put({path:"local.patch",key:"'+f.name+'",value:true})\n    local.value = true\n  }\n  if (local.value === "false") {\n    json.put({path:"local.patch",key:"'+f.name+'",value:false})\n    local.value = false\n  }\n';
         if(f.enum)body+='  if (local.value !== null) {\n    local.enumValid = config.crud.enums.'+e.name+'.'+f.name+'.includes(local.value)\n    if (!local.enumValid) {\n      throw({code:"INVALID_ENUM",message:"Invalid value for '+f.name+'",status:400})\n    }\n  }\n';
       });return body;
     }
@@ -126,11 +129,11 @@
       var displayBody='  local.row.displayValues = object.merge({target:{},source:local.row.values})\n';
       s.relations.filter(function(r){return r.from.entity===e.name;}).forEach(function(r,i){
         var target=ordered.filter(function(t){return t.name===r.to.entity;})[0],fk=r.from.field;
-        displayBody+='  if (('+allowed(target,'read')+') && local.row.values.'+fk+' !== null) {\n    local.related = data.read({source:"'+target.name+'_read",limit:1,filter:{field:"'+r.to.field+'",op:"eq",value:local.row.values.'+fk+'}})\n    local.relatedRow = list.first({items:local.related.page.rows,fallback:null})\n    if (local.relatedRow) {\n      json.put({path:"local.row.displayValues",key:"'+fk+'",value:local.relatedRow.values.'+target.ui.labelField+'})\n    }\n  }\n';
+        displayBody+='  if (('+allowed(target,'read')+') && local.row.values.'+fk+' !== null) {\n    local.related = data.read({source:"'+target.name+'_read",limit:1,filter:{field:"'+r.to.field+'",op:"eq",value:local.row.values.'+fk+'}})\n    local.relatedRow = list.first({items:local.related.page.rows,fallback:null})\n    if (local.relatedRow) {\n      json.put({path:"local.row.displayValues",key:"'+fk+'",value:local.relatedRow.values.'+(r.labelField||target.ui.labelField)+'})\n    }\n  }\n';
       });
       flow(n+'_read',{id:{type:'string'}},auth(e,'read')+'  local.response = data.read({source:"'+e.name+'_read",limit:1,filter:{field:"'+k+'",op:"eq",value:input.id}})\n  local.row = list.first({items:local.response.page.rows,fallback:null})\n  if (!local.row) {\n    throw({code:"NOT_FOUND",message:"Row absent",status:404})\n  }\n'+(e.revision?'  local.row.revision = local.row.values.'+e.revision+'\n':'')+displayBody+'  return {row:local.row}',false,{type:'object',properties:{row:rowSchema(e)}});
       flow(n+'_count',{},auth(e,'count')+'  return sql.query({query:"'+e.name+'_count",parameters:{}})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{total:{type:'string'}}}}}});
-      flow(n+'_options',{},auth(e,'list')+'  return sql.query({query:"'+e.name+'_options",parameters:{},limit:200})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{value:{type:'string'},label:{type:'string',nullable:true}}}}}});
+      flow(n+'_options',{labelField:{type:'string',default:e.ui.labelField}},auth(e,'list')+'  local.query = object.get({source:config.crud.optionQueries.'+e.name+',key:input.labelField,defaultValue:null})\n  if (!local.query) {\n    throw({code:"INVALID_OPTION_LABEL",message:"Unknown option label",status:400})\n  }\n  return sql.query({query:local.query,parameters:{},limit:200})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{value:{type:'string'},label:{type:'string',nullable:true}}}}}});
       if(!e.readOnly){flow(n+'_save',{id:{type:'string',default:''},revision:{type:'string',default:''},patch:{type:'object'}},'  if (input.id === "") {\n'+auth(e,'create')+patchBody(e)+'    return data.write({source:"'+e.name+'_write",operation:"create",patch:local.patch})\n  }\n'+auth(e,'update')+patchBody(e)+'  return data.write({source:"'+e.name+'_write",operation:"update",key:{'+k+':input.id},revision:input.revision,patch:local.patch})');
       flow(n+'_delete',{id:{type:'string'},revision:{type:'string',default:''}},auth(e,'delete')+'  return data.write({source:"'+e.name+'_write",operation:"delete",key:{'+k+':input.id},revision:input.revision})');}
     });
