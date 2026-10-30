@@ -1,7 +1,7 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
-  "description": "Bootstraps a Convertigo project for Flow authoring from the official sequence template, then adds FlowEngine metadata through DBO APIs.",
+  "description": "Bootstraps a Convertigo project for Flow authoring: a new project holds only its project bean, its FlowEngine and its references (no connector, no sequence), then FlowEngine metadata is added through DBO APIs.",
   "icon": "mdi:application-import",
   "properties": {
     "project": {
@@ -12,8 +12,8 @@ const _meta = {
     "templateUrl": {
       "kind": "text",
       "type": "string",
-      "default": "https://github.com/convertigo/c8oprj-template-sequence/archive/8.3.0.zip",
-      "description": "Template archive URL used when the project does not exist or force=true.",
+      "default": "",
+      "description": "Optional project archive URL to import instead of creating a bare Flow project (when the project does not exist or force=true). Leave empty: a Flow project needs no template.",
     },
     "ui": {
       "kind": "literal",
@@ -34,7 +34,7 @@ const _meta = {
       "kind": "literal",
       "type": "boolean",
       "default": false,
-      "description": "Re-import the template even if the project already exists.",
+      "description": "Recreate the project even if it already exists (its previous files are backed up, as a project deploy does).",
     },
     "dryRun": {
       "kind": "literal",
@@ -92,7 +92,26 @@ const _meta = {
 }
 
 (function () {
-	var TEMPLATE_URL = "https://github.com/convertigo/c8oprj-template-sequence/archive/8.3.0.zip";
+	// A new Flow project needs no template: no default connector since engine #1225, and no sequence. It is the
+	// project bean alone, written in the standard YAML format, then loaded and given its FlowEngine and references.
+	var NEW_PROJECT_COMMENT = "Flow project";
+	var NEW_PROJECT_VERSION = "1.0.0";
+	var GITIGNORE = [
+		"/_private/",
+		"/.settings",
+		"/.gradle",
+		"/.project",
+		"",
+		"/DisplayObjects/mobile/*",
+		"!/DisplayObjects/mobile/assets",
+		"",
+		"/oas2/",
+		"/oas3/",
+		"",
+		"/build/",
+		""
+	].join("\n");
+	var GITATTRIBUTES = "* text=auto\n*.sh eol=lf\n";
 	var ENGINE_QNAME = "lib_flow_engine.Engine";
 	var FRONTBUILDER_PROJECT = "lib_flow_frontbuilder_svelte";
 	var lastWorkspaceRoots = [];
@@ -378,6 +397,73 @@ const _meta = {
 		}
 	}
 
+	function yamlHeaderVersion() {
+		try {
+			var YamlConverter = Packages.com.twinsoft.convertigo.engine.util.YamlConverter;
+			return String(YamlConverter.minimumVersion(String(Packages.com.twinsoft.convertigo.beans.Version.version),
+				YamlConverter.Format.STANDARD));
+		} catch (_ignoreVersion) {
+			return "8.5.0.m006";
+		}
+	}
+
+	// The project bean of a new Flow project, in the standard YAML format; the timeouts and CORS origin are those
+	// the Convertigo project templates set.
+	function newProjectYaml(name) {
+		return [
+			"convertigo: " + yamlHeaderVersion(),
+			"↓" + name + " [core.Project]:",
+			"  comment: " + NEW_PROJECT_COMMENT,
+			"  contextTimeout: 59",
+			"  corsOrigin: =Origin",
+			"  httpSessionTimeout: 60",
+			"  version: " + NEW_PROJECT_VERSION,
+			""
+		].join("\n");
+	}
+
+	function writeIfMissing(file, content) {
+		if (!file.exists()) {
+			writeUtf8(file, content);
+		}
+	}
+
+	// A bare Flow project, created and loaded without download. force replaces an existing project as a deploy does:
+	// its files are backed up first, its Eclipse project and VCS metadata are kept.
+	function createProject(engine, name, existing) {
+		var File = Packages.java.io.File;
+		var dbom = engine.theApp.databaseObjectsManager;
+		var projectFile = existing != null
+			? new File(String(existing.getDirPath()), "c8oProject.yaml")
+			: engine.projectYamlFile(String(name));
+		var warmup = null;
+		try {
+			warmup = Packages.com.twinsoft.convertigo.engine.flow.FlowRuntimeWarmup;
+		} catch (_ignoreWarmup) {
+		}
+		if (existing != null) {
+			try { warmup.projectDeploying(String(name)); } catch (_ignoreDeploying) {}
+			var Option = Packages.com.twinsoft.convertigo.engine.enums.DeleteProjectOption;
+			dbom.deleteProject(String(name), Option.createBackup, Option.preserveEclipse, Option.preserveVCS);
+		}
+		try {
+			ensureParent(projectFile);
+			writeUtf8(projectFile, newProjectYaml(name));
+			writeIfMissing(new File(projectFile.getParentFile(), ".gitignore"), GITIGNORE);
+			writeIfMissing(new File(projectFile.getParentFile(), ".gitattributes"), GITATTRIBUTES);
+			var project = dbom.importProject(projectFile, true);
+			if (project == null) {
+				throw new Error("No project loaded from " + String(projectFile.getAbsolutePath()));
+			}
+			project.setYamlFormat(Packages.com.twinsoft.convertigo.engine.util.YamlConverter.Format.STANDARD);
+			return project;
+		} finally {
+			if (existing != null) {
+				try { warmup.projectDeployed(String(name)); } catch (_ignoreDeployed) {}
+			}
+		}
+	}
+
 	function importTemplate(engine, name, templateUrl) {
 		var ProjectUrlParser = Packages.com.twinsoft.convertigo.engine.util.ProjectUrlParser;
 		var parser = new ProjectUrlParser(name + "=" + templateUrl);
@@ -486,7 +572,7 @@ const _meta = {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var name = projectName(prop(props, "project") || prop(props, "name"));
-			var templateUrl = String(prop(props, "templateUrl") || TEMPLATE_URL).trim();
+			var templateUrl = String(prop(props, "templateUrl") || "").trim();
 			var ui = boolValue(prop(props, "ui"), false);
 			var references = projectNames(prop(props, "references"));
 			var force = boolValue(prop(props, "force"), false);
@@ -504,6 +590,7 @@ const _meta = {
 				dryRun: dryRun,
 				references: references,
 				imported: false,
+				created: false,
 				existing: existing != null,
 				createdFlowEngine: false,
 				configuredSvelte: false,
@@ -516,15 +603,18 @@ const _meta = {
 				}
 			};
 			if (dryRun) {
-				result.wouldImport = shouldImport;
+				result.wouldImport = shouldImport && templateUrl.length > 0;
+				result.wouldCreate = shouldImport && templateUrl.length === 0;
 				result.wouldCustomize = true;
 				result.wouldReference = references.slice();
 				result.next = "Review this plan, then call flow-project-bootstrap once with dryRun:false.";
 				ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 				return result;
 			}
-			var project = shouldImport ? importTemplate(engine, name, templateUrl) : existing;
-			result.imported = shouldImport;
+			var project = !shouldImport ? existing
+				: templateUrl.length ? importTemplate(engine, name, templateUrl) : createProject(engine, name, existing);
+			result.imported = shouldImport && templateUrl.length > 0;
+			result.created = shouldImport && templateUrl.length === 0;
 			var resourceRoot = svelteResourceRoot();
 			var model = ui ? ensureSvelteModel(project, name) : { path: "", file: "", created: false, exists: false };
 			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);

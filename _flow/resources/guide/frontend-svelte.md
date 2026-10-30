@@ -282,7 +282,9 @@ Sources:
 - `@<context>.path` and `@index` inside a `ForEach` (`@row.name` under
   `context="row"`), or the explicit `@<forEachId>.item.path` and
   `@<forEachId>.index`;
-- `@event.value`, `.checked`, `.key`, `.name`: the normalized event;
+- `@event.value`, `.checked`, `.key`, `.name`, `.file`, `.files`, `.source`:
+  the normalized event; `@event.target.*` and `@event.detail.*` do not exist
+  (`FRONTEND_EVENT_PATH_NOT_NORMALIZED`);
 - `@route.path`, `@route.params.id`, `@route.query.tab`: current route;
 - `@props.<name>`: a component input (inside a component);
 - `@theme.available`, `@theme.options`, `@theme.default`: application themes.
@@ -307,6 +309,22 @@ label; `@event.value` is then the selected value or the typed text, so one
 backend Flow must resolve an existing id or create the value and reject an
 empty label. Do not emulate this with `Input`, `ForEach` and buttons.
 
+An `Input` value only displays its binding: typing never writes the state
+back. Keep the text with an event and `@event.value`: `OnInput` runs on each
+keystroke, `OnChange` when the edit is committed (leaving the field);
+`SearchField`, `ChatComposer`, `Combobox` (its typed query) and `OtpInput`
+give `OnInput` the same `@event.value`. To submit several fields together,
+place them with a `Button type="submit"` in a `Form` and run the save from
+`Form` > `Events` > `OnSubmit`, reading the page states.
+
+```svelte
+<Input $$id="noteInput" label="Note" value="@page.note"><Events>
+  <OnInput $$id="typed"><Actions>
+    <SetValue $$id="keepNote" target="page.note" value="@event.value" />
+  </Actions></OnInput>
+</Events></Input>
+```
+
 ## Structure And Actions
 
 ```text
@@ -314,7 +332,7 @@ FlowComponent -> Variables -> State / Derived / DerivedBy / Translations
 FlowComponent -> Events -> OnMount / OnAfterNavigate / OnDestroy / Effect / PreEffect / Interval / Timeout
 FlowComponent -> Structure -> PageShell
 Button -> Events -> OnClick -> Actions -> CallSequence -> Variables
-Input -> Events -> OnChange -> Actions -> portable block
+Input -> Events -> OnInput / OnChange -> Actions -> SetValue / portable block
 ForEach -> Children -> Card
 If -> Then / Else
 Layout -> PageContent

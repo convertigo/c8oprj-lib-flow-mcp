@@ -25,6 +25,9 @@ guide own the detailed workflow.
   feature needs them. Do not load every guide pre-emptively.
 - Record every successfully read guide URI for the current turn. Never read the
   same URI again after a successful response, including after compaction.
+- Without MCP `resources/read` in your client (Vibe lists tools only), read a
+  guide with `flow-resource-get` and its `uri` (`flow://guide/<name>` or
+  `flow://lib/<library>/<guide>`): the text is in `structuredContent.text`.
 
 Keep one specialist role through repair passes. Do not spawn a replacement
 specialist merely to continue the same application.

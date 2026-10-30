@@ -232,6 +232,10 @@ legacy endpoint owns consent, validation and feedback storage; the relay never
 enables reporting or sends feedback externally. Each `tools/list` refreshes the
 legacy catalog for the current caller, so consent changes and provider-specific
 schemas are not shared or cached. Each relayed `tools/call` remains one HTTP hop.
+The relay asks the legacy endpoint for `jsonOnly=true` answers, which carry
+`structuredContent` only on success; it adds the `content` summary a
+`CallToolResult` requires, or MCP clients that validate it (the MCP Python SDK
+of Vibe) reject the answer as a transport failure.
 On a server, a shared bearer alone does not establish the No Code user identity
 required by Tigo feedback. If the legacy endpoint omits the tool, it stays absent;
 `nocode-report-create` is not exposed through this endpoint.
@@ -344,3 +348,9 @@ The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 `flow://skills/convertigo-flow-backend/SKILL` and
 `flow://skills/convertigo-flow-frontend-svelte/SKILL` are not listed but are
 readable with `resources/read`.
+
+A client without `resources/read` (Vibe lists MCP tools only) reads the same
+resources with `flow-resource-get` and their `uri`: when the project owns no
+resource with that `flow://guide/`, `flow://lib/` or `flow://skills/` uri, the
+tool answers with the MCP resource, its text in `structuredContent.text`
+(`mcpResourceThroughTool` in `_flow/blocks/mcp/tools/call.block.js`).

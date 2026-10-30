@@ -426,7 +426,7 @@
 		if (value.name) {
 			parts.push(String(value.name));
 		}
-		if (value.query) {
+		if (value.query && typeof value.query !== "object") {
 			parts.push("query=\"" + value.query + "\"");
 		}
 		if (value.count !== undefined || value.total !== undefined) {
@@ -4231,6 +4231,15 @@
 				params: request.params || {}
 			}, 600);
 			answer.id = request.id === undefined ? null : request.id;
+			// The relay asks jsonOnly=true, and lib_ConvertigoMCP then answers a successful call with structuredContent
+			// only. content is required in a CallToolResult: the MCP Python SDK (Vibe) rejects such an answer and the
+			// agent sees a transport failure. The summary leaves the data in structuredContent, as for the Flow tools.
+			if (answer && answer.result && Object.prototype.toString.call(answer.result.content) !== "[object Array]") {
+				answer.result.content = [{
+					type: "text",
+					text: textSummary(answer.result.structuredContent === undefined ? {} : answer.result.structuredContent)
+				}];
+			}
 			return answer;
 		} catch (error) {
 			return toolError(request, new Error("Convertigo MCP relay failed for " + (request.params && request.params.name) +

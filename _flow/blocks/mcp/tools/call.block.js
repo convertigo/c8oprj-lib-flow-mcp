@@ -95,6 +95,46 @@ const _meta = {
 		return map;
 	}
 
+	// An MCP client without resources/read (Vibe 3 lists MCP tools only) asks flow-resource-get for a guide or skill
+	// URI. When the project owns no such resource, the Flow MCP resource answers, its text in structuredContent as the
+	// other Flow tools return their data.
+	var MCP_RESOURCE_URI = /^flow:\/\/(?:guide|lib|skills)\//;
+	function unknownResource(response) {
+		var result = response && response.result;
+		var error = result && result.structuredContent && result.structuredContent.error;
+		var code = error && error.code || response && response.error && response.error.data && response.error.data.code;
+		return String(code || "") === "UNKNOWN_RESOURCE";
+	}
+	function mcpResourceThroughTool(ctx, mcp, request, response) {
+		var args = request.params && request.params.arguments || {};
+		var uri = String(args.uri || "").trim();
+		if (!MCP_RESOURCE_URI.test(uri) || !unknownResource(response)) {
+			return null;
+		}
+		var read = ctx.callBlock("mcp.resources.read", {
+			request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: { uri: uri } },
+			out: "local.mcpResourceRead"
+		}, { trace: false });
+		var contents = read && read.result && read.result.contents;
+		if (!contents || !contents.length) {
+			return null;
+		}
+		var texts = [];
+		for (var i = 0; i < contents.length; i++) {
+			texts.push(String(contents[i] && contents[i].text || ""));
+		}
+		var text = texts.join("\n");
+		return mcp.finalizeResponse(ctx, request, mcp.jsonRpcResult(request.id, {
+			content: [{ type: "text", text: "OK. " + uri + " read as an MCP resource (" + text.length + " characters). Use structuredContent.text." }],
+			structuredContent: {
+				ok: true,
+				uri: uri,
+				mimeType: String(contents[0].mimeType || "text/markdown"),
+				source: "resources/read",
+				text: text
+			}
+		}));
+	}
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -120,6 +160,9 @@ const _meta = {
 				response = block
 					? ctx.callBlock(block, { request: request, out: out }, { trace: false })
 					: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
+				if (name === "flow-resource-get") {
+					response = mcpResourceThroughTool(ctx, mcp, request, response) || response;
+				}
 				// Older Flow wrappers can still return a JSON-RPC error. At the tools/call boundary it is a tool error.
 				if (response && response.error) {
 					var error = response.error;

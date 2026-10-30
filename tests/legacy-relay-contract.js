@@ -42,6 +42,10 @@ server.createContext("/convertigo/api/mcp", new com.sun.net.httpserver.HttpHandl
 			if (allowed) reports++;
 			answer.result = { isError: !allowed, content: [{ type: "text", text: JSON.stringify(value) }], structuredContent: value };
 		}
+		// lib_ConvertigoMCP answers a jsonOnly=true call with structuredContent only.
+		if (body.method === "tools/call" && body.params.arguments.structuredOnly) {
+			answer = { jsonrpc: "2.0", id: body.id, result: { structuredContent: { ok: true, name: "Saved", project: "P" } } };
+		}
 		if(body.method==='tools/call' && body.params.arguments.fail) {
             answer={jsonrpc:'2.0',id:body.id,result:{isError:!/^MistralAI-VibeCLI\//.test(seen[seen.length-1].userAgent),content:[{type:'text',text:'Legacy failure'}],structuredContent:{error:{code:'LEGACY_FAIL',message:'Legacy failure',details:{context:'string'}}}}};
         }
@@ -79,6 +83,12 @@ try {
 	assert(call.body.method === "tools/call" && call.body.params.name === "scheduler-apply", "tools/call forwarded");
 	assert(call.authorization === "Bearer client-token" && call.guidance === "g1", "client token and guidance version forwarded");
 	assert(call.cookie === null, "cookies are not forwarded");
+	// A CallToolResult requires content: the MCP Python SDK (Vibe) rejects a structuredContent-only answer.
+	var structuredOnly = mcp.legacyRelayCall(ctx, { jsonrpc: "2.0", id: 43, method: "tools/call", params: { name: "project-save", arguments: { structuredOnly: true } } });
+	assert(structuredOnly.result.content && structuredOnly.result.content.length === 1 && structuredOnly.result.content[0].type === "text",
+		"a structuredContent-only answer gets a text content: " + JSON.stringify(structuredOnly));
+	assert(/^OK\. Saved\. .*structuredContent/.test(structuredOnly.result.content[0].text), "the text summarizes the result: " + structuredOnly.result.content[0].text);
+	assert(structuredOnly.result.structuredContent.project === "P" && structuredOnly.id === 43, "the structured result and the id stay intact");
 
 	headers["X-Convertigo-Agent-Provider"] = "claude";
 	var claudeTools = mcp.legacyRelayTools(ctx);
