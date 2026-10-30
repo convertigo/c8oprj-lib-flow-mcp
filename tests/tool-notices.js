@@ -50,4 +50,14 @@ var successSchema = { type: 'object', properties: { answer: { type: 'integer' } 
 var schema = mcp.toolOutputSchema(successSchema);
 assert(!successSchema.properties.argumentWarning, 'Output schema decoration mutated its owner');
 assert(schema.properties.argumentWarning.type === 'string' && schema.anyOf[0].properties.operatorNote.type === 'string', 'Strict success schema rejects notices');
+// A refused code-set or code-patch of a Flow keeps the refused source as its working copy, under a new revision: the
+// text says so with that revision (an agent reading the text alone retried on the former one).
+['code-set', 'code-patch'].forEach(function (name) {
+  var kept = response(name, { ok: false, name: 'Orders', draft: true, written: true, revision: 'rev-new', oldRevision: 'rev-old',
+    error: { code: 'FLOWSCRIPT_UNBALANCED_SYNTAX', message: 'Unbalanced FlowScript function body at line 2' } }, { qname: 'P.Orders', revision: 'rev-old', code: 'x' });
+  assert(kept.isError === true && kept.structuredContent.revision === 'rev-new', name + ' lost the new revision: ' + JSON.stringify(kept.structuredContent));
+  assert(kept.content[0].text.indexOf('kept as the working copy, revision rev-new') >= 0, name + ' text does not give the revision of the kept working copy: ' + kept.content[0].text);
+  var unwritten = response(name, { ok: false, written: false, revision: 'rev-old', error: { code: 'FLOW_CODE_DRAFT_REVISION_MISMATCH', message: 'Stale' } }, { revision: 'rev-old', code: 'x' });
+  assert(unwritten.content[0].text.indexOf('kept as the working copy') < 0, name + ' claims a working copy for a refusal that wrote nothing');
+});
 print('tool-notices OK (' + checks + ' checks)');

@@ -540,9 +540,9 @@ const _meta = {
 			? wrapper.description || source.description || "Flow MCP tool."
 			: source.description || wrapper.description || "Flow MCP tool.");
 		if (name === "code-set") {
-			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code. A diagnostic on how a block is called gives its contract call (flow-block-get).";
+			description = "Writes/checks FlowScript, a canonical source selected by sourceFile, or a target-specific project block implementation. Safe backend corrections return fixes and the complete corrected code. A refused Flow source is kept as its working copy under a new revision, given in the answer. A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-patch") {
-			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation, with the revision read by code-get and either codepatch (a unified diff) or edits ([{ oldText, newText }], exact replacements, each oldText unique). Safe backend corrections return fixes and the complete corrected code.";
+			description = "Patches FlowScript, a revision-checked canonical source, or a project block implementation, with the revision read by code-get and either codepatch (a unified diff) or edits ([{ oldText, newText }], exact replacements, each oldText unique). Safe backend corrections return fixes and the complete corrected code. A refused Flow patch is kept as the working copy under a new revision, given in the answer.";
 		} else if (name === "code-check") {
 			description = "Checks FlowScript Flows, or a canonical frontend source selected by sourceFile. Project block implementations are checked when saved (code-set/code-patch). A diagnostic on how a block is called gives its contract call (flow-block-get).";
 		} else if (name === "code-promote") {

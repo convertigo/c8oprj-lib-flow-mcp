@@ -458,6 +458,15 @@
 		return lines.join("");
 	}
 
+	// A refused code-set or code-patch of a Flow keeps the refused source as its working copy (code-check reports its
+	// diagnostics): its revision changed. The text says so with the revision, as an agent reading the text alone
+	// retried on the former revision and got FLOW_CODE_DRAFT_REVISION_MISMATCH.
+	function keptWorkingCopyLine(value) {
+		if (value.ok !== false || value.written !== true || !value.revision || value.dry === true) return "";
+		return "\nThe refused source is kept as the working copy, revision " + String(value.revision) +
+			": patch it with code-patch on this revision, or replace it with code-set on this revision (code-discard returns to the saved Flow).";
+	}
+
 	function valueKeys(value) {
 		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
 			return value[key] !== undefined;
@@ -471,7 +480,7 @@
 		}
 		if (value.error) {
 			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
-				errorDiagnosticLines(value.error) + " See structuredContent.error.";
+				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + " See structuredContent.error.";
 		}
 		var parts = [];
 		if (value.ok === true) {
