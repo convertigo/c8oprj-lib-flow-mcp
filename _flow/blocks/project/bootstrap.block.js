@@ -1,6 +1,7 @@
 const _meta = {
   "sourceVersion": 2,
   "version": 1,
+  "uses": ["project-starter"],
   "description": "Bootstraps a Convertigo project for Flow authoring: a new project holds only its project bean, its FlowEngine and its references (no connector, no sequence), then FlowEngine metadata is added through DBO APIs.",
   "icon": "mdi:application-import",
   "properties": {
@@ -215,61 +216,15 @@ const _meta = {
 	}
 
 	// The first Page of a new frontend, in the v2 source format the frontbuilder loads.
-	function initialSveltePage(name) {
-		return [
-			"<script module>",
-			"  export const _flow = {",
-			"  \"sourceVersion\": 2,",
-			"  \"page\": {",
-			"    \"id\": \"home\",",
-			"    \"route\": \"/\",",
-			"    \"title\": " + jsString(name) + ",",
-			"  },",
-			"};",
-			"</script>",
-			"",
-			"<FlowComponent",
-			"  $$id=\"home\"",
-			"  label=" + jsString(name),
-			">",
-			"  <Structure>",
-			"    <PageShell",
-			"      $$id=\"pageShell\"",
-			"      align=\"stretch\"",
-			"      gap=\"16px\"",
-			"      maxWidth=\"960px\"",
-			"      padding=\"24px\"",
-			"    ><Children>",
-			"      <Card",
-			"        $$id=\"welcomeCard\"",
-			"        padding=\"20px\"",
-			"        radius=\"8px\"",
-			"        variant=\"surface\"",
-			"      ><Children>",
-			"        <Text",
-			"          $$id=\"welcomeTitle\"",
-			"          text=" + jsString(name),
-			"        />",
-			"        <Text",
-			"          $$id=\"welcomeText\"",
-			"          text=\"Flow Svelte frontend is ready.\"",
-			"        />",
-			"      </Children></Card>",
-			"    </Children></PageShell>",
-			"  </Structure>",
-			"</FlowComponent>",
-			""
-		].join("\n");
-	}
 
-	function ensureSvelteModel(project, name) {
+	function ensureSvelteModel(ctx, project, name) {
 		var File = Packages.java.io.File;
 		var relative = svelteModelPath(name);
 		var file = new File(String(project.getDirPath()), relative);
 		var created = false;
 		if (!file.isFile()) {
 			ensureParent(file);
-			writeUtf8(file, initialSveltePage(name));
+			writeUtf8(file, ctx.lib("project-starter").initialSveltePage(name));
 			created = true;
 		}
 		return {
@@ -646,7 +601,7 @@ const _meta = {
 				result.corsOrigin = corsOrigin;
 			}
 			var resourceRoot = svelteResourceRoot();
-			var model = ui ? ensureSvelteModel(project, name) : { path: "", file: "", created: false, exists: false };
+			var model = ui ? ensureSvelteModel(ctx, project, name) : { path: "", file: "", created: false, exists: false };
 			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
 			result.createdFlowEngine = flow.created;
 			result.configuredSvelte = flow.configuredSvelte;

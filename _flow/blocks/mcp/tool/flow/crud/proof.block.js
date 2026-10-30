@@ -5,7 +5,7 @@ const _meta = {
   "runtime": "rhino",
   "uses": [
     "mcp",
-    "crud-fastpath", "crud-model", "crud-legacy"
+    "crud-fastpath", "crud-model", "crud-legacy", "crud-ui", "project-starter"
   ],
   "description": "Checks generated CRUD artifacts and executes private schema/count proof; independent HTTP sessions and browser tests prove end-user rights and UI.",
   "properties": {

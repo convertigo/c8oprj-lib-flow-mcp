@@ -15,5 +15,5 @@ for(const change of [x=>x.entities[0].name='bad;sql',x=>x.database.url+=';shutdo
 const readOnly=structuredClone(s);readOnly.entities[0].revision=null;readOnly.entities[0].readOnly=true;
 check(!lib.compile(readOnly,'Qualification').config.data.sources.companies_write,'unversioned readonly schema supported');
 const unversioned=structuredClone(s);unversioned.entities[0].revision=null;
-check(lib.compile(unversioned,'Qualification').config.data.sources.companies_write.optimisticConcurrency===false,'explicit unversioned writes supported');
+check(lib.compile(unversioned,'Qualification').config.data.sources.companies_write.versionColumn===undefined,'explicit unversioned writes supported');
 console.log(JSON.stringify({passed:true,checks}));

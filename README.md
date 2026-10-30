@@ -448,3 +448,19 @@ The model is stored in `_flow/data/model.yaml`; preview returns the required `pl
 for application. Generated Flows and resources belong to that model.
 `flow-crud-proof` verifies the applied model, generated artifacts and read-only SQL plan.
 See `_flow/resources/data/model.schema.json` and `tests/fixtures/legacy-crud`.
+
+Pages use the Svelte 0.2.6 AppShell, PageHeader, DataTable, FormSection,
+StatCard and StatusBadge components; application styling uses theme.flow.css.
+Tables request server sorting/pagination. Forms preserve exact decimal/int64 text,
+wait for the initial read and derive their actions from server permissions.
+
+Optional common model extensions are `permissions` per entity/operation,
+`revision` (absent means native unversioned SQL writes), `fields[].enum` (server
+validation; labels in `ui.fieldOptions`), `indexes`, `database.schemaPolicy`
+(`managed` or schema-observing `observe`) and import `provenance`.
+Index and row-policy declarations are preserved but block application until their
+complete generic implementations exist. TIMESTAMP also blocks explicitly; it is
+never converted to DATE or a string. Only HSQLDB is runtime-qualified locally.
+Foreign keys can be added after columns through Querydsl; destructive schema
+changes remain refused. Applying files, Flows and DDL has no global transaction;
+the model-owned manifest journals pending application and supports resumption.

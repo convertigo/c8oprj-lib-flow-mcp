@@ -169,6 +169,20 @@
                     "string",
                     "object"
                   ]
+                },
+                "enum": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 128,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean"
+                    ]
+                  },
+                  "description": "Optional common-format extension: scalar allowed values, validated by generated server writes. UI labels remain in ui.fieldOptions."
                 }
               }
             }

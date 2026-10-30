@@ -47,6 +47,7 @@
   if(mode==='hsqldb')s.database.driverClass='org.hsqldb.jdbc.JDBCDriver';
   if(['hsqldb','postgresql'].indexOf(mode)<0)diagnostics.push({code:'SQL_DIALECT_NOT_QUALIFIED',severity:'error',dialect:mode,message:'Model accepted; portable schema application is qualified only on HSQLDB/PostgreSQL.'});
   if(s.database.password && !/^\$\{[A-Za-z0-9_.-]+\.secret=?\}$/.test(s.database.password))diagnostics.push({code:'MODEL_SECRET_REFERENCE_REQUIRED',severity:'error',message:'Legacy model parsed; move inline credentials to a server secret symbol before storing/applying the model.'});
+  s.ui.title=input.ui&&input.ui.title||project;
   var aliases={};
   normalized.entities.forEach(function(e,i){
    var re=rawEntities[i],key=e.primaryField.column,out={name:e.name,label:e.displayLabel,sourceName:re.name,routeSegment:e.routeSegment,key:[key],revision:re.revision||null,readOnly:re.readOnly===true,permissions:clone(re.permissions||{}),fields:[],ui:clone(e.ui),indexes:clone(re.indexes||[])};
@@ -64,6 +65,7 @@
     else if(f.unique)field.unique=true;
     if(f.defaultValue!==null && f.defaultValue!==undefined)field.default=scalar(f.defaultValue,field);
     if(rf.readOnly===true)field.readOnly=true;
+    if(rf.enum!==undefined){if(!Array.isArray(rf.enum)||!rf.enum.length||rf.enum.length>128)error('enum is a bounded nonempty array');field.enum=rf.enum.map(function(v){if(v===null||typeof v==='object')error('enum contains only non-null scalars');return scalar(v,field);});if(field.enum.some(function(v,i){return field.enum.indexOf(v)!==i;}))error('enum contains duplicate values');if(has(field,'default')&&field.enum.indexOf(field.default)<0)error('default must belong to enum');}
     if(p.type==='timestamp')diagnostics.push({code:'SQL_PORTABLE_TIMESTAMP_REQUIRED',severity:'error',entity:e.name,field:f.column,portableType:'timestamp',timezone:p.timezone,message:'TIMESTAMP is preserved as a timestamp; this SQL library does not yet implement a lossless portable timestamp. No DATE/string substitution.'});
     out.fields.push(field);
    });
@@ -94,7 +96,7 @@
   });
   return {internal:s,legacy:true,diagnostics:diagnostics,model:clone(raw)};
  }
- var visual={version:1,provider:'lib_flow_frontbuilder_svelte',requiredProviderVersion:'0.2.6',status:'awaiting-components',capabilities:{shell:'application shell with navigation and user zone',pageHeader:'page title and primary action',table:'server sorting/pagination, empty state, row actions',formSection:'grouped fields and relation selects',kpi:'dashboard counts',statusBadge:'semantic status',emptyState:'empty/error/loading',toast:'mutation feedback'},theme:{resource:'theme.flow.css',tokens:true,palettes:true,applicationCss:false},namesAreProvisional:true};
+ var visual={version:1,provider:'lib_flow_frontbuilder_svelte',requiredProviderVersion:'0.2.6',status:'available',capabilities:{shell:'application shell with navigation and user zone',pageHeader:'page title and primary action',table:'server sorting/pagination, empty state, row actions',formSection:'grouped fields and relation selects',kpi:'dashboard counts',statusBadge:'semantic status',emptyState:'empty/error/loading',toast:'mutation feedback'},theme:{resource:'theme.flow.css',tokens:true,palettes:true,applicationCss:false},namesAreProvisional:false};
  function frontend(s){
   var plan=clone(visual),prefix=s.facade.prefix;plan.generatedPages=[];plan.plannedPages=[{id:'crud_dashboard',kind:'dashboard',components:['shell','pageHeader','kpi'],counts:s.entities.map(function(e){return prefix+'_'+e.name+'_count';})}];
   s.entities.forEach(function(e){
@@ -107,7 +109,7 @@
  function studio(model,compiled,plan){
   var entities=model.entities||[];
   var normalized=compiled?compiled.normalized:model;
-  return {node:{id:'flowEngine.dataModel',label:'Modèle de données',resource:MODEL},entities:entities,portableEntities:normalized.entities,relations:normalized.relations||[],diagram:{format:'entities-relations',nodes:(normalized.entities||[]).map(function(e){return {id:e.name,label:e.displayLabel||e.label||e.name,fields:e.fields};}),edges:normalized.relations||[]},applied:plan.applied||false,migration:{applied:plan.applied,applicable:plan.applicable},generated:compiled?{flows:Object.keys(compiled.flows),pages:Object.keys(compiled.files).filter(function(p){return /flow.svelte$/.test(p);}),plannedPages:compiled.frontend.plannedPages||[],readOnly:true,owner:MODEL}:null,frontend:compiled?compiled.frontend:visual,actions:[{id:'preview',label:'Plan à blanc',mutates:false},{id:'apply',label:'Appliquer',requires:'current planHash and model revision'}]};
+  return {node:{id:'flowEngine.dataModel',label:'Modèle de données',resource:MODEL},entities:entities,portableEntities:normalized.entities,relations:normalized.relations||[],diagram:{format:'entities-relations',nodes:(normalized.entities||[]).map(function(e){return {id:e.name,label:e.displayLabel||e.label||e.name,fields:e.fields};}),edges:normalized.relations||[]},applied:plan.applied||false,migration:{applied:plan.applied,applicable:plan.applicable},generated:compiled?{flows:Object.keys(compiled.flows),pages:compiled.frontend.pages||[],layouts:Object.keys(compiled.files).filter(function(p){return /\+layout\.flow\.svelte$/.test(p);}),plannedPages:compiled.frontend.plannedPages||[],readOnly:true,owner:MODEL}:null,frontend:compiled?compiled.frontend:visual,actions:[{id:'preview',label:'Plan à blanc',mutates:false},{id:'apply',label:'Appliquer',requires:'current planHash and model revision'}]};
  }
  return {path:MODEL,normalize:normalize,portable:portable,visual:visual,frontend:frontend,studio:studio};
 }())

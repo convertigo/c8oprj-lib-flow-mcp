@@ -5,9 +5,9 @@ const _meta = {
   "runtime": "rhino",
   "uses": [
     "mcp",
-    "crud-fastpath", "crud-model", "crud-legacy"
+    "crud-fastpath", "crud-model", "crud-legacy", "crud-ui", "project-starter"
   ],
-  "description": "Preview or apply a legacy-shaped model, portable SQL and owned CRUD artifacts; frontend component plan.",
+  "description": "Preview or apply a legacy-shaped model, portable SQL and owned CRUD Flows and Svelte 0.2.6 application pages.",
   "properties": {
     "request": {
       "kind": "expression",
