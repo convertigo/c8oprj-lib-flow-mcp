@@ -2782,14 +2782,102 @@
 
 	// Studio and admin listeners (tree, web Studio, frontend dev sync in the Studio) follow the working copies.
 	function notifySourceMutations(args, projectRoot, files) {
+		var dir = String(projectRoot.getAbsolutePath());
+		var paths = files.map(function (file) {
+			return String(file.getAbsolutePath());
+		});
+		var reveal = boolArg(args && args.reveal, false);
+		if (!queueSourceNotifications(dir, paths, reveal)) {
+			notifyBridge(dir, paths, reveal);
+		}
+	}
+
+	function notifyBridge(dir, paths, reveal) {
 		var Bridge = Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge;
-		files.forEach(function (file) {
+		paths.forEach(function (path) {
 			try {
-				Bridge.notifySourceMutationWithReveal(String(projectRoot.getAbsolutePath()), String(file.getAbsolutePath()),
-					boolArg(args && args.reveal, false));
+				Bridge.notifySourceMutationWithReveal(dir, path, reveal);
 			} catch (_ignoreNotify) {
 			}
 		});
+	}
+
+	function studioMode() {
+		try {
+			return Packages.com.twinsoft.convertigo.engine.Engine.isStudioMode() === true;
+		} catch (_notStudio) {
+			return false;
+		}
+	}
+
+	var localSourceNotifications = new Packages.java.util.concurrent.ConcurrentHashMap();
+
+	// One daemon worker thread for the server, started on demand and stopped after 30 s without work: the notifications
+	// run in the order of the writes, and no idle thread is kept.
+	function sourceNotificationExecutor() {
+		var holder;
+		try {
+			holder = sharedMap("lib_flow_mcp.sourceNotifications");
+		} catch (_noServer) {
+			holder = localSourceNotifications;
+		}
+		var executor = holder.get("executor");
+		if (executor == null) {
+			var concurrent = Packages.java.util.concurrent;
+			var threads;
+			try {
+				threads = Packages.java.lang.Thread.ofPlatform().daemon(true).name("Flow MCP source notifications").factory();
+			} catch (_olderJava) {
+				threads = concurrent.Executors.defaultThreadFactory();
+			}
+			var created = new concurrent.ThreadPoolExecutor(0, 1, 30, concurrent.TimeUnit.SECONDS,
+				new concurrent.LinkedBlockingQueue(), threads);
+			executor = holder.putIfAbsent("executor", created);
+			if (executor == null) {
+				executor = created;
+			} else {
+				created.shutdown();
+			}
+		}
+		return executor;
+	}
+
+	/**
+	 * Queues the notification of source writes, in the Studio: there it refreshes the Project Explorer and reveals the
+	 * source on the UI thread, and synchronizes the development viewer under the frontend authoring lock of the server,
+	 * which the Studio holds while it describes its tree; on the caller's thread, a write could wait minutes for its
+	 * answer. A server notifies on the caller's thread (false): the notification drops the source snapshots the next
+	 * call reads.
+	 * options (tests): background (default: Studio mode), notify(projectDir, path, reveal) replacing the bridge.
+	 * @return true when queued, false when the caller notifies
+	 */
+	function queueSourceNotifications(projectDir, paths, reveal, options) {
+		options = options || {};
+		var background = options.background !== undefined ? options.background === true : studioMode();
+		var list = (paths || []).map(function (path) { return String(path); });
+		if (!background || list.length === 0) {
+			return false;
+		}
+		var dir = String(projectDir || "");
+		var shown = reveal === true;
+		var notify = typeof options.notify === "function" ? options.notify : null;
+		try {
+			sourceNotificationExecutor().execute(new Packages.java.lang.Runnable({ run: function () {
+				if (notify) {
+					list.forEach(function (path) {
+						try {
+							notify(dir, path, shown);
+						} catch (_ignoreNotify) {
+						}
+					});
+				} else {
+					notifyBridge(dir, list, shown);
+				}
+			}}));
+			return true;
+		} catch (_noBackground) {
+			return false;
+		}
 	}
 
 
@@ -5059,6 +5147,7 @@
 		toolResult: toolResult,
 		persistSourceMutationResult: persistSourceMutationResult,
 		sourceStore: sourceStore,
+		queueSourceNotifications: queueSourceNotifications,
 		withSourceDrafts: withSourceDrafts,
 		pendingStudioDrafts: pendingStudioDrafts,
 		assertProjectSaveAllowed: assertProjectSaveAllowed,

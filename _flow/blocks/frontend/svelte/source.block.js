@@ -1239,13 +1239,21 @@ const _meta = {
 		}
 	}
 
+	// In the Studio, the Flow MCP library notifies after the answer: the refresh of the Project Explorer, the reveal of
+	// the source and the synchronization of the development viewer never hold the write (mcp.js queueSourceNotifications).
 	function notifySourceMutation(ctx, props, path) {
+		var request = {
+			projectDir: String(props.projectDir || ""),
+			path: String(path.relative || ""),
+			reveal: boolValue(props.reveal, false)
+		};
+		var mcp = ctx && typeof ctx.lib === "function" ? ctx.lib("mcp") : null;
+		if (mcp && typeof mcp.queueSourceNotifications === "function" &&
+				mcp.queueSourceNotifications(request.projectDir, [request.path], request.reveal)) {
+			return;
+		}
 		if (ctx && typeof ctx.notifySourceMutation === "function") {
-			ctx.notifySourceMutation({
-				projectDir: String(props.projectDir || ""),
-				path: String(path.relative || ""),
-				reveal: boolValue(props.reveal, false)
-			});
+			ctx.notifySourceMutation(request);
 		}
 	}
 
