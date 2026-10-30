@@ -119,7 +119,9 @@ wait stays in it for the rest of the task.
   again with its `runId` alone; never start a second run meanwhile. Keep the
   default `waitSec`.
 - One visual check of the current page (layout, a rendered image, a label)
-  is one relayed `browser-verify` call with its `checks`.
+  is one relayed `browser-verify` call with its `checks`. For a Svelte
+  frontend, include the visual checklist of `flow://guide/frontend-svelte`
+  (POC Acceptance) in the `checks`.
 - Use Playwright yourself only for one quick evaluation of DOM state or
   timing; never a `browser_snapshot` per step.
 - The verifier is read-only: fix what it reports with the Flow tools, then

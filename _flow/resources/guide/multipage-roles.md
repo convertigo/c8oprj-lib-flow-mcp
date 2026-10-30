@@ -76,12 +76,15 @@ arbitrary patch from the browser.
 ## 4. Build distinct pages
 
 Create the target pages before the links: home/sign-in, my bookings,
-management and journal. A Layout carries the navigation and `PageContent`. Each
-page checks the session before loading its data. Management links are visible
-to the manager only; the server always applies the same check.
+management and journal. The root Layout is an `AppShell`: its `Navigation`
+holds a `LinkButton` per page, its `Tools` the user and the logout, its
+content `PageContent`. Each page starts with a `PageHeader`, checks the
+session before loading its data and lists its records in a `DataTable` (or
+the DataGrid below), statuses as badges. Management links are visible to the
+manager only; the server always applies the same check.
 
 Show the loading, empty and error states with the standard components and
-`Status`. After `CallSequence`, use the declared results and palette actions; a
+`Status` (a toast for a success, no message for a load). After `CallSequence`, use the declared results and palette actions; a
 user chain must continue even if its panel disappears. Refresh the session of
 the Layout after a navigation. Do not take an HTTP 200 of the route as proof
 that the grid is filled.

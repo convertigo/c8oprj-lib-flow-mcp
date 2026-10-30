@@ -157,9 +157,18 @@ CSS or HTML property names.
 
 ## Themes And Palettes
 
+The standard blocks present well without application CSS: a light theme in
+the Convertigo blue, IBM Plex Sans or the system font, rounded bordered
+surfaces with light shadows, and a dark mode. Keep that default and adjust it
+with tokens in `theme.flow.css`: a primary color, a radius or a font moves
+every block. `flow://lib/lib_flow_frontbuilder_svelte/frontend-design` lists
+the tokens, the application blocks and the visual checklist. `app.flow.css`
+is for what no block expresses (an illustration, a hero, a one-off layout),
+never for rebuilding buttons, navigation, tables or badges with classes.
+
 Use semantic layout properties for structure, the source-backed
 `theme.flow.css` for tokens and the free-form `app.flow.css` plus explicit
-`class` names for visual rules. A visual value computed from state (an angle,
+`class` names for the remaining visual rules. A visual value computed from state (an angle,
 a width, a position) goes to the common `style` property as a CSS custom
 property that `app.flow.css` consumes, never to one class per value. Bind it
 on the element it moves, with one named variable, so that its node shows what
@@ -175,8 +184,9 @@ Palette and display mode are independent:
   selector plus `[data-flow-theme="dark"]`.
 - `ThemePaletteControl` is the standard style selector (it reads
   `@theme.options`); omit it when only one palette exists.
-- `DisplayModeControl` is the standard System/Light/Dark control and owns its
-  persistence. Use `ThemeSwitch` and `BrowserPreference` only for a custom
+- `DisplayModeControl` is the standard Light/Dark/System control and owns its
+  persistence: the page is light until the user chooses, System follows the
+  device. Use `ThemeSwitch` and `BrowserPreference` only for a custom
   presentation.
 - Consume semantic values in `app.flow.css` with `var(--flow-color-background)`,
   `var(--flow-color-surface)`, `var(--flow-color-text)`,
@@ -185,6 +195,10 @@ Palette and display mode are independent:
 
 ```css
 @layer flow.theme {
+  :root {
+    --c8o-radius-lg: 10px;
+    --c8o-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
   :root[data-flow-palette="ocean"] {
     --flow-color-background: #eff6ff;
     --flow-color-primary: #0369a1;
@@ -246,6 +260,55 @@ the fallback syntax `~/help` is rooted at the deployed application base,
 `/help` at the web origin. When navigation follows `SetValue`,
 `FullSyncGet`, `FullSyncView`, `FullSyncSync` or `CallSequence`, place
 `Navigate` after that action in the same `Actions` slot.
+
+## Application Structure
+
+Give a business application its structure with the application blocks rather
+than `Text`, `Card` and classes:
+
+| Need | Block |
+| --- | --- |
+| Frame, in the root Layout | `AppShell`: `Navigation` (one `LinkButton page=` per Page, the current one highlighted), `Tools` (logout `Button variant="ghost" size="sm"`, `DisplayModeControl`), `Children` > `PageContent` |
+| Top of a Page | `PageHeader` `title`, `description`, `eyebrow`, its commands in `Tools` |
+| Key figures | `GridLayout minColumnWidth="200px"` > `StatCard` `label`, `value`, `tone`, `hint`, `page` |
+| Records | `DataTable`: `caption`, `columns` (`format` date, number, badge with `labels` and `tones`; `template` "{first} {last}"; `emphasis`), `rowActions`, `pageSize`, `locale`, an `emptyText` |
+| A status | `StatusBadge` `value` and `options` `[{ value, label, tone }]` |
+| Nothing to show | `EmptyState` in the `Else` of a `ForEach` |
+| Form | `Form` > `FormSection` `title`, `columns` > fields; a `RowLayout justify="flex-end"` of buttons |
+| Commands | `Button` `variant`: one `primary` per area, `secondary`, `ghost`, `danger` |
+| Result of a command | `Status actionId successText="Saved."` |
+
+A Page inside an `AppShell` needs no `PageShell`: the shell owns the width
+and the gutter. A `DataTable` row action with `page` and `query` (parameter to
+row path) is a link; without `page` it raises `OnClick` with
+`@event.value.action` and `@event.value.row`; `when` / `unless` name a row
+path that shows or hides it. The table texts follow its `locale` (en, fr).
+
+```svelte
+<AppShell $$id="shell" title="Bookings" userName={layout.firstName + " " + layout.lastName}>
+  <Navigation>
+    <LinkButton $$id="navMine" label="My bookings" page="mine" />
+    <If $$id="whenManager" test={layout.role === "MANAGER"}><Then>
+      <LinkButton $$id="navAll" label="All bookings" page="all" />
+    </Then></If>
+  </Navigation>
+  <Tools><Button $$id="logout" label="Log out" variant="ghost" size="sm" /></Tools>
+  <Children><PageContent $$id="content" /></Children>
+</AppShell>
+```
+
+```svelte
+<PageHeader $$id="header" title="My bookings" description="Rooms you booked and their status." />
+<GridLayout $$id="kpis" minColumnWidth="200px"><Children>
+  <StatCard $$id="upcoming" label="Upcoming" value="@.MyBookings.upcoming" tone="primary" />
+  <StatCard $$id="pending" label="To confirm" value="@.MyBookings.pending" tone="warning" />
+</Children></GridLayout>
+<DataTable $$id="bookings" caption="Bookings" source="@.MyBookings.items" pageSize={10}
+  emptyText="No booking yet." columns={[{ path: "room", label: "Room", emphasis: true },
+  { path: "day", label: "Day", format: "date" }, { path: "status", label: "Status", format: "badge",
+  labels: { OK: "Confirmed", WAIT: "To confirm" }, tones: { OK: "success", WAIT: "warning" } }]}
+  rowActions={[{ id: "open", label: "Open", page: "booking", query: { id: "id" } }]} />
+```
 
 ## Values And Bindings
 
@@ -389,8 +452,9 @@ never for an order or a payment. Lifecycle actions (`OnMount`, `Interval`,
 `Timeout`) still running when their page or component is destroyed are
 cancelled and publish nothing; a chain started by a user event goes on.
 
-Use palette blocks for layout (`PageShell`, `RowLayout`, `ColumnLayout`,
-`GridLayout`, `Card`), display, forms and navigation. A Layout must contain
+Use palette blocks for layout (`AppShell`, `PageHeader`, `PageShell`,
+`RowLayout`, `ColumnLayout`, `GridLayout`, `Card`), display, forms and
+navigation. A Layout must contain
 `PageContent`. Do not hide behavior in CSS, generated code or browser
 globals. To skip a block temporarily, patch `$$disabled={true}` onto it;
 remove the attribute to restore it.
@@ -457,7 +521,10 @@ results stay scoped to the iterator. Use `SetValue`,
 `UpdateList` and `UpdateNumber` for explicit client state, `Derived` /
 `DerivedBy` for pure projections, and portable blocks (inserted by their
 palette tag, never `RunAxiom`) for reusable browser logic. For FullSync, read
-`flow://guide/fullsync`. `Status` displays the action named by its `actionId`.
+`flow://guide/fullsync`. `Status` displays the action named by its `actionId`:
+a spinner line while it runs, its error in place, and a success toast with
+its `successText` (nothing without one, so a load shows no stray message;
+`successDisplay="inline"` keeps the message in the page).
 
 ### Clocks And Timers
 
@@ -618,6 +685,20 @@ subagent-run({ profile:"verifier",
 ```
 
 Use `browser-verify` with `checks` for one visual check of the current page,
-and a Playwright evaluation only for one DOM or timing measure. The verifier is
+and a Playwright evaluation only for one DOM or timing measure.
+
+Before handing a frontend over, have the verifier or `browser-verify` apply the
+visual checklist, passed as `checks` (light and dark, 1366px and 390px wide):
+
+- an `AppShell` (or a `Header`) carries the navigation, its current page
+  highlighted, and the user and logout;
+- each Page starts with a `PageHeader`; one primary button per area;
+- records are in a `DataTable`, not in stacked full-width cards of texts;
+  dates and numbers formatted;
+- every status is a badge with a semantic tone, never a colored `Text`;
+- no stray status text such as "Completed."; a command reports its success
+  with a toast; an empty list shows an `EmptyState` or its table `emptyText`;
+- form fields grouped in `FormSection`s with labels;
+- no horizontal overflow of the page at 390px; tables scroll in their surface. The verifier is
 read-only: fix what it reports with the Flow tools, then run it again on the
 failed paths only.

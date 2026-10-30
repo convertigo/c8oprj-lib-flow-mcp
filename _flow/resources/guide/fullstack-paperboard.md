@@ -103,10 +103,12 @@ source, including a structured literal for intentionally static content.
    must remain visible in `flow-block-mock-list`.
 6. Build the first frontend paperboard from palette blocks. Use real layout
    blocks and visible placeholders:
-   - `PageShell` for the shell;
-   - `Card`, `RowLayout`, `ColumnLayout`, `GridLayout` for structure;
-   - `Text`, `Image`, `Button`, `LinkButton`, `Status`, `Table`, `Json` for
-     visible intent;
+   - `AppShell` in the root Layout (navigation, user, `PageContent`), or
+     `PageShell` for a single Page;
+   - `PageHeader`, `Card`, `RowLayout`, `ColumnLayout`, `GridLayout` for
+     structure;
+   - `StatCard`, `DataTable`, `StatusBadge`, `EmptyState`, `FormSection`,
+     `Text`, `Image`, `Button`, `LinkButton`, `Status` for visible intent;
    - `ForEach` and `If` for data-driven structure (the `Await` `pending` slot
      is currently refused; show progress with `Status`).
    - `OnMount`, `OnAfterNavigate`, `Navigate` and `GoBack` for explicit
@@ -116,8 +118,9 @@ source, including a structured literal for intentionally static content.
      (`@event.to.params.id`). Put `GoBack` below a visible Button event action
      chain, and use `OnMount once={true}` only for bootstrap state that must
      survive a route round trip.
-   Use the application CSS source plus explicit `class` values for gradients,
-   typography and other visual rules. Do not expand every UI block into a CSS
+   Keep the default theme and adjust its tokens in `theme.flow.css`; use the
+   application CSS source plus explicit `class` values only for gradients,
+   illustrations and one-off rules. Do not expand every UI block into a CSS
    property matrix and do not put behavior or data wiring in CSS.
 7. Wire at least one visible action to the backend early, even if the backend
    still returns mock data. A user should see a working button, status, and a

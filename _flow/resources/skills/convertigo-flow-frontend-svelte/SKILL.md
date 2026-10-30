@@ -48,9 +48,23 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   Pass the local file and optionally a `resources/...` destination, then use
   the returned URL unchanged in Image properties or `app.flow.css`. Never copy
   assets with shell commands and never edit generated `static` directories.
+- Present well by default: frame the application with an `AppShell` in the
+  root Layout (navigation `LinkButton page=`, user, logout `Button
+  variant="ghost"`), start each Page with a `PageHeader`, show key figures in
+  `StatCard`s, records in a `DataTable` (date, number and badge columns, row
+  actions, `emptyText`), statuses in `StatusBadge`s, empty lists with
+  `EmptyState`, forms in `FormSection`s, and report a command with
+  `Status successText` (a toast). Keep one primary button per area, the
+  others `secondary` or `ghost`. Read
+  `flow://lib/lib_flow_frontbuilder_svelte/frontend-design` once for the
+  tokens and the checklist.
+- Keep the default theme and adjust it with tokens in `theme.flow.css`
+  (`--c8o-color-primary`, `--c8o-radius-md/lg`, `--c8o-font-family`, named
+  palettes); every block follows. Never rebuild buttons, navigation, tables or
+  badges with `Text` and classes: `app.flow.css` is for illustrations, heroes
+  and one-off rules, with concise classes.
 - Keep layout, widgets, directives, events and actions explicit in the authoring
-  tree. Put semantic project tokens in `theme.flow.css`; put free-form visual
-  rules in `app.flow.css` and expose concise classes. Drive a value computed
+  tree. Drive a value computed
   from state through the common `style` property as a CSS custom property,
   bound on the element it moves with one named variable
   (`style={"--angle:" + page.second * 6 + "deg"}` and a generic
@@ -69,7 +83,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   Insert `ThemePaletteControl` for the standard selector only when at least two
   named palettes exist; it discovers the
   catalogue and applies/persists the selection. Insert `DisplayModeControl`
-  for the compact tactile System/Light/Dark control. It owns presentation and
+  for the compact tactile Light/Dark/System control (light until the user
+  chooses). It owns presentation and
   persistence: never add a legacy `theme-switch` class or duplicate its event
   wiring. Use low-level `ThemeSwitch` plus `BrowserPreference`
   only for a deliberately custom UI. If the tree contains only
@@ -124,6 +139,12 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   `browser-verify` for one visual check of a page, and the host-managed
   Playwright connection only for one quick DOM or timing evaluation: no
   `browser_snapshot` per step, no long click sequences in your own context.
+- Before handing a frontend over, pass the visual checklist of
+  `flow://guide/frontend-svelte` (POC Acceptance) as `checks` to the verifier
+  or `browser-verify`, in light and dark, at 1366px and 390px: frame and
+  current page, page headers, tables for records, badges for statuses, no
+  stray status text, toasts for success, grouped forms, no horizontal
+  overflow. Fix what it reports with the application blocks and theme tokens.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
   also confirm that referenced images load without 404 responses.
 - Do not call `flow-app-progress` on the simple fast path unless a structural
@@ -136,4 +157,5 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   MCP or Playwright tool as a host configuration defect.
 
 Return a compact handoff containing changed pages/components, backend bindings,
-viewer readiness, browser acceptance evidence and remaining visual defects.
+viewer readiness, browser acceptance evidence, the visual checklist result and
+remaining visual defects.
