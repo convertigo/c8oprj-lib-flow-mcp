@@ -20,6 +20,23 @@ assert(lines[1] === "↓NewFlowApp [core.Project]:", "the project bean");
 assert(yaml.indexOf("  comment: Flow project\n") !== -1 && yaml.indexOf("  version: 1.0.0\n") !== -1, "neutral comment and version 1.0.0");
 assert(!/Connector|Sequence|Mashup|8\.3\.0/.test(yaml), "no connector, no sequence, nothing of the template: " + yaml);
 assert(yaml.split("↓").length === 2, "the project bean is the only bean");
+// A Convertigo project's own timeouts (HTTP session 1800 s, context 300 s), not the 60 s of the templates that ended
+// the session of an API client idle for a minute; no cross-origin call unless corsOrigin opens the project on purpose.
+assert(!/httpSessionTimeout|contextTimeout/.test(yaml), "the timeouts are the defaults of a project bean: " + yaml);
+assert(yaml.indexOf("  corsOrigin: ''\n") !== -1, "no cross-origin call by default (empty policy, not =Origin): " + yaml);
+assert(yaml.indexOf("=Origin") === -1, "the bootstrap never reflects any origin by default");
+var listed = block._yaml("NewFlowApp", "https://app.example.com#http://localhost:5173");
+assert(listed.indexOf("  corsOrigin: 'https://app.example.com#http://localhost:5173'\n") !== -1, "corsOrigin opens the listed origins: " + listed);
+assert(block._yaml("NewFlowApp", "=Global").indexOf("  corsOrigin: '=Global'\n") !== -1, "=Global follows the server policy");
+assert(block._yaml("NewFlowApp", "*").indexOf("  corsOrigin: '*'\n") !== -1, "* is quoted for YAML");
+["https://app.example.com/", "app.example.com", "https://app.example.com/path", "javascript:alert(1)", "https://a.example.com# https://b"].forEach(function (bad) {
+	var refused = "";
+	try { block._yaml("NewFlowApp", bad); } catch (e) { refused = String(e.message); }
+	assert(/corsOrigin must be/.test(refused) && refused.indexOf("scheme://host[:port]") !== -1, "an invalid origin is refused with the expected form: " + bad + " " + refused);
+});
+var meta = source.substring(0, source.indexOf("(function"));
+assert(/"corsOrigin": \{[\s\S]*?"default": "",[\s\S]*?=Origin \/ \* for any origin, only for an API whose callers send no session cookie/.test(meta),
+	"the option and its risk are documented in the tool schema");
 
 var tmp = java.nio.file.Files.createTempDirectory("flow-bootstrap-new-").toFile();
 try {

@@ -30,6 +30,12 @@ const _meta = {
       "default": [],
       "description": "Existing Convertigo projects to reference after bootstrap.",
     },
+    "corsOrigin": {
+      "kind": "text",
+      "type": "string",
+      "default": "",
+      "description": "CORS policy of a project the bootstrap creates. Empty (the default): no cross-origin call, the Flow viewer and the built application being served by Convertigo itself. To open the project on purpose: the allowed origins separated by # (https://app.example.com#https://admin.example.com), =Global for the cors.policy of the server, or =Origin / * for any origin, only for an API whose callers send no session cookie (a cookie session called from any origin is open to cross-site requests). An existing project keeps its policy (Properties > CORS Origin).",
+    },
     "force": {
       "kind": "literal",
       "type": "boolean",
@@ -407,16 +413,33 @@ const _meta = {
 		}
 	}
 
-	// The project bean of a new Flow project, in the standard YAML format; the timeouts and CORS origin are those
-	// the Convertigo project templates set.
-	function newProjectYaml(name) {
+	// The CORS policy of a new project: empty, a # list of origins (scheme://host[:port]), =Global, =Origin or *.
+	function corsOriginValue(value) {
+		var text = String(value === undefined || value === null ? "" : value).trim();
+		if (text === "" || text === "=Global" || text === "=Origin" || text === "*") {
+			return text;
+		}
+		var origins = text.split("#");
+		origins.forEach(function (origin) {
+			if (!/^https?:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?$/.test(origin) && !/^https?:\/\/\[[0-9A-Fa-f:.]+\](?::\d{1,5})?$/.test(origin)) {
+				throw new Error("corsOrigin must be empty, =Global, =Origin, * or origins separated by #, each scheme://host[:port] " +
+					"without path or trailing slash (https://app.example.com#https://admin.example.com): " + JSON.stringify(origin));
+			}
+		});
+		return text;
+	}
+
+	// The project bean of a new Flow project, in the standard YAML format. Its timeouts are the defaults of a
+	// Convertigo project (an HTTP session of 1800 s, a context of 300 s): the templates' 60 s ended the session of an
+	// API client idle for a minute. Its CORS policy is empty unless corsOrigin opens it: the templates' =Origin
+	// answered any origin with the session cookie of the caller.
+	function newProjectYaml(name, corsOrigin) {
+		var cors = corsOriginValue(corsOrigin);
 		return [
 			"convertigo: " + yamlHeaderVersion(),
 			"↓" + name + " [core.Project]:",
 			"  comment: " + NEW_PROJECT_COMMENT,
-			"  contextTimeout: 59",
-			"  corsOrigin: =Origin",
-			"  httpSessionTimeout: 60",
+			"  corsOrigin: '" + cors.replace(/'/g, "''") + "'",
 			"  version: " + NEW_PROJECT_VERSION,
 			""
 		].join("\n");
@@ -430,7 +453,7 @@ const _meta = {
 
 	// A bare Flow project, created and loaded without download. force replaces an existing project as a deploy does:
 	// its files are backed up first, its Eclipse project and VCS metadata are kept.
-	function createProject(engine, name, existing) {
+	function createProject(engine, name, existing, corsOrigin) {
 		var File = Packages.java.io.File;
 		var dbom = engine.theApp.databaseObjectsManager;
 		var projectFile = existing != null
@@ -448,7 +471,7 @@ const _meta = {
 		}
 		try {
 			ensureParent(projectFile);
-			writeUtf8(projectFile, newProjectYaml(name));
+			writeUtf8(projectFile, newProjectYaml(name, corsOrigin));
 			writeIfMissing(new File(projectFile.getParentFile(), ".gitignore"), GITIGNORE);
 			writeIfMissing(new File(projectFile.getParentFile(), ".gitattributes"), GITATTRIBUTES);
 			var project = dbom.importProject(projectFile, true);
@@ -577,6 +600,7 @@ const _meta = {
 			var references = projectNames(prop(props, "references"));
 			var force = boolValue(prop(props, "force"), false);
 			var dryRun = boolValue(prop(props, "dryRun"), false);
+			var corsOrigin = corsOriginValue(prop(props, "corsOrigin"));
 			var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 			var engine = Engine;
 			var existing = resolveProject(engine, name, null);
@@ -605,6 +629,9 @@ const _meta = {
 			if (dryRun) {
 				result.wouldImport = shouldImport && templateUrl.length > 0;
 				result.wouldCreate = shouldImport && templateUrl.length === 0;
+				if (result.wouldCreate) {
+					result.corsOrigin = corsOrigin;
+				}
 				result.wouldCustomize = true;
 				result.wouldReference = references.slice();
 				result.next = "Review this plan, then call flow-project-bootstrap once with dryRun:false.";
@@ -612,9 +639,12 @@ const _meta = {
 				return result;
 			}
 			var project = !shouldImport ? existing
-				: templateUrl.length ? importTemplate(engine, name, templateUrl) : createProject(engine, name, existing);
+				: templateUrl.length ? importTemplate(engine, name, templateUrl) : createProject(engine, name, existing, corsOrigin);
 			result.imported = shouldImport && templateUrl.length > 0;
 			result.created = shouldImport && templateUrl.length === 0;
+			if (result.created) {
+				result.corsOrigin = corsOrigin;
+			}
 			var resourceRoot = svelteResourceRoot();
 			var model = ui ? ensureSvelteModel(project, name) : { path: "", file: "", created: false, exists: false };
 			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
