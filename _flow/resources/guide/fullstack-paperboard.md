@@ -55,7 +55,9 @@ Starting the specialists:
 - Claude Code or Codex (write-capable sub-agents of their own): two sub-agents
   started together, each told the project, its side and what it owns, the
   skill to read (`convertigo-flow-backend` or `convertigo-flow-frontend-svelte`),
-  the contracts, its lot and the handoff wanted.
+  the contracts, its lot and the handoff wanted. Start both in the foreground
+  in one call and wait for both reports before ending your turn: some hosts
+  stop a background sub-agent when the turn ends.
 - Vibe (its `task` sub-agents are read-only): the relayed
   `subagent-run({profile:"constructor", task, inputs:{project, scope:"backend"}, waitSec:5})`,
   then the same with `scope:"frontend"`; collect each with

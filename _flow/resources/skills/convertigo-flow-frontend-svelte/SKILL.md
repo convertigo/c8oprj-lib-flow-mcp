@@ -146,7 +146,8 @@ Keep this role across frontend lots instead of spawning a replacement agent.
   `browser_snapshot` per step, no long click sequences in your own context.
   Without `subagent-run` and `browser-verify` in your tools (a host whose
   model sees images, such as Claude), use a sub-agent of your own host for
-  the multi-step proof and one screenshot of your own for a visual check.
+  the multi-step proof, in the foreground and waited for before your turn
+  ends, and one screenshot of your own for a visual check.
 - Before handing a frontend over, pass the visual checklist of
   `flow://guide/frontend-svelte` (POC Acceptance) as `checks` to the verifier
   or `browser-verify`, in light and dark, at 1366px and 390px: frame and

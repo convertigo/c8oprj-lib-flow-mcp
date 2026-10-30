@@ -26,6 +26,9 @@ guide own the detailed workflow.
   write-capable sub-agents (Claude Code, Codex), or in Vibe as two relayed
   `subagent-run` constructors with `inputs.scope` `backend` and `frontend`.
   A small app, or no such sub-agent: stay sequential.
+- Start your own sub-agents in the foreground, independent ones together in
+  one call, and wait for their reports before ending your turn: some hosts
+  stop a background sub-agent when the turn ends.
 - Several pages with sign-in, roles, a per-user data perimeter, an export or
   a scheduled job: then read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
