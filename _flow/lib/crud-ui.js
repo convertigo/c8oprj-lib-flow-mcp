@@ -2,6 +2,22 @@
 (function(){
  function xml(v){return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
  function json(v){return JSON.stringify(v);}
+ function fail(message){throw Error('FLOW_CRUD_SPEC_INVALID: '+message);}
+ // ui.navigation links hand-written pages (not owned by the model) from the generated shell, optionally behind an entity permission.
+ function navigation(s){
+  var items=s.ui.navigation===undefined?[]:s.ui.navigation,seen={};
+  if(!Array.isArray(items)||items.length>20)fail('ui.navigation is an array of at most 20 {page,label,permission?} links');
+  return items.map(function(item,i){
+   if(!item||typeof item!=='object'||!/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(String(item.page))||seen[item.page])fail('ui.navigation['+i+'].page must be a unique page id (the page.id of a hand-written page)');
+   if(typeof item.label!=='string'||!item.label.trim())fail('ui.navigation['+i+'].label is required');
+   seen[item.page]=true;
+   var id='navCustom_'+item.page,linkButton='<LinkButton $$id="'+id+'" page="'+item.page+'" label="'+xml(item.label)+'" variant="nav" />';
+   if(item.permission===undefined)return linkButton;
+   var m=/^([A-Za-z_][A-Za-z0-9_]*)\.(list|read|count|create|update|delete)$/.exec(String(item.permission));
+   if(!m||!s.entities.some(function(e){return e.name===m[1];}))fail('ui.navigation['+i+'].permission is <entity>.<list|read|count|create|update|delete> of a model entity');
+   return '<If $$id="showCustom_'+item.page+'" test="@.'+s.facade.prefix+'_session.permissions.'+m[1]+'.'+m[2]+'"><Then>'+linkButton+'</Then></If>';
+  }).join('');
+ }
  function render(s){
   var files={},root='_flow/frontbuilder/svelte/model/'+s.project+'/src/routes/',prefix=s.facade.prefix,session=prefix+'_session',locale=s.ui.language||'fr',title=s.ui.title||s.project;
   function variable(name,value){return '<Variable name="'+name+'" value="'+xml(value)+'" />';}
@@ -20,7 +36,7 @@
    var feedback=(content.match(/<Status[^>]*\/>/g)||[]).filter(function(t,i,a){return a.indexOf(t)===i;}).join('');content=content.replace(/<Status[^>]*\/>/g,'');
    write(path,{page:{id:id,title:pageTitle}},'<PageHeader $$id="header" eyebrow="'+xml(title)+'" title="'+xml(pageTitle)+'" description="'+xml(description)+'"><Tools><If $$id="toolsReady" test="@page.viewReady"><Then>'+(tools||'')+'</Then></If></Tools></PageHeader><If $$id="viewReadyGuard" test="@page.viewReady"><Then>'+content+'</Then><Else><EmptyState $$id="loadingView" title="Chargement…" /></Else></If>'+feedback+status('loadSession'),guarded,'<State $$id="viewReady" type="boolean" value={false} />'+(state||''));
   }
-  var nav=link('crud_dashboard','Tableau de bord','navDashboard','nav')+s.entities.map(function(e){return allow(e.name,'list',link(e.name+'_list',e.label,'nav_'+e.name,'nav'),'showNav_'+e.name);}).join('');
+  var nav=link('crud_dashboard','Tableau de bord','navDashboard','nav')+s.entities.map(function(e){return allow(e.name,'list',link(e.name+'_list',e.label,'nav_'+e.name,'nav'),'showNav_'+e.name);}).join('')+navigation(s);
   var tools='<DisplayModeControl $$id="appearance" label="Apparence" lightLabel="Clair" darkLabel="Sombre" showSystem={false} /><If $$id="showLogout" test="@.'+session+'.authenticated"><Then><Button $$id="logout" label="Déconnexion" variant="ghost" size="sm"><Events><OnClick $$id="logoutClick"><Actions>'+call(prefix+'_logout','','signOut')+call(session,'','afterSignOutSession')+go('crud_login','afterLogout')+'</Actions></OnClick></Events></Button></Then></If>';
   write('+layout.flow.svelte',{layout:{id:'crud_root'}},'<AppShell $$id="shell" title="'+xml(title)+'" subtitle="Espace de gestion" homePage="crud_dashboard" userName="@.'+session+'.user" userDetail="@.'+session+'.role"><Navigation>'+nav+'</Navigation><Tools>'+tools+'</Tools><Children><PageContent $$id="pageContent" />'+s.entities.filter(function(e){return !e.readOnly;}).map(function(e){return status('save_'+e.name,'Enregistrement sauvegardé.');}).join('')+'</Children></AppShell>');
   var kpis=s.entities.map(function(e,i){return allow(e.name,'count','<StatCard $$id="count_'+e.name+'" label="'+xml(e.label)+'" value="@.'+prefix+'_'+e.name+'_count.rows[0].total" hint="Ouvrir la liste" tone="'+(['primary','info','success','neutral'][i%4])+'" page="'+e.name+'_list" locale="'+locale+'" />','showCount_'+e.name);}).join('');

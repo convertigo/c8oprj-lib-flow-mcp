@@ -452,6 +452,39 @@
           "items": {
             "type": "string"
           }
+        },
+        "navigation": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "Links of the generated application shell to hand-written pages, after the entity links. The page is the page.id of a page the model does not own; permission optionally shows the link only when the session grants <entity>.<operation>.",
+          "items": {
+            "type": "object",
+            "required": [
+              "page",
+              "label"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "page": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "permission": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.(list|read|count|create|update|delete)$"
+              }
+            }
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
         }
       }
     },
