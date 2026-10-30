@@ -48,6 +48,13 @@ ctx.callBlock=function(){throw error;};
 verify(dispatcher.run(ctx,{props:{request:request}}),true);
 ctx.callBlock=function(){return mcp.jsonRpcError(17,-32000,error.message,error);};
 verify(dispatcher.run(ctx,{props:{request:request}}),true);
+// A Vibe client gets the same readable errors from the dispatcher, as results (isError false).
+var vibeCtx=context('MistralAI-VibeCLI/1.0');
+vibeCtx.props=ctx.props;vibeCtx.lib=ctx.lib;vibeCtx.write=ctx.write;vibeCtx.blockNames=ctx.blockNames;
+vibeCtx.callBlock=function(){throw error;};
+verify(dispatcher.run(vibeCtx,{props:{request:request}}),false);
+vibeCtx.callBlock=function(){return mcp.jsonRpcError(17,-32000,error.message,error);};
+verify(dispatcher.run(vibeCtx,{props:{request:request}}),false);
 ctx.blockNames=function(){throw error;};
 // block catalog lookup itself is also part of tool execution.
 try { var unexpected=dispatcher.run(ctx,{props:{request:request}}); verify(unexpected,true); }
