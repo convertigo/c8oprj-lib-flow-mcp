@@ -114,6 +114,14 @@ function Greeting({ input, config, result }) {
   `required: true` input must be given. A value that does not convert is a
   400 `FLOW_INPUT_TYPE_INVALID`. Blocks get the same conversion with
   `ctx.convert(value, schema)`.
+- **An `array` input is a list** in the Flow (`input.ids.length`,
+  `input.ids.join(",")`, `list.*` blocks); its Convertigo variable is
+  multi-valued, so an HTTP caller repeats the parameter or sends a JSON array
+  text. A comma-separated text is one item (`"1,2"` → `["1,2"]`): to accept
+  one, declare a `string` input and split it. A text method on a list
+  (`input.ids.split(",")`) stops the run with `INVALID_EXPRESSION`, and a
+  method on an absent input gives nothing without error: mark a list the Flow
+  needs `required: true`.
 - **Business `id`, `disabled`, `out` are free** for project block properties;
   core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
 
