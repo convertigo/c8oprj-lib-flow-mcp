@@ -520,8 +520,8 @@
 		return parts.join(". ");
 	}
 
-	function textContent(value, ctx) {
-		value = sanitizeForMcp(value, ctx);
+	// value: sanitized already (toolResult), the structuredContent the text summarizes.
+	function textContent(value) {
 		var notices = [];
 		["operatorNote", "argumentWarning"].forEach(function (key) {
 			if (value && value[key]) {
@@ -2018,7 +2018,7 @@
 			value = copy;
 		}
 		value = sanitizeForMcp(value, ctx);
-		var result = { content: textContent(value, ctx), structuredContent: value };
+		var result = { content: textContent(value), structuredContent: value };
 		if (value && value.error) result.isError = !errorsAsResult(ctx);
 		return result;
 	}
