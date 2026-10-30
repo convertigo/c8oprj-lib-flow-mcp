@@ -163,6 +163,9 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   and tags of a project), `marketplace-*`,
   `project-security-audit`, `image-describe`, `rag-query` and read-only
   `databaseobject-*`. Use them instead of a workaround.
+- Flow libraries are not on the marketplace yet: the ones you can use are
+  already in this workspace (`flow-catalog`, `project-list`). Do not search or
+  import the marketplace for Flow capabilities.
 - `flow-output-schema` and `flow-node-output-schema` inspect or adopt verified
   contracts; do not adopt stale learned schemas.
 - `flow-resource-*` is for bounded non-FlowScript project resources, never for

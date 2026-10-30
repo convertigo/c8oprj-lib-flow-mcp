@@ -171,6 +171,11 @@ encode a block in `qname`.
 After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`. Relayed tools keep the legacy MCP response.
 
 - After reading a tool contract once, pass `doc:false,hints:false`.
+- Flow libraries are not published on the marketplace yet: every Flow
+  library you can use is already loaded in this workspace. Find them with
+  `flow-catalog` and `project-list`, and their guides with
+  `flow://lib/<library>/<guide>`; do not search or import the marketplace for
+  Flow capabilities.
 - Discovery tools are paginated (`limit`, `cursor`). `flow-catalog`,
   `flow-resource-search` and `flow-search` may return `partial:true` with a
   `nextCursor`; a partial result never proves that nothing else matches.
