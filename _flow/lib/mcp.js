@@ -4268,8 +4268,8 @@
 		return JSON.parse(body);
 	}
 
-	// A legacy description may illustrate a field with an example taken from one business application: the Flow MCP
-	// keeps its catalogue neutral and gives a generic example instead.
+	// A legacy description may illustrate a field with an example taken from one business application (a demo account
+	// such as `name.demo / password`): the Flow MCP keeps its catalogue neutral and gives a generic example instead.
 	var NEUTRAL_RELAY_EXAMPLE = "For example: sign in as the demo user, open a record, change a field and save it, " +
 		"then check that the list shows the new value.";
 	function neutralRelayDescriptions(node) {
@@ -4280,7 +4280,7 @@
 				if (!Object.prototype.hasOwnProperty.call(node, key)) {
 					continue;
 				}
-				if (key === "description" && typeof node[key] === "string" && /\bRPCA\b|rpca\.demo/i.test(node[key])) {
+				if (key === "description" && typeof node[key] === "string" && /\(\w+\.demo \/ \w+\)/.test(node[key])) {
 					node[key] = node[key].replace(/For example:[\s\S]*$/, NEUTRAL_RELAY_EXAMPLE);
 				} else {
 					neutralRelayDescriptions(node[key]);

@@ -676,11 +676,11 @@ also checks the rendering.
 
 ```text
 subagent-run({ profile:"verifier",
-  task:"Prove that a signed-in RPCA declares two posts.",
+  task:"Prove that a signed-in member submits two requests.",
   inputs:{ url:"<openUrl of dev.sync or dev.open>",
-    paths:["Sign in as rpca.demo / demo", "Select two posts, declare them"],
-    checks:["Both statuses become \"Up to date\""],
-    hints:"demo accounts: rpca.demo / demo" } })
+    paths:["Sign in as member.demo / demo", "Select two requests, submit them"],
+    checks:["Both statuses become \"Submitted\""],
+    hints:"demo accounts: member.demo / demo" } })
 -> status:"running", runId -> subagent-run({ runId }) until the report
 ```
 
