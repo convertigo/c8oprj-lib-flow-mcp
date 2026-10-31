@@ -47,6 +47,38 @@ stopping that Flow unless a `try` catches it; a page action fails and stops
 its chain. Throw what must interrupt; return `ok: false` for what the caller
 handles.
 
+**Write it as JavaScript first; the MCP translates.** What is not FlowScript
+is mapped onto the catalog instead of only refused: `Object.assign({}, a, b)`
+becomes `object.merge`, `JSON.stringify(x)` `json.stringify({ value: x })`,
+`crypto.md5(x)` `crypto.hash({ text: x, algorithm: "md5" })`, `smtp.send`
+`email.send` (with `body` as `text`), `Math.pow(x, 2)` `x * x`, a guessed key
+(`order`) its property (`direction`), positional arguments their properties
+by type and kind, or by contract order when several fit (then only proposed).
+`code-set`, `code-patch` and `code-check` answer these edits in
+`proposedPatch` (confidence and reason each); pass them as `code-patch`
+`edits` with its `revision`, or send `autoCorrect: true` to apply those at or
+above the threshold (0.9, `authoring.intuitiveCall.autoCorrectConfidence` in
+`_flow/engine.yaml`, never under 0.8) and read `autoCorrected`. `parseInt`,
+`parseFloat`, an ambiguous mapping, a block of another namespace and a block
+inside a condition stay proposals: their reason says why. `Math.max(a, b)` and
+the other expression functions need no edit.
+
+**Config.** A Flow reads `config.<path>` (the `config` scope). Its values
+merge value by value (objects merge, other values replace), weakest first:
+`_flow.config` of the Flow; the `config` of `_flow/engine.yaml` of
+lib_flow_engine, then of each referenced Flow project in reference order
+(`configParents` picks a branch from one parent); the project's own
+`_flow/engine.yaml` `config`, then the named `configs` of the Flow's tags; the
+project the HTTP request targets when it is another one; the call. A string
+`${name=default}` is a Convertigo global symbol resolved at run time only (the
+Studio, traces and schemas keep the reference); a secret is a symbol ending
+with `.secret`, always with a default (`"${<project>.<usage>.<name>.secret=}"`),
+never a literal. `config.use({ <branch>: {...}, $$then })` overrides branches
+for a subtree. `config.mutate({ project, configuration, path, op, value,
+dryRun })` changes a project's `engine.yaml` (an administrator or an
+authenticated MCP call only): dry run first, then the returned `revision` with
+`persist: "draft"` or `"save"`; secret keys take only `.secret` references.
+
 **Server versus page.** Flows run on the Convertigo server with config,
 secrets, SQL and rights; a page only calls `public` or `hidden` Flows. Some
 blocks (`date.*`) also have a browser implementation with the same contract
@@ -58,8 +90,9 @@ for Svelte actions. Business rules stay in Flows.
 - Read `flow://guide/start` once, then only the smallest relevant guide.
 - Keep business orchestration visible in FlowScript. Use project-local mocks
   only for explicit missing primitives and replace them before hardening.
-- Before creating a backend mock or custom primitive, use the ranked candidate
-  returned by code diagnostics or one focused catalog lookup. Provider and
+- Before creating a backend mock or custom primitive, use the `proposedPatch`
+  edit or the ranked candidate returned by code diagnostics, or one focused
+  catalog lookup. Provider and
   workspace discovery are internal MCP concerns, not a separate agent tool.
 - Data access (SQL databases, CouchDB, Baserow, shared CRUD contracts) comes
   from workspace libraries: when a diagnostic or `flow-catalog` lists

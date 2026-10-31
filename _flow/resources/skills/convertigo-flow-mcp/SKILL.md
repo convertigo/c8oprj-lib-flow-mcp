@@ -216,8 +216,24 @@ For a blank Flow, write the first draft with `code-set` before discovery.
 
 Use `code-patch` for a focused revision-checked maintenance edit. Use
 `flow-search` only after diagnostics leave a block, path or schema unknown.
-Use `flow-catalog` only when search/examples are insufficient. Flow block calls
-always use one object argument: `block.name({ key: value })`.
+Use `flow-catalog` only when search/examples are insufficient. The canonical
+block call takes one object argument: `block.name({ key: value })`.
+
+**Write intuitively, then read the proposed patch.** Write the first draft as
+you would write JavaScript: `Object.assign`, `JSON.stringify`, `Math.pow`,
+`parseInt`, `console.log`, a guessed block name (`smtp.send`, `crypto.md5`), a
+guessed key or positional arguments. A refused `code-set`, `code-patch` or
+`code-check` of a Flow answers `proposedPatch`: one edit per such call, mapped
+onto the catalog, each `{ oldText, newText, line, confidence, reason, block }`,
+on the `revision` of the working copy. Read the reasons, then pass the edits
+you keep unchanged as `code-patch` `edits` with that revision. Or send
+`code-set` (or `code-patch`) with `autoCorrect: true`: the edits at or above
+`autoCorrectThreshold` (0.9 by default, never under 0.8) are applied before the
+check, listed in `autoCorrected` with the complete written `code`, and the
+others are proposed again. An edit below the threshold changes a behavior,
+picks among equally likely mappings, moves the call to another namespace or
+sits in a condition, and its reason says which; `unresolved` lists the calls
+with no mapping. Only then read `flow-block-get` or the palette.
 
 Project-local blocks are saved directly by `code-set`/`code-patch`; they have
 no promote step. Prefer standard blocks, then a project-local FlowScript block.
@@ -259,6 +275,17 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   friction with the source and the observed behavior instead of reading the
   generated code.
 - `authoring-palette` is contextual discovery for one parent path.
+- **Catalog versus palette.** Both read the same block contracts but answer
+  two questions. `flow-catalog` is a flat search of the blocks a project sees
+  (`query`, `namespace`, `provider`, `detail` from `summary` to `full`), with
+  `workspaceProviders` for matching blocks of workspace libraries not
+  referenced yet: use it to find a block to write in FlowScript, then
+  `flow-block-get` for its contract. `authoring-palette` lists what can be
+  inserted at one `parentPath` of `authoring-tree` (Svelte components and
+  actions, engine configuration, Catalog items), filtered for that slot, each
+  item with a ready `apply` (an `authoring-mutate` call) to execute unchanged:
+  use it for tree insertions, mostly frontend. For FlowScript, the code
+  diagnostics and `proposedPatch` come first.
 - The contract of a block (inputs, outputs, errors, examples) comes from
   `flow-block-get({ project, name })` or `authoring-palette`, never from
   library sources or other folders: do not `grep`, `sed` or `cat` a library
