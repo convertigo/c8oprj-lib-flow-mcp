@@ -139,7 +139,10 @@ rules, and copying them costs more than calling the data sources directly.
   Flows call `data.read({source:"<entity>_read", filter, orderBy, limit})`,
   `data.write({source:"<entity>_write", operation, key, revision, patch})` or
   `sql.*`: apply registers these sources and their connection in the project
-  `config` of `_flow/engine.yaml` (see Call the generated Flows). A generated
+  `config` of `_flow/engine.yaml` (see Call the generated Flows). `data.write`
+  returns `{resource, mutation}`: the written row is under `mutation.row`, never
+  at the top level (`result.row = local.created.mutation.row.values`, its key
+  `local.created.mutation.key`; `mutation.row` is null after delete). A generated
   form cannot list the options of a `"schema"` entity: relate a `"full"`
   entity to it only with `ui.generate: "none"`, or make the target `"data"`.
 - root `ui.generate: "none"`: no shell, sign-in, home or page at all; your
@@ -233,7 +236,7 @@ and apply again. A hand edit makes the next apply fail with
 | `desk_<entity>_read` | `id` | `row` (`key`, `values`, `displayValues` with relation labels); 404 when absent |
 | `desk_<entity>_count` | none | `rows[0].total` |
 | `desk_<entity>_options` | `labelField` | `rows[]` (`value`, `label`), at most 200 |
-| `desk_<entity>_save` | `id` (empty to create), `revision`, `patch` (object) | the data write result |
+| `desk_<entity>_save` | `id` (empty to create), `revision`, `patch` (object) | the data write result: `{resource, mutation}`, the row in `mutation.row.values` |
 | `desk_<entity>_delete` | `id`, `revision` | the data write result |
 | `desk_session` | none | `authenticated`, `user`, `role`, `permissions.<entity>.<operation>` |
 | `desk_demo_login`, `desk_logout` | `user` / none | sign in (demo only) / sign out |
