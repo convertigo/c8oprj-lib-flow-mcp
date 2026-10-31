@@ -258,6 +258,41 @@ assertTrue(compactPropertyCheck.ok === false && compactPropertyCheck.diagnostics
 treeResponse = null;
 contractResponse = null;
 
+// The provider validates every page of the application: the check of a page keeps its own diagnostics only.
+var checkedPage = new java.io.File(root, sourceFile).getCanonicalPath();
+var otherPage = new java.io.File(root, "_flow/frontbuilder/svelte/model/Test/src/routes/other/+page.flow.svelte").getAbsolutePath();
+treeResponse = {
+	ok: true,
+	children: [],
+	diagnostics: [
+		{ level: "error", code: "FRONTEND_BINDING_REFERENCE_UNKNOWN", sourcePath: String(checkedPage), path: "frontAst.slots.structure.children[0].props.selected" },
+		{ level: "error", code: "FRONTEND_BINDING_REFERENCE_UNKNOWN", sourcePath: String(otherPage), path: "frontAst.slots.structure.children[0].props.text" },
+		{ level: "warning", code: "FRONTEND_THEME_NOTE" }
+	]
+};
+var pageScopedCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	code: "<FlowComponent $$id=\"root\"><Structure /></FlowComponent>\n"
+});
+assertTrue(pageScopedCheck.errorCount === 1 && pageScopedCheck.warningCount === 1 &&
+	pageScopedCheck.diagnostics.filter(function (item) { return item.code === "FRONTEND_BINDING_REFERENCE_UNKNOWN"; })
+		.every(function (item) { return item.path === "frontAst.slots.structure.children[0].props.selected"; }),
+	"The check of a page must keep its own diagnostics and those of no source, not those of the other pages.");
+treeResponse = null;
+
+// $id with one dollar (the trace of a String.replace whose replacement held $$id) is refused with its cause.
+var singleDollarCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	code: "<FlowComponent $$id=\"root\"><Variables><State $id=\"picked\" type=\"array\" value={[]} /></Variables><Structure /></FlowComponent>\n"
+});
+assertTrue(singleDollarCheck.ok === false && singleDollarCheck.diagnostics.some(function (item) {
+	return item.code === "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" && item.property === "$id" && /String\.replace/.test(item.hint);
+}), "A single-dollar engine attribute must be refused with the String.replace cause.");
+
 var componentSourceFile = "_flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
 var componentSource = [
 	"<script module>",

@@ -422,6 +422,19 @@ const _meta = {
 				seen[id] = occurrence;
 			}
 		}
+		// $id, $nodes... with one dollar are no engine attributes: the node would silently get a default identity.
+		// It is the usual trace of a JavaScript String.replace whose replacement text holds $$ (a pattern that writes $).
+		var singleDollarPattern = /<([A-Z][A-Za-z0-9_.]*)\b[^>]*?[\s]\$(id|comment|disabled|out|nodes)\s*=/g;
+		while ((match = singleDollarPattern.exec(source)) !== null) {
+			diagnostics.push({
+				severity: "error",
+				code: "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR",
+				message: "$" + match[2] + " on <" + match[1] + "> has one dollar: engine attributes are written $$" + match[2] + ".",
+				line: lineNumber(source, match.index),
+				property: "$" + match[2],
+				hint: "Write $$" + match[2] + ". When the source is built with String.replace or replaceAll, $$ in a replacement text writes a single $: pass the replacement as a function (() => text), or use split(oldText).join(newText), or the edits of code-patch."
+			});
+		}
 		var variableSourcePattern = /<Variable\b[^>]*\bsource\s*=/g;
 		while ((match = variableSourcePattern.exec(source)) !== null) {
 			diagnostics.push({
@@ -473,6 +486,18 @@ const _meta = {
 		drafts[path.absolute] = source;
 		drafts[String(new File(String(props.projectDir), path.relative).getAbsolutePath())] = source;
 		return drafts;
+	}
+
+	function checkedSourceDiagnostic(props, path, item) {
+		var source = String(item && item.sourcePath || "");
+		if (!source) return true;
+		var file = new File(source);
+		if (!file.isAbsolute()) file = new File(String(props.projectDir), source);
+		try {
+			return String(file.getCanonicalPath()) === String(path.absolute);
+		} catch (e) {
+			return String(file.getAbsolutePath()) === String(path.absolute);
+		}
 	}
 
 	function validateProviderComponent(ctx, props, path, source, diagnostics) {
@@ -764,6 +789,9 @@ const _meta = {
 					});
 				} else {
 					(tree.diagnostics || []).forEach(function (item) {
+						// The provider validates every page and layout of the application: the check of a source
+						// keeps its own diagnostics (and those of no source), not those of the other pages.
+						if (!checkedSourceDiagnostic(props, path, item)) return;
 						var diagnostic = {};
 						Object.keys(item || {}).forEach(function (key) { diagnostic[key] = item[key]; });
 						diagnostic.severity = String(diagnostic.severity || diagnostic.level || "error");
