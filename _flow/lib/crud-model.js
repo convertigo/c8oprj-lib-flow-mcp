@@ -31,6 +31,7 @@
   var words=String(name||'').replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g,'$1 $2').split(/[\s_.-]+/).filter(Boolean);
   return words.map(function(w,i){var lower=w.length>1&&w===w.toUpperCase()&&/[A-Z]/.test(w)?w:w.toLowerCase();return i?lower:lower.charAt(0).toUpperCase()+lower.slice(1);}).join(' ')||String(name);
  }
+ function fieldNamed(entity,name){var k=String(name).replace(/_/g,'').toLowerCase();return entity.fields.filter(function(f){return f.name.replace(/_/g,'').toLowerCase()===k||String(f.sourceName).toLowerCase()===String(name).toLowerCase();})[0];}
  function normalize(raw,project,legacy){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))error('Expected an entity model');
   if(raw.modelVersion!==undefined && raw.modelVersion!==1)error('Unsupported modelVersion');
@@ -66,7 +67,8 @@
    if(out.indexes.length)diagnostics.push({code:'SQL_PORTABLE_INDEX_NOT_IMPLEMENTED',severity:'error',entity:e.name,message:'Index declarations are preserved; generic additive index planning is not implemented by this prototype.'});
    // ui.navigation false: the shell does not link the generic list (business pages replace it through the root ui.navigation).
    if(re.ui&&re.ui.navigation!==undefined){if(typeof re.ui.navigation!=='boolean')error('entities[].ui.navigation is true or false');out.ui.navigation=re.ui.navigation;}
-   if(re.rowPolicy)diagnostics.push({code:'FLOW_CRUD_ROW_POLICY_NOT_IMPLEMENTED',severity:'error',entity:e.name,message:'Row policies must be enforced across every read, count and mutation; this prototype refuses partial enforcement.'});
+   // generate: full (pages and generic writes) or data (schema, sources and read Flows; business Flows own the rest).
+   if(re.generate!==undefined){if(['full','data'].indexOf(re.generate)<0)error('entities[].generate is "full" or "data"');out.generate=re.generate;}
    aliases[re.name]=out;aliases[e.name]=out;
    e.fields.forEach(function(f){
     var p=portable(f.type),rf=(re.fields||[]).filter(function(x){return String(x.column||x.name).toLowerCase()===f.column||x.name===f.name;})[0]||{};
@@ -85,10 +87,24 @@
    if(out.key.length!==1 || !out.fields.some(function(f){return f.name===key&&f.identity&&f.type==='int64';}))diagnostics.push({code:'FLOW_CRUD_KEY_NOT_QUALIFIED',severity:'error',entity:e.name,message:'Model accepted; runtime create currently requires a generated int64 key.'});
    if(out.ui.fieldLabels)out.fields.forEach(function(f){if(out.ui.fieldLabels[f.name]){f.label=out.ui.fieldLabels[f.name];explicitLabels[e.name+'.'+f.name]=true;}});
    ['listFields','detailFields','formFields'].forEach(function(k){if(!out.ui[k]||!out.ui[k].length)delete out.ui[k];});
+   // rowPolicy: the owner form only; any other form is refused, never partially enforced.
+   if(re.rowPolicy!==undefined){var rp=re.rowPolicy,ok=rp&&typeof rp==='object'&&!Array.isArray(rp)&&Object.keys(rp).every(function(k){return ['field','equals','unrestricted'].indexOf(k)>=0;})&&(rp.equals==='user'||/^account\.[A-Za-z_][A-Za-z0-9_]*$/.test(String(rp.equals)))&&(rp.unrestricted===undefined||Array.isArray(rp.unrestricted)&&rp.unrestricted.every(function(r){return typeof r==='string';})),owner=ok&&fieldNamed(out,rp.field);
+    if(!owner||owner.identity)diagnostics.push({code:'FLOW_CRUD_ROW_POLICY_UNSUPPORTED',severity:'error',entity:e.name,message:'Only the owner form is supported: {field, equals: "user" | "account.<field>", unrestricted: [roles]}, on a non-key field.',fix:'Write the rule as an owner rule, or enforce it in business Flows and drop rowPolicy.'});
+    else out.rowPolicy={field:owner.name,equals:rp.equals,unrestricted:(rp.unrestricted||[]).slice()};}
    ['listFields','detailFields','formFields'].forEach(function(k){if(out.ui[k])out.ui[k]=out.ui[k].map(function(n){var f=out.fields.filter(function(f){return f.name.replace(/_/g,'')===String(n).replace(/_/g,'');})[0];return f?f.name:n;});});
    var label=out.fields.filter(function(f){return f.type==='string'&&!f.identity;})[0];out.ui.labelField=label?label.name:key;
    s.entities.push(out);
   });
+  // security.accounts: the entity that holds the accounts (login, optional active flag), resolved by the given names.
+  if(security.accounts!==undefined){var a=security.accounts,owner=a&&typeof a==='object'&&aliases[a.entity];
+   if(!owner)error('security.accounts.entity must name a model entity');
+   var login=fieldNamed(owner,a.login||'login'),active=a.active!==undefined?fieldNamed(owner,a.active):null;
+   if(!login||login.type!=='string')error('security.accounts.login must name a text field of '+owner.name);
+   if(a.active!==undefined&&(!active||active.type!=='boolean'))error('security.accounts.active must name a boolean field of '+owner.name);
+   security.accounts={entity:owner.name,login:login.name};if(active)security.accounts.active=active.name;}
+  s.entities.forEach(function(out){var rp=out.rowPolicy;if(!rp||rp.equals==='user')return;var f=security.accounts&&fieldNamed(aliases[security.accounts.entity],rp.equals.slice(8));
+   if(!f)diagnostics.push({code:'FLOW_CRUD_ROW_POLICY_UNSUPPORTED',severity:'error',entity:out.name,message:'rowPolicy equals '+rp.equals+' needs security.accounts with that field.',fix:'Declare security.accounts {entity, login, active?} or use equals: "user".'});
+   else rp.equals='account.'+f.name;});
   normalized.relations.forEach(function(r){var target=s.entities.filter(function(e){return e.name===r.toEntity;})[0],wanted=r.ui.optionLabelField,field=target.fields.filter(function(f){return f.name.replace(/_/g,'')===wanted.replace(/_/g,'');})[0];s.relations.push({name:r.name,kind:'many-to-one',from:{entity:r.fromEntity,field:r.fromField},to:{entity:r.toEntity,field:r.toField},labelField:field?field.name:wanted==='unnamed'?target.ui.labelField:wanted});
    // A foreign key without its own label takes the relation label, else the singular of its target.
    var source=s.entities.filter(function(e){return e.name===r.fromEntity;})[0],fk=source&&source.fields.filter(function(f){return f.name===r.fromField;})[0],targetEntity=normalized.entities.filter(function(e){return e.name===r.toEntity;})[0];
@@ -117,8 +133,10 @@
  }
  var visual={version:1,provider:'lib_flow_frontbuilder_svelte',requiredProviderVersion:'0.2.6',status:'available',capabilities:{shell:'application shell with navigation and user zone',pageHeader:'page title and primary action',table:'server sorting/pagination, empty state, row actions',formSection:'grouped fields and relation selects',kpi:'dashboard counts',statusBadge:'semantic status',emptyState:'empty/error/loading',toast:'mutation feedback'},theme:{resource:'theme.flow.css',tokens:true,palettes:true,applicationCss:false},namesAreProvisional:false};
  function frontend(s){
-  var plan=clone(visual),prefix=s.facade.prefix;plan.generatedPages=[];plan.plannedPages=[{id:'crud_dashboard',kind:'dashboard',components:['shell','pageHeader','kpi'],counts:s.entities.map(function(e){return prefix+'_'+e.name+'_count';})}];
-  s.entities.forEach(function(e){
+  var plan=clone(visual),prefix=s.facade.prefix;plan.generatedPages=[];
+  if(s.ui&&s.ui.generate==='none'){plan.plannedPages=[];return plan;}
+  plan.plannedPages=[{id:'crud_dashboard',kind:'dashboard',components:['shell','pageHeader','kpi'],counts:s.entities.map(function(e){return prefix+'_'+e.name+'_count';})}];
+  s.entities.filter(function(e){return e.generate!=='data';}).forEach(function(e){
    var base={entity:e.name,route:e.routeSegment||e.name,permissions:clone(e.permissions),owner:MODEL,generated:true};
    plan.plannedPages.push(Object.assign({},base,{id:e.name+'_list',kind:'list',components:['shell','pageHeader','table','statusBadge','emptyState','toast'],fields:e.ui.listFields,sort:'server',pagination:'server',actions:e.readOnly?['read']:['read','create','update','delete'],requestable:prefix+'_'+e.name+'_list'}));
    plan.plannedPages.push(Object.assign({},base,{id:e.name+'_detail',kind:'detail',components:['shell','pageHeader','formSection','statusBadge'],fields:e.ui.detailFields||e.ui.listFields,requestable:prefix+'_'+e.name+'_read'}));

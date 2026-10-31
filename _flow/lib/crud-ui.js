@@ -23,16 +23,25 @@
    return '<If $$id="showCustom_'+item.page+'" test="@.'+s.facade.prefix+'_session.permissions.'+m[1]+'.'+m[2]+'"><Then>'+linkButton+'</Then></If>';
   }).join('');
  }
- // ui.homePage and ui.loginPage hand the home and the sign-in of the generated shell to hand-written pages (page ids).
+ // ui.homePage and ui.loginPage hand the home and the sign-in of the generated shell to hand-written pages (page ids),
+ // or false: the model does not generate that page at all.
  function pageOption(s,key,generated){
   var value=s.ui[key];
   if(value===undefined||value===null||value==='')return '';
+  if(value===false)return false;
   if(typeof value!=='string'||!/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(value))fail('ui.'+key+' must be a page id (the page.id of a hand-written page)');
   if(value===generated)fail('ui.'+key+' names the generated '+generated+'; omit ui.'+key+' to keep it');
   return value;
  }
  function render(s){
-  var files={},root='_flow/frontbuilder/svelte/model/'+s.project+'/src/routes/',prefix=s.facade.prefix,session=prefix+'_session',homePage=pageOption(s,'homePage','crud_dashboard'),loginPage=pageOption(s,'loginPage','crud_login')||'crud_login',locale=String(s.ui.language||'fr').toLowerCase(),T=TEXTS[locale.split(/[-_]/)[0]]||TEXTS.en,title=s.ui.title||s.project;
+  // ui.generate none: the application writes its whole UI and calls the generated Flows.
+  if(s.ui.generate==='none')return {files:{},pages:[],components:[],status:'not-generated',reason:'ui.generate is none'};
+  // A data entity has no page: business pages and Flows own its screens and mutations.
+  var shown=s.entities.filter(function(e){return e.generate!=='data';});
+  var homeOption=pageOption(s,'homePage','crud_dashboard'),loginOption=pageOption(s,'loginPage','crud_login');
+  var firstPage=(s.ui.navigation||[]).map(function(i){return i.page;}).concat(shown.filter(function(e){return e.ui.navigation!==false;}).map(function(e){return e.name+'_list';}))[0]||'';
+  var homePage=homeOption===false?firstPage:homeOption,home=homeOption===''?'crud_dashboard':homePage,loginPage=loginOption===''?'crud_login':loginOption;
+  var files={},root='_flow/frontbuilder/svelte/model/'+s.project+'/src/routes/',prefix=s.facade.prefix,session=prefix+'_session',locale=String(s.ui.language||'fr').toLowerCase(),T=TEXTS[locale.split(/[-_]/)[0]]||TEXTS.en,title=s.ui.title||s.project;
   function variable(name,value){return '<Variable name="'+name+'" value="'+xml(value)+'" />';}
   function call(name,vars,id){return '<CallSequence $$id="'+(id||'call_'+name)+'" requestable=".'+name+'"><Variables>'+(vars||'')+'</Variables></CallSequence>';}
   function go(page,id,query){return '<Navigate $$id="'+id+'" page="'+page+'">'+(query?'<Query>'+query+'</Query>':'')+'</Navigate>';}
@@ -44,28 +53,30 @@
   }
   function page(path,id,pageTitle,description,content,load,state,tools,publicPage){
    var ready='<SetValue $$id="markViewReady" target="page.viewReady" value={true} />';
-   var guarded=call(session,'','loadSession')+(publicPage?(load||'')+ready:'<If $$id="signedIn" test="@.'+session+'.authenticated"><Then>'+(load||'')+ready+'</Then><Else>'+go(loginPage,'needLogin')+'</Else></If>');
+   var guarded=call(session,'','loadSession')+(publicPage?(load||'')+ready:'<If $$id="signedIn" test="@.'+session+'.authenticated"><Then>'+(load||'')+ready+'</Then>'+(loginPage?'<Else>'+go(loginPage,'needLogin')+'</Else>':'')+'</If>');
    // A remounted page must not reveal a previous account's cached rows or actions.
    var feedback=(content.match(/<Status[^>]*\/>/g)||[]).filter(function(t,i,a){return a.indexOf(t)===i;}).join('');content=content.replace(/<Status[^>]*\/>/g,'');
    write(path,{page:{id:id,title:pageTitle}},'<PageHeader $$id="header" eyebrow="'+xml(title)+'" title="'+xml(pageTitle)+'" description="'+xml(description)+'"><Tools><If $$id="toolsReady" test="@page.viewReady"><Then>'+(tools||'')+'</Then></If></Tools></PageHeader><If $$id="viewReadyGuard" test="@page.viewReady"><Then>'+content+'</Then><Else><EmptyState $$id="loadingView" title="'+xml(T.loading)+'" /></Else></If>'+feedback+status('loadSession'),guarded,'<State $$id="viewReady" type="boolean" value={false} />'+(state||''));
   }
   // An entity with ui.navigation false keeps its read pages but leaves the shell to the business pages of ui.navigation.
-  var nav=(homePage?'':link('crud_dashboard',T.dashboard,'navDashboard','nav'))+s.entities.filter(function(e){return e.ui.navigation!==false;}).map(function(e){return allow(e.name,'list',link(e.name+'_list',e.label,'nav_'+e.name,'nav'),'showNav_'+e.name);}).join('')+navigation(s);
-  var tools='<DisplayModeControl $$id="appearance" label="'+xml(T.appearance)+'" lightLabel="'+xml(T.light)+'" darkLabel="'+xml(T.dark)+'" showSystem={false} locale="'+locale+'" /><If $$id="showLogout" test="@.'+session+'.authenticated"><Then><Button $$id="logout" label="'+xml(T.logout)+'" variant="ghost" size="sm"><Events><OnClick $$id="logoutClick"><Actions>'+call(prefix+'_logout','','signOut')+call(session,'','afterSignOutSession')+go(loginPage,'afterLogout')+'</Actions></OnClick></Events></Button></Then></If>';
-  write('+layout.flow.svelte',{layout:{id:'crud_root'}},'<AppShell $$id="shell" title="'+xml(title)+'" subtitle="'+xml(T.subtitle)+'" navigationLabel="'+xml(T.navigation)+'" homePage="'+(homePage||'crud_dashboard')+'" userName="@.'+session+'.user" userDetail="@.'+session+'.role"><Navigation>'+nav+'</Navigation><Tools>'+tools+'</Tools><Children><PageContent $$id="pageContent" />'+s.entities.filter(function(e){return !e.readOnly;}).map(function(e){return status('save_'+e.name,T.saved);}).join('')+'</Children></AppShell>');
-  var kpis=s.entities.map(function(e,i){return allow(e.name,'count','<StatCard $$id="count_'+e.name+'" label="'+xml(e.label)+'" value="@.'+prefix+'_'+e.name+'_count.rows[0].total" hint="'+xml(T.openList)+'" tone="'+(['primary','info','success','neutral'][i%4])+'" page="'+e.name+'_list" locale="'+locale+'" />','showCount_'+e.name);}).join('');
-  var counts=s.entities.map(function(e){return allow(e.name,'count',call(prefix+'_'+e.name+'_count'),'loadCount_'+e.name);}).join('');
+  var nav=(homeOption===''?link('crud_dashboard',T.dashboard,'navDashboard','nav'):'')+shown.filter(function(e){return e.ui.navigation!==false;}).map(function(e){return allow(e.name,'list',link(e.name+'_list',e.label,'nav_'+e.name,'nav'),'showNav_'+e.name);}).join('')+navigation(s);
+  var tools='<DisplayModeControl $$id="appearance" label="'+xml(T.appearance)+'" lightLabel="'+xml(T.light)+'" darkLabel="'+xml(T.dark)+'" showSystem={false} locale="'+locale+'" /><If $$id="showLogout" test="@.'+session+'.authenticated"><Then><Button $$id="logout" label="'+xml(T.logout)+'" variant="ghost" size="sm"><Events><OnClick $$id="logoutClick"><Actions>'+call(prefix+'_logout','','signOut')+call(session,'','afterSignOutSession')+(loginPage||home?go(loginPage||home,'afterLogout'):'')+'</Actions></OnClick></Events></Button></Then></If>';
+  write('+layout.flow.svelte',{layout:{id:'crud_root'}},'<AppShell $$id="shell" title="'+xml(title)+'" subtitle="'+xml(T.subtitle)+'" navigationLabel="'+xml(T.navigation)+'" homePage="'+home+'" userName="@.'+session+'.user" userDetail="@.'+session+'.role"><Navigation>'+nav+'</Navigation><Tools>'+tools+'</Tools><Children><PageContent $$id="pageContent" />'+shown.filter(function(e){return !e.readOnly;}).map(function(e){return status('save_'+e.name,T.saved);}).join('')+'</Children></AppShell>');
+  var kpis=shown.map(function(e,i){return allow(e.name,'count','<StatCard $$id="count_'+e.name+'" label="'+xml(e.label)+'" value="@.'+prefix+'_'+e.name+'_count.rows[0].total" hint="'+xml(T.openList)+'" tone="'+(['primary','info','success','neutral'][i%4])+'" page="'+e.name+'_list" locale="'+locale+'" />','showCount_'+e.name);}).join('');
+  var counts=shown.map(function(e){return allow(e.name,'count',call(prefix+'_'+e.name+'_count'),'loadCount_'+e.name);}).join('');
   // With ui.homePage, the root page only leads to it, or to the sign-in.
-  if(homePage)page('+page.flow.svelte','crud_dashboard',T.dashboard,T.dashboardText,'<EmptyState $$id="toHomeView" title="'+xml(T.loading)+'" />',go(homePage,'toHome'));
-  else page('+page.flow.svelte','crud_dashboard',T.dashboard,T.dashboardText,'<GridLayout $$id="kpis" minColumnWidth="220px"><Children>'+kpis+'</Children></GridLayout>'+s.entities.map(function(e){return status('call_'+prefix+'_'+e.name+'_count');}).join(''),counts);
+  if(homeOption===false){}
+  else if(homePage)page('+page.flow.svelte','crud_dashboard',T.dashboard,T.dashboardText,'<EmptyState $$id="toHomeView" title="'+xml(T.loading)+'" />',go(homePage,'toHome'));
+  else page('+page.flow.svelte','crud_dashboard',T.dashboard,T.dashboardText,'<GridLayout $$id="kpis" minColumnWidth="220px"><Children>'+kpis+'</Children></GridLayout>'+shown.map(function(e){return status('call_'+prefix+'_'+e.name+'_count');}).join(''),counts);
   var accounts=Object.keys(s.security.principals||{}),selected=accounts[0]||'',loginState='<State $$id="user" type="string" value="'+xml(selected)+'" />';
-  var loginForm='<If $$id="demoEnabled" test="@.'+session+'.demoEnabled"><Then><Form $$id="loginForm" ariaLabel="'+xml(T.demoLogin)+'"><Children><FormSection $$id="loginSection" title="'+xml(T.chooseAccount)+'" description="'+xml(T.demoAccounts)+'" columns="1"><Children><Select $$id="demoAccount" name="account" label="'+xml(T.account)+'" placeholder="'+xml(T.choose)+'" locale="'+locale+'" value="@page.user" options={'+json(accounts.map(function(a){return {value:a,label:a+' · '+s.security.principals[a]};}))+'}><Events><OnChange $$id="chooseAccount"><Actions><SetValue $$id="keepAccount" target="page.user" value="@event.value" /></Actions></OnChange></Events></Select></Children></FormSection><RowLayout $$id="loginActions" justify="flex-end"><Children><Button $$id="connect" label="'+xml(T.signIn)+'" type="submit" /></Children></RowLayout></Children><Events><OnSubmit $$id="connectSubmit"><Actions>'+call(prefix+'_demo_login',variable('user','@page.user'),'signIn')+call(session,'','afterSignInSession')+go(homePage||'crud_dashboard','afterLogin')+'</Actions></OnSubmit></Events></Form>'+status('signIn')+'</Then><Else><EmptyState $$id="loginRequired" title="'+xml(T.signInRequired)+'" description="'+xml(T.signInProvider)+'" /></Else></If>';
-  page('login/+page.flow.svelte','crud_login',T.login,T.loginText,loginForm,'',loginState,'',true);
+  // The demo account picker exists only with security.demoLogin: true; otherwise the page points to the identity provider.
+  var loginForm=(s.security.demoLogin===true?'<If $$id="demoEnabled" test="@.'+session+'.demoEnabled"><Then><Form $$id="loginForm" ariaLabel="'+xml(T.demoLogin)+'"><Children><FormSection $$id="loginSection" title="'+xml(T.chooseAccount)+'" description="'+xml(T.demoAccounts)+'" columns="1"><Children><Select $$id="demoAccount" name="account" label="'+xml(T.account)+'" placeholder="'+xml(T.choose)+'" locale="'+locale+'" value="@page.user" options={'+json(accounts.map(function(a){return {value:a,label:a+' · '+s.security.principals[a]};}))+'}><Events><OnChange $$id="chooseAccount"><Actions><SetValue $$id="keepAccount" target="page.user" value="@event.value" /></Actions></OnChange></Events></Select></Children></FormSection><RowLayout $$id="loginActions" justify="flex-end"><Children><Button $$id="connect" label="'+xml(T.signIn)+'" type="submit" /></Children></RowLayout></Children><Events><OnSubmit $$id="connectSubmit"><Actions>'+call(prefix+'_demo_login',variable('user','@page.user'),'signIn')+call(session,'','afterSignInSession')+(home?go(home,'afterLogin'):'')+'</Actions></OnSubmit></Events></Form>'+status('signIn')+'</Then><Else>':'')+'<EmptyState $$id="loginRequired" title="'+xml(T.signInRequired)+'" description="'+xml(T.signInProvider)+'" />'+(s.security.demoLogin===true?'</Else></If>':'');
+  if(loginOption!==false)page('login/+page.flow.svelte','crud_login',T.login,T.loginText,loginForm,'',loginState,'',true);
   // Whether some role may run this write through the generic Flows (permissions false or [] grant it to nobody): a page
   // never offers a write that no role may run, so an entity whose writes belong to business Flows shows none.
-  function granted(e,op){if(e.readOnly)return false;var p=e.permissions||{},roles=p[op]===undefined?p.save:p[op];return roles!==false&&!(Array.isArray(roles)&&!roles.length);}
+  function granted(e,op){if(e.readOnly)return false;var p=e.permissions||{},roles=p[op]===undefined?p.save:p[op];if(roles===undefined)return e.generate!=='data';return roles!==false&&!(Array.isArray(roles)&&!roles.length);}
   function mutable(e){return granted(e,'create')||granted(e,'update')||granted(e,'delete');}
-  s.entities.forEach(function(e){
+  shown.forEach(function(e){
    var name=e.name,n=prefix+'_'+name,key=e.key[0],list=name+'_list',detail=name+'_detail',form=name+'_form',route=e.routeSegment||name;
    function field(n){return e.fields.filter(function(f){return f.name===n;})[0];}
    function options(f){return (e.ui.fieldOptions&&e.ui.fieldOptions[f.name]||f.enum||[]).map(function(o){return typeof o==='object'?o:{value:o,label:String(o)};});}

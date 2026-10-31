@@ -31,6 +31,7 @@
       id(e.name); if(own(entities,e.name)) fail('Duplicate entity'); entities[e.name]=e;
       if(e.permissions!==undefined && (!e.permissions||typeof e.permissions!=='object'||Array.isArray(e.permissions)))fail('permissions must be an operation map');
       Object.keys(e.permissions||{}).forEach(function(operation){if(['list','read','count','create','update','save','delete'].indexOf(operation)<0)fail('Unknown permission operation '+operation);});
+      e.generate=e.generate===undefined?'full':e.generate;if(['full','data'].indexOf(e.generate)<0)fail('entities[].generate is "full" or "data"');
       if(!Array.isArray(e.fields) || e.fields.length>120) fail('Bounded fields required');
       var seen={}; e.fields.forEach(function(f){id(f.name);if(own(seen,f.name))fail('Duplicate field');seen[f.name]=true;
         if(['string','int64','decimal','boolean','date','timestamp'].indexOf(f.type)<0)fail('Unsupported type');
@@ -40,10 +41,20 @@
       if(!e.key || e.key.length!==1 || !e.fields.some(function(f){return f.name===e.key[0] && f.type==='int64' && f.identity===true;}))fail('Prototype requires single generated int64 key');
       if(e.revision){id(e.revision);if(!own(seen,e.revision)) e.fields.push({name:e.revision,type:'int64',default:'1'});else {var r=e.fields.filter(function(f){return f.name===e.revision;})[0];if(r.type!=='int64'||r.nullable||r.identity)fail('Revision must be nonnullable int64');}}
 
+      // rowPolicy: the owner form only, {field, equals:"user"|"account.<field>", unrestricted:[roles]}.
+      if(e.rowPolicy!==undefined){var rp=e.rowPolicy,owner=rp&&e.fields.filter(function(f){return f.name===rp.field;})[0];
+        if(!rp||typeof rp!=='object'||Object.keys(rp).some(function(k){return ['field','equals','unrestricted'].indexOf(k)<0;})||!owner||owner.identity||!(rp.equals==='user'||/^account\.[A-Za-z_][A-Za-z0-9_]*$/.test(String(rp.equals)))||(rp.unrestricted!==undefined&&!Array.isArray(rp.unrestricted)))fail('rowPolicy of '+e.name+' supports only the owner form {field, equals:"user"|"account.<field>", unrestricted:[roles]} on a non-key field');
+        rp.unrestricted=(rp.unrestricted||[]).map(id);}
       e.ui=e.ui || {};e.ui.labelField=e.ui.labelField || e.key[0];
       ['labelField'].forEach(function(k){if(!e.fields.some(function(f){return f.name===e.ui[k];}))fail('Unknown UI field');});
       ['listFields','formFields'].forEach(function(k){e.ui[k]=e.ui[k] || e.fields.filter(function(f){return !f.identity && f.name!==e.revision;}).map(function(f){return f.name;});e.ui[k].forEach(function(n){if(!e.fields.some(function(f){return f.name===n;}))fail('Unknown UI field '+n);});});
     });
+    var accounts=s.security.accounts||null;
+    if(accounts){var accountEntity=entities[accounts.entity];if(!accountEntity)fail('security.accounts.entity must name a model entity');
+      function accountField(n,type){var f=accountEntity.fields.filter(function(x){return x.name===n;})[0];if(!f||f.type!==type)fail('security.accounts: '+n+' must be a '+type+' field of '+accounts.entity);}
+      accountField(accounts.login,'string');if(accounts.active!==undefined)accountField(accounts.active,'boolean');}
+    s.entities.forEach(function(e){if(e.rowPolicy&&e.rowPolicy.equals!=='user'){var column=e.rowPolicy.equals.slice(8);if(!accounts||!entities[accounts.entity].fields.some(function(f){return f.name===column;}))fail('rowPolicy of '+e.name+' equals '+e.rowPolicy.equals+': declare security.accounts with that field');}});
+    if(s.ui.generate!==undefined&&['full','none'].indexOf(s.ui.generate)<0)fail('ui.generate is "full" or "none"');
     relations.forEach(function(r){id(r.name);if(r.kind!=='many-to-one')fail('Prototype supports many-to-one');
       var from=entities[r.from.entity],to=entities[r.to.entity];if(!from||!to)fail('Unknown relation entity');
       var ff=from.fields.filter(function(f){return f.name===r.from.field;})[0],tf=to.fields.filter(function(f){return f.name===r.to.field;})[0];
@@ -66,6 +77,9 @@
       var qtable=quote(db.schema || (db.dialect==='postgresql'?'public':'PUBLIC'))+'.'+quote(e.name), cols=e.fields.map(function(f){return quote(f.column||f.name);}).join(', ');
       queries[e.name+'_count']={connection:connection,readOnly:true,expose:false,sql:'SELECT COUNT(*) AS "total" FROM '+qtable,parameters:[],columns:[{name:'total',type:'int64',nullable:false}]};
       queries[e.name+'_read']={connection:connection,readOnly:true,expose:false,sql:'SELECT '+cols+' FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id',parameters:[{name:'id',type:'int64'}],columns:e.fields.map(function(f){return {name:f.name,type:f.type,nullable:f.nullable===true};})};
+      if(e.rowPolicy){var ownerField=e.fields.filter(function(f){return f.name===e.rowPolicy.field;})[0];
+        queries[e.name+'_owned']={connection:connection,readOnly:true,expose:false,sql:'SELECT '+quote(e.key[0])+' AS "id" FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id AND '+quote(ownerField.column||ownerField.name)+'=:owner',parameters:[{name:'id',type:'int64'},{name:'owner',type:ownerField.type}],columns:[{name:'id',type:'int64',nullable:false}]};
+        queries[e.name+'_count_owned']={connection:connection,readOnly:true,expose:false,sql:'SELECT COUNT(*) AS "total" FROM '+qtable+' WHERE '+quote(ownerField.column||ownerField.name)+'=:owner',parameters:[{name:'owner',type:ownerField.type}],columns:[{name:'total',type:'int64',nullable:false}]};}
       queries[e.name+'_options']={connection:connection,readOnly:true,expose:false,maxRows:200,sql:'SELECT '+quote(e.key[0])+' AS "value", '+quote(e.ui.labelField)+' AS "label" FROM '+qtable+' ORDER BY '+quote(e.key[0]),parameters:[],columns:[{name:'value',type:'int64',nullable:false},{name:'label',type:e.fields.filter(function(f){return f.name===e.ui.labelField;})[0].type,nullable:false}]};
       if(!e.readOnly){var fields=e.fields.filter(function(f){return !f.identity && f.name!==e.revision && (!f.readOnly||f.auto);}),updateFields=fields.filter(function(f){return f.auto!=='create';});function parameters(items){return items.map(function(f){var p={name:f.name,type:f.type,nullable:f.nullable===true};if(f.auto)p.auto=f.auto;if(own(f,'default'))p.default=f.default;return p;});}var params=parameters(fields);
         writes[e.name+'_insert']={connection:connection,operation:'insert',sql:'INSERT INTO '+qtable+' ('+fields.map(function(f){return quote(f.column||f.name);}).join(', ')+') VALUES ('+fields.map(function(f){return ':'+f.name;}).join(', ')+')',parameters:params,generatedKey:{column:e.key[0],type:'int64'},minAffectedRows:1,maxAffectedRows:1};
@@ -73,7 +87,9 @@
         writes[e.name+'_delete']={connection:connection,operation:'delete',sql:'DELETE FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:[{name:'id',type:'int64'}].concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
       }
     });
-    var optionQueries={};ordered.forEach(function(e){var choices={};choices[e.ui.labelField]=e.name+'_options';relations.filter(function(r){return r.to.entity===e.name&&r.labelField;}).forEach(function(r){if(own(choices,r.labelField))return;var name=id(e.name+'_opt_'+r.labelField),q=copy(queries[e.name+'_options']),f=e.fields.filter(function(f){return f.name===r.labelField;})[0];q.sql=q.sql.replace(quote(e.ui.labelField)+' AS \"label\"',quote(r.labelField)+' AS \"label\"');q.columns[1].type=f.type;q.columns[1].nullable=f.nullable===true;queries[name]=q;choices[r.labelField]=name;});optionQueries[e.name]=choices;});
+    var optionQueries={},ownedOptionQueries={};ordered.forEach(function(e){var choices={};choices[e.ui.labelField]=e.name+'_options';relations.filter(function(r){return r.to.entity===e.name&&r.labelField;}).forEach(function(r){if(own(choices,r.labelField))return;var name=id(e.name+'_opt_'+r.labelField),q=copy(queries[e.name+'_options']),f=e.fields.filter(function(f){return f.name===r.labelField;})[0];q.sql=q.sql.replace(quote(e.ui.labelField)+' AS \"label\"',quote(r.labelField)+' AS \"label\"');q.columns[1].type=f.type;q.columns[1].nullable=f.nullable===true;queries[name]=q;choices[r.labelField]=name;});optionQueries[e.name]=choices;
+      // The options of a row-policy entity, for a restricted role: only the rows it owns.
+      if(e.rowPolicy){var ownerField=e.fields.filter(function(f){return f.name===e.rowPolicy.field;})[0],owned={};Object.keys(choices).forEach(function(label){var q=copy(queries[choices[label]]);q.sql=q.sql.replace(' ORDER BY ',' WHERE '+quote(ownerField.column||ownerField.name)+'=:owner ORDER BY ');q.parameters=[{name:'owner',type:ownerField.type}];queries[choices[label]+'_owned']=q;owned[label]=choices[label]+'_owned';});ownedOptionQueries[e.name]=owned;}});
     // Validate declarations at authoring time, before any generated file is written.
     Object.keys(queries).concat(Object.keys(writes)).forEach(function(name){
       var declaration=queries[name] || writes[name],used={},declared={},match,rx=/:([A-Za-z_][A-Za-z0-9_]*)/g;
@@ -81,33 +97,54 @@
       declaration.parameters.forEach(function(p){if(own(declared,p.name)||!own(used,p.name))fail('Unused/duplicate named parameter '+name+'.'+p.name);declared[p.name]=true;});
       Object.keys(used).forEach(function(p){if(!own(declared,p))fail('Undeclared named parameter '+name+'.'+p);});
     });
-    var config={sql:{connections:{},initializers:{},queries:queries,writes:writes},data:{providers:{sql:{implementation:'sql.table'}},sources:sources},crud:{principals:s.security.principals,hasPrincipalMap:Object.keys(s.security.principals).length>0,demoLogin:s.security.demoLogin===true}};
-    config.crud.optionQueries=optionQueries;
+    // The demo sign-in exists only with the generated sign-in page and an explicit security.demoLogin: true.
+    var loginGenerated=s.ui.generate!=='none'&&s.ui.loginPage!==false,demoLogin=s.security.demoLogin===true&&loginGenerated;
+    var config={sql:{connections:{},initializers:{},queries:queries,writes:writes},data:{providers:{sql:{implementation:'sql.table'}},sources:sources},crud:{principals:s.security.principals,hasPrincipalMap:Object.keys(s.security.principals).length>0,demoLogin:s.security.demoLogin===true&&loginGenerated}};
+    config.crud.optionQueries=optionQueries;config.crud.ownedOptionQueries=ownedOptionQueries;
     config.crud.enums={};ordered.forEach(function(e){config.crud.enums[e.name]={};e.fields.forEach(function(f){if(f.enum)config.crud.enums[e.name][f.name]=f.enum;});});
     config.crud.generated={owner:services.model?services.model.path:'_flow/data/model.yaml',queries:Object.keys(queries),writes:Object.keys(writes),sources:Object.keys(sources)};
     config.sql.connections[connection]={url:db.url,dialect:db.dialect,driverClass:db.driverClass,user:db.user || '',password:db.password || '',nativeRead:true,nativeWrite:true};
     config.sql.initializers[prefix]={connection:connection,schema:db.schema,schemaFile:'_flow/resources/sql/crud/schema.json',dataFile:'_flow/resources/sql/crud/data.json',demo:!!(s.seed && s.seed.demo)};
     function flow(name,inputs,body,privateFlow,outputs){body=body.replace(/^(\s*)return ([a-zA-Z]+\.[a-zA-Z]+)\((.*)\)$/gm, '$1local.responseResult = $2($3)\n$1return local.responseResult');flows[name]='// @generated by flow-crud; owner: _flow/data/model.yaml; edit the model, call this Flow from business Flows.\nconst _flow = '+json({sourceVersion:2,accessibility:privateFlow?'private':'hidden',authenticatedContextRequired:!privateFlow,inputs:inputs,config:config,outputs:outputs||undefined})+'\n\nfunction '+name+'({input,config,result}) {\n'+body+'\n}\n';}
-    function auth(entity,operation){
-      var isWrite=['create','update','delete','save'].indexOf(operation)>=0,permissions=entity.permissions||{},roles=permissions[operation];
+    // The roles of an operation. A data entity grants no generic write unless its permissions name the roles.
+    function roleList(e,operation){
+      var isWrite=['create','update','delete','save'].indexOf(operation)>=0,permissions=e.permissions||{},roles=permissions[operation];
       if(roles===undefined && isWrite)roles=permissions.save;
-      if(roles===undefined)roles=isWrite?['authenticated','editor']:['authenticated','reader','editor'];
+      if(roles===undefined)roles=isWrite?(e.generate==='data'?[]:['authenticated','editor']):['authenticated','reader','editor'];
       if(roles===false)roles=[];if(typeof roles==='string')roles=[roles];
       if(!Array.isArray(roles))fail('permissions.'+operation+' must contain server roles');roles.forEach(id);
-      var denied=roles.length?roles.map(function(role){return 'local.role !== '+JSON.stringify(role);}).join(' && '):'true';
-      return '  local.user = session.authenticatedUser({})\n  local.role = "authenticated"\n  if (config.crud.hasPrincipalMap) {\n    local.role = object.get({source:config.crud.principals,key:local.user})\n  }\n  if (!local.user) {\n    throw({code:"UNAUTHENTICATED",message:"Session required",status:401})\n  }\n  if ('+denied+') {\n    throw({code:"FORBIDDEN",message:"Role denied",status:403})\n  }\n';
+      return roles;
     }
+    function hasSave(e){return !e.readOnly&&(e.generate!=='data'||roleList(e,'create').length>0||roleList(e,'update').length>0);}
+    function hasDelete(e){return !e.readOnly&&(e.generate!=='data'||roleList(e,'delete').length>0);}
+    // security.accounts: the account row of the signed-in user; unknown or inactive accounts are refused.
+    function accountLookup(user,onMissing){
+      if(!accounts)return '';
+      var out='  local.accountPage = data.read({source:"'+accounts.entity+'_read",limit:1,filter:{field:"'+accounts.login+'",op:"eq",value:'+user+'}})\n  local.account = list.first({items:local.accountPage.page.rows,fallback:null})\n  if (!local.account) {\n'+onMissing('Unknown account')+'  }\n';
+      if(accounts.active)out+='  if (local.account.values.'+accounts.active+' !== true && local.account.values.'+accounts.active+' !== "true") {\n'+onMissing('Inactive account')+'  }\n';
+      return out;
+    }
+    function refuse(message){return '    throw({code:"FORBIDDEN",message:"'+message+'",status:403})\n';}
+    function auth(entity,operation){
+      var roles=roleList(entity,operation);
+      var denied=roles.length?roles.map(function(role){return 'local.role !== '+JSON.stringify(role);}).join(' && '):'true';
+      var body='  local.user = session.authenticatedUser({})\n  local.role = "authenticated"\n  if (config.crud.hasPrincipalMap) {\n    local.role = object.get({source:config.crud.principals,key:local.user})\n  }\n  if (!local.user) {\n    throw({code:"UNAUTHENTICATED",message:"Session required",status:401})\n  }\n'+accountLookup('local.user',refuse)+'  if ('+denied+') {\n    throw({code:"FORBIDDEN",message:"Role denied",status:403})\n  }\n';
+      // rowPolicy: a restricted role sees and writes only the rows whose owner field equals its session value.
+      if(entity.rowPolicy){body+='  local.restricted = true\n'+entity.rowPolicy.unrestricted.map(function(role){return '  if (local.role === '+JSON.stringify(role)+') {\n    local.restricted = false\n  }\n';}).join('')+'  local.owner = '+(entity.rowPolicy.equals==='user'?'local.user':'local.account.values.'+entity.rowPolicy.equals.slice(8))+'\n';}
+      return body;
+    }
+    function owned(e,idExpression){return e.rowPolicy?'  if (local.restricted) {\n    local.owned = sql.query({query:"'+e.name+'_owned",parameters:{id:'+idExpression+',owner:local.owner}})\n    local.ownedRow = list.first({items:local.owned.rows,fallback:null})\n    if (!local.ownedRow) {\n      throw({code:"NOT_FOUND",message:"Row absent",status:404})\n    }\n  }\n':'';}
+    function ownerPatch(e){var f=e.rowPolicy&&e.fields.filter(function(x){return x.name===e.rowPolicy.field;})[0];return f&&!f.readOnly?'  if (local.restricted) {\n    json.put({path:"local.patch",key:"'+f.name+'",value:local.owner})\n  }\n':'';}
     function allowed(e,op){
-      var roles=e.permissions&&e.permissions[op],write=['create','update','delete'].indexOf(op)>=0;
-      if(roles===undefined&&write)roles=e.permissions&&e.permissions.save;
-      if(roles===undefined)roles=write?['authenticated','editor']:['authenticated','reader','editor'];
-      if(roles===false)roles=[];if(typeof roles==='string')roles=[roles];
+      if(e.readOnly&&['create','update','delete'].indexOf(op)>=0)return 'false';
+      if(op==='create'||op==='update'){if(!hasSave(e))return 'false';}else if(op==='delete'&&!hasDelete(e))return 'false';
+      var roles=roleList(e,op);
       return roles.length?roles.map(function(r){return 'local.role === '+JSON.stringify(r);}).join(' || '):'false';
     }
     function rowSchema(e){var values={},keys={};e.fields.forEach(function(f){values[f.name]={type:f.type==='boolean'?'boolean':'string',nullable:f.nullable===true};});e.key.forEach(function(k){keys[k]={type:'string'};});return {type:'object',properties:{key:{type:'object',properties:keys},values:{type:'object',properties:values},displayValues:{type:'object',properties:values},revision:{type:'string'},canRead:{type:'boolean'},canUpdate:{type:'boolean'},canDelete:{type:'boolean'}}};}
     var accessSchema={},accessExpression=[];
     ordered.forEach(function(e){var props={},members=[];['list','read','count','create','update','delete'].forEach(function(op){props[op]={type:'boolean'};members.push(JSON.stringify(op)+': '+(e.readOnly&&['create','update','delete'].indexOf(op)>=0?'false':'('+allowed(e,op)+')'));});accessSchema[e.name]={type:'object',properties:props};accessExpression.push(JSON.stringify(e.name)+': {'+members.join(',')+'}');});
-    var sessionBody='  local.user = session.authenticatedUser({})\n  local.role = null\n  if (local.user) {\n    local.role = "authenticated"\n    if (config.crud.hasPrincipalMap) {\n      local.role = object.get({source:config.crud.principals,key:local.user})\n    }\n  }\n  result.authenticated = !!local.user\n  result.user = local.user\n  result.role = local.role\n  result.demoEnabled = config.crud.demoLogin\n  result.permissions = {'+accessExpression.join(',')+'}';
+    var sessionBody='  local.user = session.authenticatedUser({})\n  local.role = null\n'+(accounts?'  if (local.user) {\n'+accountLookup('local.user',function(){return '    local.user = null\n';}).replace(/^  if \(local\.account\.values/m,'  if (local.account && local.account.values')+'  }\n':'')+'  if (local.user) {\n    local.role = "authenticated"\n    if (config.crud.hasPrincipalMap) {\n      local.role = object.get({source:config.crud.principals,key:local.user})\n    }\n  }\n  result.authenticated = !!local.user\n  result.user = local.user\n  result.role = local.role\n  result.demoEnabled = config.crud.demoLogin\n  result.permissions = {'+accessExpression.join(',')+'}';
     flow(prefix+'_session',{},sessionBody,false,{type:'object',properties:{authenticated:{type:'boolean'},user:{type:'string',nullable:true},role:{type:'string',nullable:true},demoEnabled:{type:'boolean'},permissions:{type:'object',properties:accessSchema}}});
     flows[prefix+'_session']=flows[prefix+'_session'].replace('"authenticatedContextRequired": true','"authenticatedContextRequired": false');
     flow(prefix+'_logout',{},'  local.cleared = session.authenticate({user:""})\n  return {authenticated:false}',false,{type:'object',properties:{authenticated:{type:'boolean'}}});
@@ -127,23 +164,27 @@
       var listBody=auth(e,'list')+'  local.filter = input.filter\n  local.orderBy = input.orderBy\n  if (local.orderBy === "") {\n    local.orderBy = "'+k+'"\n  }\n  local.direction = "asc"\n  if (input.direction === "desc") {\n    local.direction = "desc"\n  }\n';
       var label=e.fields.filter(function(f){return f.name===e.ui.labelField;})[0];
       if(label.type==='string')listBody+='  if (input.search !== "") {\n    local.filter = {field:"'+e.ui.labelField+'",op:"contains",value:input.search}\n  }\n';
+      if(e.rowPolicy)listBody+='  if (local.restricted) {\n    local.filter = {field:"'+e.rowPolicy.field+'",op:"eq",value:local.owner}\n  }\n';
       listBody+='  local.response = data.read({source:"'+e.name+'_read",offset:input.offset,limit:input.limit,filter:local.filter,orderBy:local.orderBy,direction:local.direction})\n  local.rows = list.map({items:local.response.page.rows,select:{key:current.key,values:current.values'+(e.revision?',revision:current.values.'+e.revision:'')+',canRead:('+allowed(e,'read')+'),canUpdate:('+allowed(e,'update')+'),canDelete:('+allowed(e,'delete')+')}})\n  local.response.page.rows = local.rows\n  return local.response';
       flow(n+'_list',{offset:{type:'integer',default:0},limit:{type:'integer',default:20},filter:{type:'object',nullable:true,default:null},search:{type:'string',default:''},orderBy:{type:'string',default:k},direction:{type:'string',default:'asc'}},listBody,false,{type:'object',properties:{resource:{type:'object'},page:{type:'object',properties:{rows:{type:'array',items:rowSchema(e)},offset:{type:'integer'},limit:{type:'integer'},total:{type:'number'}}}}});
       var displayBody='  local.row.displayValues = object.merge({target:{},source:local.row.values})\n';
       s.relations.filter(function(r){return r.from.entity===e.name;}).forEach(function(r,i){
         var target=ordered.filter(function(t){return t.name===r.to.entity;})[0],fk=r.from.field;
-        displayBody+='  if (('+allowed(target,'read')+') && local.row.values.'+fk+' !== null) {\n    local.related = data.read({source:"'+target.name+'_read",limit:1,filter:{field:"'+r.to.field+'",op:"eq",value:local.row.values.'+fk+'}})\n    local.relatedRow = list.first({items:local.related.page.rows,fallback:null})\n    if (local.relatedRow) {\n      json.put({path:"local.row.displayValues",key:"'+fk+'",value:local.relatedRow.values.'+(r.labelField||target.ui.labelField)+'})\n    }\n  }\n';
+        var free=target.rowPolicy?(target.rowPolicy.unrestricted.length?' && ('+target.rowPolicy.unrestricted.map(function(r){return 'local.role === '+JSON.stringify(r);}).join(' || ')+')':' && false'):'';
+        displayBody+='  if (('+allowed(target,'read')+')'+free+' && local.row.values.'+fk+' !== null) {\n    local.related = data.read({source:"'+target.name+'_read",limit:1,filter:{field:"'+r.to.field+'",op:"eq",value:local.row.values.'+fk+'}})\n    local.relatedRow = list.first({items:local.related.page.rows,fallback:null})\n    if (local.relatedRow) {\n      json.put({path:"local.row.displayValues",key:"'+fk+'",value:local.relatedRow.values.'+(r.labelField||target.ui.labelField)+'})\n    }\n  }\n';
       });
-      flow(n+'_read',{id:{type:'string'}},auth(e,'read')+'  local.response = data.read({source:"'+e.name+'_read",limit:1,filter:{field:"'+k+'",op:"eq",value:input.id}})\n  local.row = list.first({items:local.response.page.rows,fallback:null})\n  if (!local.row) {\n    throw({code:"NOT_FOUND",message:"Row absent",status:404})\n  }\n'+(e.revision?'  local.row.revision = local.row.values.'+e.revision+'\n':'')+displayBody+'  return {row:local.row}',false,{type:'object',properties:{row:rowSchema(e)}});
-      flow(n+'_count',{},auth(e,'count')+'  return sql.query({query:"'+e.name+'_count",parameters:{}})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{total:{type:'string'}}}}}});
-      flow(n+'_options',{labelField:{type:'string',default:e.ui.labelField}},auth(e,'list')+'  local.query = object.get({source:config.crud.optionQueries.'+e.name+',key:input.labelField,defaultValue:null})\n  if (!local.query) {\n    throw({code:"INVALID_OPTION_LABEL",message:"Unknown option label",status:400})\n  }\n  return sql.query({query:local.query,parameters:{},limit:200})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{value:{type:'string'},label:{type:'string',nullable:true}}}}}});
-      if(!e.readOnly){flow(n+'_save',{id:{type:'string',default:''},revision:{type:'string',default:''},patch:{type:'object'}},'  if (input.id === "") {\n'+auth(e,'create')+patchBody(e)+'    return data.write({source:"'+e.name+'_write",operation:"create",patch:local.patch})\n  }\n'+auth(e,'update')+patchBody(e)+'  return data.write({source:"'+e.name+'_write",operation:"update",key:{'+k+':input.id},revision:input.revision,patch:local.patch})');
-      flow(n+'_delete',{id:{type:'string'},revision:{type:'string',default:''}},auth(e,'delete')+'  return data.write({source:"'+e.name+'_write",operation:"delete",key:{'+k+':input.id},revision:input.revision})');}
+      flow(n+'_read',{id:{type:'string'}},auth(e,'read')+owned(e,'input.id')+'  local.response = data.read({source:"'+e.name+'_read",limit:1,filter:{field:"'+k+'",op:"eq",value:input.id}})\n  local.row = list.first({items:local.response.page.rows,fallback:null})\n  if (!local.row) {\n    throw({code:"NOT_FOUND",message:"Row absent",status:404})\n  }\n'+(e.revision?'  local.row.revision = local.row.values.'+e.revision+'\n':'')+displayBody+'  return {row:local.row}',false,{type:'object',properties:{row:rowSchema(e)}});
+      flow(n+'_count',{},auth(e,'count')+(e.rowPolicy?'  if (local.restricted) {\n    return sql.query({query:"'+e.name+'_count_owned",parameters:{owner:local.owner}})\n  }\n':'')+'  return sql.query({query:"'+e.name+'_count",parameters:{}})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{total:{type:'string'}}}}}});
+      flow(n+'_options',{labelField:{type:'string',default:e.ui.labelField}},auth(e,'list')+'  local.query = object.get({source:config.crud.optionQueries.'+e.name+',key:input.labelField,defaultValue:null})\n  if (!local.query) {\n    throw({code:"INVALID_OPTION_LABEL",message:"Unknown option label",status:400})\n  }\n'+(e.rowPolicy?'  if (local.restricted) {\n    local.query = object.get({source:config.crud.ownedOptionQueries.'+e.name+',key:input.labelField,defaultValue:null})\n    return sql.query({query:local.query,parameters:{owner:local.owner},limit:200})\n  }\n':'')+'  return sql.query({query:local.query,parameters:{},limit:200})',false,{type:'object',properties:{rows:{type:'array',items:{type:'object',properties:{value:{type:'string'},label:{type:'string',nullable:true}}}}}});
+      if(hasSave(e))flow(n+'_save',{id:{type:'string',default:''},revision:{type:'string',default:''},patch:{type:'object'}},'  if (input.id === "") {\n'+auth(e,'create')+patchBody(e)+ownerPatch(e)+'    return data.write({source:"'+e.name+'_write",operation:"create",patch:local.patch})\n  }\n'+auth(e,'update')+owned(e,'input.id')+patchBody(e)+ownerPatch(e)+'  return data.write({source:"'+e.name+'_write",operation:"update",key:{'+k+':input.id},revision:input.revision,patch:local.patch})');
+      if(hasDelete(e))flow(n+'_delete',{id:{type:'string'},revision:{type:'string',default:''}},auth(e,'delete')+owned(e,'input.id')+'  return data.write({source:"'+e.name+'_write",operation:"delete",key:{'+k+':input.id},revision:input.revision})');
     });
     flow(prefix+'_runtime_proof',{},'  local.initialized = sql.initialize({initializer:'+JSON.stringify(prefix)+',seed:false,dryRun:true,verifyOnly:'+(db.schemaPolicy==='observe')+'})\n'+ordered.map(function(e){return '  result.'+e.name+' = sql.query({query:"'+e.name+'_count",parameters:{}})';}).join('\n'),true);
-    flow(prefix+'_demo_login',{user:{type:'string'}},'  if (!config.crud.demoLogin) {\n    throw({code:"FORBIDDEN",message:"Demo login disabled",status:403})\n  }\n  local.role = object.get({source:config.crud.principals,key:input.user})\n  if (!local.role) {\n    throw({code:"FORBIDDEN",message:"Unknown demo account",status:403})\n  }\n  local.user = session.authenticate({user:input.user})\n  return {authenticated:true}',true);
-    // Login must be HTTP-reachable only in an explicitly enabled demo. Its guard always remains server-side.
-    flows[prefix+'_demo_login']=flows[prefix+'_demo_login'].replace('"accessibility": "private"','"accessibility": "hidden"');
+    if(demoLogin){
+      flow(prefix+'_demo_login',{user:{type:'string'}},'  if (!config.crud.demoLogin) {\n    throw({code:"FORBIDDEN",message:"Demo login disabled",status:403})\n  }\n  local.role = object.get({source:config.crud.principals,key:input.user})\n  if (!local.role) {\n    throw({code:"FORBIDDEN",message:"Unknown demo account",status:403})\n  }\n'+accountLookup('input.user',refuse)+'  local.user = session.authenticate({user:input.user})\n  return {authenticated:true}',true);
+      // Login must be HTTP-reachable only in an explicitly enabled demo. Its guard always remains server-side.
+      flows[prefix+'_demo_login']=flows[prefix+'_demo_login'].replace('"accessibility": "private"','"accessibility": "hidden"');
+    }
     var frontend=services.ui?services.ui.render(s):{status:'renderer-not-loaded',pages:[],components:[]};
     if(frontend.files){Object.keys(frontend.files).forEach(function(p){files[p]=frontend.files[p];});delete frontend.files;}
     files['_flow/data/ui.generated.json']=json(frontend)+'\n';
@@ -152,7 +193,7 @@
     files['_flow/data/config.generated.json']=json(config)+'\n';
     // The names the model generates per entity. The legacy format names an entity by its plural (order_line gives
     // order_lines): a renamed entity says so, with how to keep the given name.
-    var names=s.entities.map(function(e){var route=e.routeSegment||e.name,out={entity:e.name,flows:prefix+'_'+e.name+'_list|read|count|options'+(e.readOnly?'':'|save|delete'),pages:e.name+'_list|detail'+(e.readOnly?'':'|form'),route:'/'+route};
+    var names=s.entities.map(function(e){var route=e.routeSegment||e.name,out={entity:e.name,flows:prefix+'_'+e.name+'_list|read|count|options'+(hasSave(e)?'|save':'')+(hasDelete(e)?'|delete':''),pages:e.generate==='data'||s.ui.generate==='none'?'':e.name+'_list|detail'+(e.readOnly?'':'|form'),route:e.generate==='data'||s.ui.generate==='none'?'':'/'+route,generate:e.generate};
       if(e.sourceName!==undefined&&e.sourceName!==null&&String(e.sourceName)!==e.name){out.given=String(e.sourceName);out.message='The legacy CRUD format names an entity by its plural: "'+out.given+'" generates the table, Flows, pages and route of "'+e.name+'".';out.fix='Name the entity "'+e.name+'" in the model (relations, seed.data, permissions and ui.navigation then use that name), or add "plural": "'+out.given+'" to the entity to keep "'+out.given+'".';}
       return out;});
     return {files:files,flows:flows,frontend:frontend,config:config,initializer:prefix+'_initialize',entities:ordered.map(function(e){return e.name;}),names:names,schemaVersion:s.schemaVersion,normalized:s,legacy:isLegacy,diagnostics:normalized.diagnostics||[]};
@@ -206,6 +247,7 @@
     });
     return out;
   }
+  function retiredFlow(name){return '// @generated by flow-crud; owner: _flow/data/model.yaml; retired: the model no longer generates this Flow.\nconst _flow = '+json({sourceVersion:2,accessibility:'private',authenticatedContextRequired:true,inputs:{}})+'\n\nfunction '+id(name)+'({input,config,result}) {\n  throw({code:"GONE",message:"'+name+' is no longer generated by the model: call the business Flows",status:410})\n}\n';}
   function schemaShape(value){var d=copy(value);delete d.version;return stable(d);}
   function runtimePlan(ctx,args,c,fs){
     var cfg=copy(c.config),prefix=c.normalized.facade.prefix||'crud',definition=cfg.sql.initializers[prefix],schema=JSON.parse(c.files['_flow/resources/sql/crud/schema.json']);
@@ -237,8 +279,18 @@
       var previousSchema=fs.read('_flow/resources/sql/crud/schema.json');
       if(raw.schemaVersion===undefined && previousSchema && schemaShape(JSON.parse(previousSchema))!==schemaShape(JSON.parse(c.files['_flow/resources/sql/crud/schema.json']))){version=JSON.parse(previousSchema).version+1;c=compile(raw,args.project,{model:model,legacy:legacy,ui:ui,schemaVersion:version});}
       all=copy(c.files);Object.keys(c.flows).forEach(function(n){all['_flow/flows/'+n+'.flow.js']=c.flows[n];});
+      // Additive switches (full -> data, ui.generate none, demo sign-in off): a Flow the model no longer generates stays
+      // owned and refuses every call (never a leftover generic write); a page stays on disk, unlinked and released.
+      // A removed entity is not migrated: its table and its callers stay.
+      var priorConfig=prior.files['_flow/data/config.generated.json'];
+      if(priorConfig)Object.keys((JSON.parse(priorConfig).crud||{}).enums||{}).forEach(function(name){if(!own(c.config.crud.enums,name))diagnostics.push({code:'FLOW_CRUD_REMOVAL_UNSUPPORTED',severity:'error',entity:name,message:'The model no longer declares the applied entity '+name+'.',fix:'Keep the entity; generate: "data" drops its pages and generic writes.'});});
+      Object.keys(prior.files).forEach(function(p){
+        if(own(all,p)||p==='_flow/resources/sql/crud/spec.json')return;
+        var m=/^_flow\/flows\/([A-Za-z_][A-Za-z0-9_]*)\.flow\.js$/.exec(p);
+        if(m){c.flows[m[1]]=retiredFlow(m[1]);all[p]=c.flows[m[1]];return;}
+        diagnostics.push({code:'FLOW_CRUD_FILE_RELEASED',severity:'warning',path:p,message:'The model no longer generates this file: apply keeps it on disk, unlinked from the generated pages, and the model stops owning it.',fix:'Delete it, or keep it as a hand-written page.'});
+      });
       Object.keys(all).forEach(function(p){var live=fs.read(p),adoptStarter=!priorText&&p==='_flow/frontbuilder/svelte/model/'+args.project+'/src/routes/+page.flow.svelte'&&live===starter.initialSveltePage(args.project),recoverable=prior.pending===true&&prior.previousFiles&&prior.previousFiles[p]===live;if(live!==null&&live!==all[p]&&!recoverable&&!adoptStarter&&(!own(prior.files,p)||prior.files[p]!==live))conflicts.push(p);if(live!==all[p])changed.push(p);});
-      Object.keys(prior.files).forEach(function(p){if(!own(all,p)&&p!=='_flow/resources/sql/crud/spec.json')diagnostics.push({code:'FLOW_CRUD_REMOVAL_UNSUPPORTED',severity:'error',path:p});});
       if(!/(^|\n)\/_flow\/(\r?\n|$)/.test(fs.read('.httpignore')||''))diagnostics.push({code:'FLOW_CRUD_HTTPIGNORE_REQUIRED',severity:'error'});
       conflicts.forEach(function(p){diagnostics.push({code:'FLOW_CRUD_GENERATED_CONFLICT',severity:'error',path:p});});
       references=referencePlan(args,fs,c);
@@ -262,7 +314,8 @@
     if(args.dryRun===true || !args.planHash){
       var status=plan.applied?'applied':plan.applicable?'pending':'blocked',preview=Object.assign({ok:true,dryRun:true,status:status,requiresPlanHash:true},plan);
       var renamed=plan.names.filter(function(n){return n.given;});
-      preview.next=(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
+      var generatedNames=plan.names.map(function(n){return n.flows;}).join(', ');
+      preview.next='Generated Flows: '+generatedNames+'. '+(c&&c.config.crud.demoLogin?'security.demoLogin is on: anyone may open a session as any security.principals account in one anonymous call; turn it off outside a demo. ':'')+(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
       return preview;
     }
     if(!plan.applicable)throw Error('FLOW_CRUD_PLAN_BLOCKED: '+JSON.stringify(plan.diagnostics));

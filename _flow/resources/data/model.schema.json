@@ -374,11 +374,40 @@
           },
           "rowPolicy": {
             "type": "object",
-            "description": "Reserved future server policy. Any use currently blocks application."
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "equals"
+            ],
+            "description": "Owner rule enforced on the server by the generated list, read, count, options, save and delete: a role not listed in unrestricted sees and writes only the rows whose field equals its session value (equals user: the signed-in user; account.<field>: that field of its security.accounts row). Other forms are refused.",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "equals": {
+                "type": "string",
+                "pattern": "^(user|account\\.[A-Za-z_][A-Za-z0-9_]*)$"
+              },
+              "unrestricted": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "readOnly": {
             "type": "boolean",
             "default": false
+          },
+          "generate": {
+            "type": "string",
+            "enum": [
+              "full",
+              "data"
+            ],
+            "default": "full",
+            "description": "full: pages, navigation and generic writes. data: schema, seed, data sources and the list/read/count/options Flows only; no page, no navigation entry, and save/delete only for roles its permissions name. Business Flows own the mutations."
           }
         }
       }
@@ -485,13 +514,36 @@
         },
         "language": {
           "type": "string"
+        },
+        "generate": {
+          "type": "string",
+          "enum": [
+            "full",
+            "none"
+          ],
+          "default": "full",
+          "description": "none: no shell, sign-in, home or entity page; the application writes its own UI and calls the generated Flows."
+        },
+        "homePage": {
+          "type": [
+            "string",
+            "boolean"
+          ],
+          "description": "page.id of a hand-written home page (the root page leads to it), or false: no generated root page or dashboard, so a hand-written page can own the route /."
+        },
+        "loginPage": {
+          "type": [
+            "string",
+            "boolean"
+          ],
+          "description": "page.id of a hand-written sign-in page, or false: no generated sign-in page and no demo sign-in Flow."
         }
       }
     },
     "security": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Optional Flow authentication integration; principals/demoLogin are prototype bindings only."
+      "description": "Optional Flow authentication integration. principals maps a user to its role. demoLogin: true (default false) generates an anonymous demo sign-in as any principal, only with the generated sign-in page. accounts {entity, login, active?} binds users to a model entity: unknown or inactive accounts are refused by every generated Flow and by the demo sign-in."
     },
     "origin": {
       "type": "object",
