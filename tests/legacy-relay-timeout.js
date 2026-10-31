@@ -36,3 +36,9 @@ if(error.code==='LEGACY_RELAY_TIMEOUT'||error.message.indexOf('Convertigo MCP re
 mode='ok';seen=[];answer=call({requestable:'SampleProject.runCheck'});
 if(answer.result.structuredContent.status!=='ok')fail('An answer in time is relayed as it is',answer);
 print('legacy-relay-timeout OK (bounded wait under 300 s, LEGACY_RELAY_TIMEOUT with hint and details, other failures unchanged)');
+
+mode='timeout';seen=[];
+answer=mcp.legacyRelayCall(ctx,{jsonrpc:'2.0',id:8,method:'tools/call',params:{name:'subagent-run',arguments:{runId:'verify-20261031-195427',waitSec:240}}});
+error=answer.result.structuredContent.error;
+if(error.code!=='LEGACY_RELAY_TIMEOUT'||error.details.runId!=='verify-20261031-195427'||!/with runId alone/.test(error.hint)||/retry.*once/.test(error.hint))fail('Resume timeout must preserve runId and poll hint',error);
+print('subagent-timeout-runId OK');

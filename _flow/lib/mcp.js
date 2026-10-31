@@ -4872,6 +4872,12 @@
 		error.hint = (busyStudio ? "Look at the Studio window and answer any dialog. " : "") +
 			"Do not send the same call again at once: the relayed tools wait behind it. Prove a Flow with code-run, or with its HTTP " +
 			"URL (.json?__sequence=<name>), then retry " + name + " once" + (busyStudio ? " when the Studio answers again." : ".");
+		if (name === "subagent-run") {
+			var runId = String(request.params.arguments && request.params.arguments.runId || "");
+			if (runId) details.runId = runId;
+			error.hint = runId ? "Call subagent-run with runId alone: " + runId + ". The existing run continues; do not start a second run."
+				: "The start may still be running. Do not repeat the task. Recover runId from its activity or SUBAGENT_BUSY, then call subagent-run with runId alone.";
+		}
 		error.details = details;
 		return error;
 	}

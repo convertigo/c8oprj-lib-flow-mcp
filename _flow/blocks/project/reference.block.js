@@ -339,6 +339,24 @@ const _meta = {
 				updated: updated,
 				saved: false
 			};
+			// A library reference does not make its own references available to the caller's block catalog.
+			// Report missing dependencies explicitly; do not attach or save additional projects implicitly.
+			response.missingReferences = [];
+			if (typeof referencedProject.getReferenceList === "function") {
+				var required = referencedProject.getReferenceList().iterator();
+				while (required.hasNext()) {
+					var dependency = required.next();
+					if (!(dependency instanceof Packages.com.twinsoft.convertigo.beans.references.ProjectSchemaReference)) continue;
+					var requiredName = String(dependency.getParser().getProjectName());
+					if (requiredName && requiredName !== projectNameValue && requiredName !== referenceName && !projectReference(project, requiredName) && response.missingReferences.indexOf(requiredName) < 0)
+						response.missingReferences.push(requiredName);
+				}
+			}
+			if (response.missingReferences.length) {
+				response.warnings = [{code: "PROJECT_REFERENCE_DEPENDENCIES_REQUIRED", property: "references", references: response.missingReferences,
+					message: "The library " + referenceName + " requires these project references: " + response.missingReferences.join(", ") + ". Add them before compiling or running its blocks."}];
+				response.next = response.missingReferences.map(function (name) { return {tool: "flow-project-reference", arguments: {project: projectNameValue, reference: name}}; });
+			}
 			if (updated) {
 				response.previousUrl = currentUrl;
 			}
