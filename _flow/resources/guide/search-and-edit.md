@@ -32,7 +32,10 @@ libraries, fragments).
    neighbouring line). `codepatch` is a unified diff: the line numbers of
    every hunk refer to that revision, hunks may come in any order, and each
    hunk needs its exact context lines: re-read the range with `code-get`
-   rather than guessing a context. Send one format, not both.
+   rather than guessing a context. Send one format, not both. Prefer `edits`
+   to rebuilding the code in a script: in JavaScript, `code.replace(old,
+   text)` and `replaceAll` read `$$` in `text` as a single `$`, so `$$id`
+   becomes `$id`; pass `() => text` or use `code.split(old).join(text)`.
 3. When context is missing, read only that range with `code-get({ ...,
    revision, startLine, endLine })`; read a whole source only for an
    ambiguous or broad change.
