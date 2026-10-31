@@ -1,6 +1,7 @@
-// flow-crud-upsert registers the connection, the sql provider of data and every generated data source once in the
-// project config of _flow/engine.yaml, as flow://guide/crud tells business Flows: a Flow without config of its own reads
-// them. The registration goes through the minimal edit of lib_flow_engine (comments and other keys of engine.yaml stay),
+// flow-crud-upsert registers the connection, the SQL initializer, the sql provider of data and every generated data
+// source once in the project config of _flow/engine.yaml, as flow://guide/crud tells business Flows: a Flow without
+// config of its own reads them (the initializer gives a sql.table source of a business Flow the auto timestamps of its
+// schema.json). Registering the initializer runs nothing: apply still calls the generated initializer once. The registration goes through the minimal edit of lib_flow_engine (comments and other keys of engine.yaml stay),
 // once (a value already registered is not written again, a second apply leaves the file as it is); the model owns these
 // paths: a value changed by hand is a conflict, a named configuration is not, and a source the model no longer
 // generates is removed. Standalone: a fake runtime context, the real engine for the YAML edit and the business Flow run.
@@ -58,34 +59,44 @@ var connection = Object.keys(generated.sql.connections)[0];
 // 1. The preview names what apply registers; the provider registered by hand with the same value is not written again.
 var first = preview();
 check(first.status === "pending" && first.applicable === true && first.changed.indexOf("_flow/engine.yaml") >= 0, "the preview says engine.yaml changes", first);
-var wanted = ["config.sql.connections." + connection, "config.data.sources.teams_read", "config.data.sources.teams_write", "config.data.sources.tasks_read", "config.data.sources.tasks_write"];
+var wanted = ["config.sql.connections." + connection, "config.sql.initializers.desk", "config.data.sources.teams_read", "config.data.sources.teams_write", "config.data.sources.tasks_read", "config.data.sources.tasks_write"];
 check(first.projectConfig && first.projectConfig.path === "_flow/engine.yaml" && first.projectConfig.set.slice().sort().join(",") === wanted.slice().sort().join(",")
-	&& first.projectConfig.entries === 6 && first.projectConfig.remove.length === 0, "it registers the connection and every generated source, not the provider already there", first.projectConfig);
-check(/registers the connection and the data sources once in the project config of _flow\/engine.yaml/.test(first.next), "next says apply registers them", first.next);
+	&& first.projectConfig.entries === 7 && first.projectConfig.remove.length === 0, "it registers the connection, the initializer and every generated source, not the provider already there", first.projectConfig);
+check(/registers the connection, the initializer and the data sources once in the project config of _flow\/engine.yaml/.test(first.next), "next says apply registers them", first.next);
 check(engineYaml().indexOf("connections") < 0, "a preview writes nothing");
 
 // 2. Apply writes them through the minimal edit: the other lines stay, every value is the generated one.
+function initializations() { return ctx.calls.filter(function (c) { return c.block === "requestable.call" && c.props.requestable === "CrudConfig.desk_initialize"; }).length; }
 var applied = apply(spec, first.planHash);
-check(applied.applied === true && applied.projectConfig && applied.projectConfig.persisted === "saved" && applied.projectConfig.set.length === 5, "apply registers the project configuration", applied.projectConfig);
+check(applied.applied === true && applied.projectConfig && applied.projectConfig.persisted === "saved" && applied.projectConfig.set.length === 6, "apply registers the project configuration", applied.projectConfig);
+check(initializations() === 1, "apply calls the generated initializer once, as before: registering it initializes nothing", ctx.calls.map(function (c) { return c.block; }));
 var text = engineYaml();
 check(text.indexOf("# application settings") >= 0 && text.indexOf("title: Desk # shown in the shell") >= 0, "comments and other settings of engine.yaml are kept", text);
 check(text.split("tasks_read:").length === 2 && text.split("implementation:").length === 2, "each path is registered once", text);
 var manifest = JSON.parse(read(new java.io.File(dir, "_flow/resources/sql/crud/manifest.json")));
-check(manifest.pending === false && Object.keys(manifest.projectConfig).length === 6 && manifest.projectConfig["data.sources.tasks_write"].writableFields.indexOf("title") >= 0,
+check(manifest.pending === false && Object.keys(manifest.projectConfig).length === 7 && manifest.projectConfig["data.sources.tasks_write"].writableFields.indexOf("title") >= 0,
 	"the manifest records the paths the model owns", manifest.projectConfig);
+// The registered initializer is the one the generated Flows carry: same schemaFile and dataFile, same connection.
+function flowConfig(name) { var source = read(new java.io.File(dir, "_flow/flows/" + name + ".flow.js")); return JSON.parse(source.substring(source.indexOf("const _flow = ") + 14, source.indexOf("\n\nfunction "))).config; }
+var carried = flowConfig("desk_initialize").sql.initializers.desk;
+check(JSON.stringify(manifest.projectConfig["sql.initializers.desk"]) === JSON.stringify(carried) && carried.schemaFile === "_flow/resources/sql/crud/schema.json"
+	&& carried.dataFile === "_flow/resources/sql/crud/data.json" && carried.connection === connection, "the registered initializer is the one desk_initialize carries", { registered: manifest.projectConfig["sql.initializers.desk"], carried: carried });
+check(JSON.stringify(flowConfig("desk_runtime_proof").sql.initializers) === JSON.stringify(flowConfig("desk_initialize").sql.initializers), "the generated Flows keep their own copy, as for the connection");
 var lean = read(new java.io.File(dir, "_flow/flows/desk_teams_read.flow.js"));
 check(lean.indexOf('"tasks_read"') < 0, "a generated Flow still carries only the configuration its body names");
 
 // 3. A business Flow without config of its own reads the generated sources and their connection from the project.
 var business = "const _flow = {\n  sourceVersion: 2,\n}\n\nfunction Board({ input, config, result }) {\n" +
 	"  result.table = config.data.sources.tasks_write.table\n  result.connection = config.data.sources.tasks_read.connection\n" +
-	"  result.dialect = config.sql.connections." + connection + ".dialect\n  result.provider = config.data.providers.sql.implementation\n  result.title = config.app.title\n}\n";
+	"  result.dialect = config.sql.connections." + connection + ".dialect\n  result.provider = config.data.providers.sql.implementation\n  result.title = config.app.title\n" +
+	"  result.schemaFile = config.sql.initializers.desk.schemaFile\n  result.initializerConnection = config.sql.initializers.desk.connection\n}\n";
 // A standalone run reads the project of __flowProjectDir, as the server reads the project of the Flow.
 __flowProjectDir = String(dir);
 var run = JSON.parse(engine.run(JSON.stringify({ flowSource: business, input: {}, includeTrace: false })));
 var out = run.result || {};
 check(run.ok !== false && out.table === "tasks" && out.connection === connection && out.dialect === generated.sql.connections[connection].dialect
 	&& out.provider === "sql.table" && out.title === "Desk", "a business Flow inherits the generated sources and connection", run);
+check(out.schemaFile === "_flow/resources/sql/crud/schema.json" && out.initializerConnection === connection, "a business Flow sees the initializer of the model", out);
 
 // 4. Once: the next preview is applied, and applying again leaves engine.yaml byte for byte.
 var again = preview();
@@ -95,6 +106,7 @@ check(proof.checks.some(function (c) { return c.kind === "project-config" && c.o
 var mutationsBefore = ctx.calls.filter(function (c) { return c.block === "engine.mutate"; }).length;
 apply(spec, again.planHash);
 check(engineYaml() === text && ctx.calls.filter(function (c) { return c.block === "engine.mutate"; }).length === mutationsBefore, "a second apply does not touch engine.yaml");
+check(initializations() === 2, "each apply calls the generated initializer once, as before", initializations());
 
 // 5. The model owns its paths: a value changed by hand blocks the plan, a named configuration does not.
 writeEngineYaml(text.replace(/(tasks_read:\n(?:.*\n)*?\s+table: )"?tasks"?/, "$1\"tasks_v2\""));
@@ -102,6 +114,10 @@ var changed = preview();
 var conflict = changed.diagnostics.filter(function (d) { return d.code === "FLOW_CRUD_CONFIG_CONFLICT"; })[0];
 check(changed.status === "blocked" && conflict && conflict.configPath === "config.data.sources.tasks_read" && conflict.path === "_flow/engine.yaml"
 	&& /configs\.<name>/.test(conflict.fix), "a hand-changed value is a conflict with its fix", changed.diagnostics);
+check(text.split("_flow/resources/sql/crud/schema.json").length === 2 && text.indexOf("initializers:") > 0, "the initializer is written once in engine.yaml", text);
+writeEngineYaml(text.replace("_flow/resources/sql/crud/schema.json", "_flow/resources/sql/orders/schema.json"));
+var movedSchema = preview().diagnostics.filter(function (d) { return d.code === "FLOW_CRUD_CONFIG_CONFLICT"; });
+check(movedSchema.length === 1 && movedSchema[0].configPath === "config.sql.initializers.desk", "a hand-changed initializer is a conflict too", movedSchema);
 writeEngineYaml(text + "configs:\n  production:\n    sql:\n      connections:\n        " + connection + ":\n          url: \"jdbc:postgresql://db:5432/desk\"\n");
 var named = preview();
 check(named.status === "applied" && !named.diagnostics.length, "a named configuration overriding the connection is not a conflict", named.diagnostics);
@@ -118,5 +134,20 @@ check(after.indexOf("tasks_write:") < 0 && after.indexOf("tasks_read:") > 0 && a
 	"apply removes it and keeps the named configuration and the comments", after);
 check(!JSON.parse(read(new java.io.File(dir, "_flow/resources/sql/crud/manifest.json"))).projectConfig["data.sources.tasks_write"], "the manifest no longer owns it");
 check(production !== after, "engine.yaml changed only for the removal");
+
+// 7. A project applied before the initializer was registered (its engine.yaml and manifest without it): the next preview
+// registers only the initializer, without conflict, and apply writes it once.
+var withoutInitializer = String(ctx.applyMutationSource({ target: "engine", engineSource: after, mutations: [{ op: "remove", path: "config.sql.initializers.desk" }], includeTree: false, projectDir: String(dir) }).source);
+writeEngineYaml(withoutInitializer);
+var manifestFile = new java.io.File(dir, "_flow/resources/sql/crud/manifest.json"), olderManifest = JSON.parse(read(manifestFile));
+delete olderManifest.projectConfig["sql.initializers.desk"];
+FileUtils.writeStringToFile(manifestFile, JSON.stringify(olderManifest, null, 2) + "\n", "UTF-8");
+var upgrade = preview(readOnly);
+check(withoutInitializer.indexOf("desk:") < 0 && withoutInitializer.indexOf("tasks_read:") > 0 && upgrade.status === "pending" && upgrade.projectConfig.set.join(",") === "config.sql.initializers.desk"
+	&& upgrade.projectConfig.remove.length === 0 && !upgrade.diagnostics.length, "an older project gets only the initializer, without conflict", { set: upgrade.projectConfig, diagnostics: upgrade.diagnostics });
+var calls = initializations();
+apply(readOnly, upgrade.planHash);
+check(engineYaml().split("_flow/resources/sql/crud/schema.json").length === 2 && preview(readOnly).status === "applied" && initializations() === calls + 1,
+	"apply registers it once and initializes once, as any apply", engineYaml());
 FileUtils.deleteQuietly(dir);
 print(JSON.stringify({ passed: true, count: checks.length, checks: checks }));

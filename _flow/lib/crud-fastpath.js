@@ -282,14 +282,19 @@
     return out;
   }
   // The project configuration the model registers once in _flow/engine.yaml (its config branch): the connection, the
-  // sql provider of data and every generated data source, so that a business Flow calls data.read / data.write on them
-  // without copying anything. The project config wins over the _flow.config of each Flow, so the model owns these
-  // paths: a value changed by hand is a conflict, a path the model no longer generates is removed while it keeps the
-  // value the model wrote. The password is empty (embedded database) or a .secret reference: the model refuses others.
+  // initializer, the sql provider of data and every generated data source, so that a business Flow calls data.read /
+  // data.write on them without copying anything. The initializer is there for its schema.json: a sql.table source of a
+  // business Flow inherits the auto: create|update of its timestamp columns from it. Declaring it runs nothing: only
+  // sql.initialize (the generated <prefix>_initialize, called by apply) creates and seeds the tables. The project config
+  // wins over the _flow.config of each Flow, so the model owns these paths: a value changed by hand is a conflict, a
+  // path the model no longer generates is removed while it keeps the value the model wrote. The generated Flows keep
+  // their own copy of what their body names, as for the connection and the sources. The password is empty (embedded
+  // database) or a .secret reference: the model refuses others.
   var ENGINE_PATH='_flow/engine.yaml',ENGINE_DEFAULT='version: 1\nengineQName: lib_flow_engine.Engine\nbindings: {}\nconfig: {}\n';
   function projectConfigEntries(c){
     var cfg=copy(c.config),out={};
     Object.keys(cfg.sql.connections).forEach(function(n){out['sql.connections.'+n]=cfg.sql.connections[n];});
+    Object.keys(cfg.sql.initializers).forEach(function(n){out['sql.initializers.'+n]=cfg.sql.initializers[n];});
     out['data.providers.sql']=cfg.data.providers.sql;
     Object.keys(cfg.data.sources).forEach(function(n){out['data.sources.'+n]=cfg.data.sources[n];});
     return out;
@@ -412,7 +417,7 @@
       var renamed=plan.names.filter(function(n){return n.given;});
       var generatedNames=plan.names.map(function(n){return n.flows;}).join(', ');
       preview.next='Generated Flows: '+generatedNames+'. '+(c&&c.config.crud.demoLogin?'security.demoLogin is on: anyone may open a session as any security.principals account in one anonymous call; turn it off outside a demo. ':'')+(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
-      if(status==='pending'&&plan.projectConfig&&(plan.projectConfig.set.length||plan.projectConfig.remove.length))preview.next+=' Apply registers the connection and the data sources once in the project config of '+ENGINE_PATH+' (projectConfig.set): business Flows inherit them.';
+      if(status==='pending'&&plan.projectConfig&&(plan.projectConfig.set.length||plan.projectConfig.remove.length))preview.next+=' Apply registers the connection, the initializer and the data sources once in the project config of '+ENGINE_PATH+' (projectConfig.set): business Flows inherit them.';
       // Compact by default: studio repeats the model (entities, portable entities, diagram nodes) and generated the
       // files that changed already lists; detail "full" keeps them for a caller that draws the model
       if(args.detail!=='full'){delete preview.studio;preview.generatedFiles=preview.generated.length;delete preview.generated;preview.detail='compact';preview.next+=' detail:"full" adds studio (model, diagram, pages) and the generated files.';}

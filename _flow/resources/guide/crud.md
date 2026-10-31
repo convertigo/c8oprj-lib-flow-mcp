@@ -288,15 +288,21 @@ if (!local.session.permissions.tickets.update) {
 local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
 ```
 
-Apply registers the connection (`sql.connections.<connection>`),
+Apply registers the connection (`sql.connections.<connection>`), the SQL
+initializer (`sql.initializers.desk`: `schemaFile` and `dataFile` of the model),
 `data.providers.sql` and every generated source (`tickets_read`,
 `tickets_write`) once in the project `config` of `_flow/engine.yaml` (the
 preview lists them in `projectConfig.set`): every Flow of the project inherits
 them, so a business Flow calls `data.read({ source: "tickets_read" })` with no
-configuration of its own. Never paste them into a business Flow. The model
-owns these paths: change the model, not `engine.yaml` (a value changed by hand
-blocks the next preview with `FLOW_CRUD_CONFIG_CONFLICT`), and override the
-connection per server in a named configuration (below). The named SQL of the
+configuration of its own. Never paste them into a business Flow. A
+`sql.table` source that a business Flow declares on a table of the model
+inherits `auto: create|update` of its timestamp columns from that initializer,
+so create works without repeating `auto`; the registered initializer runs
+nothing by itself: only `desk_initialize` (called by apply) creates and seeds
+the tables. The model owns these paths: change the model, not `engine.yaml`
+(a value changed by hand blocks the next preview with
+`FLOW_CRUD_CONFIG_CONFLICT`), and override the connection per server in a named
+configuration (below). The named SQL of the
 generated Flows stays in their own `_flow.config`.
 
 ### Business actions in a transaction
