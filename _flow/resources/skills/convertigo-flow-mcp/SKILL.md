@@ -179,7 +179,7 @@ wait stays in it for the rest of the task.
 
 - A multi-step proof (sign in, go through several pages, fill and submit a
   form, check a list after a write) goes to one relayed
-  `subagent-run({profile:"verifier", task, inputs:{url, paths, checks,
+  `subagent-run({profile:"verifier", task, inputs:{project, url, paths, checks,
   hints}})`. `url` is the `openUrl` returned by `dev.sync` or `dev.open`;
   `paths` lists the user journeys in plain language, `checks` the exact
   expected texts, `hints` the demo accounts and values. A vision model drives

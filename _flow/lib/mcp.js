@@ -4657,7 +4657,7 @@
 				"(flow://guide/fullstack-paperboard); one per scope and project at a time.";
 		}
 		if (properties && properties.inputs) {
-			properties.inputs.description = "verifier: url, the viewer URL (openUrl of frontend-svelte-action dev.sync or dev.open); paths: one " +
+			properties.inputs.description = "verifier: project, the application project required to ensure its dev viewer; url, the viewer URL (openUrl of frontend-svelte-action dev.sync or dev.open); paths: one " +
 				"plain-language user journey per item (sign in, go through pages, fill and submit a form); checks: acceptance criteria with the exact " +
 				"expected texts; hints: demo accounts, expected values, what just changed; viewport: desktop (default), mobile or <width>x<height>. " +
 				"constructor: project (required), scope (required): backend (Flows, project blocks, engine.yaml, tests) or frontend " +

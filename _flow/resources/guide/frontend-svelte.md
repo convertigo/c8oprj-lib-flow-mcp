@@ -741,3 +741,13 @@ visual checklist, passed as `checks` (light and dark, 1366px and 390px wide):
 - no horizontal overflow of the page at 390px; tables scroll in their surface. The verifier is
 read-only: fix what it reports with the Flow tools, then run it again on the
 failed paths only.
+
+## Application locale and default component texts
+
+Set the static application locale in the entry source metadata, for example
+`export const _flow = {sourceVersion:2,app:{id:"App",title:"Application",locale:"fr-FR"}}` inside `<script module>`.
+Generation sets the HTML language and supplies that locale to components whose locale was omitted. French applications
+also receive French default control labels and placeholders. Authored labels, bindings, explicit component locales
+and historical component defaults are preserved. Without app.locale, the translation catalog's default locale is
+used, then English. A Translations variable can still select business translations dynamically; it does not change
+this static application setting.

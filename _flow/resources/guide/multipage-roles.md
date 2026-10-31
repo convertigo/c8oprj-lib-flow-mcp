@@ -204,7 +204,7 @@ Before declaring the application done, check its delivery too:
   `corsSameOrigin` or `productionBuild` task.
 
 Finally prove the pages with each role through one relayed
-`subagent-run({profile:"verifier", task, inputs:{url, paths, checks, hints}})`:
+`subagent-run({profile:"verifier", task, inputs:{project, url, paths, checks, hints}})`:
 `url` is the viewer `openUrl`, one path per role (sign in, open each page, check
 the visible rows and the downloaded file), the demo accounts in `hints`. While
 it answers `status:"running"`, call it again with its `runId` alone. Do not

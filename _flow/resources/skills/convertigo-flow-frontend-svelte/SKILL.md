@@ -176,7 +176,7 @@ invisible to all of them; a refusal says what to write instead.
 - Prove the visible workflow on the current viewer, never in a separate
   browser or through raw CDP. Delegate a multi-step proof (sign-in, a path
   through several pages, a form submitted then a list checked) to one relayed
-  `subagent-run({profile:"verifier", task, inputs:{url, paths, checks,
+  `subagent-run({profile:"verifier", task, inputs:{project, url, paths, checks,
   hints}})` with `url` set to the `openUrl` of `dev.sync` or `dev.open`; while
   it answers `status:"running"`, call it again with its `runId` alone. Use
   `browser-verify` for one visual check of a page, and the host-managed
