@@ -4632,18 +4632,97 @@
 		return tools;
 	}
 
+	// The relay answers in JSON only: it sends no progress while lib_ConvertigoMCP works. An MCP client drops a call that
+	// sends no response or progress for 300 s (Claude Code), and the agent then reads nothing of why: a relayed
+	// requestable-execute waited for a busy Studio and was dropped after 300 s, then the next relayed call too. The relay
+	// gives up first and says so.
+	var LEGACY_RELAY_TIMEOUT_DEFAULT = 240;
+
+	function legacyRelayTimeoutSeconds() {
+		var value = parseInt(String(System.getProperty("convertigo.flow.mcp.legacyRelayTimeoutSeconds", "")), 10);
+		return isNaN(value) ? LEGACY_RELAY_TIMEOUT_DEFAULT : Math.max(5, Math.min(value, 290));
+	}
+
+	function relayTimedOut(error) {
+		try {
+			if (error && error.javaException instanceof Packages.java.net.http.HttpTimeoutException) {
+				return true;
+			}
+		} catch (_noJavaException) {
+		}
+		return /HttpTimeoutException|HttpConnectTimeoutException|request timed out/i.test(String(error && error.message || error));
+	}
+
+	// The project a relayed call names: project, or the project of a requestable <project>.<name>.
+	function relayedProjectName(request) {
+		var args = request && request.params && request.params.arguments || {};
+		if (typeof args.project === "string" && args.project.trim() !== "") {
+			return args.project.trim();
+		}
+		var requestable = typeof args.requestable === "string" ? args.requestable.trim() : "";
+		return /^[A-Za-z0-9_-]+\./.test(requestable) ? requestable.substring(0, requestable.indexOf(".")) : "";
+	}
+
+	/**
+	 * What a relayed call that timed out may have waited for, read without waiting more than about 1 s: whether the
+	 * Studio UI thread runs a task, and whether the change flag lock of the project is held. Every field is best effort.
+	 */
+	function studioWaitDiagnostics(projectName) {
+		var out = { studioMode: studioMode() };
+		if (projectName) {
+			try {
+				var lock = sharedMap("lib_flow_mcp.projectFlagLocks").get(String(projectName));
+				out.projectFlagLock = lock == null ? { locked: false } : { locked: lock.isLocked() === true, queued: Number(lock.getQueueLength()) };
+			} catch (_noFlagLock) {
+			}
+		}
+		if (!out.studioMode) {
+			return out;
+		}
+		try {
+			var concurrent = Packages.java.util.concurrent;
+			var ran = new concurrent.CountDownLatch(1);
+			Packages.com.twinsoft.convertigo.eclipse.ConvertigoPlugin.asyncExec(new Packages.java.lang.Runnable({ run: function () {
+				ran.countDown();
+			}}));
+			out.studioUiThreadResponsive = ran.await(1, concurrent.TimeUnit.SECONDS) === true;
+		} catch (_noStudioProbe) {
+		}
+		return out;
+	}
+
+	function legacyRelayTimeoutError(request, waited) {
+		var name = String(request && request.params && request.params.name || "");
+		var details = { tool: name, waitedSeconds: waited };
+		var studio = studioWaitDiagnostics(relayedProjectName(request));
+		Object.keys(studio).forEach(function (key) {
+			details[key] = studio[key];
+		});
+		var busyStudio = studio.studioUiThreadResponsive === false;
+		var error = new Error("The Convertigo MCP did not answer " + name + " within " + waited + " s, so the Flow MCP stopped waiting. " +
+			"The call may still be running on the server" + (busyStudio ? ", and the Studio UI thread is not answering: the Studio is busy " +
+			"(a Project Explorer reload, or a dialog waiting for an answer)." : "."));
+		error.code = "LEGACY_RELAY_TIMEOUT";
+		error.hint = (busyStudio ? "Look at the Studio window and answer any dialog. " : "") +
+			"Do not send the same call again at once: the relayed tools wait behind it. Prove a Flow with code-run, or with its HTTP " +
+			"URL (.json?__sequence=<name>), then retry " + name + " once" + (busyStudio ? " when the Studio answers again." : ".");
+		error.details = details;
+		return error;
+	}
+
 	function legacyRelayCall(ctx, request) {
 		var subagent = relayedSubagentRequest(ctx, request);
 		if (subagent.error) {
 			return toolError(request, subagent.error, ctx);
 		}
+		var timeoutSeconds = legacyRelayTimeoutSeconds();
 		try {
 			var answer = legacyPost(ctx, {
 				jsonrpc: "2.0",
 				id: request.id === undefined ? null : request.id,
 				method: "tools/call",
 				params: subagent.request.params || {}
-			}, 600);
+			}, timeoutSeconds);
 			answer.id = request.id === undefined ? null : request.id;
 			// The relay asks jsonOnly=true, and lib_ConvertigoMCP then answers a successful call with structuredContent
 			// only. content is required in a CallToolResult: the MCP Python SDK (Vibe) rejects such an answer and the
@@ -4656,6 +4735,9 @@
 			}
 			return answer;
 		} catch (error) {
+			if (relayTimedOut(error)) {
+				return toolError(request, legacyRelayTimeoutError(request, timeoutSeconds), ctx);
+			}
 			return toolError(request, new Error("Convertigo MCP relay failed for " + (request.params && request.params.name) +
 				": " + (error && error.message || error) + ". Check that lib_ConvertigoMCP is loaded on this server."), ctx);
 		}
