@@ -382,6 +382,42 @@ const _meta = {
 		return content;
 	}
 
+	// flow-resource-get returns the first READ_WINDOW characters of a larger file (truncated: true) with the hash of the
+	// whole file. That beginning sent back as content, edited or not, would replace the whole file and drop the rest: an
+	// agent did it on a 27000-character engine.yaml, cut in a folded SQL text where the YAML stayed valid, and the file
+	// lost its last 300 lines. The text is recognized by its end: its last characters are found in the current text,
+	// which goes on after them with more lines, either in the middle of a line (a cut read) or at one of the last lines
+	// of the read window (a read cut back to a complete line). A text that ends as the current one is never refused; a
+	// deliberate removal of the end of a large file is refused only when it ends right there (edits and patch remove
+	// lines without this check).
+	var READ_WINDOW = 12000;
+	var TAIL_CHARS = 80;
+	var WINDOW_END_CHARS = 1000;
+	function truncatedReadEnd(current, content) {
+		var end = content.replace(/\s+$/, "");
+		if (end.length < 20) {
+			return null;
+		}
+		var tail = end.substring(Math.max(0, end.length - TAIL_CHARS));
+		if (current.replace(/\s+$/, "").slice(-tail.length) === tail) {
+			return null;
+		}
+		var windowEnd = current.length > READ_WINDOW ? current.lastIndexOf("\n", READ_WINDOW - 1) : -1;
+		for (var at = current.indexOf(tail); at !== -1; at = current.indexOf(tail, at + 1)) {
+			var stop = at + tail.length;
+			var after = current.substring(stop);
+			var linesAfter = after.split("\n").filter(function (line) { return line.trim() !== ""; }).length;
+			var midLine = after.charAt(0) !== "\n" && after.charAt(0) !== "";
+			var atWindowEnd = windowEnd > 0 && stop <= windowEnd && stop >= windowEnd - WINDOW_END_CHARS;
+			if (linesAfter >= 2 && (midLine || atWindowEnd)) {
+				var lines = current.replace(/\n$/, "").split("\n").length;
+				var line = current.substring(0, stop).split("\n").length;
+				return { line: line, lines: lines, midLine: midLine, stop: stop };
+			}
+		}
+		return null;
+	}
+
 	// A project resource: a unified patch applied here hunk by hunk (headers, offsets and unique context accepted), or
 	// content, the whole new text. lib_flow_engine then writes that text as one replacement hunk checked against the
 	// hash read here, with its own path rules, validation and working copy guard.
@@ -424,6 +460,16 @@ const _meta = {
 		var applied = hasContent || hasEdits ? null : patchLib.applyUnifiedPatch(current.content, text);
 		var content = hasContent ? patchLib.normalize(args.content) : hasEdits ? applyEdits(patchLib, current.content, args.edits) : applied.content;
 		var mode = hasContent ? "content" : hasEdits ? "edits" : "patch";
+		var cut = hasContent && current.exists ? truncatedReadEnd(patchLib.normalize(current.content), content) : null;
+		if (cut) {
+			throw failure("RESOURCE_CONTENT_TRUNCATED", "content ends " + (cut.midLine ? "in the middle of line " + cut.line : "at line " + cut.line) +
+				" of the " + cut.lines + " lines of " + path + ", where a truncated read of it ends: flow-resource-get returns only the first " +
+				READ_WINDOW + " characters of a larger file (truncated: true), and that beginning sent as content would replace the whole file and drop lines " +
+				(cut.line + 1) + " to " + cut.lines + ". Nothing written.",
+				"Change a large file with edits ([{ oldText, newText }], each oldText copied from the lines read) or a unified patch: they keep the rest of the file. " +
+				"Send content only with the whole new text, read with flow-resource-get({ project, path, allowLarge: true }).",
+				{ path: path, line: cut.line, lines: cut.lines, readWindow: READ_WINDOW, contentLength: content.length, currentLength: patchLib.normalize(current.content).length });
+		}
 		if (!current.exists && content === "") {
 			throw failure("RESOURCE_CONTENT_EMPTY", path + " does not exist and the new text is empty: nothing to create.",
 				"Send the text of the new resource as content, or a patch adding its lines.");

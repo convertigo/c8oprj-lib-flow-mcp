@@ -497,7 +497,7 @@ const _meta = {
 			};
 			schema.properties.content = {
 				type: "string",
-				description: "Instead of patch: the whole new text of the resource, with baseHash for an existing one. Simplest for several changes or a short file. Lines are written with LF endings."
+				description: "Instead of patch: the whole new text of the resource, with baseHash for an existing one. Simplest for several changes or a short file. Lines are written with LF endings. Not the content of a flow-resource-get answer with truncated: true, which holds only the beginning of a large file: change such a file with edits or patch (a text ending where that read ends is refused, RESOURCE_CONTENT_TRUNCATED)."
 			};
 			schema.properties.fromFile = {
 				type: "string",

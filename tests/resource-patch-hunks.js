@@ -168,6 +168,8 @@ try {
 	assert(refused.error && refused.error.code === "PATCH_INSERT_AMBIGUOUS" && read(targetDir, "_flow/engine.yaml") === written, "a refused patch writes nothing: " + JSON.stringify(refused));
 	var invalidYaml = tool(6, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: reread.hash, patch: "@@ -1,1 +1,2 @@\n version: 1\n+  bad: [\n" });
 	assert(invalidYaml.error && read(targetDir, "_flow/engine.yaml") === written, "the engine still validates the YAML: " + JSON.stringify(invalidYaml).substring(0, 300));
+	assert(invalidYaml.error.code === "RESOURCE_YAML_INVALID" && /Invalid YAML in _flow\/engine\.yaml at line \d+, column \d+: .+\. Nothing written\./.test(invalidYaml.error.message) &&
+		/truncated: true/.test(invalidYaml.error.hint), "invalid YAML has its own code, its place and the hint for a truncated read: " + JSON.stringify(invalidYaml.error));
 	var withoutHash = tool(7, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", content: ENGINE_YAML });
 	assert(withoutHash.error && withoutHash.error.code === "RESOURCE_BASE_HASH_REQUIRED" && withoutHash.error.details.hash === reread.hash, "content needs baseHash: " + JSON.stringify(withoutHash));
 	var both = tool(8, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: reread.hash, content: ENGINE_YAML, patch: trialPatch });
@@ -188,6 +190,46 @@ try {
 	assert(edited.ok === true && edited.mode === "edits" && read(targetDir, "docs/notes.md") === "# Notes\nSecond.\n", "edits replace the exact text: " + JSON.stringify(edited));
 	var missing = tool(15, "flow-resource-patch", { projectDir: targetDir, path: "docs/notes.md", edits: [{ oldText: "absent", newText: "x" }] });
 	assert(missing.error && missing.error.code === "PATCH_CONTEXT_NOT_FOUND" && read(targetDir, "docs/notes.md") === "# Notes\nSecond.\n", "an edit whose oldText is absent writes nothing: " + JSON.stringify(missing));
+
+	// 9. A large engine.yaml read truncated: its first 12000 characters come with the hash of the whole file. Sent back
+	// as content, edited or cut at a complete line, that beginning would replace the whole file (an agent lost the last
+	// 300 lines of its engine.yaml so, the cut falling in a folded SQL text where the YAML stayed valid): refused.
+	var queries = [];
+	for (var q = 0; q < 60; q++) {
+		queries.push("      ordersByCustomer" + q + ":", "        connection: app", "        readOnly: true", "        sql: >-",
+			"          SELECT o.ID AS \"id\", o.CUSTOMER_ID AS \"customerId\", o.TOTAL AS \"total\", o.CREATED_AT AS \"createdAt\"",
+			"          FROM ORDERS o WHERE o.CUSTOMER_ID = :customerId AND o.STATUS = :status ORDER BY o.CREATED_AT DESC",
+			"        parameters:", "          - {name: customerId, type: int64, nullable: false}", "          - {name: status, type: string, nullable: false}");
+	}
+	var LARGE_YAML = ["version: 1", "engineQName: lib_flow_engine.Engine", "bindings: {}", "config:", "  demo:", "    login: false", "  sql:", "    queries:"]
+		.concat(queries).join("\n") + "\n";
+	FileUtils.writeStringToFile(new java.io.File(target, "_flow/engine.yaml"), LARGE_YAML, "UTF-8");
+	var large = tool(16, "flow-resource-get", { projectDir: targetDir, path: "_flow/engine.yaml" });
+	assert(large.truncated === true && large.content.length === 12000 && large.contentLength === LARGE_YAML.length &&
+		/do not send it back as the content of flow-resource-patch/.test(large.hint), "a large file is read truncated, with the warning: " + JSON.stringify(large.hint));
+	var edited = large.content.replace("login: false", "login: true");
+	var cutRead = tool(17, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: large.hash, content: edited });
+	assert(cutRead.error && cutRead.error.code === "RESOURCE_CONTENT_TRUNCATED" && read(targetDir, "_flow/engine.yaml") === LARGE_YAML,
+		"the edited beginning is refused, the file kept whole: " + JSON.stringify(cutRead).substring(0, 400));
+	var lines = LARGE_YAML.replace(/\n$/, "").split("\n").length;
+	assert(cutRead.error.details.lines === lines && cutRead.error.details.line < lines && /in the middle of line \d+ of the \d+ lines of _flow\/engine\.yaml/.test(cutRead.error.message) &&
+		/Nothing written/.test(cutRead.error.message) && /edits \(\[\{ oldText, newText \}\]/.test(cutRead.error.hint) && /allowLarge: true/.test(cutRead.error.hint),
+		"the refusal names the cut, the lines dropped and the way to change a large file: " + JSON.stringify(cutRead.error));
+	var atLine = tool(18, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: large.hash,
+		content: edited.substring(0, edited.lastIndexOf("\n") + 1) });
+	assert(atLine.error && atLine.error.code === "RESOURCE_CONTENT_TRUNCATED" && /at line \d+ of the/.test(atLine.error.message) && read(targetDir, "_flow/engine.yaml") === LARGE_YAML,
+		"the read cut back to its last complete line is refused too: " + JSON.stringify(atLine).substring(0, 300));
+	var dryCut = tool(19, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: large.hash, content: edited, dryRun: true });
+	assert(dryCut.error && dryCut.error.code === "RESOURCE_CONTENT_TRUNCATED", "a dry run says the same");
+	// The ways that work: edits on the read lines, or the whole text read with allowLarge.
+	var byEdit = tool(20, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: large.hash,
+		edits: [{ oldText: "    login: false", newText: "    login: true" }] });
+	assert(byEdit.ok === true && read(targetDir, "_flow/engine.yaml") === LARGE_YAML.replace("login: false", "login: true"), "edits change a large file and keep the rest: " + JSON.stringify(byEdit).substring(0, 300));
+	var whole = tool(21, "flow-resource-get", { projectDir: targetDir, path: "_flow/engine.yaml", allowLarge: true });
+	assert(whole.truncated === false && whole.content === LARGE_YAML.replace("login: false", "login: true"), "allowLarge reads the whole text");
+	var wholeContent = whole.content.replace("login: true", "login: false").replace(/      ordersByCustomer59:[\s\S]*$/, "");
+	var shorter = tool(22, "flow-resource-patch", { projectDir: targetDir, path: "_flow/engine.yaml", baseHash: whole.hash, content: wholeContent });
+	assert(shorter.ok === true && read(targetDir, "_flow/engine.yaml") === wholeContent, "content with the whole text, its last query removed, is written: " + JSON.stringify(shorter).substring(0, 300));
 } finally {
 	FileUtils.deleteQuietly(target);
 }
