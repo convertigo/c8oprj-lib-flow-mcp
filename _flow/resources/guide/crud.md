@@ -74,6 +74,13 @@ entity, `security` to no role map (every signed-in user has the role
 }
 ```
 
+- Entity names: the format names an entity by its plural, as the legacy
+  Convertigo CRUD did. A name that does not end in `s` takes one (`y` gives
+  `ies`): `order_line` generates the table, the Flows
+  (`<prefix>_order_lines_list`...), the pages and the route `/order-lines`.
+  The preview lists the generated names in `names` and says when it renamed
+  an entity; name it in the plural, or add `"plural": "order_line"` to keep
+  the given name.
 - Fields: `name`, optional `column` (default: the name in lower case,
   `TeamId` becomes `teamid`; set `"column": "team_id"` for another), `type` (`VARCHAR(n)`, `TEXT`, `INTEGER`,
   `BIGINT`, `DECIMAL(p,s)`, `BOOLEAN`, `DATE`, `TIMESTAMP`), `required`,
@@ -134,7 +141,8 @@ and at the root of the model
 1. `flow-project-bootstrap({project, ui: true})` for a new project.
 2. `flow-crud-upsert({project, spec, dryRun: true})`. Read `status`,
    `diagnostics` (each with `code`, `message` and, when known, `line`,
-   `block`, `fix`), `references.missing` and `sql.plan.statements`.
+   `block`, `fix`), `names` (per entity: its Flows, pages and route),
+   `references.missing` and `sql.plan.statements`.
    `blocked`: fix each error diagnostic and preview again.
 3. `flow-crud-upsert({project, spec, planHash})` with the `planHash` of the
    preview. Apply adds the missing references (`lib_flow_sql`,

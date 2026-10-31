@@ -53,6 +53,12 @@ check(preview.references && preview.references.missing.join(",") === "lib_flow_s
 	"preview lists the missing references", preview.references);
 check(preview.sql.skipped === true && ctx.sqlRuns === 0, "no SQL plan without lib_flow_sql", preview.sql);
 check(/planHash/.test(preview.next) && /adds the references lib_flow_sql/.test(preview.next), "next names the apply call and the references", preview.next);
+check(preview.names && preview.names.length === 1 && preview.names[0].entity === "tickets" && preview.names[0].flows.indexOf("desk_tickets_list") === 0
+	&& !/renamed/.test(preview.next), "preview reports the generated names, no rename", preview.names);
+var renamedSpec = JSON.parse(JSON.stringify(spec)); renamedSpec.entities[0].name = "ticket";
+var renamedPreview = crud.applyUnlocked(ctx, { project: "CrudSmokeRefs", projectDir: String(dir), spec: renamedSpec, dryRun: true });
+check(renamedPreview.names[0].given === "ticket" && renamedPreview.names[0].entity === "tickets" && /renamed by the plural rule: ticket -> tickets/.test(renamedPreview.next),
+	"preview says which entity the plural rule renamed", [renamedPreview.names, renamedPreview.next]);
 
 // 2. Apply adds them, plans the new database and applies.
 var applied = crud.applyUnlocked(ctx, { project: "CrudSmokeRefs", projectDir: String(dir), spec: spec, planHash: preview.planHash });

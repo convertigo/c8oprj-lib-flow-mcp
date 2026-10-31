@@ -150,7 +150,12 @@
     files['_flow/resources/sql/crud/schema.json']=json({version:s.schemaVersion,tables:tables})+'\n';
     files['_flow/resources/sql/crud/data.json']=json({tables:seed})+'\n';
     files['_flow/data/config.generated.json']=json(config)+'\n';
-    return {files:files,flows:flows,frontend:frontend,config:config,initializer:prefix+'_initialize',entities:ordered.map(function(e){return e.name;}),schemaVersion:s.schemaVersion,normalized:s,legacy:isLegacy,diagnostics:normalized.diagnostics||[]};
+    // The names the model generates per entity. The legacy format names an entity by its plural (order_line gives
+    // order_lines): a renamed entity says so, with how to keep the given name.
+    var names=s.entities.map(function(e){var route=e.routeSegment||e.name,out={entity:e.name,flows:prefix+'_'+e.name+'_list|read|count|options'+(e.readOnly?'':'|save|delete'),pages:e.name+'_list|detail'+(e.readOnly?'':'|form'),route:'/'+route};
+      if(e.sourceName!==undefined&&e.sourceName!==null&&String(e.sourceName)!==e.name){out.given=String(e.sourceName);out.message='The legacy CRUD format names an entity by its plural: "'+out.given+'" generates the table, Flows, pages and route of "'+e.name+'".';out.fix='Name the entity "'+e.name+'" in the model (relations, seed.data, permissions and ui.navigation then use that name), or add "plural": "'+out.given+'" to the entity to keep "'+out.given+'".';}
+      return out;});
+    return {files:files,flows:flows,frontend:frontend,config:config,initializer:prefix+'_initialize',entities:ordered.map(function(e){return e.name;}),names:names,schemaVersion:s.schemaVersion,normalized:s,legacy:isLegacy,diagnostics:normalized.diagnostics||[]};
   }
   function disk(root) {
     var File=Packages.java.io.File,Utils=Packages.org.apache.commons.io.FileUtils,base=new File(root).getCanonicalFile();
@@ -246,7 +251,7 @@
     }
     var databaseApplied=sql&&sql.ok!==false&&sql.plan&&sql.plan.statements.length===0&&(normalized.internal.database.schemaPolicy==='observe'||sql.previousVersion===version);
     var applied=!!databaseApplied && prior.pending!==true && prior.modelHash===digest(stable(raw)) && changed.length===0 && !diagnostics.length;
-    var plan={version:1,modelPath:model.path,modelRevision:digest(modelText||''),modelHash:digest(stable(raw)),schemaVersion:version,applied:applied,applicable:!diagnostics.some(function(d){return d.severity==='error';}),changed:changed,conflicts:conflicts,references:references,sql:sql,diagnostics:diagnostics,frontend:c?c.frontend:model.visual,generated: c?Object.keys(all).map(function(p){return {path:p,generated:true,owner:model.path,readOnly:true};}):[]};
+    var plan={version:1,names:c?c.names:[],modelPath:model.path,modelRevision:digest(modelText||''),modelHash:digest(stable(raw)),schemaVersion:version,applied:applied,applicable:!diagnostics.some(function(d){return d.severity==='error';}),changed:changed,conflicts:conflicts,references:references,sql:sql,diagnostics:diagnostics,frontend:c?c.frontend:model.visual,generated: c?Object.keys(all).map(function(p){return {path:p,generated:true,owner:model.path,readOnly:true};}):[]};
     plan.planHash=digest(stable({raw:raw,prior:priorText,model:modelText,artifacts:Object.keys(all).map(function(p){return [p,fs.read(p)];}),expected:all,sql:sql,version:3}));
     plan.studio=model.studio(raw,c,plan); // Avoid a cyclic plan -> studio -> plan value.
     plan.studio.migration={applied:plan.applied,applicable:plan.applicable,schemaVersion:version,sql:sql,diagnostics:diagnostics,planHash:plan.planHash};
@@ -256,7 +261,8 @@
     var prepared=prepare(ctx,args),plan=prepared.plan,c=prepared.compiled,fs=prepared.fs;
     if(args.dryRun===true || !args.planHash){
       var status=plan.applied?'applied':plan.applicable?'pending':'blocked',preview=Object.assign({ok:true,dryRun:true,status:status,requiresPlanHash:true},plan);
-      preview.next=status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.';
+      var renamed=plan.names.filter(function(n){return n.given;});
+      preview.next=(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
       return preview;
     }
     if(!plan.applicable)throw Error('FLOW_CRUD_PLAN_BLOCKED: '+JSON.stringify(plan.diagnostics));
