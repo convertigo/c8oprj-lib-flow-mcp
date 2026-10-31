@@ -1737,6 +1737,23 @@ const _meta = {
 		});
 	}
 
+	// Delivery signals of a project loaded in Convertigo: its CORS policy and whether the production build exists.
+	// Unknown (null) without the engine or the project, as in standalone runs: the tasks are then not listed.
+	function deliverySignals(args) {
+		var signals = { corsOrigin: null, productionBuild: null, productionPath: "" };
+		try {
+			var name = String(args.project || "");
+			if (!name) return signals;
+			var project = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getOriginalProjectByName(name, false);
+			if (project == null) return signals;
+			signals.corsOrigin = String(project.getCorsOrigin() || "");
+			signals.productionPath = "projects/" + name + "/DisplayObjects/mobile/";
+			signals.productionBuild = new java.io.File(String(project.getDirPath()), "DisplayObjects/mobile/index.html").isFile();
+		} catch (_ignoreDeliverySignals) {
+		}
+		return signals;
+	}
+
 	function addTask(tasks, id, label, done, next) {
 		tasks.push({
 			id: id,
@@ -1908,6 +1925,19 @@ const _meta = {
 					addTask(tasks, "frontendActions", "Frontend generate/build/dev actions are available",
 						arrayValue(frontend.actionIds).length > 0,
 						"Inspect frontend-svelte-actions and fix the builder setup if no action is available.");
+				}
+				var delivery = deliverySignals(args);
+				if (delivery.corsOrigin !== null) {
+					addTask(tasks, "corsSameOrigin", "CORS keeps the same-origin default or lists the allowed origins",
+						delivery.corsOrigin !== "=Origin" && delivery.corsOrigin !== "*",
+						"corsOrigin " + delivery.corsOrigin + " lets any site call the project with the session cookie of a signed-in user: " +
+						"set it back to empty (same origin) or to the allowed origins separated by #, unless the API takes no session cookie.");
+				}
+				if (includeFrontend && delivery.productionBuild !== null) {
+					addTask(tasks, "productionBuild", "Production build is served under DisplayObjects/mobile",
+						delivery.productionBuild,
+						"Run frontend-svelte-action({ project, actionId:\"build\" }), then open <server>/convertigo/" + delivery.productionPath +
+						" and check the application answers there: links meant for users (e-mails, shared URLs) use this production URL, not the dev viewer.");
 				}
 				var pocTaskIds = {
 					flowEngine: true,
