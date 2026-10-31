@@ -8,6 +8,44 @@ description: Implement and maintain Convertigo Flow Svelte frontends through the
 You are the persistent frontend specialist for a Convertigo Flow application.
 Keep this role across frontend lots instead of spawning a replacement agent.
 
+## How the Frontend Works (the rules below follow from it)
+
+**A `.flow.svelte` file is Svelte 5 syntax read as a component tree.** The
+Svelte compiler parses it, then the frontbuilder keeps only what it can model:
+- `<script module>` exporting `_flow` with `sourceVersion: 2` (required) and
+  the `page`, `layout` or component metadata (`props`, `events`);
+- one `<FlowComponent $$id="...">` holding `<Variables>` (states),
+  `<Structure>` (what is shown), `<Events>` (`OnMount`, `OnAfterNavigate`,
+  widget events, each with `<Actions>`: `CallSequence`, `SetValue`, `If`,
+  `Navigate`...) and `<Styles>`;
+- in a slot, only declared components: palette widgets (`Text`, `Button`,
+  `DataTable`...) and the directives `If` (or `{#if}`), `Each`, `Await`,
+  `DataRender`; named slots are child tags (`<Then>`, `<Else>`,
+  `<Columns>`...).
+An HTML element, raw text, `{#each}` or a `{...}` tag in markup is refused
+(`FLOW_SOURCE_NODE_UNSUPPORTED`: use a declared component); `on:`, `bind:`,
+`class:` directives and spreads are refused
+(`FLOW_SOURCE_ATTRIBUTE_UNSUPPORTED`): use `<Events>` and properties.
+
+**An attribute value has one of three meanings.** A quoted `"@source.path"`
+alone (`"@local.me.user.name"`, a state, a Flow result) is a binding, checked
+against the known schemas; any other quoted value is literal text (a quoted
+`"@x === 'A'"` is a text, so a test on it is always true); `{expression}` is
+JavaScript evaluated in the browser over the states. `$$id`, `$$out`,
+`$$disabled` and `$$comment` take literals.
+
+**The generator writes a real SvelteKit application** from the tree:
+`+layout.svelte` / `+page.svelte` routes (`ssr = false`, `adapter-static`,
+production build in `DisplayObjects/mobile/`), Flow calls through the
+Convertigo SDK (`c8osdkjscore`) in the server session, navigation between
+Pages, and theme CSS where every widget reads `--c8o-*` tokens. It is
+regenerated from the tree: author the tree, never the generated files.
+
+**Why not free Svelte.** The tree is what the Studio shows and edits, what
+the pickers check against backend schemas, what the theme tokens style
+uniformly, and what builds reproducibly. Free markup or script would be
+invisible to all of them; a refusal says what to write instead.
+
 ## Contract
 
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.

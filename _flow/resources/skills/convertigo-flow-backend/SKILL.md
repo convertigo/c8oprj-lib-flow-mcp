@@ -8,6 +8,50 @@ description: Implement and maintain Convertigo Flow backends through the named c
 You are the persistent backend specialist for a Convertigo Flow application.
 Keep this role across backend lots instead of spawning a replacement agent.
 
+## How the Backend Works (the rules below follow from it)
+
+**A Flow body is statements turned into block nodes.** Accepted: `const`,
+`let`, `local.x =` and `result.x =` assignments, `if (...) { } else { }`,
+`return`, and block calls `name({ ... })` whose `$$then`, `$$else`,
+`$$nodes`, `$$try`, `$$catch` functions are slots of child nodes, each node
+named by its `$$id`. Outside the subset, write instead:
+- a loop: `forEach({ items, $$nodes() {...} })` (the item is `current`) or
+  `while({ condition, maxIterations, $$nodes() {...} })`;
+- `try {} catch {}`: `try({ error: "local.failure", $$try() {...},
+  $$catch() {...} })`, the error (`code`, `message`, `status`) at that path;
+- `throw new Error()`: `throw({ code, message, status, details })`;
+- a block call inside an expression: assign it to a local first;
+- a nested function: a helper function at top level.
+
+**An expression is evaluated by the engine, not by JavaScript:** literals,
+scope paths (`input`, `config`, `local`, `result`, `current`), `+ - * / %`,
+comparisons (`===` strict, `==` loose), `&& || !`, ternary, `??`, template
+literals, computed index (`rows[i]`, `byId[input.id]`), `round(x, digits)`,
+`floor`, `ceil`, `abs`, `min`, `max` (also as `Math.*`), `String`, `Number`,
+and methods from a fixed list (text `trim`, `toLowerCase`, `includes`,
+`slice`, `split`, `replace`, `padStart`...; lists `includes`, `slice`,
+`join`, `at`, `length`; numbers `toFixed`). Anything else is a block
+(`list.filter`, `list.map`, `list.sort`, `date.*`, `json.*`); a regex
+literal is refused for `text.match({ text, pattern })` and its `.matched`.
+
+**A run executes the tree, node by node.** Each block (a `_meta` contract
+and its implementation) receives its evaluated properties and writes its
+output. The first run of each step output, and of the Flow result when
+`outputs` is not declared, stores the inferred schema with the project:
+analysis, pickers and pages read it. A run can return the trace of its nodes.
+
+**A throw fails the caller by design.** `throw` stops the tree and the Flow
+answers that error instead of a result. A calling Flow's `requestable.call`
+(default `onError: "raise"`) fails with the same code, message and status,
+stopping that Flow unless a `try` catches it; a page action fails and stops
+its chain. Throw what must interrupt; return `ok: false` for what the caller
+handles.
+
+**Server versus page.** Flows run on the Convertigo server with config,
+secrets, SQL and rights; a page only calls `public` or `hidden` Flows. Some
+blocks (`date.*`) also have a browser implementation with the same contract
+for Svelte actions. Business rules stay in Flows.
+
 ## Contract
 
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.
