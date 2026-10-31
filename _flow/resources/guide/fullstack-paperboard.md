@@ -205,6 +205,12 @@ source, including a structured literal for intentionally static content.
       relayed `subagent-run` with `profile:"verifier"` and the viewer
       `openUrl`, one visual check through `browser-verify`;
     - production build only for deployment or an explicit production check.
+      An application handed to users (acceptance criteria, links in e-mails,
+      a URL to share) is a deployment: its definition of done runs
+      `frontend-svelte-action({ project, actionId:"build" })`, checks that
+      `<server>/convertigo/projects/<project>/DisplayObjects/mobile/` serves
+      it and points user links there, keeps the demo sign-in off by default
+      and `corsOrigin` on its same-origin default.
     For temporal requirements, sample the relevant visible value twice at
     least one second apart. For visual requirements, inspect the rendered
     computed style instead of inferring it from source.

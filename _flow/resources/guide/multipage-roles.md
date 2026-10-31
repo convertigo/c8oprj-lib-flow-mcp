@@ -38,6 +38,35 @@ In production, call a real authentication provider, for example the Flows of
 check a password. An Alice/Bob/Manager picker is acceptable only behind a
 demonstration configuration, never as a production sign-in screen.
 
+The demonstration switch is `config.demo.login`, which the bootstrap declares
+off in `_flow/engine.yaml` as a global symbol:
+
+```yaml
+config:
+  demo:
+    login: "${<project>.demo.login=false}"
+```
+
+The demo sign-in Flow refuses before anything else when it is off; a symbol is
+text, hence `String(...)`:
+
+```javascript
+if (String(config.demo.login) !== "true") {
+  throw({ code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 })
+}
+```
+
+To turn it on for a demonstration, an administrator sets the global symbol
+`<project>.demo.login` to `true` (Global symbols page of the server or the
+Studio); the CAR deployed elsewhere keeps it off. Never write `login: true` in
+the project, and never let the demo sign-in pick any account from a parameter
+when the switch is off. The page hides the demo picker when a public Flow says
+the switch is off.
+
+The development database keeps HSQLDB and its default user, but its password
+is a reference, as for any connection:
+`password: "${<project>.db.password.secret=}"` (`flow://lib/lib_flow_sql/sql`).
+
 Create a `CurrentUser` Flow that reads `session.authenticatedUser`, looks the
 account up on the server, checks that it is active and returns its role. Take
 neither the identity nor the role from the page. Refuse a missing session
@@ -160,6 +189,19 @@ Check: anonymous access refused, data partitioned, forged identity ignored,
 another user's mutation refused, revoked role read again, stale revision,
 invalid filter or sort, CSV identical to the filtered list, job replayed without
 duplicates, journal, and sign-out with the old cookie unusable.
+
+Before declaring the application done, check its delivery too:
+
+- demo sign-in off by default (`demo.login` false in the project), and the
+  production setting documented: the symbol to set, or to leave unset;
+- `corsOrigin` empty or the listed origins, never `=Origin` or `*`;
+- database password through a symbol reference, never a literal;
+- production build run with `frontend-svelte-action({ project, actionId:"build" })`,
+  and `<server>/convertigo/projects/<project>/DisplayObjects/mobile/` serving
+  the application; links meant for users (e-mails, shared URLs) point there,
+  never to the dev viewer;
+- `flow-app-progress({ project, mode:"hardening" })` without open
+  `corsSameOrigin` or `productionBuild` task.
 
 Finally prove the pages with each role through one relayed
 `subagent-run({profile:"verifier", task, inputs:{url, paths, checks, hints}})`:

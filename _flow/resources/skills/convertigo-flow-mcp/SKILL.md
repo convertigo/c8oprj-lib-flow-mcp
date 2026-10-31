@@ -251,4 +251,11 @@ visible behavior is proved. Do not add production builds, exhaustive browser
 matrices, schema adoption or unrelated hardening unless requested. Report
 remaining mocks, unavailable browser control or runtime warnings honestly.
 
+An application handed to users (acceptance criteria, e-mail links, a URL to
+share) is a delivery. Its definition of done adds the production build
+(`frontend-svelte-action` `build`, served under `DisplayObjects/mobile/`, user
+links on that URL), the demo sign-in off by default behind `config.demo.login`,
+`corsOrigin` left on the same-origin default, and database passwords through
+symbol references (`flow://guide/multipage-roles`).
+
 Native bean writes refuse invalid scalar values; inspect `fixes` and `normalizations` (property, before, after) before continuing. Never rely on an invalid value becoming zero, false or the first enum constant.

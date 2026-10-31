@@ -116,7 +116,18 @@ encode a block in `qname`.
   declared with a default, `password: "${<project>.<usage>.<name>.secret=}"`.
   The server resolves it for the running Flow only (stored encrypted, set in
   the Global symbols page); traces and schemas show the reference. Every
-  `${...}` in a config string is a symbol reference.
+  `${...}` in a config string is a symbol reference. A development HSQLDB
+  may keep its default user, but its password is such a reference too.
+- Keep the CORS policy of the bootstrap (empty `corsOrigin`: same origin; the
+  dev viewer and the production build are served by Convertigo). Never set
+  `=Origin` or `*` on an application with a session cookie: any site could
+  call it in the name of a signed-in user. List the origins (`#`) when a
+  separate front end needs them.
+- A demo sign-in (a Flow that opens a session without a password) runs only
+  when `String(config.demo.login) === "true"`. The bootstrap declares
+  `config.demo.login` as the global symbol `<project>.demo.login`, false by
+  default; set it to `true` only on a demo server or the Studio
+  (`flow://guide/multipage-roles`).
 - Keep a Flow `private` unless a frontend or an external client calls it:
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but

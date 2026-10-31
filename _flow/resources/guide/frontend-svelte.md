@@ -135,7 +135,11 @@ a pending preparation, never an unchanged active viewer.
 6. `flow-app-progress` is optional on the fast path; add `qname` only when a
    real backend Flow is part of the application. Prove the requested visible
    and interactive behavior in the live viewer, including images without 404.
-   Build production only for deployment or an explicit production check.
+   Build production only for deployment or an explicit production check;
+   an application handed to users (acceptance criteria, links in e-mails) is
+   a deployment: `frontend-svelte-action({ project, actionId:"build" })`, then
+   check that `<server>/convertigo/projects/<project>/DisplayObjects/mobile/`
+   serves it. Links meant for users use that URL, never the dev viewer.
    Never claim a color, layout, timer, navigation or viewer state that was
    not observed.
 
