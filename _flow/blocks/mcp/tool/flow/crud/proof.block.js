@@ -20,7 +20,7 @@ const _meta = {
     "project": {
       "kind": "text",
       "type": "string",
-      "required": true
+      "description": "The Flow project to build or check."
     }
   },
   "outputs": {

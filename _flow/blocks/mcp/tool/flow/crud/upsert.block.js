@@ -20,7 +20,7 @@ const _meta = {
     "project": {
       "kind": "text",
       "type": "string",
-      "required": true
+      "description": "The Flow project to build or check."
     },
     "planHash": {"kind":"text","type":"string","description":"planHash of the preceding dryRun preview; apply refuses a stale plan (preview again)."},
     "spec": {
