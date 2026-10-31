@@ -11,5 +11,5 @@ if(seen.length!==2 || answer.error || answer.result.structuredContent.error.code
 if(seen[1].url!=='http://127.0.0.1:28080/convertigo/api/mcp?jsonOnly=true'||seen[1].headers['User-Agent']!=='MistralAI-VibeCLI/proxy'||seen[1].headers.Authorization!=='Bearer fake-test-token')throw new Error('Local relay endpoint or client headers changed');
 seen=[];failure='PKIX path building failed';
 answer=mcp.legacyRelayCall(ctx,request);
-if(seen.length!==1 || answer.result.isError!==false || answer.result.structuredContent.error.message.indexOf('PKIX')<0)throw new Error('Certificate error must not retry as plaintext');
+if(seen.length!==1 || answer.result.isError!==true || answer.result.structuredContent.error.message.indexOf('PKIX')<0)throw new Error('Certificate error must not retry as plaintext');
 print('legacy-relay-proxy OK (plaintext connector fallback, intact response/headers, no certificate downgrade)');

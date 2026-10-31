@@ -507,7 +507,7 @@ const _meta = {
 			warnings.push("The resource had no final new line and keeps none (lib_flow_engine cannot add it).");
 		}
 		if (warnings.length) {
-			result.warnings = warnings;
+			result.warnings = (result.warnings || []).concat(warnings);
 		}
 		result.next = result.dryRun === true
 			? "Dry run: nothing written. Send the same call without dryRun to write it."

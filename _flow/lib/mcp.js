@@ -2173,6 +2173,10 @@
 				if (schemas[index].outputSchema !== undefined) tool.outputSchema = schemas[index].outputSchema;
 			});
 		}
+		if (request && request.method === "tools/call" && response && response.result) {
+			var structured = response.result.structuredContent;
+			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
+		}
 		traceJsonl(ctx, "response", request || {}, response);
 		return response;
 	}
@@ -2186,13 +2190,15 @@
 		}
 		value = sanitizeForMcp(value, ctx);
 		var result = { content: textContent(value), structuredContent: value };
-		if (value && value.error) result.isError = !errorsAsResult(ctx);
+		if (value && (value.error || value.ok === false)) result.isError = true;
 		return result;
 	}
 
 	function toolResponse(request, value, ctx) {
 		request = request || {};
 		var original=toolArguments(request);
+		var authoringWarning = authoringArgumentWarning(request);
+		if (value && authoringWarning) value.argumentWarning = [value.argumentWarning, authoringWarning].filter(function(text) { return !!text; }).join("\n");
 		var ignored = ignoredToolArguments(request);
 		if (value && !value.error && ignored.length) {
 			var warning = "Ignored arguments " + ignored.join(", ") + ": " + toolName(request) +
@@ -2334,14 +2340,6 @@
 			: value;
 	}
 
-	// Match the legacy MCP exactly; only the trusted servlet User-Agent selects this compatibility mode.
-	function errorsAsResult(ctx) {
-		try {
-			var context = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
-			var request = context && context.httpServletRequest;
-			return /^MistralAI-VibeCLI\//.test(String(request && request.getHeader("User-Agent") || ""));
-		} catch (ignored) { return false; }
-	}
 
 	function normalizeToolError(error) {
 		error = error || {};
@@ -2365,7 +2363,7 @@
 				code: normalized.code, hint: normalized.hint, details: normalized.details
 			}));
 		}
-		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult({ error: normalized }, ctx)));
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(Object.assign({ error: normalized }, authoringArgumentWarning(request) ? {argumentWarning: authoringArgumentWarning(request)} : {}), ctx)));
 	}
 
 	function toolOutputSchema(successSchema) {
@@ -2515,6 +2513,18 @@
 
 	// These source arguments are deliberately removed, not arbitrary provider
 	// extensions: tool input schemas otherwise remain open to provider properties.
+	function authoringArgumentWarning(request) {
+		if (["authoring-mutate", "frontend-svelte-mutate"].indexOf(toolName(request)) < 0) return "";
+		var allowed = "project projectDir projectName surface builder action transfer mutation mutations sourceFile sourcePath source target definition name flowName qname flowQName flowSource engineSource frontendSourceDrafts sourceRemovals parentPath focusPath rootPath path arguments persist write dryRun includeTree includeFrontendCatalog includeFlowCatalog includeBindings includeDefinition includeSource includeAnalysis includeSchema includePrivate includeTrace includeFullResponse fullResponse detail mode maxDepth reveal doc hints revision baseRevision baseHash sourceWritable readOnly readOnlyReference".split(" ");
+		var ignored = Object.keys(toolArguments(request)).filter(function(key) { return allowed.indexOf(key) < 0; });
+		var action = toolArguments(request).action;
+		if (action && /(?:^|\.)(?:page|layout)$/.test(String(action.id || "")) && action.name !== undefined) ignored.push("action.name (create a Route segment first)");
+		if (action && typeof action === "object") Object.keys(action).forEach(function(key) {
+			if (["id", "targetPath", "surface", "builder", "position", "targetSlotId", "name", "properties"].indexOf(key) < 0) ignored.push("action." + key);
+		});
+		return ignored.length ? "Ignored arguments " + ignored.join(", ") + ": pass items[].apply.arguments unchanged; creation parameters belong in action (name for a route segment)." : "";
+	}
+
 	function ignoredToolArguments(request) {
 		if (!/^(?:flow-)?code-(check|run|analyze)$/.test(toolName(request))) return [];
 		var args = toolArguments(request);
@@ -2918,6 +2928,7 @@
 			return relativeProjectPath(projectRoot, file);
 		});
 		result.writtenFile = result.writtenFiles[result.writtenFiles.length - 1];
+		if (result.path) result.parentPath = qualifyAuthoringPath(args, result.path);
 		if (result.selectionSourcePath) {
 			result.selectionSourcePath = relativeProjectPath(projectRoot, new File(String(result.selectionSourcePath)));
 		}
@@ -4318,7 +4329,7 @@
 		var out = {};
 		["ok", "title", "message", "sourceFile", "revision", "oldRevision", "contentLength",
 			"hunks", "errorCount", "warningCount", "written", "writtenFile", "writtenFiles", "writtenBytes",
-			"draft", "dirty", "sourceId", "selectionSourcePath",
+			"draft", "dirty", "sourceId", "selectionSourcePath", "path", "selectionPath", "parentPath",
 			"created", "mutationCount", "refreshed", "schemaRequestable", "schemaLearned"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") out[key] = value[key];
 		});

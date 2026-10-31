@@ -576,7 +576,7 @@ const _meta = {
 		} else if (name === "authoring-palette") {
 			description = "Contextual palette for one qualified parentPath. Searches the project, references and workspace; execute items[].apply unchanged.";
 		} else if (name === "authoring-mutate") {
-			description = "Applies a generic authoring mutation through the engine/frontbuilder contract. Requires project.";
+			description = "Applies a palette action or a source mutation. Pass items[].apply.arguments unchanged (action with id and targetPath); source edits require sourceFile and mutation/mutations. Requires project.";
 		} else if (name === "frontend-svelte-tree") {
 			description = "Svelte frontend authoring tree. Use compact detail for structure. For one picker use detail:'inspect', an exact focusPath, maxDepth:0, property:'source' (or another exact bindable property) and sourceId when known; untargeted inspect only summarizes candidate counts.";
 		} else if (name === "frontend-svelte-mutate") {

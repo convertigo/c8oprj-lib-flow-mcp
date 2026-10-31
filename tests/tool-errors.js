@@ -19,7 +19,7 @@ var ordinary=mcp.toolError(request,error,context('codex_cli_rs/0.1'));
 verify(ordinary,true);
 verify(mcp.toolError(request,error,context('claude-code/2')),true);
 var vibe=mcp.toolError(request,error,context('MistralAI-VibeCLI/1.0'));
-verify(vibe,false);
+verify(vibe,true);
 verify(mcp.toolError(request,error,context('other MistralAI-VibeCLI/1.0')),true);
 request.params.arguments.userAgent='MistralAI-VibeCLI/1.0';
 verify(mcp.toolError(request,error,context('ordinary')),true);
@@ -30,6 +30,10 @@ var structured=mcp.toolResponse(request,{ok:false,error:error,revision:'draft'},
 verify(structured,true);
 assert(structured.result.structuredContent.revision==='draft','Error conversion lost draft recovery metadata');
 assert(!mcp.toolResponse(request,{ok:true,result:{error:'application domain value'}},{}).result.isError,'Nested domain error became a tool error');
+var relayed={jsonrpc:'2.0',id:17,result:{isError:false,content:[{type:'text',text:'Error [REMOTE] failed'}],structuredContent:{error:{code:'REMOTE',message:'failed'}}}};
+var finalized=mcp.finalizeResponse({},request,relayed);
+assert(finalized.result.isError===true && finalized.result.structuredContent.error.code==='REMOTE','Final response must repair an upstream MCP failure flag');
+assert(mcp.toolResponse(request,{ok:false,message:'Dev setup failed'},{}).result.isError===true,'An ok:false response is also a failed tool result');
 var protocol=mcp.jsonRpcError(17,-32601,'Unknown method',{code:'METHOD_NOT_FOUND'});
 assert(protocol.error.code===-32601 && !protocol.result,'Protocol error must remain JSON-RPC');
 var resource=mcp.toolError({id:17,method:'resources/read'},error,{});
@@ -48,13 +52,13 @@ ctx.callBlock=function(){throw error;};
 verify(dispatcher.run(ctx,{props:{request:request}}),true);
 ctx.callBlock=function(){return mcp.jsonRpcError(17,-32000,error.message,error);};
 verify(dispatcher.run(ctx,{props:{request:request}}),true);
-// A Vibe client gets the same readable errors from the dispatcher, as results (isError false).
+// Vibe receives the same failure flag and structured diagnostics as every other provider.
 var vibeCtx=context('MistralAI-VibeCLI/1.0');
 vibeCtx.props=ctx.props;vibeCtx.lib=ctx.lib;vibeCtx.write=ctx.write;vibeCtx.blockNames=ctx.blockNames;
 vibeCtx.callBlock=function(){throw error;};
-verify(dispatcher.run(vibeCtx,{props:{request:request}}),false);
+verify(dispatcher.run(vibeCtx,{props:{request:request}}),true);
 vibeCtx.callBlock=function(){return mcp.jsonRpcError(17,-32000,error.message,error);};
-verify(dispatcher.run(vibeCtx,{props:{request:request}}),false);
+verify(dispatcher.run(vibeCtx,{props:{request:request}}),true);
 ctx.blockNames=function(){throw error;};
 // block catalog lookup itself is also part of tool execution.
 try { var unexpected=dispatcher.run(ctx,{props:{request:request}}); verify(unexpected,true); }

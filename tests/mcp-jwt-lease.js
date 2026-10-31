@@ -215,7 +215,7 @@ try {
     assert(written === response, "The tool error was not written to its output");
     return response;
   }
-  [["codex_cli_rs/0.1", true], ["claude-code/2", true], ["MistralAI-VibeCLI/1.0", false]].forEach(function (client) {
+  [["codex_cli_rs/0.1", true], ["claude-code/2", true], ["MistralAI-VibeCLI/1.0", true]].forEach(function (client) {
     var response = dispatch(client[0]);
     var error = response.result && response.result.structuredContent && response.result.structuredContent.error;
     assert(response.id === 7 && !response.error && response.result.isError === client[1],
