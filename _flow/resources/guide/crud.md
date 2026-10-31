@@ -138,7 +138,8 @@ rules, and copying them costs more than calling the data sources directly.
   only. No Flow, no page, no shell entry, no session permission. Business
   Flows call `data.read({source:"<entity>_read", filter, orderBy, limit})`,
   `data.write({source:"<entity>_write", operation, key, revision, patch})` or
-  `sql.*`. A generated form cannot list the options of a `"schema"` entity:
+  `sql.*`, once the project `config` of `_flow/engine.yaml` carries these
+  sources and their connection (see Call the generated Flows). A generated form cannot list the options of a `"schema"` entity:
   relate a `"full"` entity to it only with `ui.generate: "none"`, or make the
   target `"data"`.
 - root `ui.generate: "none"`: no shell, sign-in, home or page at all; your
@@ -246,10 +247,9 @@ related labels does the same: never one read per row.
 Each generated Flow carries in its `_flow.config` only the connection, named
 queries, writes, data sources and `crud` settings its body names;
 `_flow/data/config.generated.json` keeps the whole configuration. A business
-Flow that calls `data.read` / `sql.query` on a generated source or query
-declares that entry in its own `config` (copy it from
-`config.generated.json`), or the project carries it once in `engine.yaml`
-`config` (inherited by every Flow of the project).
+Flow that calls `data.read` / `data.write` on a generated source finds it in
+the project `config` of `_flow/engine.yaml`, registered once (Call the generated Flows),
+not in a copy inside each Flow.
 
 Each entity Flow checks the session and the role on the server, whatever
 calls it. Pages: `+layout.flow.svelte` (an `AppShell` with one link per
@@ -289,9 +289,14 @@ local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id
 ```
 
 The generated data sources (`tickets_read`, `tickets_write`) and named SQL
-live in the `_flow.config` of each generated Flow: your Flows do not inherit
-them, so `data.read({ source: "tickets_read" })` fails in a business Flow.
-Copy the connection instead (next section).
+live in the `_flow.config` of the generated Flows that use them: your Flows do
+not inherit them, so `data.read({ source: "tickets_read" })` fails in a
+business Flow until the project configuration carries the source. Register
+`sql.connections.<connection>`, `data.providers.sql` and the sources your Flows
+use once in the project `config` of `_flow/engine.yaml` (`config.mutate`, see
+`flow://guide/authoring`), with the values of
+`_flow/data/config.generated.json`: every Flow of the project inherits them.
+Never paste that configuration into each business Flow.
 
 ### Business actions in a transaction
 
