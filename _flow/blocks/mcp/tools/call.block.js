@@ -180,6 +180,13 @@ const _meta = {
 					return response;
 				}
 				var block = toolMap(ctx)[name];
+				if (!block && typeof ctx.blockNames === "function" && ctx.blockNames().indexOf("mcp.tools.server") !== -1) {
+					var serverResponse = ctx.callBlock("mcp.tools.server", { mode: "call", request: request }, { trace: false });
+					if (serverResponse) {
+						ctx.write(out, serverResponse);
+						return serverResponse;
+					}
+				}
 				// Relayed answers belong to the legacy MCP: do not rewrap or normalize them.
 				if (!block && mcp.legacyRelayTool(name)) {
 					var relayed;

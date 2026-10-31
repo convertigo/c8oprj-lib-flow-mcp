@@ -695,6 +695,13 @@ const _meta = {
 					tools.push(tool);
 				}
 			});
+			var serverTools = byName["mcp.tools.server"] ? ctx.callBlock("mcp.tools.server", { mode: "list" }, { trace: false }) : [];
+			serverTools.forEach(function (tool) {
+				if (!own[tool.name] && !tools.some(function (entry) { return entry.name === tool.name; })) {
+					tool.outputSchema = ctx.lib("mcp").toolOutputSchema();
+					tools.push(tool);
+				}
+			});
 			tools.sort(function (a, b) {
 				return a.name.localeCompare(b.name);
 			});
