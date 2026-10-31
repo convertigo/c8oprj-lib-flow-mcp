@@ -178,8 +178,9 @@ and apply again. A hand edit makes the next apply fail with
 
 Each entity Flow checks the session and the role on the server, whatever
 calls it. Pages: `+layout.flow.svelte` (an `AppShell` with one link per
-entity, unless its `ui.navigation` is `false`, and the root `ui.navigation`), the dashboard (`crud_dashboard`), `login`
-(`crud_login`) and, per entity, `<entity>` (`<entity>_list`),
+entity, unless its `ui.navigation` is `false`, and the root `ui.navigation`), the dashboard (`crud_dashboard`, or a redirection
+to `ui.homePage`), `login` (`crud_login`; `ui.loginPage` replaces it as the
+sign-in the pages lead to) and, per entity, `<entity>` (`<entity>_list`),
 `<entity>/detail` and `<entity>/form`. SQL lives in
 `_flow/resources/sql/crud` (`schema.json`, `data.json`, the HSQLDB database).
 
@@ -324,6 +325,29 @@ export const _flow = { sourceVersion: 2, page: { id: "my_tickets", title: "My ti
 
 The generated pages, dashboard included, cannot be changed by hand: add a
 page instead of editing one.
+
+### Your own home and sign-in pages
+
+The generated shell has a home (the dashboard `crud_dashboard`, at `/`) and a
+sign-in (`crud_login`, the demo account picker, at `/login`). To give them to
+your pages, name them by their `page.id` at the root of the model:
+
+```json
+"ui": {"homePage": "my_tickets", "loginPage": "sign_in",
+       "navigation": [{"page": "my_tickets", "label": "My tickets"}]}
+```
+
+- `ui.homePage`: the home of the shell and where the demo sign-in leads; the
+  dashboard leaves the navigation, and `/` sends a signed-in user to it (an
+  anonymous one to the sign-in).
+- `ui.loginPage`: where every generated page sends an anonymous user, and
+  where sign-out leads. Your sign-in page loads the session without
+  requiring it, signs in (`session.authenticate` in a business Flow), then
+  navigates to the home page; the pages above then send to `sign_in`, not
+  `crud_login`.
+- `crud_dashboard` and `crud_login` stay generated (`/login` remains the demo
+  sign-in when `security.demoLogin` is true): apply refuses the removal of
+  generated files.
 
 ### CSV export
 
