@@ -917,6 +917,8 @@
 	 */
 	function lockProjectFlags(project, status) {
 		var lock = null;
+		// a Studio reload running meanwhile does not take this write for its own mark, lock acquired or not
+		projectFlagWrites(project);
 		try {
 			lock = projectFlagLock(project);
 			if (!lock.tryLock(30, Packages.java.util.concurrent.TimeUnit.SECONDS)) {
@@ -934,7 +936,12 @@
 		if (status) {
 			status.acquired = lock != null;
 		}
+		var ended = false;
 		return function () {
+			if (!ended) {
+				ended = true;
+				projectFlagWrites(project);
+			}
 			if (lock != null) {
 				lock.unlock();
 				lock = null;
@@ -943,34 +950,64 @@
 	}
 
 	/**
-	 * Runs a Project Explorer reload (UI thread) and notes when it is the reload that marked the project as
-	 * changed: the Studio marks the project of any changed child, such as a Flow engine holding the draft of
-	 * another Flow, and only a Save lowers it. The note carries Project.getLastChange(), so that any later
-	 * change of the project invalidates it. Waits at most 2 s for a registration in progress: past that, the
-	 * reload runs without a note and the mark stays, as without this.
+	 * Counts the writes of the change flag of a project (one at the start of a write, one at its end) and returns the
+	 * count: a reload that sees the same count before and after it ran alone.
 	 */
-	function reloadNotingProjectFlag(project, reload) {
+	function projectFlagWrites(project, read) {
+		var counters = sharedMap("lib_flow_mcp.projectFlagWrites");
+		var key = String(project.getName());
+		counters.putIfAbsent(key, new Packages.java.util.concurrent.atomic.AtomicLong());
+		var counter = counters.get(key);
+		return Number(read === true ? counter.get() : counter.incrementAndGet());
+	}
+
+	/** Runs fn under the flag lock if it is free within 2 s; returns whether it ran. */
+	function brieflyWithProjectFlagLock(project, fn) {
 		var lock = null;
 		try {
 			lock = projectFlagLock(project);
 			if (!lock.tryLock(2, Packages.java.util.concurrent.TimeUnit.SECONDS)) {
-				lock = null;
+				return false;
 			}
 		} catch (_noLock) {
-			lock = null;
+			return false;
 		}
 		try {
+			fn();
+			return true;
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	/**
+	 * Runs a Project Explorer reload (UI thread) and notes when it is the reload that marked the project as
+	 * changed: the Studio marks the project of any changed child, such as a Flow engine holding the draft of
+	 * another Flow, and only a Save lowers it. The note carries Project.getLastChange(), so that any later
+	 * change of the project invalidates it.
+	 * The flag lock is taken before and after the reload, never during it: a reload can wait minutes on the UI thread
+	 * (for the frontend authoring lock, for a dialog), and a lock held meanwhile made every Flow registration wait 30 s
+	 * and then write its flags without it. A flag write that ran during the reload (another count) leaves the mark,
+	 * as does a lock busy for more than 2 s.
+	 */
+	function reloadNotingProjectFlag(project, reload) {
+		var before = null;
+		brieflyWithProjectFlagLock(project, function () {
 			// the reload also moves lastChange when the project is already marked: a reload-only mark is followed
-			var reloadOnly = project.hasChanged !== true || studioReloadNoted(project, Number(project.getLastChange()));
-			reload();
-			if (lock != null && reloadOnly && project.hasChanged === true) {
+			before = {
+				writes: projectFlagWrites(project, true),
+				reloadOnly: project.hasChanged !== true || studioReloadNoted(project, Number(project.getLastChange()))
+			};
+		});
+		reload();
+		if (before == null || before.reloadOnly !== true) {
+			return;
+		}
+		brieflyWithProjectFlagLock(project, function () {
+			if (project.hasChanged === true && projectFlagWrites(project, true) === before.writes) {
 				studioReloadFlags().put(String(project.getName()), Packages.java.lang.Long.valueOf(project.getLastChange()));
 			}
-		} finally {
-			if (lock != null) {
-				lock.unlock();
-			}
-		}
+		});
 	}
 
 	/** Whether the noted reload mark is still the last change of the project (lastChange read before ours). */
@@ -5237,6 +5274,9 @@
 		assertNoUnsavedProjectChanges: assertNoUnsavedProjectChanges,
 		unsavedProjectChanges: unsavedProjectChanges,
 		withProjectFlagLock: withProjectFlagLock,
+		_reloadNotingProjectFlag: reloadNotingProjectFlag,
+		_lockProjectFlags: lockProjectFlags,
+		_studioReloadNoted: studioReloadNoted,
 		assertFlowNameFree: assertFlowNameFree,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
