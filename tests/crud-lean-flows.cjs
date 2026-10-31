@@ -11,7 +11,9 @@ check(flows.every(([,t])=>JSON.stringify(meta(t).config,null,2).length<whole/2),
 check(bytes<flows.length*whole,'the generated Flows weigh less than one copy of the configuration each ('+bytes+' bytes for '+flows.length+' Flows, configuration '+whole+')');
 const [prefix]=Object.keys(c.flows).find(n=>n.endsWith('_initialize')).split('_initialize'),entity=c.entities[c.entities.length-1],other=c.entities[0];
 const list=meta(c.flows[prefix+'_'+entity+'_list']);
-check(list.config.data.sources[entity+'_read']&&!list.config.data.sources[other+'_read']&&!list.config.data.sources[entity+'_write'],'a list carries its own read source only');
+check(list.config.data.sources[entity+'_read']&&Object.keys(list.config.data.sources).every(n=>n.endsWith('_read')),'a list carries read sources only (its own and those of its relations)');
+const authors=meta(c.flows[prefix+'_'+other+'_list']);
+check(Object.keys(authors.config.data.sources).join(',')===other+'_read','a list without relation carries its own read source only');
 check(!list.config.sql.queries&&!list.config.sql.writes&&!list.config.crud?.optionQueries,'a list carries no named query, write or option map');
 const save=meta(c.flows[prefix+'_'+entity+'_save']);
 check(save.config.data.sources[entity+'_write']&&save.config.sql.writes[entity+'_update']&&!save.config.sql.writes[other+'_update'],'a save carries its write source and its own writes');

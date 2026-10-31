@@ -228,7 +228,7 @@ and apply again. A hand edit makes the next apply fail with
 
 | Flow (prefix `desk`) | Inputs | Result |
 | --- | --- | --- |
-| `desk_<entity>_list` | `offset`, `limit` (1-200), `search`, `filter`, `orderBy`, `direction`, `includeResource` (default false) | `page.rows[]` (`key`, `values`, `canRead`, `canUpdate`, `canDelete`), `page.total`; `resource` only with `includeResource: true` |
+| `desk_<entity>_list` | `offset`, `limit` (1-200), `search`, `filter`, `orderBy`, `direction`, `includeResource` (default false) | `page.rows[]` (`key`, `values`, `displayValues` with relation labels, `canRead`, `canUpdate`, `canDelete`), `page.total`; `resource` only with `includeResource: true` |
 | `desk_<entity>_read` | `id` | `row` (`key`, `values`, `displayValues` with relation labels); 404 when absent |
 | `desk_<entity>_count` | none | `rows[0].total` |
 | `desk_<entity>_options` | `labelField` | `rows[]` (`value`, `label`), at most 200 |
@@ -237,6 +237,11 @@ and apply again. A hand edit makes the next apply fail with
 | `desk_session` | none | `authenticated`, `user`, `role`, `permissions.<entity>.<operation>` |
 | `desk_demo_login`, `desk_logout` | `user` / none | sign in (demo only) / sign out |
 | `desk_initialize`, `desk_runtime_proof` | none | private: schema and seed / read-only checks |
+
+A list resolves the labels of its relations with one `data.read` per
+relation over the keys of the page (`filter: {field, op: "in", value: keys}`,
+at most 200), then looks each row up in a map. A business Flow that shows
+related labels does the same: never one read per row.
 
 Each generated Flow carries in its `_flow.config` only the connection, named
 queries, writes, data sources and `crud` settings its body names;
