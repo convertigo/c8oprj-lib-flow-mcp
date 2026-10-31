@@ -467,6 +467,36 @@
 			": patch it with code-patch on this revision, or replace it with code-set on this revision (code-discard returns to the saved Flow).";
 	}
 
+	// The calls written as JavaScript that code-set mapped onto the catalog (autoCorrected) or proposes to map
+	// (proposedPatch), in the text too: a client that shows the text alone gets each edit with its line and confidence.
+	function intuitiveCallLines(value) {
+		function shown(edit) {
+			var before = String(edit.oldText || "").trim(), after = String(edit.newText || "").trim();
+			return "line " + edit.line + " (" + edit.confidence + "): " + (before.length > 90 ? before.substring(0, 90) + "…" : before) +
+				" -> " + (after.length > 110 ? after.substring(0, 110) + "…" : after);
+		}
+		var lines = "";
+		var applied = value.autoCorrected && value.autoCorrected.edits || [];
+		if (applied.length) {
+			lines += "\nAuto-corrected " + applied.length + " call" + (applied.length > 1 ? "s" : "") + " (confidence >= " + value.autoCorrected.threshold + "), written in code:" +
+				applied.slice(0, 12).map(function (edit) { return "\n- " + shown(edit); }).join("") +
+				(applied.length > 12 ? "\n- " + (applied.length - 12) + " more in structuredContent.autoCorrected." : "");
+		}
+		var patch = value.proposedPatch;
+		if (patch && patch.edits && patch.edits.length) {
+			lines += "\nProposed patch" + (patch.revision ? " on revision " + patch.revision : "") + " (structuredContent.proposedPatch.edits, ready for code-patch edits):" +
+				patch.edits.slice(0, 12).map(function (edit) { return "\n- " + shown(edit) + (edit.confidence < patch.threshold ? " — " + String(edit.reason || "") : ""); }).join("") +
+				(patch.edits.length > 12 ? "\n- " + (patch.edits.length - 12) + " more in structuredContent.proposedPatch.edits." : "");
+		}
+		if (patch && patch.unresolved && patch.unresolved.length) {
+			lines += "\nNo mapping:" + patch.unresolved.slice(0, 5).map(function (entry) { return "\n- line " + entry.line + ": " + entry.reason; }).join("");
+		}
+		if (patch && patch.next) {
+			lines += "\n" + patch.next;
+		}
+		return lines;
+	}
+
 	function valueKeys(value) {
 		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
 			return value[key] !== undefined;
@@ -480,7 +510,7 @@
 		}
 		if (value.error) {
 			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
-				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + " See structuredContent.error.";
+				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
 		}
 		var parts = [];
 		if (value.ok === true) {
@@ -529,7 +559,7 @@
 			parts.push(String(value.registration.accessibilityNote).replace(/\.$/, ""));
 		}
 		parts.push(value.hints ? "Use structuredContent for data; pass hints=false after reading hints." : "Use structuredContent for data.");
-		return parts.join(". ");
+		return parts.join(". ") + intuitiveCallLines(value);
 	}
 
 	// value: sanitized already (toolResult), the structuredContent the text summarizes.
@@ -3649,6 +3679,15 @@
 			out.fixes = value.fixes;
 			out.code = value.code;
 		}
+		// So are the calls auto-corrected, and the proposed patch is passed unchanged to code-patch
+		if (value.autoCorrected) {
+			out.autoCorrected = value.autoCorrected;
+			out.code = value.code;
+		}
+		if (value.proposedPatch) {
+			out.proposedPatch = value.proposedPatch;
+			if (!value.proposedPatch.revision && value.code) out.code = value.code;
+		}
 		if (value.codeFile) {
 			out.codeFile = value.codeFile;
 		}
@@ -3700,7 +3739,9 @@
 			out.registration = compactRegistration(value.registration);
 		}
 		out.responseDetail = "summary";
-		if (value.ok === false) {
+		if (value.ok === false && value.proposedPatch && value.proposedPatch.edits && value.proposedPatch.edits.length) {
+			out.next = value.proposedPatch.next;
+		} else if (value.ok === false) {
 			out.next = value.draft
 				? "Patch the working copy with code-patch, then check again with code-check."
 				: "Fix diagnostics, then retry code-set before saving.";
