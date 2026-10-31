@@ -59,6 +59,7 @@ function run(args, projectOwns, projectError) {
 });
 
 var own = run({ project: "App", uri: "flow://guide/frontend-svelte" }, true);
+assert(own.response.result.structuredContent.text === "own", "Project resources expose text with content as alias");
 assert(own.calls.join(",") === "mcp.tool.flow.resource.get" && own.response.result.structuredContent.content === "own", "a project resource keeps precedence");
 
 var other = run({ project: "App", uri: "flow://App/resources/x.md" }, false);
@@ -75,6 +76,7 @@ assert(missing.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.rea
 	assert(bare.calls.join(",") === "mcp.resources.read", uri + " without project goes to resources/read alone: " + bare.calls);
 	assert(bare.response.result.structuredContent.text === GUIDE && bare.response.result.structuredContent.source === "resources/read" &&
 		!bare.response.result.isError && bare.response.id === 17, uri + " is read without project: " + JSON.stringify(bare.response));
+	assert(bare.response.result.structuredContent.content === GUIDE, "MCP guide text retains the content alias");
 });
 var bareMissing = run({ uri: "flow://guide/missing" }, false);
 assert(bareMissing.calls.join(",") === "mcp.resources.read" && bareMissing.response.result.structuredContent.error.code === "UNKNOWN_RESOURCE" &&

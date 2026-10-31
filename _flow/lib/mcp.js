@@ -2175,6 +2175,10 @@
 		}
 		if (request && request.method === "tools/call" && response && response.result) {
 			var structured = response.result.structuredContent;
+			if (toolName(request) === "flow-resource-get" && structured && !structured.error) {
+				if (typeof structured.text === "string" && structured.content === undefined) structured.content = structured.text;
+				else if (typeof structured.content === "string" && structured.text === undefined) structured.text = structured.content;
+			}
 			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
 		}
 		traceJsonl(ctx, "response", request || {}, response);

@@ -205,6 +205,7 @@ const _meta = {
 			}
 			// A tool that may have written (even when it failed) drops the kept project answers.
 			mcp.stableToolCalled(name);
+			if (name === "flow-resource-get") response = mcp.finalizeResponse(ctx, request, response);
 			ctx.write(out, response);
 			return response;
 		}

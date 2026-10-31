@@ -496,6 +496,7 @@ const _meta = {
 		engineArgs.patch = replacement.patch;
 		engineArgs.baseHash = current.hash;
 		var result = ctx.resourcePatch(engineArgs);
+		if (result.ok === false) return result;
 		result.mode = mode;
 		result.hunks = applied ? applied.hunks.length : 1;
 		if (applied) {
