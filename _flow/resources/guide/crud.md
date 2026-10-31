@@ -228,7 +228,7 @@ and apply again. A hand edit makes the next apply fail with
 
 | Flow (prefix `desk`) | Inputs | Result |
 | --- | --- | --- |
-| `desk_<entity>_list` | `offset`, `limit` (1-200), `search`, `filter`, `orderBy`, `direction` | `resource`, `page.rows[]` (`key`, `values`, `canRead`, `canUpdate`, `canDelete`), `page.total` |
+| `desk_<entity>_list` | `offset`, `limit` (1-200), `search`, `filter`, `orderBy`, `direction`, `includeResource` (default false) | `page.rows[]` (`key`, `values`, `canRead`, `canUpdate`, `canDelete`), `page.total`; `resource` only with `includeResource: true` |
 | `desk_<entity>_read` | `id` | `row` (`key`, `values`, `displayValues` with relation labels); 404 when absent |
 | `desk_<entity>_count` | none | `rows[0].total` |
 | `desk_<entity>_options` | `labelField` | `rows[]` (`value`, `label`), at most 200 |
@@ -237,6 +237,14 @@ and apply again. A hand edit makes the next apply fail with
 | `desk_session` | none | `authenticated`, `user`, `role`, `permissions.<entity>.<operation>` |
 | `desk_demo_login`, `desk_logout` | `user` / none | sign in (demo only) / sign out |
 | `desk_initialize`, `desk_runtime_proof` | none | private: schema and seed / read-only checks |
+
+Each generated Flow carries in its `_flow.config` only the connection, named
+queries, writes, data sources and `crud` settings its body names;
+`_flow/data/config.generated.json` keeps the whole configuration. A business
+Flow that calls `data.read` / `sql.query` on a generated source or query
+declares that entry in its own `config` (copy it from
+`config.generated.json`), or the project carries it once in `engine.yaml`
+`config` (inherited by every Flow of the project).
 
 Each entity Flow checks the session and the role on the server, whatever
 calls it. Pages: `+layout.flow.svelte` (an `AppShell` with one link per
@@ -422,11 +430,12 @@ your pages, name them by their `page.id` at the root of the model:
 
 ### CSV export
 
-Export what the user may see by calling the generated list, then `data.csv`
+Export what the user may see by calling the generated list with
+`includeResource: true` (a list answers only `page` otherwise), then `data.csv`
 with its `resource` and rows (`flow-block-get` gives the `data.csv` contract):
 
 ```javascript
-local.list = requestable.call({ requestable: ".desk_tickets_list", input: { offset: 0, limit: 200 } })
+local.list = requestable.call({ requestable: ".desk_tickets_list", input: { offset: 0, limit: 200, includeResource: true } })
 local.file = data.csv({ resource: local.list.resource, rows: local.list.page.rows, filename: "tickets.csv" })
 result.file = local.file
 ```
