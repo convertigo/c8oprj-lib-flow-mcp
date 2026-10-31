@@ -281,6 +281,66 @@
     });
     return out;
   }
+  // The project configuration the model registers once in _flow/engine.yaml (its config branch): the connection, the
+  // sql provider of data and every generated data source, so that a business Flow calls data.read / data.write on them
+  // without copying anything. The project config wins over the _flow.config of each Flow, so the model owns these
+  // paths: a value changed by hand is a conflict, a path the model no longer generates is removed while it keeps the
+  // value the model wrote. The password is empty (embedded database) or a .secret reference: the model refuses others.
+  var ENGINE_PATH='_flow/engine.yaml',ENGINE_DEFAULT='version: 1\nengineQName: lib_flow_engine.Engine\nbindings: {}\nconfig: {}\n';
+  function projectConfigEntries(c){
+    var cfg=copy(c.config),out={};
+    Object.keys(cfg.sql.connections).forEach(function(n){out['sql.connections.'+n]=cfg.sql.connections[n];});
+    out['data.providers.sql']=cfg.data.providers.sql;
+    Object.keys(cfg.data.sources).forEach(function(n){out['data.sources.'+n]=cfg.data.sources[n];});
+    return out;
+  }
+  // engine.yaml as the runtime reads it: the working copy of a loaded project, else the file.
+  function engineSource(args,fs){
+    var flowEngine=null;
+    try{var project=Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project),false);if(project)flowEngine=project.getFlowEngine();}
+    catch(noStudio){}
+    var text=flowEngine?String(flowEngine.getEngineSource()):fs.read(ENGINE_PATH);
+    return {flowEngine:flowEngine,text:text&&text.trim()?text:null};
+  }
+  function configAt(value,path){return path.split('.').reduce(function(v,k){return v&&typeof v==='object'&&own(v,k)?v[k]:undefined;},value);}
+  function projectConfigPlan(args,fs,c,prior,diagnostics){
+    var live=engineSource(args,fs),definition={};
+    if(live.text){try{definition=parseModel(live.text)||{};}catch(invalid){diagnostics.push({code:'FLOW_CRUD_ENGINE_YAML_INVALID',severity:'error',path:ENGINE_PATH,message:String(invalid.message||invalid),fix:'Fix the YAML of '+ENGINE_PATH+', then preview again.'});return null;}}
+    var current=definition.config&&typeof definition.config==='object'?definition.config:{},wanted=projectConfigEntries(c);
+    var owned=prior.projectConfig||{},previous=prior.pending===true&&prior.previousProjectConfig||{},set={},remove=[];
+    function same(a,b){return a!==undefined&&b!==undefined&&stable(a)===stable(b);}
+    Object.keys(wanted).forEach(function(p){
+      var value=configAt(current,p);
+      if(same(value,wanted[p]))return;
+      if(value!==undefined&&!same(value,owned[p])&&!same(value,previous[p]))diagnostics.push({code:'FLOW_CRUD_CONFIG_CONFLICT',severity:'error',path:ENGINE_PATH,configPath:'config.'+p,message:'config.'+p+' of '+ENGINE_PATH+' is not the value the model generates, and the project configuration wins over the generated Flows.',fix:'Remove config.'+p+' from '+ENGINE_PATH+' (apply registers the generated value), change the model, or override it in a named configuration (configs.<name>, flow://guide/tags).'});
+      set[p]=wanted[p];
+    });
+    Object.keys(owned).forEach(function(p){
+      if(own(wanted,p))return;
+      var value=configAt(current,p);
+      if(same(value,owned[p]))remove.push(p);
+      else if(value!==undefined)diagnostics.push({code:'FLOW_CRUD_CONFIG_RELEASED',severity:'warning',path:ENGINE_PATH,configPath:'config.'+p,message:'The model no longer generates config.'+p+', changed by hand: apply keeps it and the model stops owning it.',fix:'Remove it when no business Flow reads it.'});
+    });
+    return {path:ENGINE_PATH,entries:Object.keys(wanted).length,set:Object.keys(set).map(function(p){return 'config.'+p;}),remove:remove.map(function(p){return 'config.'+p;}),changed:Object.keys(set).length+remove.length>0,values:wanted,setValues:set,removePaths:remove};
+  }
+  // Writes the planned paths through the minimal edit of the engine, which keeps the other lines of engine.yaml as they
+  // are: one path per edit, since several keys added at the same place make it write the whole file again.
+  function writeProjectConfig(ctx,args,fs,plan){
+    if(!plan||!plan.changed)return null;
+    if(typeof ctx.applyMutationSource!=='function')throw Error('FLOW_CRUD_CONFIG_UNAVAILABLE: this lib_flow_engine cannot edit '+ENGINE_PATH+'; update it, then apply again.');
+    var live=engineSource(args,fs),text=live.text||ENGINE_DEFAULT,mutations=Object.keys(plan.setValues).map(function(p){return {op:'set',path:'config.'+p,value:plan.setValues[p]};}).concat(plan.removePaths.map(function(p){return {op:'remove',path:'config.'+p};}));
+    mutations.forEach(function(mutation){
+      var edited=ctx.applyMutationSource({target:'engine',engineSource:text,mutations:[mutation],includeTree:false,projectDir:args.projectDir});
+      if(!edited||edited.ok===false||edited.source===undefined||edited.source===null)throw Error('FLOW_CRUD_CONFIG_FAILED: '+mutation.path+' '+JSON.stringify(edited&&edited.error||edited));
+      text=String(edited.source);
+    });
+    var out={path:ENGINE_PATH,set:plan.set,remove:plan.remove,persisted:'saved'};
+    // A loaded project with unsaved engine.yaml changes keeps them as its working copy: the registration joins it and
+    // the Save of the project writes both. Otherwise the file is written, and a loaded project reads it again.
+    if(live.flowEngine&&live.flowEngine.isEngineSourceDirty()){live.flowEngine.setEngineSource(text);out.persisted='draft';}
+    else fs.write(ENGINE_PATH,text);
+    return out;
+  }
   function retiredFlow(name){return '// @generated by flow-crud; owner: _flow/data/model.yaml; retired: the model no longer generates this Flow.\nconst _flow = '+json({sourceVersion:2,accessibility:'private',authenticatedContextRequired:true,inputs:{}})+'\n\nfunction '+id(name)+'({input,config,result}) {\n  throw({code:"GONE",message:"'+name+' is no longer generated by the model: call the business Flows",status:410})\n}\n';}
   function schemaShape(value){var d=copy(value);delete d.version;return stable(d);}
   function runtimePlan(ctx,args,c,fs){
@@ -306,7 +366,7 @@
     var raw=args.spec!==undefined?copy(args.spec):modelText?parseModel(modelText):oldText?JSON.parse(oldText):null;
     if(!raw)fail('Supply spec or create '+model.path);
     var normalized=model.normalize(raw,args.project,legacy),manifestPath='_flow/resources/sql/crud/manifest.json',priorText=fs.read(manifestPath),prior=JSON.parse(priorText||'{"files":{}}');
-    var diagnostics=normalized.diagnostics.slice(),c=null,changed=[],conflicts=[],sql=null,references=null,all={},version=raw.schemaVersion||prior.schemaVersion||1;
+    var diagnostics=normalized.diagnostics.slice(),c=null,changed=[],conflicts=[],sql=null,references=null,projectConfig=null,all={},version=raw.schemaVersion||prior.schemaVersion||1;
     if(prior.pending===true && prior.modelHash!==digest(stable(raw)))diagnostics.push({code:'FLOW_CRUD_PENDING_DIFFERENT_MODEL',severity:'error',message:'Resume the pending model before applying a different model.'});
     if(!diagnostics.some(function(d){return d.severity==='error';})){
       c=compile(raw,args.project,{model:model,legacy:legacy,ui:ui,schemaVersion:version});
@@ -327,6 +387,7 @@
       Object.keys(all).forEach(function(p){var live=fs.read(p),adoptStarter=!priorText&&p==='_flow/frontbuilder/svelte/model/'+args.project+'/src/routes/+page.flow.svelte'&&live===starter.initialSveltePage(args.project),recoverable=prior.pending===true&&prior.previousFiles&&prior.previousFiles[p]===live;if(live!==null&&live!==all[p]&&!recoverable&&!adoptStarter&&(!own(prior.files,p)||prior.files[p]!==live))conflicts.push(p);if(live!==all[p])changed.push(p);});
       if(!/(^|\n)\/_flow\/(\r?\n|$)/.test(fs.read('.httpignore')||''))diagnostics.push({code:'FLOW_CRUD_HTTPIGNORE_REQUIRED',severity:'error'});
       conflicts.forEach(function(p){diagnostics.push({code:'FLOW_CRUD_GENERATED_CONFLICT',severity:'error',path:p});});
+      projectConfig=projectConfigPlan(args,fs,c,prior,diagnostics);if(projectConfig&&projectConfig.changed)changed.push(ENGINE_PATH);
       references=referencePlan(args,fs,c);
       if(!diagnostics.some(function(d){return d.severity==='error';})){
         if(references.missing.length)sql={ok:true,skipped:true,reason:'FLOW_CRUD_REFERENCES_MISSING',message:'The SQL plan needs '+references.missing.join(', ')+'; apply adds the references, then plans and applies the schema of a new database (an existing database asks for a new preview).'};
@@ -338,10 +399,11 @@
     var databaseApplied=sql&&sql.ok!==false&&sql.plan&&sql.plan.statements.length===0&&(normalized.internal.database.schemaPolicy==='observe'||sql.previousVersion===version);
     var applied=!!databaseApplied && prior.pending!==true && prior.modelHash===digest(stable(raw)) && changed.length===0 && !diagnostics.length;
     var plan={version:1,names:c?c.names:[],modelPath:model.path,modelRevision:digest(modelText||''),modelHash:digest(stable(raw)),schemaVersion:version,applied:applied,applicable:!diagnostics.some(function(d){return d.severity==='error';}),changed:changed,conflicts:conflicts,references:references,sql:sql,diagnostics:diagnostics,frontend:c?c.frontend:model.visual,generated: c?Object.keys(all).map(function(p){return {path:p,generated:true,owner:model.path,readOnly:true};}):[]};
-    plan.planHash=digest(stable({raw:raw,prior:priorText,model:modelText,artifacts:Object.keys(all).map(function(p){return [p,fs.read(p)];}),expected:all,sql:sql,version:3}));
+    if(projectConfig)plan.projectConfig={path:projectConfig.path,entries:projectConfig.entries,set:projectConfig.set,remove:projectConfig.remove};
+    plan.planHash=digest(stable({raw:raw,prior:priorText,model:modelText,artifacts:Object.keys(all).map(function(p){return [p,fs.read(p)];}),expected:all,sql:sql,projectConfig:projectConfig&&{set:projectConfig.setValues,remove:projectConfig.removePaths},version:3}));
     plan.studio=model.studio(raw,c,plan); // Avoid a cyclic plan -> studio -> plan value.
     plan.studio.migration={applied:plan.applied,applicable:plan.applicable,schemaVersion:version,sql:sql,diagnostics:diagnostics,planHash:plan.planHash};
-    return {plan:plan,compiled:c,fs:fs,raw:raw,all:all,prior:prior,manifestPath:manifestPath,modelText:modelText,model:model};
+    return {plan:plan,compiled:c,fs:fs,raw:raw,all:all,prior:prior,manifestPath:manifestPath,modelText:modelText,model:model,projectConfig:projectConfig};
   }
   function applyOrPreview(ctx,args){
     var prepared=prepare(ctx,args),plan=prepared.plan,c=prepared.compiled,fs=prepared.fs;
@@ -350,6 +412,7 @@
       var renamed=plan.names.filter(function(n){return n.given;});
       var generatedNames=plan.names.map(function(n){return n.flows;}).join(', ');
       preview.next='Generated Flows: '+generatedNames+'. '+(c&&c.config.crud.demoLogin?'security.demoLogin is on: anyone may open a session as any security.principals account in one anonymous call; turn it off outside a demo. ':'')+(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
+      if(status==='pending'&&plan.projectConfig&&(plan.projectConfig.set.length||plan.projectConfig.remove.length))preview.next+=' Apply registers the connection and the data sources once in the project config of '+ENGINE_PATH+' (projectConfig.set): business Flows inherit them.';
       // Compact by default: studio repeats the model (entities, portable entities, diagram nodes) and generated the
       // files that changed already lists; detail "full" keeps them for a caller that draws the model
       if(args.detail!=='full'){delete preview.studio;preview.generatedFiles=preview.generated.length;delete preview.generated;preview.detail='compact';preview.next+=' detail:"full" adds studio (model, diagram, pages) and the generated files.';}
@@ -373,7 +436,7 @@
     }
     var modelSource=args.spec!==undefined?json(args.spec)+'\n':prepared.modelText || json(prepared.raw)+'\n';
     fs.write(prepared.model.path,modelSource);
-    fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:true,files:prepared.all,previousFiles:prepared.prior.pending?prepared.prior.previousFiles||{}:prepared.prior.files})+'\n');
+    fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:true,files:prepared.all,previousFiles:prepared.prior.pending?prepared.prior.previousFiles||{}:prepared.prior.files,projectConfig:prepared.projectConfig.values,previousProjectConfig:prepared.prior.pending?prepared.prior.previousProjectConfig||{}:prepared.prior.projectConfig||{}})+'\n');
     Object.keys(c.files).forEach(function(p){if(fs.read(p)!==c.files[p])fs.write(p,c.files[p]);});
     Object.keys(c.flows).forEach(function(n){
       var p='_flow/flows/'+n+'.flow.js',set,promoted;
@@ -383,13 +446,14 @@
       }
       ctx.lib('mcp').registerFlowDbo({project:args.project,name:n,refresh:false,saveProject:false},{code:fs.read(p),format:'flowscript',flowMetadata:{authenticatedContextRequired:n!==c.initializer&&!/_(demo_login|runtime_proof|session|logout)$/.test(n)},inputDefinitions:set&&set.inputDefinitions,inputVariables:set&&set.inputVariables});
     });
+    var projectConfig=writeProjectConfig(ctx,args,fs,prepared.projectConfig);
     ctx.cacheClear();
     var initialized=ctx.callBlock('requestable.call',{requestable:args.project+'.'+c.initializer,variables:{}},{trace:false});
     if(initialized&&(initialized.ok===false||initialized.error||initialized.result&&initialized.result.error))throw Error('FLOW_CRUD_INITIALIZE_FAILED: '+JSON.stringify(initialized));
-    fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:false,files:prepared.all})+'\n');
+    fs.write(prepared.manifestPath,json({version:2,owner:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,pending:false,files:prepared.all,projectConfig:prepared.projectConfig.values})+'\n');
     if(own(prepared.prior.files,'_flow/resources/sql/crud/spec.json'))fs.remove('_flow/resources/sql/crud/spec.json');
     plan.studio.applied=true;plan.studio.migration.applied=true;plan.studio.migration.planWasApplied=true;
-    return {ok:true,applied:true,addedReferences:addedReferences,modelPath:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,changed:plan.changed,flowCount:Object.keys(c.flows).length,initialized:initialized,frontend:plan.frontend,studio:plan.studio};
+    return {ok:true,applied:true,addedReferences:addedReferences,modelPath:prepared.model.path,modelHash:plan.modelHash,schemaVersion:plan.schemaVersion,changed:plan.changed,projectConfig:projectConfig,flowCount:Object.keys(c.flows).length,initialized:initialized,frontend:plan.frontend,studio:plan.studio};
   }
   function upsert(ctx,args){
     if(args.dryRun===true||!args.planHash)return applyOrPreview(ctx,args);
@@ -404,6 +468,7 @@
   function proof(ctx,args){
     var p=prepare(ctx,args),plan=p.plan,checks=[];
     if(p.compiled){Object.keys(p.all).forEach(function(path){checks.push({path:path,generated:true,owner:p.model.path,ok:p.fs.read(path)===p.all[path]});});}
+    if(plan.projectConfig)checks.push({kind:'project-config',path:ENGINE_PATH,ok:!plan.projectConfig.set.length&&!plan.projectConfig.remove.length});
     checks.push({kind:'model-applied',ok:plan.applied});
     return {ok:checks.every(function(c){return c.ok;})&&plan.applicable,modelPath:p.model.path,modelRevision:plan.modelRevision,schemaVersion:plan.schemaVersion,status:plan.applied?'applied':'pending',checks:checks,sql:plan.sql,diagnostics:plan.diagnostics,studio:plan.studio,runtimeEvidence:'Read-only SQL plan and artifact checks; end-user permissions and UI require independent HTTP/browser proof.'};
   }

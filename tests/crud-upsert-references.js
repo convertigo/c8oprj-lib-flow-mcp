@@ -40,6 +40,8 @@ function context(dir, runFlowSource) {
 		return { ok: true, revision: "r-" + args.name };
 	};
 	ctx.flowCodePromote = function () { return { ok: true }; };
+	// The minimal edit of engine.yaml belongs to lib_flow_engine (tests/crud-project-config.js runs it): recorded here.
+	ctx.applyMutationSource = function (request) { ctx.calls.push({ block: "engine.mutate", mutations: request.mutations }); return { ok: true, source: request.engineSource }; };
 	return ctx;
 }
 var newDatabasePlan = function () { return { ok: true, result: { plan: { statements: ["CREATE TABLE tickets"] }, previousVersion: null } }; };
@@ -73,6 +75,10 @@ check(applied.applied === true && applied.addedReferences.join(",") === "lib_flo
 	added.join(",") === applied.addedReferences.join(","), "apply adds the listed references", applied);
 check(ctx.sqlRuns === 1 && new java.io.File(dir, "_flow/flows/desk_tickets_list.flow.js").isFile() && new java.io.File(dir, "_flow/data/model.yaml").isFile(),
 	"then plans the SQL and writes the model and the Flows");
+var registered = ctx.calls.filter(function (c) { return c.block === "engine.mutate"; }).map(function (c) { return c.mutations[0].path; });
+check(registered.indexOf("config.data.sources.tickets_read") >= 0 && registered.indexOf("config.data.sources.tickets_write") >= 0 && registered.indexOf("config.data.providers.sql") >= 0
+	&& registered.some(function (p) { return /^config\.sql\.connections\./.test(p); }) && applied.projectConfig.path === "_flow/engine.yaml",
+	"and registers the connection and the data sources in the project config", registered);
 var again = crud.applyUnlocked(ctx, { project: "CrudSmokeRefs", projectDir: String(dir), dryRun: true });
 check(again.references.missing.length === 0, "the stored model previews with every reference present", again.references);
 

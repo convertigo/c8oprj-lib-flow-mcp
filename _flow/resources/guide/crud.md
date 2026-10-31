@@ -138,10 +138,10 @@ rules, and copying them costs more than calling the data sources directly.
   only. No Flow, no page, no shell entry, no session permission. Business
   Flows call `data.read({source:"<entity>_read", filter, orderBy, limit})`,
   `data.write({source:"<entity>_write", operation, key, revision, patch})` or
-  `sql.*`, once the project `config` of `_flow/engine.yaml` carries these
-  sources and their connection (see Call the generated Flows). A generated form cannot list the options of a `"schema"` entity:
-  relate a `"full"` entity to it only with `ui.generate: "none"`, or make the
-  target `"data"`.
+  `sql.*`: apply registers these sources and their connection in the project
+  `config` of `_flow/engine.yaml` (see Call the generated Flows). A generated
+  form cannot list the options of a `"schema"` entity: relate a `"full"`
+  entity to it only with `ui.generate: "none"`, or make the target `"data"`.
 - root `ui.generate: "none"`: no shell, sign-in, home or page at all; your
   pages call the generated Flows and `desk_session`.
 - `flow-crud-upsert` previews `names[]` and `next` list the Flows each
@@ -248,8 +248,8 @@ Each generated Flow carries in its `_flow.config` only the connection, named
 queries, writes, data sources and `crud` settings its body names;
 `_flow/data/config.generated.json` keeps the whole configuration. A business
 Flow that calls `data.read` / `data.write` on a generated source finds it in
-the project `config` of `_flow/engine.yaml`, registered once (Call the generated Flows),
-not in a copy inside each Flow.
+the project `config` of `_flow/engine.yaml`, where apply registers it once
+(Call the generated Flows), not in a copy inside each Flow.
 
 Each entity Flow checks the session and the role on the server, whatever
 calls it. Pages: `+layout.flow.svelte` (an `AppShell` with one link per
@@ -288,22 +288,23 @@ if (!local.session.permissions.tickets.update) {
 local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
 ```
 
-The generated data sources (`tickets_read`, `tickets_write`) and named SQL
-live in the `_flow.config` of the generated Flows that use them: your Flows do
-not inherit them, so `data.read({ source: "tickets_read" })` fails in a
-business Flow until the project configuration carries the source. Register
-`sql.connections.<connection>`, `data.providers.sql` and the sources your Flows
-use once in the project `config` of `_flow/engine.yaml` (`config.mutate`, see
-`flow://guide/authoring`), with the values of
-`_flow/data/config.generated.json`: every Flow of the project inherits them.
-Never paste that configuration into each business Flow.
+Apply registers the connection (`sql.connections.<connection>`),
+`data.providers.sql` and every generated source (`tickets_read`,
+`tickets_write`) once in the project `config` of `_flow/engine.yaml` (the
+preview lists them in `projectConfig.set`): every Flow of the project inherits
+them, so a business Flow calls `data.read({ source: "tickets_read" })` with no
+configuration of its own. Never paste them into a business Flow. The model
+owns these paths: change the model, not `engine.yaml` (a value changed by hand
+blocks the next preview with `FLOW_CRUD_CONFIG_CONFLICT`), and override the
+connection per server in a named configuration (below). The named SQL of the
+generated Flows stays in their own `_flow.config`.
 
 ### Business actions in a transaction
 
-For an operation over several tables, declare in the business Flow's own
-`_flow.config` the connection of `_flow/data/config.generated.json`
-(`sql.connections.<connection>`, same name and values) and your own named
-writes, with names of your own. `auto` stamps timestamps on the server here too.
+For an operation over several tables, declare your own named writes in the
+business Flow's own `_flow.config`, with names of your own, on the connection
+of the model (`desk` here), which the project configuration already carries.
+`auto` stamps timestamps on the server here too.
 
 ```javascript
 const _flow = {
@@ -313,9 +314,6 @@ const _flow = {
   inputs: { id: { type: "string" } },
   config: {
     sql: {
-      connections: {
-        desk: { url: "jdbc:hsqldb:file:.//_flow/resources/sql/crud/database/desk;shutdown=false", dialect: "hsqldb", driverClass: "org.hsqldb.jdbc.JDBCDriver", user: "root", password: "", nativeRead: true, nativeWrite: true },
-      },
       writes: {
         ticket_resolve_update: {
           connection: "desk", operation: "update", minAffectedRows: 1, maxAffectedRows: 1,
@@ -350,8 +348,7 @@ Tables are `"PUBLIC"."<entity>"` on HSQLDB, columns the model column names,
 quoted. A second resolve fails with `SQL_WRITE_ROW_COUNT` (409) and rolls
 back. In production, override the connection once in the project
 configuration (`configs.<name>.sql.connections.desk` in `_flow/engine.yaml`,
-`flow://guide/tags`): it applies to generated and business Flows alike. If
-the model changes its database, update your copy.
+`flow://guide/tags`): it applies to generated and business Flows alike.
 
 ### Per-user data perimeter
 
