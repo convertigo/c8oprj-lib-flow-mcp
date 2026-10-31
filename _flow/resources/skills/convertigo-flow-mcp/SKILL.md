@@ -37,7 +37,8 @@ palette. That is why:
   `forEach` (or `while` with `maxIterations`) and error handling the block
   `try` (`$$try`/`$$catch`), because each step must stay a node of the tree.
   When a construct is outside the subset, the refusal names it and the
-  equivalent to write: apply it, do not delete code;
+  equivalent to write (for a call, a ready `proposedPatch` edit: Backend
+  Source Loop): apply it, do not delete code;
 - there is no arbitrary code at run time (no `eval`, no closures kept between
   steps, no npm or Java imports in a Flow): a step must be a block the engine
   can serialize, show and analyze. Logic that needs more becomes a project
@@ -219,10 +220,10 @@ Use `code-patch` for a focused revision-checked maintenance edit. Use
 Use `flow-catalog` only when search/examples are insufficient. The canonical
 block call takes one object argument: `block.name({ key: value })`.
 
-**Write intuitively, then read the proposed patch.** Write the first draft as
-you would write JavaScript: `Object.assign`, `JSON.stringify`, `Math.pow`,
-`parseInt`, `console.log`, a guessed block name (`smtp.send`, `crypto.md5`), a
-guessed key or positional arguments. A refused `code-set`, `code-patch` or
+**Write intuitively, then read the proposed patch.** Write the calls of the
+first draft as you would in JavaScript: `Object.assign`, `JSON.stringify`,
+`Math.pow`, `parseInt`, `console.log`, a guessed block name (`smtp.send`,
+`crypto.md5`), a guessed key or positional arguments. A refused `code-set`, `code-patch` or
 `code-check` of a Flow answers `proposedPatch`: one edit per such call, mapped
 onto the catalog, each `{ oldText, newText, line, confidence, reason, block }`,
 on the `revision` of the working copy. Read the reasons, then pass the edits
@@ -233,7 +234,8 @@ check, listed in `autoCorrected` with the complete written `code`, and the
 others are proposed again. An edit below the threshold changes a behavior,
 picks among equally likely mappings, moves the call to another namespace or
 sits in a condition, and its reason says which; `unresolved` lists the calls
-with no mapping. Only then read `flow-block-get` or the palette.
+with no mapping. Only then read `flow-block-get` or the palette. Statements
+are not translated: loops and `try` stay the blocks of How Flow Works.
 
 Project-local blocks are saved directly by `code-set`/`code-patch`; they have
 no promote step. Prefer standard blocks, then a project-local FlowScript block.

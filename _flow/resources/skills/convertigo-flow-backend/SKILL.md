@@ -47,9 +47,9 @@ stopping that Flow unless a `try` catches it; a page action fails and stops
 its chain. Throw what must interrupt; return `ok: false` for what the caller
 handles.
 
-**Write it as JavaScript first; the MCP translates.** What is not FlowScript
-is mapped onto the catalog instead of only refused: `Object.assign({}, a, b)`
-becomes `object.merge`, `JSON.stringify(x)` `json.stringify({ value: x })`,
+**Write calls as JavaScript first; the MCP translates them.** A call that is
+not FlowScript is mapped onto the catalog instead of only refused:
+`Object.assign({}, a, b)` becomes `object.merge`, `JSON.stringify(x)` `json.stringify({ value: x })`,
 `crypto.md5(x)` `crypto.hash({ text: x, algorithm: "md5" })`, `smtp.send`
 `email.send` (with `body` as `text`), `Math.pow(x, 2)` `x * x`, a guessed key
 (`order`) its property (`direction`), positional arguments their properties
@@ -61,7 +61,8 @@ above the threshold (0.9, `authoring.intuitiveCall.autoCorrectConfidence` in
 `_flow/engine.yaml`, never under 0.8) and read `autoCorrected`. `parseInt`,
 `parseFloat`, an ambiguous mapping, a block of another namespace and a block
 inside a condition stay proposals: their reason says why. `Math.max(a, b)` and
-the other expression functions need no edit.
+the other expression functions need no edit. Statements are not translated:
+a loop, `try` and `throw` stay the blocks listed above.
 
 **Config.** A Flow reads `config.<path>` (the `config` scope). Its values
 merge value by value (objects merge, other values replace), weakest first:
