@@ -107,7 +107,8 @@ and sorts that the server accepts.
 
 Also read `flow://lib/lib_flow_frontend_data_svelte/csv`. The DataGrid in
 server export mode produces a snapshot of its filters, sort and columns. Chain
-`DataUiGridExportRequest`, `CallSequence` and `FileDownload`. Use the
+`DataUiGridExportRequest`, `CallSequence` and `FileDownload`; from a plain
+button, `CallSequence` then `FileDownload` (`flow://guide/crud`, CSV export). Use the
 `filterJson` and `columnsJson` variants at HTTP boundaries when needed; parse
 then validate them on the server.
 
