@@ -31,7 +31,7 @@
       id(e.name); if(own(entities,e.name)) fail('Duplicate entity'); entities[e.name]=e;
       if(e.permissions!==undefined && (!e.permissions||typeof e.permissions!=='object'||Array.isArray(e.permissions)))fail('permissions must be an operation map');
       Object.keys(e.permissions||{}).forEach(function(operation){if(['list','read','count','create','update','save','delete'].indexOf(operation)<0)fail('Unknown permission operation '+operation);});
-      e.generate=e.generate===undefined?'full':e.generate;if(['full','data'].indexOf(e.generate)<0)fail('entities[].generate is "full" or "data"');
+      e.generate=e.generate===undefined?'full':e.generate;if(['full','data','schema'].indexOf(e.generate)<0)fail('entities[].generate is "full", "data" or "schema"');
       if(!Array.isArray(e.fields) || e.fields.length>120) fail('Bounded fields required');
       var seen={}; e.fields.forEach(function(f){id(f.name);if(own(seen,f.name))fail('Duplicate field');seen[f.name]=true;
         if(['string','int64','decimal','boolean','date','timestamp'].indexOf(f.type)<0)fail('Unsupported type');
@@ -60,6 +60,7 @@
       var ff=from.fields.filter(function(f){return f.name===r.from.field;})[0],tf=to.fields.filter(function(f){return f.name===r.to.field;})[0];
       if(!ff||!tf||ff.type!==tf.type||r.to.field!==to.key[0])fail('Relation must target compatible primary key');
       if(r.labelField&&!to.fields.some(function(f){return f.name===r.labelField;}))fail('Unknown relation optionLabelField');
+      if(to.generate==='schema'&&from.generate==='full'&&s.ui.generate!=='none')fail('Relation '+r.name+': the generated form of '+from.name+' lists the options of '+to.name+', which generate: "schema" does not generate; generate '+to.name+' as "data", or '+from.name+' as "data" or "schema"');
 
     });
     var visited={},active={};function visit(e){if(active[e.name])fail('Cyclic relations unsupported');if(visited[e.name])return;active[e.name]=true;relations.filter(function(r){return r.from.entity===e.name;}).forEach(function(r){visit(entities[r.to.entity]);});delete active[e.name];visited[e.name]=true;tables.push(e);}
@@ -76,6 +77,7 @@
       if(!e.readOnly){var writable=copy(source);writable.readOnly=false;if(e.revision)writable.versionColumn=e.revision;writable.writableFields=e.fields.filter(function(f){return !f.identity && f.name!==e.revision && !f.readOnly;}).map(function(f){return f.name;});sources[e.name+'_write']=writable;}
       var qtable=quote(db.schema || (db.dialect==='postgresql'?'public':'PUBLIC'))+'.'+quote(e.name), cols=e.fields.map(function(f){return quote(f.column||f.name);}).join(', ');
       queries[e.name+'_count']={connection:connection,readOnly:true,expose:false,sql:'SELECT COUNT(*) AS "total" FROM '+qtable,parameters:[],columns:[{name:'total',type:'int64',nullable:false}]};
+      if(e.generate==='schema')return; // Table, seed and data sources: business Flows own every access.
       queries[e.name+'_read']={connection:connection,readOnly:true,expose:false,sql:'SELECT '+cols+' FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id',parameters:[{name:'id',type:'int64'}],columns:e.fields.map(function(f){return {name:f.name,type:f.type,nullable:f.nullable===true};})};
       if(e.rowPolicy){var ownerField=e.fields.filter(function(f){return f.name===e.rowPolicy.field;})[0];
         queries[e.name+'_owned']={connection:connection,readOnly:true,expose:false,sql:'SELECT '+quote(e.key[0])+' AS "id" FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id AND '+quote(ownerField.column||ownerField.name)+'=:owner',parameters:[{name:'id',type:'int64'},{name:'owner',type:ownerField.type}],columns:[{name:'id',type:'int64',nullable:false}]};
@@ -87,7 +89,7 @@
         writes[e.name+'_delete']={connection:connection,operation:'delete',sql:'DELETE FROM '+qtable+' WHERE '+quote(e.key[0])+'=:id'+(e.revision?' AND '+quote(e.revision)+'=:revision':''),parameters:[{name:'id',type:'int64'}].concat(e.revision?[{name:'revision',type:'int64'}]:[]),minAffectedRows:1,maxAffectedRows:1};
       }
     });
-    var optionQueries={},ownedOptionQueries={};ordered.forEach(function(e){var choices={};choices[e.ui.labelField]=e.name+'_options';relations.filter(function(r){return r.to.entity===e.name&&r.labelField;}).forEach(function(r){if(own(choices,r.labelField))return;var name=id(e.name+'_opt_'+r.labelField),q=copy(queries[e.name+'_options']),f=e.fields.filter(function(f){return f.name===r.labelField;})[0];q.sql=q.sql.replace(quote(e.ui.labelField)+' AS \"label\"',quote(r.labelField)+' AS \"label\"');q.columns[1].type=f.type;q.columns[1].nullable=f.nullable===true;queries[name]=q;choices[r.labelField]=name;});optionQueries[e.name]=choices;
+    var optionQueries={},ownedOptionQueries={};ordered.forEach(function(e){if(e.generate==='schema')return;var choices={};choices[e.ui.labelField]=e.name+'_options';relations.filter(function(r){return r.to.entity===e.name&&r.labelField;}).forEach(function(r){if(own(choices,r.labelField))return;var name=id(e.name+'_opt_'+r.labelField),q=copy(queries[e.name+'_options']),f=e.fields.filter(function(f){return f.name===r.labelField;})[0];q.sql=q.sql.replace(quote(e.ui.labelField)+' AS \"label\"',quote(r.labelField)+' AS \"label\"');q.columns[1].type=f.type;q.columns[1].nullable=f.nullable===true;queries[name]=q;choices[r.labelField]=name;});optionQueries[e.name]=choices;
       // The options of a row-policy entity, for a restricted role: only the rows it owns.
       if(e.rowPolicy){var ownerField=e.fields.filter(function(f){return f.name===e.rowPolicy.field;})[0],owned={};Object.keys(choices).forEach(function(label){var q=copy(queries[choices[label]]);q.sql=q.sql.replace(' ORDER BY ',' WHERE '+quote(ownerField.column||ownerField.name)+'=:owner ORDER BY ');q.parameters=[{name:'owner',type:ownerField.type}];queries[choices[label]+'_owned']=q;owned[label]=choices[label]+'_owned';});ownedOptionQueries[e.name]=owned;}});
     // Validate declarations at authoring time, before any generated file is written.
@@ -143,7 +145,7 @@
     }
     function rowSchema(e){var values={},keys={};e.fields.forEach(function(f){values[f.name]={type:f.type==='boolean'?'boolean':'string',nullable:f.nullable===true};});e.key.forEach(function(k){keys[k]={type:'string'};});return {type:'object',properties:{key:{type:'object',properties:keys},values:{type:'object',properties:values},displayValues:{type:'object',properties:values},revision:{type:'string'},canRead:{type:'boolean'},canUpdate:{type:'boolean'},canDelete:{type:'boolean'}}};}
     var accessSchema={},accessExpression=[];
-    ordered.forEach(function(e){var props={},members=[];['list','read','count','create','update','delete'].forEach(function(op){props[op]={type:'boolean'};members.push(JSON.stringify(op)+': '+(e.readOnly&&['create','update','delete'].indexOf(op)>=0?'false':'('+allowed(e,op)+')'));});accessSchema[e.name]={type:'object',properties:props};accessExpression.push(JSON.stringify(e.name)+': {'+members.join(',')+'}');});
+    ordered.forEach(function(e){if(e.generate==='schema')return;var props={},members=[];['list','read','count','create','update','delete'].forEach(function(op){props[op]={type:'boolean'};members.push(JSON.stringify(op)+': '+(e.readOnly&&['create','update','delete'].indexOf(op)>=0?'false':'('+allowed(e,op)+')'));});accessSchema[e.name]={type:'object',properties:props};accessExpression.push(JSON.stringify(e.name)+': {'+members.join(',')+'}');});
     var sessionBody='  local.user = session.authenticatedUser({})\n  local.role = null\n'+(accounts?'  if (local.user) {\n'+accountLookup('local.user',function(){return '    local.user = null\n';}).replace(/^  if \(local\.account\.values/m,'  if (local.account && local.account.values')+'  }\n':'')+'  if (local.user) {\n    local.role = "authenticated"\n    if (config.crud.hasPrincipalMap) {\n      local.role = object.get({source:config.crud.principals,key:local.user})\n    }\n  }\n  result.authenticated = !!local.user\n  result.user = local.user\n  result.role = local.role\n  result.demoEnabled = config.crud.demoLogin\n  result.permissions = {'+accessExpression.join(',')+'}';
     flow(prefix+'_session',{},sessionBody,false,{type:'object',properties:{authenticated:{type:'boolean'},user:{type:'string',nullable:true},role:{type:'string',nullable:true},demoEnabled:{type:'boolean'},permissions:{type:'object',properties:accessSchema}}});
     flows[prefix+'_session']=flows[prefix+'_session'].replace('"authenticatedContextRequired": true','"authenticatedContextRequired": false');
@@ -160,7 +162,7 @@
       });return body;
     }
     flow(prefix+'_initialize',{},'  return sql.initialize({initializer:'+JSON.stringify(prefix)+',seed:'+(s.seed && s.seed.enabled!==false && db.schemaPolicy!=='observe')+',verifyOnly:'+(db.schemaPolicy==='observe')+',resetDemo:'+(s.seed && s.seed.reset===true)+'})',true);
-    ordered.forEach(function(e){var n=prefix+'_'+e.name,k=e.key[0];
+    ordered.forEach(function(e){if(e.generate==='schema')return;var n=prefix+'_'+e.name,k=e.key[0];
       var listBody=auth(e,'list')+'  local.filter = input.filter\n  local.orderBy = input.orderBy\n  if (local.orderBy === "") {\n    local.orderBy = "'+k+'"\n  }\n  local.direction = "asc"\n  if (input.direction === "desc") {\n    local.direction = "desc"\n  }\n';
       var label=e.fields.filter(function(f){return f.name===e.ui.labelField;})[0];
       if(label.type==='string')listBody+='  if (input.search !== "") {\n    local.filter = {field:"'+e.ui.labelField+'",op:"contains",value:input.search}\n  }\n';
@@ -193,7 +195,7 @@
     files['_flow/data/config.generated.json']=json(config)+'\n';
     // The names the model generates per entity. The legacy format names an entity by its plural (order_line gives
     // order_lines): a renamed entity says so, with how to keep the given name.
-    var names=s.entities.map(function(e){var route=e.routeSegment||e.name,out={entity:e.name,flows:prefix+'_'+e.name+'_list|read|count|options'+(hasSave(e)?'|save':'')+(hasDelete(e)?'|delete':''),pages:e.generate==='data'||s.ui.generate==='none'?'':e.name+'_list|detail'+(e.readOnly?'':'|form'),route:e.generate==='data'||s.ui.generate==='none'?'':'/'+route,generate:e.generate};
+    var names=s.entities.map(function(e){var route=e.routeSegment||e.name,noPage=e.generate!=='full'||s.ui.generate==='none',out={entity:e.name,flows:e.generate==='schema'?'':prefix+'_'+e.name+'_list|read|count|options'+(hasSave(e)?'|save':'')+(hasDelete(e)?'|delete':''),pages:noPage?'':e.name+'_list|detail'+(e.readOnly?'':'|form'),route:noPage?'':'/'+route,generate:e.generate,sources:e.name+'_read'+(e.readOnly?'':'|'+e.name+'_write')};
       if(e.sourceName!==undefined&&e.sourceName!==null&&String(e.sourceName)!==e.name){out.given=String(e.sourceName);out.message='The legacy CRUD format names an entity by its plural: "'+out.given+'" generates the table, Flows, pages and route of "'+e.name+'".';out.fix='Name the entity "'+e.name+'" in the model (relations, seed.data, permissions and ui.navigation then use that name), or add "plural": "'+out.given+'" to the entity to keep "'+out.given+'".';}
       return out;});
     return {files:files,flows:flows,frontend:frontend,config:config,initializer:prefix+'_initialize',entities:ordered.map(function(e){return e.name;}),names:names,schemaVersion:s.schemaVersion,normalized:s,legacy:isLegacy,diagnostics:normalized.diagnostics||[]};

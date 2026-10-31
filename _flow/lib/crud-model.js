@@ -67,8 +67,9 @@
    if(out.indexes.length)diagnostics.push({code:'SQL_PORTABLE_INDEX_NOT_IMPLEMENTED',severity:'error',entity:e.name,message:'Index declarations are preserved; generic additive index planning is not implemented by this prototype.'});
    // ui.navigation false: the shell does not link the generic list (business pages replace it through the root ui.navigation).
    if(re.ui&&re.ui.navigation!==undefined){if(typeof re.ui.navigation!=='boolean')error('entities[].ui.navigation is true or false');out.ui.navigation=re.ui.navigation;}
-   // generate: full (pages and generic writes) or data (schema, sources and read Flows; business Flows own the rest).
-   if(re.generate!==undefined){if(['full','data'].indexOf(re.generate)<0)error('entities[].generate is "full" or "data"');out.generate=re.generate;}
+   // generate: full (pages and generic writes), data (schema, sources and read Flows; business Flows own the rest) or
+   // schema (table, seed and data sources only; business Flows call data.read/data.write or sql.* themselves).
+   if(re.generate!==undefined){if(['full','data','schema'].indexOf(re.generate)<0)error('entities[].generate is "full", "data" or "schema"');out.generate=re.generate;}
    aliases[re.name]=out;aliases[e.name]=out;
    e.fields.forEach(function(f){
     var p=portable(f.type),rf=(re.fields||[]).filter(function(x){return String(x.column||x.name).toLowerCase()===f.column||x.name===f.name;})[0]||{};
@@ -136,7 +137,7 @@
   var plan=clone(visual),prefix=s.facade.prefix;plan.generatedPages=[];
   if(s.ui&&s.ui.generate==='none'){plan.plannedPages=[];return plan;}
   plan.plannedPages=[{id:'crud_dashboard',kind:'dashboard',components:['shell','pageHeader','kpi'],counts:s.entities.map(function(e){return prefix+'_'+e.name+'_count';})}];
-  s.entities.filter(function(e){return e.generate!=='data';}).forEach(function(e){
+  s.entities.filter(function(e){return e.generate!=='data'&&e.generate!=='schema';}).forEach(function(e){
    var base={entity:e.name,route:e.routeSegment||e.name,permissions:clone(e.permissions),owner:MODEL,generated:true};
    plan.plannedPages.push(Object.assign({},base,{id:e.name+'_list',kind:'list',components:['shell','pageHeader','table','statusBadge','emptyState','toast'],fields:e.ui.listFields,sort:'server',pagination:'server',actions:e.readOnly?['read']:['read','create','update','delete'],requestable:prefix+'_'+e.name+'_list'}));
    plan.plannedPages.push(Object.assign({},base,{id:e.name+'_detail',kind:'detail',components:['shell','pageHeader','formSection','statusBadge'],fields:e.ui.detailFields||e.ui.listFields,requestable:prefix+'_'+e.name+'_read'}));

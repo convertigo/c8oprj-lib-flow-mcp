@@ -122,13 +122,25 @@ entity, `security` to no role map (every signed-in user has the role
 | Application kind | Model |
 |---|---|
 | reference data / back office | `generate: "full"` (default) |
-| business workflow | `"data"` for workflow entities, `"full"` only for admin reference tables, `rowPolicy` for owner perimeters, `ui.homePage` / `ui.loginPage` to business pages |
+| business application, own Flows and pages | `"schema"` for the entities your Flows read and write with `data.read` / `data.write` or `sql.*`; `"data"` when a page needs the generated `list` / `read` / `options`; `"full"` only for admin reference tables |
+| business workflow on generated reads | `"data"` for workflow entities, `rowPolicy` for owner perimeters, `ui.homePage` / `ui.loginPage` to business pages |
+
+A business application uses `"schema"` or `"data"`, never `"full"` for its
+business entities: the generated `list|read|save` Flows do not carry business
+rules, and copying them costs more than calling the data sources directly.
 
 - `"full"`: table, seed, sources, the Flows `list|read|count|options|save|delete`,
   pages (list, detail, form) and a shell entry.
 - `"data"`: table, seed, sources `<entity>_read` / `<entity>_write`, and
   `list|read|count|options`. No page, no shell entry, no `save` / `delete`
   unless `permissions` names the roles. Business Flows own the mutations.
+- `"schema"`: table, seed and sources `<entity>_read` / `<entity>_write`
+  only. No Flow, no page, no shell entry, no session permission. Business
+  Flows call `data.read({source:"<entity>_read", filter, orderBy, limit})`,
+  `data.write({source:"<entity>_write", operation, key, revision, patch})` or
+  `sql.*`. A generated form cannot list the options of a `"schema"` entity:
+  relate a `"full"` entity to it only with `ui.generate: "none"`, or make the
+  target `"data"`.
 - root `ui.generate: "none"`: no shell, sign-in, home or page at all; your
   pages call the generated Flows and `desk_session`.
 - `flow-crud-upsert` previews `names[]` and `next` list the Flows each

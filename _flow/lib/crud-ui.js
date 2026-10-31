@@ -37,7 +37,7 @@
   // ui.generate none: the application writes its whole UI and calls the generated Flows.
   if(s.ui.generate==='none')return {files:{},pages:[],components:[],status:'not-generated',reason:'ui.generate is none'};
   // A data entity has no page: business pages and Flows own its screens and mutations.
-  var shown=s.entities.filter(function(e){return e.generate!=='data';});
+  var shown=s.entities.filter(function(e){return e.generate!=='data'&&e.generate!=='schema';});
   var homeOption=pageOption(s,'homePage','crud_dashboard'),loginOption=pageOption(s,'loginPage','crud_login');
   var firstPage=(s.ui.navigation||[]).map(function(i){return i.page;}).concat(shown.filter(function(e){return e.ui.navigation!==false;}).map(function(e){return e.name+'_list';}))[0]||'';
   var homePage=homeOption===false?firstPage:homeOption,home=homeOption===''?'crud_dashboard':homePage,loginPage=loginOption===''?'crud_login':loginOption;
