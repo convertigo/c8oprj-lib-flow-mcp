@@ -11,7 +11,7 @@ var source = read(new java.io.File(root, "_flow/blocks/project/bootstrap.block.j
 assert(source.indexOf("c8oprj-template-sequence") === -1, "no template is downloaded by default");
 assert(/"templateUrl": \{[\s\S]*?"default": "",/.test(source), "the template URL is opt-in");
 var block = eval(source.substring(source.indexOf("(function"))
-	.replace("run: function (ctx, node) {", "_create: createProject, _yaml: newProjectYaml, run: function (ctx, node) {"));
+	.replace("run: function (ctx, node) {", "_create: createProject, _yaml: newProjectYaml, _engine: engineSource, _cors: corsOriginWarning, run: function (ctx, node) {"));
 
 var yaml = block._yaml("NewFlowApp");
 var lines = yaml.split("\n");
@@ -33,6 +33,20 @@ assert(block._yaml("NewFlowApp", "*").indexOf("  corsOrigin: '*'\n") !== -1, "* 
 	var refused = "";
 	try { block._yaml("NewFlowApp", bad); } catch (e) { refused = String(e.message); }
 	assert(/corsOrigin must be/.test(refused) && refused.indexOf("scheme://host[:port]") !== -1, "an invalid origin is refused with the expected form: " + bad + " " + refused);
+});
+// =Origin and * stay possible for an API without cookie, but the result warns; the default and listed origins do not.
+["=Origin", "*"].forEach(function (cors) {
+	var warning = block._cors(cors);
+	assert(warning && warning.code === "CORS_ANY_ORIGIN" && warning.message.indexOf("session cookie") !== -1, "a warning for " + cors);
+});
+["", "=Global", "https://app.example.com"].forEach(function (cors) {
+	assert(block._cors(cors) === null, "no warning for " + JSON.stringify(cors));
+});
+// The demo sign-in switch is scaffolded off, through a symbol a demo server or the Studio turns on.
+[false, true].forEach(function (ui) {
+	var engineYaml = block._engine("NewFlowApp", ui, "res", "model");
+	assert(engineYaml.indexOf("config:\n  demo:\n    login: \"${NewFlowApp.demo.login=false}\"\n") !== -1, "demo.login off by default (ui " + ui + "): " + engineYaml);
+	assert(ui === (engineYaml.indexOf("  frontbuilder:\n") !== -1), "the frontbuilder config only with ui");
 });
 var meta = source.substring(0, source.indexOf("(function"));
 assert(/"corsOrigin": \{[\s\S]*?"default": "",[\s\S]*?=Origin \/ \* for any origin, only for an API whose callers send no session cookie/.test(meta),

@@ -169,21 +169,31 @@ const _meta = {
 		return names;
 	}
 
-	function engineSource(ui, resourceRoot, modelPath) {
+	// The demo sign-in switch of the application, off unless the server says otherwise: a Flow that opens a session
+	// without a password runs only when String(config.demo.login) === "true", which the global symbol
+	// <project>.demo.login turns on for a demo server or the Studio; a CAR deployed elsewhere keeps it off.
+	function demoLoginLines(name) {
+		return [
+			"  demo:",
+			"    login: \"${" + name + ".demo.login=false}\""
+		];
+	}
+
+	function engineSource(name, ui, resourceRoot, modelPath) {
 		if (!ui) {
 			return [
 				"version: 1",
 				"engineQName: " + ENGINE_QNAME,
 				"bindings: {}",
-				"config: {}",
-				""
-			].join("\n");
+				"config:"
+			].concat(demoLoginLines(name), [""]).join("\n");
 		}
 		return [
 			"version: 1",
 			"engineQName: " + ENGINE_QNAME,
 			"bindings: {}",
-			"config:",
+			"config:"
+		].concat(demoLoginLines(name), [
 			"  frontbuilder:",
 			"    svelte:",
 			"      target: svelte5",
@@ -194,7 +204,7 @@ const _meta = {
 			"configVisibility:",
 			"  frontbuilder: private",
 			""
-		].join("\n");
+		]).join("\n");
 	}
 
 	function jsString(value) {
@@ -384,6 +394,21 @@ const _meta = {
 		return text;
 	}
 
+	// =Origin or * answers any site: with the session cookie of a signed-in user, any page the user visits may call the
+	// application in their name. The bootstrap still applies it (an API without cookie may need it) but says so.
+	function corsOriginWarning(cors) {
+		if (cors !== "=Origin" && cors !== "*") {
+			return null;
+		}
+		return {
+			code: "CORS_ANY_ORIGIN",
+			severity: "warning",
+			message: "corsOrigin " + cors + " lets any site call this project with the session cookie of a signed-in user. " +
+				"Keep the default (empty: same origin, the Flow viewer and the production build are served by Convertigo) or list the allowed origins " +
+				"separated by #; use " + cors + " only for an API whose callers send no session cookie."
+		};
+	}
+
 	// The project bean of a new Flow project, in the standard YAML format. Its timeouts are the defaults of a
 	// Convertigo project (an HTTP session of 1800 s, a context of 300 s): the templates' 60 s ended the session of an
 	// API client idle for a minute. Its CORS policy is empty unless corsOrigin opens it: the templates' =Origin
@@ -458,6 +483,7 @@ const _meta = {
 	}
 
 	function ensureFlowEngine(project, ui, resourceRoot, modelPath) {
+		var written = false;
 		var FlowEngine = Packages.com.twinsoft.convertigo.beans.flow.FlowEngine;
 		var flowEngine = project.getFlowEngine();
 		var created = false;
@@ -474,12 +500,14 @@ const _meta = {
 		var sourceModelPath = currentModelPath(source);
 		var sourceModelExists = projectFileExists(project, sourceModelPath);
 		if (created || source.trim() === "" || ui && (!hasFrontend || !sourceModelExists)) {
-			flowEngine.setEngineSource(engineSource(ui, resourceRoot, modelPath));
+			flowEngine.setEngineSource(engineSource(String(project.getName()), ui, resourceRoot, modelPath));
+			written = true;
 		}
 		project.hasChanged = true;
 		return {
 			flowEngine: flowEngine,
 			created: created,
+			written: written,
 			configuredSvelte: ui
 		};
 	}
@@ -586,6 +614,9 @@ const _meta = {
 				result.wouldCreate = shouldImport && templateUrl.length === 0;
 				if (result.wouldCreate) {
 					result.corsOrigin = corsOrigin;
+					if (corsOriginWarning(corsOrigin)) {
+						result.warnings = [corsOriginWarning(corsOrigin)];
+					}
 				}
 				result.wouldCustomize = true;
 				result.wouldReference = references.slice();
@@ -599,11 +630,24 @@ const _meta = {
 			result.created = shouldImport && templateUrl.length === 0;
 			if (result.created) {
 				result.corsOrigin = corsOrigin;
+				var corsWarning = corsOriginWarning(corsOrigin);
+				if (corsWarning) {
+					result.warnings = [corsWarning];
+				}
 			}
 			var resourceRoot = svelteResourceRoot();
 			var model = ui ? ensureSvelteModel(ctx, project, name) : { path: "", file: "", created: false, exists: false };
 			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
 			result.createdFlowEngine = flow.created;
+			if (flow.written) {
+				result.demoLogin = {
+					config: "demo.login",
+					symbol: name + ".demo.login",
+					value: false,
+					note: "Off by default. A sign-in Flow without password (demo accounts) must refuse unless String(config.demo.login) === \"true\"; " +
+						"set the global symbol " + name + ".demo.login to true only on a demo server or the Studio. See flow://guide/multipage-roles."
+				};
+			}
 			result.configuredSvelte = flow.configuredSvelte;
 			result.engineQName = String(flow.flowEngine.getEngineQName());
 			if (ui) {
