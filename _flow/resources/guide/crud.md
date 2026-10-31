@@ -371,6 +371,11 @@ export Flow, then `FileDownload` (the `file.download` block) on its answer. A
 </Actions></OnClick></Events></Button>
 ```
 
+In the Studio viewer, Playwright receives no `download` event for that
+file (`page.waitForEvent('download')` never fires there): click, then read
+the file the viewer saved in `.playwright-mcp/downloads/` of the working
+directory.
+
 A list returns at most 200 rows: call it again with the next `offset` until
 `page.total`, or export a named read of your own. If `data.csv` answers
 `DATA_CSV_SCHEMA_INVALID` on a `timestamp` field, your `lib_flow_crud_data`
