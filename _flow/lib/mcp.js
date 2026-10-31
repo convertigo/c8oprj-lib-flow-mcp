@@ -705,6 +705,56 @@
 		return value;
 	}
 
+	/**
+	 * Hands a Project Explorer reload to the queue of the tree refreshes of the project, in a Studio that has it
+	 * (ProjectTreeObject.reloadWrittenObject): the projections the reload compares are made off the UI thread (on a
+	 * large project, the whole tree of its Flow engine), the writes received meanwhile are merged into one pass, and
+	 * the UI thread only updates its tree, inside reloadNotingProjectFlag (the flag lock taken briefly before and after
+	 * the reload, never during it). written: the project when objects were added (its whole tree), one of its Flows, or
+	 * null for sources only; engineSources: the kind of the sources written or removed that the tree of the Flow engine
+	 * shows ("frontend", "catalog", "runtime", which picks the caches invalidated), "" for none; refreshResources: the
+	 * files written become Eclipse resources first, off the UI thread. Called on the UI thread (the explorer model).
+	 * @return false in an older Studio, or for an object the queue does not reload: the caller reloads it itself
+	 */
+	function queueStudioReload(view, project, written, engineSources, refreshResources) {
+		var projectTreeObject = null;
+		try {
+			projectTreeObject = view.getProjectRootObject(String(project.getName()));
+		} catch (_noProjectTree) {
+			return false;
+		}
+		if (projectTreeObject == null || typeof projectTreeObject.reloadWrittenObject !== "function") {
+			return false;
+		}
+		var aroundReload = new Packages.java.util.function.Consumer({ accept: function (reload) {
+			reloadNotingProjectFlag(project, function () {
+				reload.run();
+			});
+		}});
+		return projectTreeObject.reloadWrittenObject(written == null ? null : written, String(engineSources || ""),
+			refreshResources === true, aroundReload) === true;
+	}
+
+	/**
+	 * The UI part of studioRefreshQName: queued (see queueStudioReload), or, in an older Studio, the object reloaded
+	 * here, its projections made on the UI thread.
+	 * @return "queued" or "reloaded"
+	 */
+	function studioReloadObject(view, target) {
+		var project = target.getProject();
+		if (queueStudioReload(view, project, target, "", false)) {
+			return "queued";
+		}
+		reloadNotingProjectFlag(project, function () {
+			view.reloadDatabaseObject(target);
+			var treeObject = view.findTreeObjectByUserObject(target);
+			if (treeObject != null) {
+				view.refreshTreeObject(treeObject);
+			}
+		});
+		return "reloaded";
+	}
+
 	function studioRefreshQName(qname) {
 		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 		var System = java.lang.System;
@@ -753,13 +803,7 @@
 					if (view == null) {
 						return;
 					}
-					reloadNotingProjectFlag(target.getProject(), function () {
-						view.reloadDatabaseObject(target);
-						var treeObject = view.findTreeObjectByUserObject(target);
-						if (treeObject != null) {
-							view.refreshTreeObject(treeObject);
-						}
-					});
+					studioReloadObject(view, target);
 				} catch (e) {
 					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP update", false);
 				}
@@ -801,6 +845,56 @@
 		return null;
 	}
 
+	/**
+	 * The UI part of studioRefreshFlowEngine: queued (see queueStudioReload), the resources refreshed and the tree of
+	 * the Flow engine projected off the UI thread; in an older Studio, everything here, on the UI thread. A frontend
+	 * write invalidates the caches of the project frontend in the queue (the notification of each source invalidates
+	 * by its kind); a removal (any other reason) the data caches of every project, as here.
+	 * @return "queued", "reloaded" or "skipped" (no Project Explorer)
+	 */
+	function studioReloadFrontend(plugin, project, reason) {
+		var ConvertigoPlugin = Packages.com.twinsoft.convertigo.eclipse.ConvertigoPlugin;
+		var queueView = plugin.getProjectExplorerView();
+		var engineSources = String(reason || "") === "frontend-source-mutation" ? "frontend" : "catalog";
+		if (queueView != null && queueStudioReload(queueView, project, null, engineSources, true)) {
+			return "queued";
+		}
+		try {
+			var IResource = Packages.org.eclipse.core.resources.IResource;
+			var iProject = plugin.getProjectPluginResource(String(project.getName()));
+			if (iProject != null) {
+				iProject.refreshLocal(IResource.DEPTH_INFINITE, null);
+			}
+		} catch (resourceError) {
+			ConvertigoPlugin.logException(resourceError, "Unable to refresh Eclipse resources after Flow MCP frontend update", false);
+		}
+		try {
+			Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.invalidateDataCaches();
+		} catch (cacheError) {
+			ConvertigoPlugin.logException(cacheError, "Unable to invalidate Flow authoring caches after Flow MCP frontend update", false);
+		}
+		try {
+			Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(project);
+		} catch (catalogError) {
+			ConvertigoPlugin.logException(catalogError, "Unable to clear Flow Studio catalog cache after Flow MCP frontend update", false);
+		}
+		var view = plugin.getProjectExplorerView();
+		if (view == null) {
+			return "skipped";
+		}
+		var flowEngine = project.getFlowEngine();
+		var treeObject = flowEngine == null ? null : view.findTreeObjectByUserObject(flowEngine);
+		reloadNotingProjectFlag(project, function () {
+			if (treeObject != null) {
+				view.reloadTreeObject(treeObject);
+				view.refreshTreeObject(treeObject);
+			} else {
+				view.refreshTree();
+			}
+		});
+		return "reloaded";
+	}
+
 	function studioRefreshFlowEngine(args, reason) {
 		var result = {
 			status: "pending",
@@ -837,39 +931,7 @@
 			}
 			ConvertigoPlugin.asyncExec(new Runnable({ run: function () {
 				try {
-					try {
-						var IResource = Packages.org.eclipse.core.resources.IResource;
-						var iProject = plugin.getProjectPluginResource(String(project.getName()));
-						if (iProject != null) {
-							iProject.refreshLocal(IResource.DEPTH_INFINITE, null);
-						}
-					} catch (resourceError) {
-						ConvertigoPlugin.logException(resourceError, "Unable to refresh Eclipse resources after Flow MCP frontend update", false);
-					}
-					try {
-						Packages.com.twinsoft.convertigo.engine.flow.FlowEngineBridge.invalidateDataCaches();
-					} catch (cacheError) {
-						ConvertigoPlugin.logException(cacheError, "Unable to invalidate Flow authoring caches after Flow MCP frontend update", false);
-					}
-					try {
-						Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(project);
-					} catch (catalogError) {
-						ConvertigoPlugin.logException(catalogError, "Unable to clear Flow Studio catalog cache after Flow MCP frontend update", false);
-					}
-					var view = plugin.getProjectExplorerView();
-					if (view == null) {
-						return;
-					}
-					var flowEngine = project.getFlowEngine();
-					var treeObject = flowEngine == null ? null : view.findTreeObjectByUserObject(flowEngine);
-					reloadNotingProjectFlag(project, function () {
-						if (treeObject != null) {
-							view.reloadTreeObject(treeObject);
-							view.refreshTreeObject(treeObject);
-						} else {
-							view.refreshTree();
-						}
-					});
+					studioReloadFrontend(plugin, project, reason);
 				} catch (e) {
 					ConvertigoPlugin.logException(e, "Unable to refresh Project Explorer after Flow MCP frontend update", false);
 				}
@@ -5339,6 +5401,9 @@
 		_reloadNotingProjectFlag: reloadNotingProjectFlag,
 		_lockProjectFlags: lockProjectFlags,
 		_studioReloadNoted: studioReloadNoted,
+		_queueStudioReload: queueStudioReload,
+		_studioReloadObject: studioReloadObject,
+		_studioReloadFrontend: studioReloadFrontend,
 		assertFlowNameFree: assertFlowNameFree,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
