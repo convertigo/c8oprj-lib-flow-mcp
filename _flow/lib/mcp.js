@@ -3727,6 +3727,10 @@
 			}
 		});
 		if (error.details) {
+			if (error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && error.details.receivedRevision !== undefined && error.details.currentRevision !== undefined) {
+				out.details = {property:"revision",receivedRevision:String(error.details.receivedRevision),currentRevision:String(error.details.currentRevision)};
+				return out;
+			}
 			var report = compactFlowCodeDiagnosticReport(request, error.details);
 			out.details = report;
 			out.diagnosticCount = report.diagnosticCount;
@@ -3821,6 +3825,9 @@
 		out.responseDetail = "summary";
 		if (value.ok === false && value.proposedPatch && value.proposedPatch.edits && value.proposedPatch.edits.length) {
 			out.next = value.proposedPatch.next;
+		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && out.error.details && out.error.details.currentRevision) {
+			out.next = "Review the working copy with code-get at revision " + out.error.details.currentRevision +
+				", then promote exactly the checked revision. A transcription error in revision needs no source patch.";
 		} else if (value.ok === false) {
 			out.next = value.draft
 				? "Patch the working copy with code-patch, then check again with code-check."

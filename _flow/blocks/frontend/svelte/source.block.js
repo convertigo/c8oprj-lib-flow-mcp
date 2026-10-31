@@ -1090,6 +1090,7 @@ const _meta = {
 					"Variable is for action, route Params and Query arguments; do not use it as page-local state.",
 					"Put lifecycle blocks in the root Events slot, never in visual Structure. Interval and Timeout register on mount and clean themselves up on teardown.",
 					"Use SetValue, UpdateList or UpdateNumber for explicit state changes. Free browser expressions are not portable action values; use a source, literal, Derived value or typed frontend Flow block.",
+					"Checkbox and Toggle OnChange expose a boolean in @event.value and @event.checked: true when checked, false when unchecked. Store either in a boolean State with SetValue.",
 					"Use only listed properties on these standard blocks. A property equal to its default is omitted from the source.",
 					"Property contracts use type:intent|intent; bindable properties accept the valueSyntax sources (@local, @<requestable or action>, @<ForEach $$id>.item, @event, @route, @props, @theme).",
 					"Navigate targets a Page id; fill its required Params with Variable bindings. The target Page reads them as @route.params.name. Write target Pages before the Pages that navigate to them.",
