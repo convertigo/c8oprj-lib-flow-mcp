@@ -179,9 +179,10 @@ const _meta = {
 				return mcp.toolError(request, {
 					code: kind === "block" ? "PROJECT_REQUIRED_FOR_BLOCK_CODE" : "PROJECT_REQUIRED_FOR_SOURCE_CODE",
 					message: "Project-local " + kind + " code requires an explicit project.",
-					hint: kind === "block"
+					hint: (kind === "block"
 						? "Call code-" + effectiveOperation + " with project:\"<target project>\", block:\"namespace.name\"."
-						: "Call code-" + effectiveOperation + " with project:\"<target project>\" and sourceFile, or kind:\"source\" for project-wide rg."
+						: "Call code-" + effectiveOperation + " with project:\"<target project>\" and sourceFile, or kind:\"source\" for project-wide rg.") +
+						" If the application project does not exist yet, create it first with flow-project-bootstrap({ project:\"<NewProject>\" })."
 				}, ctx);
 			}
 			if (kind === "block" && operation === "promote") {

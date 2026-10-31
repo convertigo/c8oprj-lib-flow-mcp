@@ -83,6 +83,11 @@ var missingGuide = tool(44, "flow-resource-get", { uri: "flow://guide/does-not-e
 assertTrue(missingGuide.error && missingGuide.error.code === "UNKNOWN_RESOURCE", "an unknown guide is UNKNOWN_RESOURCE: " + JSON.stringify(missingGuide));
 var projectPath = tool(45, "flow-resource-get", { path: "_flow/engine.yaml" });
 assertTrue(projectPath.error && /requires an explicit project/.test(projectPath.error.message), "a project resource still requires project: " + JSON.stringify(projectPath));
+// An agent that has not created its application yet learns to bootstrap it instead of retrying without project.
+var catalogWithoutProject = tool(46, "flow-catalog", { query: "sql" });
+assertTrue(catalogWithoutProject.error && /requires an explicit project/.test(catalogWithoutProject.error.message) &&
+	/create it first with flow-project-bootstrap\(\{ project:"<NewProject>" \}\)/.test(catalogWithoutProject.error.message),
+	"flow-catalog without project names the bootstrap: " + JSON.stringify(catalogWithoutProject));
 
 // Guides name only tools advertised by tools/list, and show only the current source dialect.
 var tools = {};

@@ -2391,6 +2391,27 @@
 		"tags-apply": true
 	};
 
+	// Without project, an agent that has not created its application yet retries the same call: the error names the
+	// bootstrap that creates it and, when the engine runs, the Flow projects already loaded besides the libraries.
+	function missingProjectHint(ctx, name) {
+		var names = [];
+		try {
+			var own = ctx && ctx.convertigoContext && ctx.convertigoContext().project;
+			var server = own != null ? String(own.getName()) : "";
+			loadedProjectTargets().forEach(function (target) {
+				if (target.project !== server && !/^lib_/.test(target.project) &&
+						new File(target.projectDir, "_flow/engine.yaml").isFile()) {
+					names.push(target.project);
+				}
+			});
+		} catch (_ignoreProjectList) {
+		}
+		names.sort();
+		return " If the application project does not exist yet, create it first with flow-project-bootstrap({ project:\"<NewProject>\" })" +
+			" (ui:true for a Svelte frontend), then call " + name + " with project:\"<NewProject>\"." +
+			(names.length ? " Flow projects loaded: " + names.slice(0, 12).join(", ") + (names.length > 12 ? ", ..." : "") + "." : "");
+	}
+
 	function isServerProject(ctx, project) {
 		try {
 			var own = ctx.convertigoContext().project;
@@ -2480,11 +2501,11 @@
 			"flow-requestable-schema": true
 		};
 		if (requiresProject[name] === true && !hasExplicitProject && String(args.scope || "") !== "workspace") {
-			throw new Error(name + " requires an explicit project. This MCP endpoint runs in lib_flow_mcp and is not necessarily the target project; call " + name + " with project:\"<target project>\".");
+			throw new Error(name + " requires an explicit project. This MCP endpoint runs in lib_flow_mcp and is not necessarily the target project; call " + name + " with project:\"<target project>\"." + missingProjectHint(ctx, name));
 		}
 		if (projectWritingTools[name] === true) {
 			if (!hasExplicitProject) {
-				throw new Error(name + " writes into a project and requires project:\"<target project>\". Without it the write would land in lib_flow_mcp, the project serving this MCP endpoint.");
+				throw new Error(name + " writes into a project and requires project:\"<target project>\". Without it the write would land in lib_flow_mcp, the project serving this MCP endpoint." + missingProjectHint(ctx, name));
 			}
 			if (args.project && !args.projectDir && isServerProject(ctx, args.project)) {
 				throw new Error(name + " refuses to write into " + args.project + ", the project serving this MCP endpoint. Pass the application project.");
