@@ -3040,10 +3040,13 @@ assertTrue(draftNodeSchema.result && draftNodeSchema.result.result &&
 	draftNodeSchema.result.result.structuredContent.target.block === "list.sort",
 	"MCP flow-node-output-schema did not inspect an unpromoted FlowScript working copy: " + JSON.stringify(draftNodeSchema));
 
+// The identical TargetSmoke source creates no draft. Promote the newly written source instead.
+assertTrue(codeSet.result.result.structuredContent.unchanged === true && codeSet.result.result.structuredContent.written === false,
+	"An identical code-set must preserve the saved Flow without a new working copy");
 var codePromote = callTool(6, "code-promote", {
 	projectDir: targetProjectDir,
-	name: "TargetSmoke",
-	revision: codeSet.result.result.structuredContent.revision
+	name: "DraftNodeSchemaSmoke",
+	revision: draftNodeSchemaSet.result.result.structuredContent.revision
 });
 debugPrint(JSON.stringify(codePromote));
 assertTrue(codePromote.result.result.structuredContent.ok === true,
