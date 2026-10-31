@@ -103,12 +103,63 @@ entity, `security` to no role map (every signed-in user has the role
 - `permissions.<operation>` (`list`, `read`, `count`, `create`, `update`,
   `delete`, or `save` for the writes not listed) is a role list, or `false`.
   Default: reads for `authenticated`, `reader`, `editor`; writes for
-  `authenticated`, `editor`. `readOnly: true` generates no write Flow nor form.
-- `security.principals` maps each user name to its role;
-  `demoLogin: true` enables the demo sign-in with these accounts. The role
-  comes from this map only (see Limits).
+  `authenticated`, `editor` (none for a `generate: "data"` entity).
+  `readOnly: true` generates no write Flow nor form.
+- `security.principals` maps each user name to its role. The role comes
+  from this map only (see Limits).
+- `security.demoLogin: true` (off by default) generates `desk_demo_login`:
+  one anonymous call opens a session as any of these accounts, an admin
+  included. Keep it for demos; it is never generated without the generated
+  sign-in page (`ui.loginPage: false`, `ui.generate: "none"`).
+- `security.accounts: {"entity": "members", "login": "login", "active": "active"}`
+  binds users to an entity: every generated Flow and the demo sign-in refuse
+  an unknown account, or one whose `active` field is not true.
 - `revision: "revision"` on an entity adds optimistic concurrency; omitted,
   the last write wins.
+
+## Choose a generation mode
+
+| Application kind | Model |
+|---|---|
+| reference data / back office | `generate: "full"` (default) |
+| business workflow | `"data"` for workflow entities, `"full"` only for admin reference tables, `rowPolicy` for owner perimeters, `ui.homePage` / `ui.loginPage` to business pages |
+
+- `"full"`: table, seed, sources, the Flows `list|read|count|options|save|delete`,
+  pages (list, detail, form) and a shell entry.
+- `"data"`: table, seed, sources `<entity>_read` / `<entity>_write`, and
+  `list|read|count|options`. No page, no shell entry, no `save` / `delete`
+  unless `permissions` names the roles. Business Flows own the mutations.
+- root `ui.generate: "none"`: no shell, sign-in, home or page at all; your
+  pages call the generated Flows and `desk_session`.
+- `flow-crud-upsert` previews `names[]` and `next` list the Flows each
+  entity generates: read them before writing code.
+
+Example, assets assigned to owners, with check-ins and reminders:
+
+```json
+"security": {"principals": {"ada": "member", "max": "admin"},
+             "accounts": {"entity": "members", "login": "login", "active": "active"}},
+"ui": {"homePage": "my_assets", "loginPage": "sign_in",
+       "navigation": [{"page": "my_assets", "label": "My assets"}]},
+"entities": [
+ {"name": "categories", "permissions": {"list": ["member", "admin"], "read": ["member", "admin"], "save": ["admin"]}},
+ {"name": "members", "generate": "data", "permissions": {"list": ["admin"], "read": ["admin"]}},
+ {"name": "assets", "generate": "data", "permissions": {"list": ["member", "admin"], "read": ["member", "admin"], "count": ["member", "admin"]},
+  "rowPolicy": {"field": "owner_id", "equals": "account.id", "unrestricted": ["admin"]}},
+ {"name": "checkins", "generate": "data", "permissions": {"list": ["member", "admin"], "read": ["member", "admin"]},
+  "rowPolicy": {"field": "member_id", "equals": "account.id", "unrestricted": ["admin"]}},
+ {"name": "reminders", "generate": "data", "permissions": {"list": ["admin"], "read": ["admin"]}}]
+```
+
+(fields omitted). `categories` keeps its generated back office; check-in,
+assignment and the reminder job are business Flows that write through
+`checkins_write` / `assets_write`.
+
+Switching an applied entity from `full` to `data` (or `readOnly: true`,
+`ui.generate: "none"`, the demo sign-in off) is additive: a Flow the model no
+longer generates stays owned and refuses every call (`GONE`, 410); a page
+stays on disk, unlinked from the generated ones, and the preview reports it
+released (`FLOW_CRUD_FILE_RELEASED`): delete it or keep it as your own.
 
 ## Entities with business rules
 
@@ -133,8 +184,7 @@ and at the root of the model
 - `permissions.tickets.update` of the session is now `false`: your business
   Flows check the role (`local.session.role`), then apply the rules and
   write the audit row in the same transaction (below).
-- Prefer this to `readOnly: true`, which no longer generates the save Flow
-  and the form, and is refused once they exist (`FLOW_CRUD_REMOVAL_UNSUPPORTED`).
+- `generate: "data"` goes further: no generic page at all.
 
 ## Preview, apply, prove
 
@@ -190,7 +240,8 @@ Change the model and preview again; `schemaVersion` increases by itself.
 The database plan is additive: new entities, relations, and fields that are
 nullable or have a `default` (`ALTER TABLE ... ADD COLUMN ... DEFAULT`). A
 removed or renamed field is refused (`SQL_SCHEMA_MIGRATION_UNSUPPORTED`), and
-so is a removed entity (`FLOW_CRUD_REMOVAL_UNSUPPORTED`): add a new field and
+so is a removed entity (`FLOW_CRUD_REMOVAL_UNSUPPORTED`; `generate: "data"`
+drops its pages instead): add a new field and
 stop using the old one. A new required field on a filled table needs a
 `default`.
 
@@ -274,12 +325,21 @@ the model changes its database, update your copy.
 
 ### Per-user data perimeter
 
-`rowPolicy` is not implemented (`FLOW_CRUD_ROW_POLICY_NOT_IMPLEMENTED`), and
-the generated list accepts any `filter` from its caller, so it cannot hold a
-perimeter. Restrict the generated entity Flows to the roles that may see every
-row, and give the others a business Flow whose filter comes from the server:
-a named read with `readOnly: true`, `expose: false`, the copied connection,
-and the user of `desk_session`.
+An owner rule on an entity:
+
+```json
+"rowPolicy": {"field": "owner_id", "equals": "account.id", "unrestricted": ["admin"]}
+```
+
+A role not in `unrestricted` sees and writes only the rows whose `field`
+equals its session value: `"user"` (the signed-in user name) or
+`"account.<field>"` (that field of its `security.accounts` row). The generated
+`list`, `read`, `count`, `options`, `save` and `delete` apply it on the
+server: the list replaces any caller `filter` or `search` with the owner
+filter, read/update/delete answer 404 for a row of someone else, and create
+and update set the owner field. Any other form is refused
+(`FLOW_CRUD_ROW_POLICY_UNSUPPORTED`). For a perimeter that is not an owner
+rule, write a business Flow whose filter comes from the server:
 
 ```javascript
 function my_tickets({ input, config, result }) {
@@ -292,10 +352,8 @@ function my_tickets({ input, config, result }) {
 }
 ```
 
-With `my_tickets_rows` declared as
-`SELECT "id", "title", "status", "updated_at" FROM "PUBLIC"."tickets" WHERE "assignee"=:user`.
-Remember that the generated detail, form and save Flows of that entity still
-follow the role permissions, not the perimeter.
+With `my_tickets_rows` declared as a named read (`readOnly: true`,
+`expose: false`, the copied connection).
 
 ### Pages next to the generated ones
 
@@ -345,9 +403,10 @@ your pages, name them by their `page.id` at the root of the model:
   requiring it, signs in (`session.authenticate` in a business Flow), then
   navigates to the home page; the pages above then send to `sign_in`, not
   `crud_login`.
-- `crud_dashboard` and `crud_login` stay generated (`/login` remains the demo
-  sign-in when `security.demoLogin` is true): apply refuses the removal of
-  generated files.
+- `crud_dashboard` and `crud_login` stay generated, unlinked. `false`
+  generates neither: `"homePage": false` leaves `/` to your page (the first
+  `ui.navigation` page is the home of the shell), `"loginPage": false` drops
+  `/login` and the demo sign-in Flow.
 
 ### CSV export
 
@@ -402,7 +461,10 @@ schedule it as `flow://guide/multipage-roles` shows.
   signed-in user when it is empty); they cannot come from `lib_UserManager`
   or another identity provider yet. Outside a demo, sign in with that
   provider and list its user names in `principals`.
-- No row policy: see the perimeter above.
+- `rowPolicy` is the owner form only. For a restricted role, the generated
+  list has no search or caller filter (the owner filter takes its one
+  predicate), and the read hides the labels of related rows under a row
+  policy.
 - Keys are one generated integer; no composite or text key.
 - Indexes are refused (`SQL_PORTABLE_INDEX_NOT_IMPLEMENTED`); relations are
   many-to-one only, without cycles.

@@ -464,8 +464,10 @@ Optional common model extensions are `permissions` per entity/operation,
 `revision` (absent means native unversioned SQL writes), `fields[].enum` (server
 validation; labels in `ui.fieldOptions`), `indexes`, `database.schemaPolicy`
 (`managed` or schema-observing `observe`) and import `provenance`.
-Index and row-policy declarations are preserved but block application until their
-complete generic implementations exist. SQL `TIMESTAMP` maps to portable
+`generate` per entity (`full`, or `data`: no pages nor generic writes), root
+`ui.generate: none`, and the owner form of `rowPolicy` (server-side owner filter,
+other forms refused) shape what is generated. Index declarations are preserved
+but block application until their generic implementation exists. SQL `TIMESTAMP` maps to portable
 `timestamp`: a local date-time without timezone, to the millisecond, in JSON
 `yyyy-MM-dd'T'HH:mm:ss[.SSS]` (canonical reads include `.SSS`). Offset values and
 `TIMESTAMP WITH TIME ZONE` are explicitly refused. It is never reduced to DATE.
