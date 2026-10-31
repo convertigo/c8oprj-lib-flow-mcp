@@ -345,14 +345,36 @@ const _meta = {
 			if (!dryRun && (existing == null || updated)) {
 				// the save writes the whole project: refused while it holds unsaved Studio work
 				ctx.lib("mcp").assertProjectSaveAllowed({ project: projectNameValue, saveProject: true }, "");
-				var reference = existing || Engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
-				if (url !== null && url !== String(reference.getProjectName())) {
-					reference.setProjectName(url);
-					reference.hasChanged = true;
-					project.hasChanged = true;
+				var wasChanged = project.hasChanged === true;
+				var referenceWasChanged = existing != null && existing.hasChanged === true;
+				var reference = null;
+				try {
+					reference = existing || Engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
+					if (url !== null && url !== String(reference.getProjectName())) {
+						reference.setProjectName(url);
+						reference.hasChanged = true;
+						project.hasChanged = true;
+					}
+					response.url = String(reference.getProjectName());
+					Engine.theApp.databaseObjectsManager.exportProject(project);
+				} catch (cause) {
+					var rollback = true;
+					try {
+						if (existing == null && reference != null) project.remove(reference);
+						else if (existing != null) { existing.setProjectName(currentUrl); existing.hasChanged = referenceWasChanged; }
+						project.hasChanged = wasChanged;
+					} catch (_rollbackFailed) { rollback = false; }
+					var reasons = [], current = cause.javaException || cause;
+					for (var depth = 0; current && depth < 6; depth++) {
+						reasons.push(String(current.message || current));
+						try { var nested = current.getCause(); if (!nested || nested === current) break; current = nested; } catch (_noCause) { break; }
+					}
+					var error = new Error("Reference " + projectNameValue + " -> " + referenceName + " was not saved: " + reasons.join(" -> "));
+					error.code = "PROJECT_REFERENCE_SAVE_FAILED";
+					error.hint = "Inspect the underlying exporter error, save the project once with project-save, then retry flow-project-reference. Do not delete or bootstrap the project again.";
+					error.details = {project: projectNameValue, reference: referenceName, property: "references", rolledBack: rollback, causes: reasons};
+					throw error;
 				}
-				response.url = String(reference.getProjectName());
-				Engine.theApp.databaseObjectsManager.exportProject(project);
 				response.saved = true;
 				refreshStudio(Engine, project);
 			}

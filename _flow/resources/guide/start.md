@@ -242,3 +242,11 @@ then read `flow://guide/multipage-roles`. For Svelte-only work, read
 `frontend-svelte-action`. Pages live under
 `_flow/frontbuilder/svelte/model/<App>/src/routes`; generated Svelte is never
 edited.
+
+## Non-secret project switches
+
+Use `flow-project-symbol-set({project:"App",key:"App.demo.login",value:true})` for a non-secret project switch.
+Keys are confined to `<project>.*`, values to booleans or finite numbers; credentials and strings are refused.
+The symbol manager applies the setting immediately, including to warm Flow runtimes. No Studio configuration edit or
+admin session is needed. The manager persists symbols through its normal API; `effective:true` confirms memory,
+not a separate guarantee of disk persistence. Restore a switch by setting its previous boolean/number value.

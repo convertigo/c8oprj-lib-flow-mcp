@@ -19,3 +19,6 @@ var unsaved = run.warnings.filter(function(warning){return warning.code==='FLOW_
 assert(unsaved && unsaved.revision === 'exact-draft' && unsaved.qname === 'Project.Sample' && unsaved.hint.indexOf('exact-draft') >= 0,'Unsaved warning must identify the exact revision to resume');
 assert(!response('code-set',{ok:true,revision:'normal',warnings:[]}).fixes,'No fabricated correction for an unchanged source');
 print('code-safe-corrections OK ('+checks+' checks)');
+
+var same = response('code-patch',{ok:true,unchanged:true,written:false,draft:false,revision:'saved',oldRevision:'saved'});
+assert(same.unchanged===true && same.written===false && !same.unsaved && !/promote/.test(same.next),'Identity patch has no unsaved flag or promote instruction');

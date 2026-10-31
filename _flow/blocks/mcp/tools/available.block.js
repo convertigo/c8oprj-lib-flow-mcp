@@ -72,6 +72,7 @@ const _meta = {
 		"flow-crud-proof": true,
 		"flow-project-bootstrap": true,
 		"flow-project-metadata": true,
+		"flow-project-symbol-set": true,
 		"flow-project-reference": true,
 		"flow-project-remove": true,
 		"flow-requestable-list": true,
@@ -372,6 +373,10 @@ const _meta = {
 			schema.properties.qname = {type:"string",description:"Qualified Flow name in project; provide qname or name."};
 			schema.properties.refresh = {type:"boolean",description:"Refresh the Studio tree after synchronization (default true)."};
 			schema.anyOf = [{required:["name"]},{required:["qname"]}];
+		}
+		if (toolName === "code-discard") {
+			schema.properties.sourceFile = {type:"string",description:"Project-relative .flow.svelte or .flow.css working copy to discard; saved file is kept and discarded text backed up."};
+			schema.properties.kind = {type:"string",enum:["flow","source"]};
 		}
 		var supportsBlockTarget = /^code-(get|set|patch|check|rg)$/.test(String(toolName || ""));
 		if (/^code-/.test(String(toolName || ""))) {

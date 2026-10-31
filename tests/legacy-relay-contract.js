@@ -235,6 +235,17 @@ try {
 	java.lang.System.setProperty("convertigo.flow.mcp.legacyRelay", "false");
 	assert(!mcp.legacyRelayTool("scheduler-apply"), "the relay can be disabled");
 	java.lang.System.clearProperty("convertigo.flow.mcp.legacyRelay");
+// A requested wait longer than the relay timeout is split into asynchronous collections, never a 240 s silent wait.
+var boundedRequest={jsonrpc:"2.0",id:109,method:"tools/call",params:{name:"subagent-run",arguments:{profile:"verifier",task:"A long check",waitSec:280,inputs:{url:"http://localhost:4200/app"}}}};
+var bounded=mcp.legacyRelayCall(ctx,boundedRequest);
+assert(bounded.result.structuredContent.status === "running", "long verification remains collectable");
+assert(seen[seen.length-1].body.params.arguments.waitSec <= 50, "each collection is bounded below the relay deadline");
+assert(boundedRequest.params.arguments.waitSec === 280, "caller request is not mutated");
+var resumed=mcp.legacyRelayCall(ctx,{id:110,params:{name:"subagent-run",arguments:{runId:bounded.result.structuredContent.runId,waitSec:280}}});
+assert(resumed.result.structuredContent.status === "finished", "same run yields its report on collection");
+var missing=mcp.legacyRelayCall(ctx,{id:111,params:{name:"subagent-run",arguments:{profile:"verifier",inputs:{url:"http://localhost:28080/convertigo/gw/ticket/"}}}});
+assert(/inputs.project/.test(JSON.stringify(missing)), "gateway preflight requires the application project");
+
 } finally {
 	server.stop(0);
 }

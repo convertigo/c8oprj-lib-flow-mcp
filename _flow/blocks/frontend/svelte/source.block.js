@@ -8,7 +8,7 @@ const _meta = {
     "operation": {
       "kind": "text",
       "type": "string",
-      "description": "get, rg, check, set or patch.",
+      "description": "get, rg, check, set, patch or discard (working copy only, with recovery backup).",
     },
     "sourceFile": {
       "kind": "text",
@@ -785,7 +785,7 @@ const _meta = {
 						severity: "error",
 						code: tree && tree.error && tree.error.code || "FRONTEND_SOURCE_INVALID",
 						message: tree && tree.error && tree.error.message || treeError &&
-							(treeError.label || treeError.summary || treeError.message) || "Flow Svelte source could not be projected."
+							(treeError.props && treeError.props.error || treeError.message || treeError.summary || treeError.label) || "Flow Svelte source could not be projected."
 					});
 				} else {
 					(tree.diagnostics || []).forEach(function (item) {
@@ -839,10 +839,11 @@ const _meta = {
 
 	function requireValid(validation) {
 		if (validation.ok !== true) {
-			var first = validation.diagnostics[0] || {};
+			var first = validation.diagnostics.filter(function (item) { return item.severity === "error"; })[0] || validation.diagnostics[0] || {};
 			var error = new Error(String(first.message || "Invalid frontend source."));
 			error.code = String(first.code || "FRONTEND_SOURCE_INVALID");
-			error.hint = String(first.hint || "Call code-check for structured diagnostics.");
+			error.hint = String(first.hint || "Call code-check with the same sourceFile and inline code for structured diagnostics; a refused new source has not been saved.");
+			error.details = {sourceFile: validation.sourceFile, line: first.line, column: first.column, property: first.property, diagnostics: validation.diagnostics};
 			throw error;
 		}
 	}
@@ -1334,6 +1335,20 @@ const _meta = {
 				result = search(ctx, props);
 			} else if (operation === "get") {
 				result = read(ctx, props, path, true);
+			} else if (operation === "discard") {
+				var store = sourceStore(ctx, props);
+				var recovery = "", discarded = false;
+				if (store.drafts && store.dirty(path.file)) {
+					var content = store.read(path.file);
+					var backup = new File(String(props.projectDir), "_private/flow-discard/" + String(java.util.UUID.randomUUID()) + "/" + path.relative);
+					FileUtils.writeStringToFile(backup, content, "UTF-8");
+					recovery = String(backup.getCanonicalPath());
+					discarded = store.discard(path.file);
+					if (discarded) notifySourceMutation(ctx, props, path);
+				}
+				result = {ok: true, sourceFile: path.relative, discarded: discarded, exists: store.exists(path.file),
+					dirty: store.dirty(path.file), recoveryFile: recovery, written: false,
+					next: "Working copy discarded; saved source kept. The discarded text is recoverable from recoveryFile when present."};
 			} else if (operation === "check") {
 				var source = props.code !== undefined && props.code !== null
 					? String(props.code)

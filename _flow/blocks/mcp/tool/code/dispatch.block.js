@@ -197,7 +197,7 @@ const _meta = {
 					next: "Project-local blocks have no draft/promote step: code-set/code-patch write the canonical .block.js directly. Run an executable Flow that uses the block."
 				}, ctx);
 			}
-			if ((kind === "block" || kind === "source") && BLOCK_OPERATIONS[effectiveOperation] !== true) {
+			if ((kind === "block" || kind === "source") && BLOCK_OPERATIONS[effectiveOperation] !== true && !(kind === "source" && effectiveOperation === "discard")) {
 				return mcp.toolError(request, {
 					code: kind === "block" ? "UNSUPPORTED_BLOCK_CODE_OPERATION" : "UNSUPPORTED_SOURCE_CODE_OPERATION",
 					message: "code-" + effectiveOperation + " is only available for executable Flows.",

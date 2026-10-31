@@ -137,3 +137,10 @@ undeclared Flow input.
 An unknown block is diagnosed before nested-call corrections; inspect its
 suggestions and keep the intended contract. No suggested block is substituted
 automatically.
+
+## Cancel a frontend working copy
+
+`code-discard({project:"App",sourceFile:"_flow/frontbuilder/svelte/model/App/src/routes/scratch/+page.flow.svelte"})`
+discards only that source's working copy. A scratch page that was never saved disappears; a saved page returns to its
+saved text. `recoveryFile` names a backup of discarded text under the project's `_private/flow-discard/` folder.
+To diagnose a refused new source, send its text inline to `code-check({project:"App",sourceFile,code})`.

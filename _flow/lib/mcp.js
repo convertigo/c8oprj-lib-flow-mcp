@@ -3104,6 +3104,9 @@
 			exists: function (file) {
 				return flowEngine != null ? flowEngine.hasSource(absolute(file)) === true : file.isFile();
 			},
+			discard: function (file) {
+				return flowEngine != null && flowEngine.discardSource(absolute(file)) === true;
+			},
 			dirty: function (file) {
 				return flowEngine != null && flowEngine.isSourceDirty(absolute(file)) === true;
 			},
@@ -3725,7 +3728,7 @@
 		}
 		var name = toolName(request);
 		var out = {};
-		["ok", "qname", "name", "block", "target", "runtime", "format", "dry", "written", "finalized", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared",
+		["ok", "qname", "name", "block", "target", "runtime", "format", "dry", "unchanged", "written", "finalized", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared",
 			"dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];
@@ -3813,6 +3816,8 @@
 				: "No unsaved working copy. Use code-set or code-patch to edit.";
 		} else if (name === "flow-code-discard" || name === "code-discard") {
 			out.next = "Working copy discarded. Use code-get to read the official Flow or code-set to edit again.";
+			} else if (value.unchanged === true && value.draft !== true) {
+				out.next = "Source unchanged; the saved Flow is active.";
 			} else if (value.blockAlreadySaved) {
 				out.next = value.next || "Project-local block source is already saved by code-set/code-patch. Run an executable Flow that uses the block.";
 			} else if (value.draft && value.written) {
@@ -4878,6 +4883,32 @@
 		}
 		var timeoutSeconds = legacyRelayTimeoutSeconds();
 		try {
+			if (String(request.params && request.params.name) === "subagent-run") {
+				// Each hop collects a bounded slice of the existing asynchronous run. Never stretch an HTTP call
+				// across the verifier budget: return its runId and activity, then collect the same run again.
+				subagent.request = copyJson(subagent.request);
+				timeoutSeconds = Math.max(timeoutSeconds, 10);
+				var args = subagent.request.params.arguments || {};
+				subagent.request.params.arguments = args;
+				if (args.waitSec !== undefined || timeoutSeconds < 55) args.waitSec = Math.max(5, Math.min(argInt(args.waitSec, 50, 5, 280), 50, Math.max(5, timeoutSeconds - 5)));
+				var inputs = subagentInputs(args.inputs);
+				if (!args.runId && String(args.profile || "verifier") === "verifier" && /\/gw\//.test(String(inputs.url || args.url || ""))) {
+					var project = String(inputs.project || args.project || "").trim();
+					if (!project) {
+						throw subagentRelayError("VERIFIER_PROJECT_REQUIRED", "A Flow dev viewer needs inputs.project before verification.",
+							"Pass inputs.project with the application project and inputs.url with its viewer openUrl.", { property: "inputs.project" });
+					}
+					var prepared = prepareToolArguments(ctx, { params: { name: "frontend-svelte-action", arguments: {
+						project: project, actionId: "dev.ensure", wait: true
+					} } }, {});
+					var ensured = ctx.callBlock("authoring.action", prepared, { trace: false });
+					if (!ensured || ensured.ok !== true || ensured.pending === true) {
+						throw subagentRelayError("VERIFIER_DEV_UNAVAILABLE", "The application dev viewer is not ready.",
+							"Run frontend-svelte-action dev.ensure for " + project + " and resolve its diagnostics before verifying.", ensured || {});
+					}
+					if (ensured.openUrl) { inputs.url = String(ensured.openUrl); args.inputs = inputs; }
+				}
+			}
 			var answer = legacyPost(ctx, {
 				jsonrpc: "2.0",
 				id: request.id === undefined ? null : request.id,
@@ -4896,6 +4927,7 @@
 			}
 			return answer;
 		} catch (error) {
+			if (error && /^VERIFIER_/.test(String(error.code || ""))) return toolError(request, error, ctx);
 			if (relayTimedOut(error)) {
 				return toolError(request, legacyRelayTimeoutError(request, timeoutSeconds), ctx);
 			}
@@ -4911,7 +4943,7 @@
 	var SUBAGENT_PROGRESS_FILE = "docs/generated/PROGRESS.md";
 	var MAIN_AGENT_TOOLS = {
 		"browser-verify": true, "flow-project-bootstrap": true, "flow-project-remove": true, "marketplace-import": true,
-		"project-save": true, "report-create": true, "scheduler-apply": true, "subagent-run": true
+		"flow-project-symbol-set": true, "project-save": true, "report-create": true, "scheduler-apply": true, "subagent-run": true
 	};
 	var BACKEND_WRITE_TOOLS = {
 		"flow-block-code-patch": true, "flow-block-code-set": true, "flow-block-mock": true, "flow-code-discard": true,
