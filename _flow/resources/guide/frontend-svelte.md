@@ -60,7 +60,10 @@ state), `Events` (lifecycle) and `Structure` (visible UI only):
   `$$disabled={true}` removes the node and its subtree from rendering and
   execution; enabled nodes omit it. Plain attributes are widget or business
   properties: `<Input $$id="editor" id="customer-field" disabled={true} />`
-  has identity `editor`, DOM id `customer-field` and a disabled widget.
+  has identity `editor`, DOM id `customer-field` and a disabled widget. The
+  `disabled` of a control follows a boolean source like any binding:
+  `<Button $$id="apply" label="Apply" disabled={!page.hasSelection} />` or
+  `disabled="@page.locked"`, no `If`/`Else` pair of buttons.
 - One `$$id` namespace per document: a component cannot reuse the `$$id` of a
   `State`. Rename changes `$$id` only.
 - A Page root may carry `label`; a component keeps its label in its header.
