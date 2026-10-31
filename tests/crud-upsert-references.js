@@ -55,6 +55,12 @@ check(preview.sql.skipped === true && ctx.sqlRuns === 0, "no SQL plan without li
 check(/planHash/.test(preview.next) && /adds the references lib_flow_sql/.test(preview.next), "next names the apply call and the references", preview.next);
 check(preview.names && preview.names.length === 1 && preview.names[0].entity === "tickets" && preview.names[0].flows.indexOf("desk_tickets_list") === 0
 	&& !/renamed/.test(preview.next), "preview reports the generated names, no rename", preview.names);
+// The preview is compact by default (the model was repeated in studio, the files in generated); detail "full" keeps them.
+check(preview.studio === undefined && preview.generated === undefined && preview.generatedFiles > 0 && preview.detail === "compact"
+	&& /detail:"full"/.test(preview.next) && JSON.stringify(preview).length < 20000, "the preview is compact", Object.keys(preview));
+var fullPreview = crud.applyUnlocked(ctx, { project: "CrudSmokeRefs", projectDir: String(dir), spec: spec, dryRun: true, detail: "full" });
+check(fullPreview.studio && fullPreview.studio.entities && fullPreview.generated.length === preview.generatedFiles && fullPreview.planHash === preview.planHash,
+	"detail full keeps studio and the generated files, same plan", Object.keys(fullPreview));
 var renamedSpec = JSON.parse(JSON.stringify(spec)); renamedSpec.entities[0].name = "ticket";
 var renamedPreview = crud.applyUnlocked(ctx, { project: "CrudSmokeRefs", projectDir: String(dir), spec: renamedSpec, dryRun: true });
 check(renamedPreview.names[0].given === "ticket" && renamedPreview.names[0].entity === "tickets" && /renamed by the plural rule: ticket -> tickets/.test(renamedPreview.next),

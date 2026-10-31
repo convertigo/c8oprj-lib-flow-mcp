@@ -32,6 +32,13 @@ const _meta = {
       "kind": "literal",
       "type": "boolean",
       "description": "true previews without writing and returns planHash; omitted with planHash applies."
+    },
+    "detail": {
+      "kind": "select",
+      "type": "string",
+      "enum": ["compact", "full"],
+      "default": "compact",
+      "description": "Preview size: compact (names, status, diagnostics, changed files, references, SQL plan, planHash); full adds studio (the model, its diagram and generated pages) and the generated file list."
     }
   },
   "outputs": {

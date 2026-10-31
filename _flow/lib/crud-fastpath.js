@@ -316,6 +316,9 @@
       var renamed=plan.names.filter(function(n){return n.given;});
       var generatedNames=plan.names.map(function(n){return n.flows;}).join(', ');
       preview.next='Generated Flows: '+generatedNames+'. '+(c&&c.config.crud.demoLogin?'security.demoLogin is on: anyone may open a session as any security.principals account in one anonymous call; turn it off outside a demo. ':'')+(renamed.length?'Entities renamed by the plural rule: '+renamed.map(function(n){return n.given+' -> '+n.entity;}).join(', ')+' (names[].fix keeps a given name). ':'')+(status==='blocked'?'Fix each error diagnostic (code, message, fix), then preview again.':status==='applied'?'Nothing to apply; flow-crud-proof checks the generated artifacts.':'Apply: flow-crud-upsert({project:"'+args.project+'", planHash:"'+plan.planHash+'"}) with the same spec (or none to apply _flow/data/model.yaml)'+(plan.references&&plan.references.missing.length?'; it first adds the references '+plan.references.missing.join(', '):'')+'.');
+      // Compact by default: studio repeats the model (entities, portable entities, diagram nodes) and generated the
+      // files that changed already lists; detail "full" keeps them for a caller that draws the model
+      if(args.detail!=='full'){delete preview.studio;preview.generatedFiles=preview.generated.length;delete preview.generated;preview.detail='compact';preview.next+=' detail:"full" adds studio (model, diagram, pages) and the generated files.';}
       return preview;
     }
     if(!plan.applicable)throw Error('FLOW_CRUD_PLAN_BLOCKED: '+JSON.stringify(plan.diagnostics));
