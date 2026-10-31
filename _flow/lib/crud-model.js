@@ -26,6 +26,11 @@
   if(field.type==='boolean')return value===true||value===1||value==='true';
   return String(value);
  }
+ // A field without a label is shown by its humanized name: NumeroLigne and numero_ligne become "Numero ligne".
+ function humanize(name){
+  var words=String(name||'').replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g,'$1 $2').split(/[\s_.-]+/).filter(Boolean);
+  return words.map(function(w,i){var lower=w.length>1&&w===w.toUpperCase()&&/[A-Z]/.test(w)?w:w.toLowerCase();return i?lower:lower.charAt(0).toUpperCase()+lower.slice(1);}).join(' ')||String(name);
+ }
  function normalize(raw,project,legacy){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))error('Expected an entity model');
   if(raw.modelVersion!==undefined && raw.modelVersion!==1)error('Unsupported modelVersion');
@@ -52,18 +57,21 @@
   if(['hsqldb','postgresql','mariadb'].indexOf(mode)<0)diagnostics.push({code:'SQL_DIALECT_NOT_QUALIFIED',severity:'error',dialect:mode,message:'Model accepted; portable schema application is qualified only on HSQLDB/PostgreSQL/MariaDB.'});
   if(s.database.password && !/^\$\{[A-Za-z0-9_.-]+\.secret=?\}$/.test(s.database.password))diagnostics.push({code:'MODEL_SECRET_REFERENCE_REQUIRED',severity:'error',message:'Legacy model parsed; move inline credentials to a server secret symbol before storing/applying the model.'});
   s.ui.title=input.ui&&input.ui.title||project;
-  var aliases={};
+  var aliases={},explicitLabels={};
   normalized.entities.forEach(function(e,i){
    var re=rawEntities[i],key=e.primaryField.column,out={name:e.name,label:e.displayLabel,sourceName:re.name,routeSegment:e.routeSegment,key:[key],revision:re.revision||null,readOnly:re.readOnly===true,permissions:clone(re.permissions||{}),fields:[],ui:clone(e.ui),indexes:clone(re.indexes||[])};
    if(re.permissions!==undefined&&(!re.permissions||typeof re.permissions!=='object'||Array.isArray(re.permissions)))error('permissions must be an operation map');
    if(re.revision!==undefined&&re.revision!==null&&typeof re.revision!=='string')error('revision must name a column, or be null');
    if(re.indexes!==undefined&&!Array.isArray(re.indexes))error('indexes must be an array');
    if(out.indexes.length)diagnostics.push({code:'SQL_PORTABLE_INDEX_NOT_IMPLEMENTED',severity:'error',entity:e.name,message:'Index declarations are preserved; generic additive index planning is not implemented by this prototype.'});
+   // ui.navigation false: the shell does not link the generic list (business pages replace it through the root ui.navigation).
+   if(re.ui&&re.ui.navigation!==undefined){if(typeof re.ui.navigation!=='boolean')error('entities[].ui.navigation is true or false');out.ui.navigation=re.ui.navigation;}
    if(re.rowPolicy)diagnostics.push({code:'FLOW_CRUD_ROW_POLICY_NOT_IMPLEMENTED',severity:'error',entity:e.name,message:'Row policies must be enforced across every read, count and mutation; this prototype refuses partial enforcement.'});
    aliases[re.name]=out;aliases[e.name]=out;
    e.fields.forEach(function(f){
     var p=portable(f.type),rf=(re.fields||[]).filter(function(x){return String(x.column||x.name).toLowerCase()===f.column||x.name===f.name;})[0]||{};
-    var field=Object.assign({name:f.column,column:f.column,label:f.label,sourceName:f.name,nullable:!f.required},p);
+    var explicit=typeof rf.label==='string'&&rf.label.trim()!=='';if(explicit)explicitLabels[e.name+'.'+f.column]=true;
+    var field=Object.assign({name:f.column,column:f.column,label:explicit?rf.label.trim():humanize(f.name),sourceName:f.name,nullable:!f.required},p);
     // Legacy makes the column named id an identity regardless of the generated flag.
     if(f.primary){field.nullable=false;field.identity=f.column==='id'||f.generated===true;}
     else if(f.unique)field.unique=true;
@@ -75,13 +83,18 @@
     out.fields.push(field);
    });
    if(out.key.length!==1 || !out.fields.some(function(f){return f.name===key&&f.identity&&f.type==='int64';}))diagnostics.push({code:'FLOW_CRUD_KEY_NOT_QUALIFIED',severity:'error',entity:e.name,message:'Model accepted; runtime create currently requires a generated int64 key.'});
-   if(out.ui.fieldLabels)out.fields.forEach(function(f){f.label=out.ui.fieldLabels[f.name]||f.label;});
+   if(out.ui.fieldLabels)out.fields.forEach(function(f){if(out.ui.fieldLabels[f.name]){f.label=out.ui.fieldLabels[f.name];explicitLabels[e.name+'.'+f.name]=true;}});
    ['listFields','detailFields','formFields'].forEach(function(k){if(!out.ui[k]||!out.ui[k].length)delete out.ui[k];});
    ['listFields','detailFields','formFields'].forEach(function(k){if(out.ui[k])out.ui[k]=out.ui[k].map(function(n){var f=out.fields.filter(function(f){return f.name.replace(/_/g,'')===String(n).replace(/_/g,'');})[0];return f?f.name:n;});});
    var label=out.fields.filter(function(f){return f.type==='string'&&!f.identity;})[0];out.ui.labelField=label?label.name:key;
    s.entities.push(out);
   });
-  normalized.relations.forEach(function(r){var target=s.entities.filter(function(e){return e.name===r.toEntity;})[0],wanted=r.ui.optionLabelField,field=target.fields.filter(function(f){return f.name.replace(/_/g,'')===wanted.replace(/_/g,'');})[0];s.relations.push({name:r.name,kind:'many-to-one',from:{entity:r.fromEntity,field:r.fromField},to:{entity:r.toEntity,field:r.toField},labelField:field?field.name:wanted==='unnamed'?target.ui.labelField:wanted});});
+  normalized.relations.forEach(function(r){var target=s.entities.filter(function(e){return e.name===r.toEntity;})[0],wanted=r.ui.optionLabelField,field=target.fields.filter(function(f){return f.name.replace(/_/g,'')===wanted.replace(/_/g,'');})[0];s.relations.push({name:r.name,kind:'many-to-one',from:{entity:r.fromEntity,field:r.fromField},to:{entity:r.toEntity,field:r.toField},labelField:field?field.name:wanted==='unnamed'?target.ui.labelField:wanted});
+   // A foreign key without its own label takes the relation label, else the singular of its target.
+   var source=s.entities.filter(function(e){return e.name===r.fromEntity;})[0],fk=source&&source.fields.filter(function(f){return f.name===r.fromField;})[0],targetEntity=normalized.entities.filter(function(e){return e.name===r.toEntity;})[0];
+   var relationLabel=String(r.label||'').trim(),singular=targetEntity&&targetEntity.singular||r.toEntity;
+   if(fk&&!explicitLabels[source.name+'.'+fk.name])fk.label=relationLabel&&relationLabel!==singular?relationLabel:humanize(singular);
+  });
   normalized.entities.forEach(function(e,i){
    var out=s.entities[i],explicit=has(normalized.seed.data,e.name),rows=explicit?normalized.seed.data[e.name]:[],count=explicit?rows.length:normalized.seed.rowsPerEntity;
    if(!normalized.seed.enabled || s.database.schemaPolicy==='observe'){s.seed.data[e.name]=[];return;}
