@@ -65,7 +65,11 @@ but an administrator: prove a refusal on a server, not with an anonymous call
 to the Studio.
 
 For each read or write, call `CurrentUser` again. The server chooses `ownerId`
-and the rights. In a named read, join the mandatory perimeter to the optional
+and the rights. When the called Flow throws (401 for an anonymous user, 403
+for a role refused), `requestable.call` fails with that code, message and
+status, and the calling Flow stops there: no extra check is needed. Catch it
+with `try` to answer differently, or set `onError: "return"` to receive
+`{ error }` as the value instead. In a named read, join the mandatory perimeter to the optional
 filter, for example
 `(:manage=TRUE OR OWNER_ID=:ownerId) AND (:status='' OR STATUS=:status)`.
 `manage` and `ownerId` come from the server. Queries that a facade exposes do
