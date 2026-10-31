@@ -318,7 +318,7 @@ const _meta = {
 		return error;
 	}
 
-	var PATCH_KEYS = ["patch", "unifiedDiff", "diff", "content"];
+	var PATCH_KEYS = ["patch", "unifiedDiff", "diff", "content", "edits"];
 
 	function withoutPatch(args) {
 		var out = {};
@@ -361,6 +361,27 @@ const _meta = {
 		return result;
 	}
 
+	// edits: exact replacements [{ oldText, newText }], the form code-patch takes; each oldText must occur once in the text.
+	function applyEdits(patchLib, text, edits) {
+		var content = patchLib.normalize(text);
+		edits.forEach(function (edit, index) {
+			var oldText = edit && edit.oldText !== undefined && edit.oldText !== null ? patchLib.normalize(String(edit.oldText)) : "";
+			var newText = edit && edit.newText !== undefined && edit.newText !== null ? patchLib.normalize(String(edit.newText)) : "";
+			if (!oldText) {
+				throw failure("INVALID_PATCH", "edits[" + index + "] needs oldText, the exact text to replace.",
+					"Send edits: [{ oldText, newText }] with oldText copied from flow-resource-get.");
+			}
+			var at = content.indexOf(oldText);
+			if (at === -1 || content.indexOf(oldText, at + 1) !== -1) {
+				throw failure(at === -1 ? "PATCH_CONTEXT_NOT_FOUND" : "PATCH_CONTEXT_AMBIGUOUS",
+					"edits[" + index + "].oldText " + (at === -1 ? "is not in " : "occurs more than once in ") + "the resource.",
+					"Copy oldText exactly from flow-resource-get, with enough surrounding lines to occur once.", { edit: index });
+			}
+			content = content.substring(0, at) + newText + content.substring(at + oldText.length);
+		});
+		return content;
+	}
+
 	// A project resource: a unified patch applied here hunk by hunk (headers, offsets and unique context accepted), or
 	// content, the whole new text. lib_flow_engine then writes that text as one replacement hunk checked against the
 	// hash read here, with its own path rules, validation and working copy guard.
@@ -371,20 +392,21 @@ const _meta = {
 		var patchLib = ctx.lib("patch");
 		var path = String(args.path || "").trim();
 		var text = filled(args.patch) ? args.patch : filled(args.unifiedDiff) ? args.unifiedDiff : filled(args.diff) ? args.diff : null;
+		var hasEdits = Array.isArray(args.edits) && args.edits.length > 0;
 		var hasContent = args.content !== undefined && args.content !== null;
 		if (!path) {
 			throw failure("RESOURCE_PATH_REQUIRED", "flow-resource-patch needs path, the project-relative path of the resource.",
 				"Read it first with flow-resource-get({ project, path }) and patch from its hash.");
 		}
-		if (hasContent && text !== null) {
-			throw failure("INVALID_ARGUMENTS", "Pass either patch (a unified diff) or content (the whole new text), not both.");
+		if ((hasContent ? 1 : 0) + (text !== null ? 1 : 0) + (hasEdits ? 1 : 0) > 1) {
+			throw failure("INVALID_ARGUMENTS", "Pass one of edits ([{ oldText, newText }]), patch (a unified diff) or content (the whole new text).");
 		}
-		if (!hasContent && text === null && !filled(args.fromFile)) {
-			throw failure("INVALID_PATCH", "flow-resource-patch needs patch (a unified diff) or content (the whole new text, with baseHash).",
-				"Read the resource with flow-resource-get, then send a unified diff of it, or its whole new text as content with the hash as baseHash.");
+		if (!hasContent && !hasEdits && text === null && !filled(args.fromFile)) {
+			throw failure("INVALID_PATCH", "flow-resource-patch needs edits ([{ oldText, newText }], as code-patch), patch (a unified diff) or content (the whole new text, with baseHash).",
+				"Read the resource with flow-resource-get, then send exact replacements as edits, a unified diff of it, or its whole new text as content with the hash as baseHash.");
 		}
 		if (filled(args.fromFile)) {
-			return importWorkspaceFile(ctx, args, path, text !== null || hasContent);
+			return importWorkspaceFile(ctx, args, path, text !== null || hasContent || hasEdits);
 		}
 		var current = currentResource(ctx, patchLib, args);
 		if (filled(args.baseHash) && String(args.baseHash) !== current.hash) {
@@ -395,9 +417,13 @@ const _meta = {
 			throw failure("RESOURCE_BASE_HASH_REQUIRED", "content replaces the whole text of " + path + ": pass baseHash, the hash flow-resource-get returned.",
 				"Read it with flow-resource-get({ project, path }), then send content with baseHash set to its hash.", { path: path, hash: current.hash });
 		}
-		var applied = hasContent ? null : patchLib.applyUnifiedPatch(current.content, text);
-		var content = hasContent ? patchLib.normalize(args.content) : applied.content;
-		var mode = hasContent ? "content" : "patch";
+		if (hasEdits && !current.exists) {
+			throw failure("UNKNOWN_RESOURCE", path + " does not exist: edits replace text in an existing resource.",
+				"Send the text of the new resource as content.", { path: path });
+		}
+		var applied = hasContent || hasEdits ? null : patchLib.applyUnifiedPatch(current.content, text);
+		var content = hasContent ? patchLib.normalize(args.content) : hasEdits ? applyEdits(patchLib, current.content, args.edits) : applied.content;
+		var mode = hasContent ? "content" : hasEdits ? "edits" : "patch";
 		if (!current.exists && content === "") {
 			throw failure("RESOURCE_CONTENT_EMPTY", path + " does not exist and the new text is empty: nothing to create.",
 				"Send the text of the new resource as content, or a patch adding its lines.");

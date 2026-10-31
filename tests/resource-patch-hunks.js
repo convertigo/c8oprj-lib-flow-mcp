@@ -182,6 +182,12 @@ try {
 	assert(created.ok === true && created.created === true && read(targetDir, "docs/notes.md") === "# Notes\n", "content creates a project document: " + JSON.stringify(created));
 	var listed = tool(13, "flow-resource-get", { projectDir: targetDir, path: "docs/notes.md" });
 	assert(listed.hash === created.hash, "the hash of a created resource is the next base hash");
+	// F-10: the exact replacements code-patch takes, edits: [{ oldText, newText }], are accepted here too.
+	var edited = tool(14, "flow-resource-patch", { projectDir: targetDir, path: "docs/notes.md", baseHash: created.hash,
+		edits: [{ oldText: "# Notes", newText: "# Notes\nSecond." }] });
+	assert(edited.ok === true && edited.mode === "edits" && read(targetDir, "docs/notes.md") === "# Notes\nSecond.\n", "edits replace the exact text: " + JSON.stringify(edited));
+	var missing = tool(15, "flow-resource-patch", { projectDir: targetDir, path: "docs/notes.md", edits: [{ oldText: "absent", newText: "x" }] });
+	assert(missing.error && missing.error.code === "PATCH_CONTEXT_NOT_FOUND" && read(targetDir, "docs/notes.md") === "# Notes\nSecond.\n", "an edit whose oldText is absent writes nothing: " + JSON.stringify(missing));
 } finally {
 	FileUtils.deleteQuietly(target);
 }

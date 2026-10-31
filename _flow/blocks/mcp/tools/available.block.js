@@ -483,6 +483,18 @@ const _meta = {
 				type: "string",
 				description: "Unified diff of the text read by flow-resource-get: @@ -old,count +new,count @@ hunks in file order, line numbers of the text read; an unchanged line starts with a space (an empty unchanged line is one space), a removed one with -, an added one with +. Give an inserted block one unchanged line before or after it."
 			};
+			schema.properties.edits = {
+				type: "array",
+				description: "Instead of patch: exact replacements, the form code-patch takes; each oldText is copied from flow-resource-get and must occur once in the text. Applied in order.",
+				items: {
+					type: "object",
+					required: ["oldText", "newText"],
+					properties: {
+						oldText: { type: "string" },
+						newText: { type: "string" }
+					}
+				}
+			};
 			schema.properties.content = {
 				type: "string",
 				description: "Instead of patch: the whole new text of the resource, with baseHash for an existing one. Simplest for several changes or a short file. Lines are written with LF endings."
@@ -607,7 +619,7 @@ const _meta = {
 		} else if (name === "flow-resource-get") {
 			description = "Reads one project-local Flow resource preview (project and path or uri) with its hash for flow-resource-patch. Without project, a flow://guide/<name>, flow://lib/<library>/<guide> or flow://skills/<skill>/SKILL uri returns that guide or skill whole in structuredContent.text, for clients without resources/read.";
 		} else if (name === "flow-resource-patch") {
-			description = "Changes one project resource read by flow-resource-get: patch, a unified diff of that text (several hunks applied in order, --- a/ +++ b/ headers optional, a hunk whose numbers are off applied where its lines match once, a mismatch answered with the expected and actual lines), or content, the whole new text. baseHash is the hash flow-resource-get returned (required with content); the text is written as computed, line for line, and hash is the next baseHash. fromFile copies a file of the workspace instead, byte for byte. scope engine-internal synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
+			description = "Changes one project resource read by flow-resource-get: edits, exact replacements [{ oldText, newText }] as code-patch takes them, each oldText occurring once; patch, a unified diff of that text (several hunks applied in order, --- a/ +++ b/ headers optional, a hunk whose numbers are off applied where its lines match once, a mismatch answered with the expected and actual lines), or content, the whole new text. baseHash is the hash flow-resource-get returned (required with content); the text is written as computed, line for line, and hash is the next baseHash. fromFile copies a file of the workspace instead, byte for byte. scope engine-internal synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
 		} else if (name === "flow-cache-clear") {
 			description = "Clears the Flow runtime caches. Required after editing lib_flow_engine or frontbuilder files outside Convertigo (git, shell); Studio and MCP writes invalidate caches automatically.";
 		} else if (name === "flow-cache-info") {
