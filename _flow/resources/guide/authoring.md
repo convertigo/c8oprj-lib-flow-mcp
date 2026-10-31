@@ -65,10 +65,11 @@ function Greeting({ input, config, result }) {
   spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
   `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (optional, 2 is the
   only value), `inputs`, `outputs`, `config` (an object), `tests`.
-- **Control flow is blocks with slots.** JavaScript `if`/`else`, loops and
-  `throw` statements are rejected (`FLOWSCRIPT_UNSUPPORTED_SYNTAX`); there is
-  no `else if`: nest an `if` block in `$$else`. Raise errors with
-  `throw({ code, message, status, details })`.
+- **Control flow is blocks with slots.** A JavaScript `if (...) { } else { }`
+  statement is read as an `if` block; loops and `throw` statements are
+  rejected (`FLOWSCRIPT_UNSUPPORTED_SYNTAX`): loop with `forEach` (or `while`
+  with `maxIterations`), and nest an `if` in the else branch instead of
+  `else if`. Raise errors with `throw({ code, message, status, details })`.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency), with a `status` when one fits:
   the Flow answers its error alone and a frontend action fails and stops its

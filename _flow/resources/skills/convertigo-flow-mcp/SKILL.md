@@ -32,9 +32,12 @@ schema of each output (so later blocks, pickers and the frontend see real
 fields), pause and resume, and the Studio shows and edits the same tree with a
 palette. That is why:
 - write what you would write in plain JavaScript first: assignments,
-  `if`/`else`, loops, `try`, template literals, ternaries, `Math.*`, string and
-  array methods, `rows[i]`. When a construct is outside the subset, the
-  refusal names it and the equivalent to write: apply it, do not delete code;
+  `if`/`else`, `return`, template literals, ternaries, `%`, `Math.round`/`floor`/
+  `ceil`/`min`/`max`, string and array methods, `rows[i]`. A loop is the block
+  `forEach` (or `while` with `maxIterations`) and error handling the block
+  `try` (`$$try`/`$$catch`), because each step must stay a node of the tree.
+  When a construct is outside the subset, the refusal names it and the
+  equivalent to write: apply it, do not delete code;
 - there is no arbitrary code at run time (no `eval`, no closures kept between
   steps, no npm or Java imports in a Flow): a step must be a block the engine
   can serialize, show and analyze. Logic that needs more becomes a project
