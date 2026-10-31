@@ -16,7 +16,9 @@ Keep this role across backend lots instead of spawning a replacement agent.
 `$$nodes`, `$$try`, `$$catch` functions are slots of child nodes, each node
 named by its `$$id`. Outside the subset, write instead:
 - a loop: `forEach({ items, $$nodes() {...} })` (the item is `current`) or
-  `while({ condition, maxIterations, $$nodes() {...} })`;
+  `while({ condition, maxIterations, $$nodes() {...} })`; as in a JavaScript
+  forEach callback, a bare `return` in the body goes on with the next item
+  (`return` with a value there would leave the whole Flow: code-set refuses it);
 - `try {} catch {}`: `try({ error: "local.failure", $$try() {...},
   $$catch() {...} })`, the error (`code`, `message`, `status`) at that path;
 - `throw new Error()`: `throw({ code, message, status, details })`;
@@ -45,7 +47,9 @@ answers that error instead of a result. A calling Flow's `requestable.call`
 (default `onError: "raise"`) fails with the same code, message and status,
 stopping that Flow unless a `try` catches it; a page action fails and stops
 its chain. Throw what must interrupt; return `ok: false` for what the caller
-handles.
+handles. Otherwise the value of `requestable.call` is the result of the called
+Flow as it is, without envelope (`result.items` gives `{ items }`); only
+`requestable-execute` shows the HTTP answer under its own `payload`, beside `attr`.
 
 **Write calls as JavaScript first; the MCP translates them.** A call that is
 not FlowScript is mapped onto the catalog instead of only refused:
