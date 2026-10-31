@@ -941,9 +941,10 @@ const _meta = {
 				});
 			});
 			var content = sources.drafts ? sources.read(file) : String(FileUtils.readFileToString(file, "UTF-8"));
-			var header = content.match(/\bpage\s*:\s*\{([\s\S]*?)\}/);
-			var idMatch = header && header[1].match(/\bid\s*:\s*["']([^"']+)["']/);
-			var routeMatch = header && header[1].match(/\broute\s*:\s*["']([^"']+)["']/);
+			// The header may quote its keys ("page": {"id": ...}), as the generated CRUD pages write it.
+			var header = content.match(/\bpage["']?\s*:\s*\{([\s\S]*?)\}/);
+			var idMatch = header && header[1].match(/\bid["']?\s*:\s*["']([^"']+)["']/);
+			var routeMatch = header && header[1].match(/\broute["']?\s*:\s*["']([^"']+)["']/);
 			var path = routeMatch ? String(routeMatch[1]) : routeParts.length ? "/" + routeParts.join("/") : "/";
 			return {
 				id: idMatch ? String(idMatch[1]) : safeId(path === "/" ? "home" : path.replace(/^\/+/, "")),
