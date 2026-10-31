@@ -292,10 +292,10 @@ row path) is a link; without `page` it raises `OnClick` with
 path that shows or hides it. The table texts follow its `locale` (en, fr).
 
 ```svelte
-<AppShell $$id="shell" title="Bookings" userName={layout.firstName + " " + layout.lastName}>
+<AppShell $$id="shell" title="Bookings" userName={layout.session.user?.firstName ?? ""}>
   <Navigation>
     <LinkButton $$id="navMine" label="My bookings" page="mine" />
-    <If $$id="whenManager" test={layout.role === "MANAGER"}><Then>
+    <If $$id="whenManager" test={layout.session.user?.role === "MANAGER"}><Then>
       <LinkButton $$id="navAll" label="All bookings" page="all" />
     </Then></If>
   </Navigation>
@@ -303,6 +303,9 @@ path that shows or hides it. The table texts follow its `locale` (en, fr).
   <Children><PageContent $$id="content" /></Children>
 </AppShell>
 ```
+
+Load `layout.session` with the root Layout's `OnAfterNavigate` example below.
+The optional user fields keep the anonymous first display safe.
 
 ```svelte
 <PageHeader $$id="header" title="My bookings" description="Rooms you booked and their status." />
@@ -410,6 +413,63 @@ Button, and `OnSelectionChange` gives the same keys as `@event.value`
 the loaded page with `serverSide={true}`. A column `format` may be a date
 pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`.
 
+### Server pagination with DataTable
+
+With `serverSide={true}`, `source` is one server page, `total` is the total
+number of matching rows, `offset` is its zero-based first row index, and
+`pageSize` is the requested page size. The table never slices, filters or sorts
+the supplied page locally. Its **OnChange** requests a new page with
+`@event.value = { offset, pageSize, query, sortKey, sortDirection }`;
+`sortDirection` is `asc`, `desc` or `none`. `@event.source` is `page`,
+`filter`, `clear-filter` or `sort`. A filter or sort change requests offset 0.
+Capture these values before calling the Flow; there is no separate OnPage
+event. `OnSelectionChange` is a different event, for the selected row keys.
+
+This complete Page expects `.ListBookings` to return `{ items, total }` and
+accept `offset`, `limit`, `query`, `sortKey` and `sortDirection`. The Flow checks
+the session and allowed sort keys, and applies the filter, sort and bounded
+pagination on the server. The page size must fit its declared limit.
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2, page: { id: "bookings" } };</script>
+<FlowComponent $$id="serverBookings">
+  <Variables>
+    <State $$id="listing" type="object" value={{ items: [], total: 0 }} />
+    <State $$id="offset" type="number" value={0} />
+    <State $$id="pageSize" type="number" value={10} />
+    <State $$id="query" type="string" value="" />
+    <State $$id="sortKey" type="string" value="" />
+    <State $$id="sortDirection" type="string" value="none" />
+  </Variables>
+  <Events><OnMount $$id="initialLoad"><Actions>
+    <CallSequence $$id="loadInitial" requestable=".ListBookings" $$out="page.listing"><Variables>
+      <Variable name="offset" value="@page.offset" /><Variable name="limit" value="@page.pageSize" />
+      <Variable name="query" value="@page.query" /><Variable name="sortKey" value="@page.sortKey" />
+      <Variable name="sortDirection" value="@page.sortDirection" />
+    </Variables></CallSequence>
+  </Actions></OnMount></Events>
+  <Structure>
+    <DataTable $$id="bookings" caption="Bookings" serverSide={true}
+      source="@page.listing.items" total="@page.listing.total"
+      offset="@page.offset" pageSize="@page.pageSize"
+      columns={[{ key: "room", path: "room", label: "Room" }]}>
+      <Events><OnChange $$id="pageRequest"><Actions>
+        <SetValue $$id="keepOffset" target="page.offset" value="@event.value.offset" />
+        <SetValue $$id="keepPageSize" target="page.pageSize" value="@event.value.pageSize" />
+        <SetValue $$id="keepQuery" target="page.query" value="@event.value.query" />
+        <SetValue $$id="keepSortKey" target="page.sortKey" value="@event.value.sortKey" />
+        <SetValue $$id="keepSortDirection" target="page.sortDirection" value="@event.value.sortDirection" />
+        <CallSequence $$id="loadPage" requestable=".ListBookings" $$out="page.listing"><Variables>
+          <Variable name="offset" value="@page.offset" /><Variable name="limit" value="@page.pageSize" />
+          <Variable name="query" value="@page.query" /><Variable name="sortKey" value="@page.sortKey" />
+          <Variable name="sortDirection" value="@page.sortDirection" />
+        </Variables></CallSequence>
+      </Actions></OnChange></Events>
+    </DataTable>
+  </Structure>
+</FlowComponent>
+```
+
 A French application sets `locale="fr-FR"` (or binds it to the language
 State) on `DataTable`, `DatePicker`, `Select` and `DisplayModeControl`: their
 texts left at their default follow it (the empty choice of `Select`, the
@@ -512,6 +572,34 @@ run of an older one still going.
   <FullSyncGet $$id="readProduct" database="retail" docid="@event.to.params.id" />
 </Actions></OnAfterNavigate>
 ```
+
+A Layout can remain mounted across sign-in, sign-out and navigation between
+pages. `OnMount` alone therefore leaves its session stale. In the root
+`src/routes/+layout.flow.svelte`, refresh the session on each navigation:
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2 };</script>
+<FlowComponent $$id="sessionLayout">
+  <Variables><State $$id="session" type="object" value={{ authenticated: false, user: null }} /></Variables>
+  <Events><OnAfterNavigate $$id="refreshSession"><Actions>
+    <CallSequence $$id="loadSession" requestable=".CurrentUser" $$out="layout.session" />
+  </Actions></OnAfterNavigate></Events>
+  <Structure>
+    <AppShell $$id="shell" title="Bookings" userName={layout.session.user?.firstName ?? ""}>
+      <Children><PageContent $$id="content" /></Children>
+    </AppShell>
+  </Structure>
+</FlowComponent>
+```
+
+`.CurrentUser` returns `{ authenticated: false, user: null }` for an anonymous
+session, or `{ authenticated: true, user: { firstName, role } }` from the
+server session. It must allow the anonymous home page to refresh normally.
+Keep login redirects outside this `OnAfterNavigate`: navigate after sign-in
+or sign-out in that command's chain, or guard a protected page separately.
+Redirecting to login on every navigation would undo a successful sign-in.
+A group Layout at `(app)/+layout.flow.svelte` only wraps pages inside `(app)`;
+put the anonymous login page outside that group when it needs no shell.
 
 `Interval` and `Timeout` register on mount and clean up on teardown; nest them
 under `OnMount` only inside a larger explicit mount chain. `OnMount once={true}`

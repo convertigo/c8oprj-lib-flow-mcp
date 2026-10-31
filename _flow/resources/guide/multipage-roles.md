@@ -127,7 +127,36 @@ manager only; the server always applies the same check.
 Show the loading, empty and error states with the standard components and
 `Status` (a toast for a success, no message for a load). After `CallSequence`, use the declared results and palette actions; a
 user chain must continue even if its panel disappears. Refresh the session of
-the Layout after a navigation. Do not take an HTTP 200 of the route as proof
+the Layout after a navigation: a Layout stays mounted across child pages, so
+`OnMount` does not rerun after sign-in. In `src/routes/+layout.flow.svelte`:
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2 };</script>
+<FlowComponent $$id="sessionLayout">
+  <Variables><State $$id="session" type="object" value={{ authenticated: false, user: null }} /></Variables>
+  <Events><OnAfterNavigate $$id="refreshSession"><Actions>
+    <CallSequence $$id="loadSession" requestable=".CurrentUser" $$out="layout.session" />
+  </Actions></OnAfterNavigate></Events>
+  <Structure>
+    <AppShell $$id="shell" title="Bookings" userName={layout.session.user?.firstName ?? ""}>
+      <Children><PageContent $$id="content" /></Children>
+    </AppShell>
+  </Structure>
+</FlowComponent>
+```
+
+The public `.CurrentUser` answers `{ authenticated: false, user: null }` for
+an anonymous session and `{ authenticated: true, user: { firstName, role } }`
+for an active account. Show manager links with
+`test={layout.session.user?.role === "MANAGER"}`. Keep redirects to login out
+of this `OnAfterNavigate`: navigate in the successful sign-in/sign-out chain
+or guard the protected page separately, otherwise each navigation may send
+the user back to login. A group shell in `(app)/+layout.flow.svelte` applies
+only to `(app)` pages; keep the login page outside the group if it needs no
+shell. `flow://guide/frontend-svelte` also gives the DataTable server paging
+chain (`OnChange`, `@event.value.offset`, then `CallSequence`).
+
+Do not take an HTTP 200 of the route as proof
 that the grid is filled.
 
 Adapt a Resource/Page response with `dataUi.gridPage`, then bind its columns and
