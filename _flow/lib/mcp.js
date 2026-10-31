@@ -1193,8 +1193,8 @@
 		}
 	}
 
-	var STUDIO_PRIVATE_NOTE = "Private Flow: a server refuses it over HTTP to anyone but an administrator; this Studio runs every " +
-		"requestable over HTTP (Studio mode), so an anonymous call answering here proves nothing about access.";
+	var STUDIO_PRIVATE_NOTE = "Private Flow: refused over HTTP to anyone but an administrator, as on a server; an older Studio still ran " +
+		"it over HTTP for an anonymous call (Studio mode), so prove the refusal with a session that is not an administrator.";
 
 	// @return whether the saved source declares _flow.accessibility private (its header, before the function)
 	function declaresPrivateAccessibility(writeResult) {

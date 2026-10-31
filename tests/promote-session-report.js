@@ -54,8 +54,9 @@ try {
 	mcp._accessibilityReport(engineMode(false), privateSource, serverPrivate);
 	mcp._accessibilityReport(engineMode(true), { code: privateSource.code.replace('"private"', '"hidden"') }, studioHidden);
 	mcp._accessibilityReport(engineMode(true), { code: 'const _flow = { sourceVersion: 2 }\nfunction Notes({ result }) {\n  result.text = "accessibility: \'private\'"\n}\n' }, bodyOnly);
-	assert(/Studio mode/.test(studioPrivate.accessibilityNote || "") && /refuses it over HTTP/.test(studioPrivate.accessibilityNote),
-		"A private Flow promoted in the Studio says the Studio runs it anyway: " + JSON.stringify(studioPrivate));
+	assert(/Studio mode/.test(studioPrivate.accessibilityNote || "") && /refused over HTTP/.test(studioPrivate.accessibilityNote)
+		&& /not an administrator/.test(studioPrivate.accessibilityNote),
+		"A private Flow promoted in the Studio says how to prove its refusal: " + JSON.stringify(studioPrivate));
 	assert(serverPrivate.accessibilityNote === undefined && studioHidden.accessibilityNote === undefined && bodyOnly.accessibilityNote === undefined,
 		"No note on a server, for a hidden Flow or for a text of the body: " + JSON.stringify([serverPrivate, studioHidden, bodyOnly]));
 	var promotedPrivate = mcp.toolResponse({ id: 8, params: { name: "code-promote", arguments: { name: "Reset" } } },

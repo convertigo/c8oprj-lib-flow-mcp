@@ -387,10 +387,10 @@ its inputs there.
 
 Where it applies: on a server, `.json`, `.xml` and the other
 `/projects/<project>/.<ext>?__sequence=` URLs answer an anonymous or
-non-administrator call to a `private` Flow as an unknown requestable. The
-Studio runs every requestable over HTTP, `private` included (Studio mode, for
-the tests of the developer): an anonymous `curl` that succeeds in the Studio
-proves nothing, so do not add guards to the Flow for it. A URL Mapper
+non-administrator call to a `private` Flow as an unknown requestable; a recent
+Studio does the same, an older one still ran it for an anonymous call (Studio
+mode). Prove the refusal with a session that is not an administrator, and do
+not add guards to the Flow for it. A URL Mapper
 operation (`/api/...`) publishes its target whatever its accessibility, and
 `requestable.call`, the scheduler and the MCP run `private` Flows by design.
 

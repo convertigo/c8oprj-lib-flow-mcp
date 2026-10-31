@@ -88,10 +88,10 @@ HTTP 200 and the engine error `{ code: "-1", message: "Authentication
 required" }`: a `CallSequence` fails on it as on any error, but a client that
 tests the status, or wants the code of the application, needs the Flow to check
 the user itself and `throw({ code, message, status: 401 })`. Write these names in lowercase in
-FlowScript. Keep the initializations and the scheduled job private. The Studio
-runs private Flows over HTTP too (Studio mode); a server refuses them to anyone
-but an administrator: prove a refusal on a server, not with an anonymous call
-to the Studio.
+FlowScript. Keep the initializations and the scheduled job private. A server, and
+a recent Studio, refuse them over HTTP to anyone but an administrator (an
+older Studio still ran them for an anonymous call): prove a refusal with a
+session that is not an administrator.
 
 For each read or write, call `CurrentUser` again. The server chooses `ownerId`
 and the rights. When the called Flow throws (401 for an anonymous user, 403
