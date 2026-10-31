@@ -102,8 +102,10 @@ function Greeting({ input, config, result }) {
   `startsWith`, `endsWith`, `indexOf`, `lastIndexOf`, `slice`, `substring`,
   `split`, `replace`, `replaceAll` (text patterns), `padStart`, `padEnd`,
   `charAt`, `concat`, `repeat`; lists `includes`, `indexOf`, `slice`, `join`,
-  `concat`, `at`, `length`; numbers `toFixed`. Anything else is a block
-  (`list.filter`, `list.map`, `list.sort`...).
+  `concat`, `at`, `length`; numbers `toFixed`. Numbers also have `%` and the
+  functions `round(x, digits)`, `floor`, `ceil`, `abs`, `min`, `max`, written
+  `Math.floor(...)` too: `local.pages = Math.ceil(input.total / input.size)`.
+  Anything else is a block (`list.filter`, `list.map`, `list.sort`...).
 - **Dates** use the `date.*` blocks, in a Flow and in Svelte actions alike
   (same contract on the server and in the browser): `date.today`,
   `date.now({ format: "iso" })`, `date.add` (years, months, days, hours,
