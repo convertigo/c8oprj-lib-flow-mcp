@@ -9,6 +9,58 @@ Use the named `convertigo-flow` MCP server for every Convertigo Flow model
 operation. This skill is the short router; the specialist skill and live MCP
 guide own the detailed workflow.
 
+## How Flow Works (read this first: the rules below follow from it)
+
+**Convertigo** is a server platform. A project holds *requestables* (Flows,
+legacy sequences) that the server runs on an HTTP call
+(`/convertigo/projects/<project>/.json?__sequence=<Flow>`), inside a server
+session that keeps the authenticated user. Each Flow declares its
+accessibility: `public` (listed), `hidden` (callable, not listed) or `private`
+(server-side only: other Flows, the scheduler, the MCP). Configuration and
+secrets live in project config and global symbols (`${name=default}`), never
+in code. The Studio is the development mode of the same server; a deployed
+server runs the same project with its production build.
+
+**FlowScript is a subset of JavaScript, not JavaScript.** The source is parsed
+(Rhino parser) into an AST and turned into a tree of *blocks*: the `_flow`
+header gives inputs, accessibility and config; each call such as
+`sql.query({...})` or `if({ condition, $$then() {...} })` is one block node
+with its properties, identified by `$$id`; property values are literals or
+expressions over the scopes `input`, `config`, `local`, `result`. The engine
+runs that tree step by step, not your text: it can trace each step, learn the
+schema of each output (so later blocks, pickers and the frontend see real
+fields), pause and resume, and the Studio shows and edits the same tree with a
+palette. That is why:
+- write what you would write in plain JavaScript first: assignments,
+  `if`/`else`, loops, `try`, template literals, ternaries, `Math.*`, string and
+  array methods, `rows[i]`. When a construct is outside the subset, the
+  refusal names it and the equivalent to write: apply it, do not delete code;
+- there is no arbitrary code at run time (no `eval`, no closures kept between
+  steps, no npm or Java imports in a Flow): a step must be a block the engine
+  can serialize, show and analyze. Logic that needs more becomes a project
+  block (FlowScript or a Rhino block) with a contract, reused by name;
+- a quoted value is a text, a bare value is an expression; a scope name
+  (`input`, `result`...) is never a local name; `$$id` names a step and keeps
+  two dollars (beware `String.replace`, where `$$` writes `$`).
+
+**Flow Svelte is a subset of Svelte 5, for the same reasons.** A
+`+page.flow.svelte` is parsed into a component tree: `<script module>` holds
+`_flow` metadata, `<FlowComponent>` holds `<Variables>`, `<Structure>` (palette
+widgets) and `<Events>` (action chains: `CallSequence`, `SetValue`,
+`Navigate`...). A quoted `"@source.path"` binds a schema-known field of a
+backend result, a quoted text is a literal, `{expression}` is browser logic.
+The frontbuilder then generates a real SvelteKit application (dev viewer in
+the Studio, production build served under `DisplayObjects/mobile/`), with the
+SDK calls, session and routing written for you. Writing the tree instead of
+free Svelte is what lets the Studio edit it, the pickers check bindings against
+backend schemas, the theme tokens style every widget, and the build stay
+reproducible. Write natural Svelte first; refusals name the palette widget or
+binding to use.
+
+**So:** think in JavaScript and Svelte, express it within the subsets, read
+each refusal as the exact translation, and keep business logic in Flows on the
+server (rights, perimeters, state rules), never only in the page.
+
 ## Route Once
 
 - Backend FlowScript, schemas, HTTP, FullSync or runtime work: read
