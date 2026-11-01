@@ -35,6 +35,13 @@ const _flow = {
 }
 
 function mcp_resources_read({ input, config, result }) {
+  if({
+    condition: input.request.params.uri == "flow://ace" || input.request.params.uri.startsWith("flow://ace/"),
+    $$then: function () {
+      local.aceResponse = mcp.experience({ request: input.request, operation: "read", out: "local.aceResponse" })
+      return({ value: local.aceResponse })
+    },
+  })
   local.response = mcp.stable({
     $$id: "keptResource",
     $$comment: "A guide or skill is answered again while its content does not change.",

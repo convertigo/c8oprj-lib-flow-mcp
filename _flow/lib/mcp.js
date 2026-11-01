@@ -2374,6 +2374,10 @@
 		var error = { type: "object", additionalProperties: true,
 			description: "Tool failed: read code, message, hint and details before retrying." };
 		var notices = {
+			experience: { type: "object", description: "ACE advice for a first domain gesture or a matching diagnostic.",
+				properties: { reason: { type: "string" }, drawer: { type: "string" }, entries: { type: "array", items: {
+					type: "object", properties: { id: { type: "string" }, text: { type: "string" } }, required: ["id", "text"]
+				} } }, required: ["reason", "drawer", "entries"] },
 			argumentWarning: { type: "string", description: "Arguments ignored by the tool and how to correct the call." },
 			operatorNote: { type: "string", description: "A note from the person supervising the agent." },
 			normalizations: { type: "array", items: { type: "object" } }
@@ -5419,6 +5423,13 @@
 	}
 
 	var api = {
+		// Low-level host services for the private mcp.experience block. No ACE policy in this protocol helper.
+		_experienceHost: function (ctx) {
+			return { sharedMap: sharedMap, hash: sha256Hex, http: stableServletRequest(ctx), caller: stableCaller(ctx),
+				setting: symbolValue("flow.mcp.experience") || configMcpValue(ctx, "experience") || "on",
+				session: configMcpValue(ctx, "experienceSession"), engineDir: knownEngineDir(), projectDir: knownProjectDir(ctx),
+				targets: loadedProjectTargets, resolveProject: resolveProjectDir };
+		},
 		jsonRpcResult: jsonRpcResult,
 		jsonRpcError: jsonRpcError,
 		libraryGuides: libraryGuides,

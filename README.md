@@ -444,6 +444,92 @@ project, a project resource of that uri keeps precedence, and the MCP resource
 answers when the project has none or does not answer (a project not created
 yet). A project resource (`path`, or another uri) still requires `project`.
 
+ACE experience is carried by each library in `_flow/resources/ace/<drawer>.md`.
+The project receives `lib_flow_engine`'s `common` drawer and the drawers of its
+own and referenced libraries (including transitive references), never the
+drawers of unrelated workspace projects. No production advice is bundled yet;
+the offline fixtures use only orders and customers. Files follow the ACE
+playbook line format, with optional indented trigger declarations:
+
+```text
+## STRATEGIES & INSIGHTS
+[sql-00001] helpful=8 harmful=1 :: Check the orders key before writing.
+    @codes: ORDERS_KEY_MISSING, ORDERS_KEY_INVALID
+    @blocks: sql.table, data.write, sql.*
+    A complete snippet may continue on indented lines.
+```
+
+At the `tools/call` boundary, the private `mcp.experience` block adds advice
+after normal result projection and stable caching. Backend `code-set`,
+`code-patch` and `code-check` detect block calls; patch/check inspect the
+resulting saved source or Studio working copy. Comments and string literals
+do not count. Flow Svelte gestures select `front`, scheduler calls select
+`jobs`, and CRUD calls select `sql` and `front`. The first gesture also selects
+`common`. A drawer is pushed once per session; entries rank by
+`helpful - harmful`. Explicit `@blocks` restrict an entry to matching calls
+and can map a namespace to a differently named drawer. A namespace trigger
+also matches its children; `*` matches any suffix.
+
+Matching diagnostic/error codes take priority, with at most two entries per
+response. An entry can return after more than ten intervening tool-call
+positions (call number difference greater than ten). Successful business
+results with a field named `code` do not count as diagnostics. Error pushes
+do not consume a drawer's first gesture. Already delivered entries are not
+repeated by that drawer's first gesture.
+
+Both channels carry the same advice: `structuredContent.experience` is
+`{reason, drawer, entries:[{id,text}]}`, and a final text content item starts
+with `[Flow ACE: ...]`. Reasons are `first-domain` and `error`; `drawer` is a
+comma-separated string when a call selects several drawers. Trigger metadata
+is omitted from advice. The total serialized additions across both channels
+are limited to 2,000 characters, approximately 500 tokens using the prototype's
+characters/4 estimate. Complete entries that do not fit are skipped, including
+oversize snippets; the full drawer remains readable on demand.
+
+Set the global symbol `flow.mcp.experience` or Flow configuration
+`config.mcp.experience` to `off`, `errors-only`, or `on` (default). The symbol
+takes precedence. Session identity uses the authenticated caller plus
+`X-Convertigo-Conversation-Id` (Bridge), `Mcp-Session-Id`,
+`config.mcp.experienceSession`, or the HTTP session, in that order, and the
+subagent run when present. With none of these identifiers, calls share the
+authenticated caller's session; stateless clients sharing one token should
+send a distinct conversation/session identifier. Internal callers can use
+`config.mcp.experienceSession` too. State is shared across Flow runtimes in
+the servlet context, expires after 24 hours of inactivity, and is limited to
+1,024 sessions. Restarting the JVM resets it.
+
+Each push appends session hash, tool, reason, ids, library provenance, time
+and estimated added tokens to `<workspace>/ace/experience-push.jsonl`.
+No tool arguments or raw credentials are logged. Standalone tests write this
+under the MCP checkout's `_private/ace/`. Advice/log failures never change
+the tool outcome. Drawers and standalone reference declarations are read
+once into a shared cache, reloaded on modification time (including subsecond
+precision), size or file identity changes. A file replacement preserving all
+of these attributes is outside that invalidation contract. The cache is
+bounded to 512 files.
+
+`resources/list` additionally exposes `flow://ace` (drawers, entry counts,
+code/block triggers) and `flow://ace/<library>/<drawer>` (whole drawer).
+These resources remain available when pushing is off and can also be read
+with `flow-resource-get`. The resource index covers loaded workspace
+libraries; pushes always use the target project's reference closure. A
+scheduler call without a target project can only draw on core `common`.
+Clients ignoring structured content still receive advice in text; clients
+discarding or compacting early tool results can lose either channel.
+
+Offline verification, with the Convertigo dependency/engine jars on the
+classpath and no running server or container:
+
+```sh
+CONVERTIGO_TEST_CLASSPATH='/path/to/convertigo/lib/*' node tests/run-rhino.cjs tests/experience-push.js /path/to/lib_flow_engine/_flow .
+CONVERTIGO_TEST_CLASSPATH='/path/to/convertigo/lib/*' node tests/run-rhino.cjs tests/experience-cost.js /path/to/lib_flow_engine/_flow .
+```
+
+The cost test alternates `off`/`on`, measures the real block and public
+router, verifies zero unchanged-drawer reads, and measures first pushes
+including the journal write. It prints timing/token estimates and keeps its
+neutral fixture and raw measurements under `_private/`.
+
 The local CRUD authoring tool accepts legacy-shaped entity models with `flow-crud-upsert`.
 The model is stored in `_flow/data/model.yaml`; preview returns the required `planHash`
 for application. Generated Flows and resources belong to that model.

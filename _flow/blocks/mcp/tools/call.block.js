@@ -99,7 +99,14 @@ const _meta = {
 	// URI. Without a project, or when the project does not answer it (no such resource, a project not created yet),
 	// the Flow MCP resource answers, its text in structuredContent as the other Flow tools return their data: the
 	// guides that tell how to start are readable before any project exists.
-	var MCP_RESOURCE_URI = /^flow:\/\/(?:guide|lib|skills)\//;
+	var MCP_RESOURCE_URI = /^flow:\/\/(?:(?:guide|lib|skills)\/|ace(?:\/|$))/;
+	function withExperience(ctx, request, response) {
+		try {
+			return ctx.callBlock("mcp.experience", { request: request, response: response, operation: "push", out: "local.experienceResponse" }, { trace: false });
+		} catch (ignored) {
+			return response;
+		}
+	}
 	function filled(value) {
 		return value !== undefined && value !== null && String(value).trim() !== "";
 	}
@@ -122,7 +129,10 @@ const _meta = {
 			return null;
 		}
 		var read = ctx.callBlock("mcp.resources.read", {
-			request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: { uri: uri } },
+			request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
+				uri: uri, project: request.params.arguments && request.params.arguments.project,
+				projectDir: request.params.arguments && request.params.arguments.projectDir
+			} },
 			out: "local.mcpResourceRead"
 		}, { trace: false });
 		var contents = read && read.result && read.result.contents;
@@ -176,6 +186,7 @@ const _meta = {
 					} finally {
 						mcp.stableToolCalled(name);
 					}
+					relayed = withExperience(ctx, request, relayed);
 					ctx.write(out, relayed);
 					return relayed;
 				}
@@ -206,6 +217,7 @@ const _meta = {
 			// A tool that may have written (even when it failed) drops the kept project answers.
 			mcp.stableToolCalled(name);
 			if (name === "flow-resource-get") response = mcp.finalizeResponse(ctx, request, response);
+			response = withExperience(ctx, request, response);
 			ctx.write(out, response);
 			return response;
 		}

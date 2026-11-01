@@ -57,7 +57,7 @@ function mcp_resources_list({ input, config, result }) {
     $$nodes: function () {
       if({
         $$id: "if5",
-        condition: !current.uri.startsWith("flow://skills/"),
+        condition: !current.uri.startsWith("flow://skills/") && !current.uri.startsWith("flow://ace/"),
         $$then: function () {
           json.push({
             $$id: "pushResource",
@@ -109,6 +109,17 @@ function mcp_resources_list({ input, config, result }) {
         path: "local.resources",
         value: current,
       })
+    },
+  })
+  local.experienceResources = mcp.experience({
+    request: input.request,
+    operation: "list",
+    out: "local.experienceResources",
+  })
+  forEach({
+    items: local.experienceResources,
+    $$nodes: function () {
+      json.push({ path: "local.resources", value: current })
     },
   })
   local.payload = json.object({
