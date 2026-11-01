@@ -100,9 +100,11 @@ const _meta = {
 	// the Flow MCP resource answers, its text in structuredContent as the other Flow tools return their data: the
 	// guides that tell how to start are readable before any project exists.
 	var MCP_RESOURCE_URI = /^flow:\/\/(?:(?:guide|lib|skills)\/|ace(?:\/|$))/;
-	function withExperience(ctx, request, response) {
+	function withExperience(ctx, mcp, request, response) {
+		if (!response || !response.result || typeof mcp._experienceHost !== "function") return response;
 		try {
-			return ctx.callBlock("mcp.experience", { request: request, response: response, operation: "push", out: "local.experienceResponse" }, { trace: false });
+			var decorated = ctx.callBlock("mcp.experience", { request: request, response: response, operation: "push", out: "local.experienceResponse" }, { trace: false });
+			return decorated && decorated.result && !decorated.error ? decorated : response;
 		} catch (ignored) {
 			return response;
 		}
@@ -186,7 +188,7 @@ const _meta = {
 					} finally {
 						mcp.stableToolCalled(name);
 					}
-					relayed = withExperience(ctx, request, relayed);
+					relayed = withExperience(ctx, mcp, request, relayed);
 					ctx.write(out, relayed);
 					return relayed;
 				}
@@ -217,7 +219,7 @@ const _meta = {
 			// A tool that may have written (even when it failed) drops the kept project answers.
 			mcp.stableToolCalled(name);
 			if (name === "flow-resource-get") response = mcp.finalizeResponse(ctx, request, response);
-			response = withExperience(ctx, request, response);
+			response = withExperience(ctx, mcp, request, response);
 			ctx.write(out, response);
 			return response;
 		}

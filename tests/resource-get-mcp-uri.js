@@ -25,6 +25,10 @@ function run(args, projectOwns, projectError) {
 		convertigoContext: function () { return { httpServletRequest: { getHeader: function () { return "MistralAI-VibeCLI/3.0.3"; } } }; },
 		write: function (path, value) { written[path] = value; },
 		callBlock: function (blockId, props) {
+			if (blockId === "mcp.experience") {
+				assert(props.request === request && props.response.result, "optional advice receives the completed tool result");
+				return props.response;
+			}
 			calls.push(blockId);
 			if (blockId === "mcp.tool.flow.resource.get") {
 				if (projectError) {

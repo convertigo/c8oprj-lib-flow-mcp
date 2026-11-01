@@ -83,7 +83,16 @@ assert(!exp(gesture(sessionId + '-errors-domain', 'errors-only')), 'errors-only 
 assert(exp(gesture(sessionId + '-other')), 'Independent session needs its own first push');
 assert(!exp(tool('code-set', {projectDir:empty, name:'Orders', code:'function Orders({result}) {\n result.rows = sql.table({name:"orders"})\n}\n'})), 'Project without drawers must remain unchanged');
 assert(!exp(gesture(sessionId + '-literal', 'on', 'function Orders({result}) {\n // sql.table({})\n result.label = "sql.table({})"\n}\n')), 'Comments/string literals must not trigger a domain');
+assert(ace.sourceBlocks('result.label = input.customer.trim()\nresult.rows = local.orders.filter(Boolean)\nresult.amount = Math.round(4.2)').length === 0,
+  'Expression methods must not be mistaken for block domains');
 assert(exp(tool('code-check', {projectDir:app, name:'Orders'}, 'on', sessionId + '-check')), 'check must detect domains in the saved source');
+var patchBase = tool('code-get', {projectDir:app, name:'Orders'}).result.structuredContent;
+var patchedGesture = tool('code-patch', {projectDir:app, name:'Orders', revision:patchBase.revision,
+  edits:[{oldText:'name:"orders"',newText:'name:"customers"'}]}, 'on', sessionId+'-patch');
+assert(exp(patchedGesture) && ids(patchedGesture).indexOf('sql-00001') >= 0, 'patch must detect domains in the resulting source');
+var noBookOn = tool('code-get', {projectDir:empty}, 'on', sessionId+'-empty-on');
+var noBookOff = tool('code-get', {projectDir:empty}, 'off', sessionId+'-empty-off');
+assert(JSON.stringify(noBookOn.result) === JSON.stringify(noBookOff.result), 'No-playbook result must be byte-for-byte unchanged');
 
 var listed = call('resources/list', {projectDir:app}).result.resources;
 assert(listed.some(function(r) { return r.uri === 'flow://ace'; }), 'ACE index missing from resources/list');
@@ -96,12 +105,13 @@ assert(index.indexOf('3 entries') >= 0 && index.indexOf('MISSING_FLOW_QNAME') >=
 assert(call('resources/read', {uri:'flow://ace/../sql', projectDir:app}).error, 'Unknown/path traversal resource must be refused');
 var viaTool = tool('flow-resource-get', {projectDir:app, uri:uri});
 assert(viaTool.result.structuredContent.text === sqlText, 'Clients without resource support need flow-resource-get');
-var changed = sqlText.replace('Check the orders table', 'Inspect the orders table');
+var changed = sqlText.replace('Check the orders table', 'Probe the orders table');
+assert(changed.length === sqlText.length, 'Invalidation fixture must keep the same size');
 Files.writeString(sqlFile.toPath(), changed, UTF8);
 var beforeEditReads = Number(attributes.get('lib_flow_mcp.experience.control.v1').get('reads'));
 assert(call('resources/read', {uri:uri, projectDir:app}).result.contents[0].text === changed, 'Resource edit must invalidate cached drawer');
 assert(Number(attributes.get('lib_flow_mcp.experience.control.v1').get('reads')) === beforeEditReads + 1, 'Only the changed drawer should be read again');
-assert(exp(gesture(sessionId + '-changed')).entries[0].text.indexOf('Inspect') === 0, 'Push used stale drawer');
+assert(exp(gesture(sessionId + '-changed')).entries[0].text.indexOf('Probe') === 0, 'Push used stale drawer');
 
 // Pure selection checks exercise budgets and multi-domain calls without needing a SQL runtime.
 var large = '## STRATEGIES & INSIGHTS\n[sql-00001] helpful=999 harmful=0 :: ' + Array(5001).join('x') + '\n';
@@ -124,6 +134,8 @@ assert(maxTwo.experience.entries.length === 2, 'Error pushes must contain at mos
 assert(!ace.select(entries, [], {}, {call:1,drawers:{},sent:{}}, 'on'), 'No domain means no common push');
 // Session identities do not merge callers or conversations. No raw bearer/session value is logged.
 var mcp = eval(String(FileUtils.readFileToString(new File(projectDir, '_flow/lib/mcp.js'), 'UTF-8')));
+var decoratedSchema = mcp.toolOutputSchema({type:'object',properties:{ok:{type:'boolean'}},additionalProperties:false});
+assert(decoratedSchema.anyOf[0].properties.experience.properties.entries.type === 'array', 'Strict tool schemas must accept structured experience');
 var blockText = String(FileUtils.readFileToString(new File(projectDir, '_flow/blocks/mcp/experience.block.js'), 'UTF-8'));
 var block = eval(blockText.substring(blockText.indexOf('(function')));
 function direct(headers, caller, config, request, response) {
@@ -147,6 +159,16 @@ assert(!exp(direct({'Mcp-Session-Id':'orders-mcp-a'}, 'caller-a', {}, directRequ
 assert(!exp(direct({'Mcp-Session-Id':'orders-unauth'}, null, {}, directRequest, directResponse)), 'Unauthenticated HTTP request must never get advice');
 assert(!exp(direct({'Mcp-Session-Id':'orders-off'}, 'caller-a', {experience:'off'}, directRequest, directResponse)), 'Session off setting not honored');
 assert(!exp(directResponse), 'Advice mutated a reusable provider response');
+var jobsRequest = {method:'tools/call',params:{name:'scheduler-list',arguments:{projectDir:app}}};
+var jobsReply = direct({'Mcp-Session-Id':'orders-jobs'}, 'caller-a', {}, jobsRequest, directResponse);
+assert(exp(jobsReply) && exp(jobsReply).drawer.indexOf('jobs') >= 0, 'Scheduler reply must carry jobs advice');
+assert(!exp(direct({'Mcp-Session-Id':'orders-jobs'}, 'caller-a', {}, jobsRequest, directResponse)), 'Scheduler must not repeat its drawer');
+var crudRequest = {method:'tools/call',params:{name:'flow-crud-upsert',arguments:{projectDir:app}}};
+var crudReply = direct({'Mcp-Session-Id':'orders-crud'}, 'caller-a', {}, crudRequest, directResponse);
+assert(exp(crudReply) && exp(crudReply).drawer.indexOf('front') >= 0 && exp(crudReply).drawer.indexOf('sql') >= 0, 'CRUD reply must carry both domain drawers');
+var warningRequest = {method:'tools/call',params:{name:'flow-list',arguments:{projectDir:app}}};
+var warningResponse = {result:{structuredContent:{ok:true,diagnostics:[{severity:'warning',code:'MISSING_FLOW_QNAME'}]},content:[]}};
+assert(exp(direct({'Mcp-Session-Id':'orders-warning'}, 'caller-a', {}, warningRequest, warningResponse)).reason === 'error', 'A diagnostic code must trigger even on success');
 var trace = new File(projectDir, '_private/ace/experience-push.jsonl');
 assert(trace.isFile(), 'Push log missing');
 var records = String(FileUtils.readFileToString(trace, 'UTF-8')).trim().split('\n').map(JSON.parse).filter(function(r) { return r.tool === 'code-get' && r.reason === 'error'; });

@@ -32,7 +32,7 @@
     var blocks = [], seen = {}, match;
     var call = /\b([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)+)\s*\(/g;
     while ((match = call.exec(clean))) {
-      if (!seen[match[1]] && !/^(?:ctx|Math|JSON|Object|String|Array)\./.test(match[1])) {
+      if (!seen[match[1]] && !/^(?:input|local|result|config|current|item|flow|props|ctx|Math|JSON|Object|String|Array|Number|Boolean|Date|RegExp|console)\./.test(match[1])) {
         seen[match[1]] = true;
         blocks.push(match[1]);
       }

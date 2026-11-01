@@ -11,6 +11,11 @@ function measure(run, count) {
 var benchmarkRequest = {method:'tools/call',params:{name:'code-check',arguments:{projectDir:app,name:'Orders'}}};
 var benchmarkHeaders = {'Mcp-Session-Id':sessionId+'-benchmark'};
 function component(mode) { return direct(benchmarkHeaders, 'benchmark', {experience:mode}, benchmarkRequest, directResponse); }
+attributes.get('lib_flow_mcp.experience.files.v1').clear();
+var coldStarted = java.lang.System.nanoTime();
+var coldReply = direct({'Mcp-Session-Id':sessionId+'-cold'}, 'benchmark', {}, directRequest, directResponse);
+var coldFirstPushMs = ms(coldStarted);
+assert(exp(coldReply), 'Cold push missing');
 component('on');
 for (var warm = 0; warm < 100; warm++) { component('off'); component('on'); }
 var cacheReads = Number(attributes.get('lib_flow_mcp.experience.control.v1').get('reads'));
@@ -42,6 +47,7 @@ var result = {
   component:{iterations:500,offP50Ms:percentile(offTimes,.5),onP50Ms:percentile(onTimes,.5),onP95Ms:percentile(onTimes,.95),
     addedP50Ms:percentile(onTimes,.5)-percentile(offTimes,.5)},
   firstPushWithJournal:freshPush,
+  coldFirstPushWithReadsAndJournalMs:coldFirstPushMs,
   router:{iterations:60,offP50Ms:percentile(routerOff,.5),onP50Ms:percentile(routerOn,.5),onP95Ms:percentile(routerOn,.95),
     addedP50Ms:percentile(routerOn,.5)-percentile(routerOff,.5)},
   unchangedDrawerReads:0,

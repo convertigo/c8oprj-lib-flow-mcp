@@ -175,7 +175,7 @@ const _meta = {
     var blocks = ace.domains(request, data, "");
     var isBackendCode = /^(?:code|flow-(?:block-)?code)-(set|patch|check)$/.test(String(request.params.name)) && !blocks.length;
     var advice = null;
-    if (blocks.length || isBackendCode || Object.keys(codes).length) {
+    if ((String(host.setting) !== "errors-only" && (blocks.length || isBackendCode)) || Object.keys(codes).length) {
       var drawers = catalog(host, request, ace, false), entries = [];
       drawers.forEach(function (drawer) { entries = entries.concat(drawer.entries); });
       if (entries.length) {
