@@ -869,6 +869,26 @@ var guideResourceSearch = JSON.parse(engine.run(JSON.stringify({
 		})
 	}
 })));
+// A bounded resource search may return a partial first page on slower hosts.
+// Keep the same assertion, and follow the public cursor contract to find the guide.
+var guideSearchPages = 1;
+while (!guideResourceSearch.result.result.structuredContent.resources.some(function (resource) {
+	return resource.path === "_flow/resources/guide/authoring.md";
+}) && guideResourceSearch.result.result.structuredContent.nextCursor && guideSearchPages < 20) {
+	guideResourceSearch = JSON.parse(engine.run(JSON.stringify({
+		flowSource: mcpFlowSource,
+		includeTrace: false,
+		input: { request: JSON.stringify({
+			jsonrpc: "2.0", id: 1021, method: "tools/call",
+			params: { name: "flow-resource-search", arguments: {
+				projectDir: projectDir, query: "Flow Authoring Cycle", doc: false, hints: false,
+				cursor: guideResourceSearch.result.result.structuredContent.nextCursor
+			} }
+		}) }
+	})));
+	guideSearchPages++;
+}
+print("guide resource search: " + guideSearchPages + " page(s)");
 assertTrue(guideResourceSearch.result.result.structuredContent.resources.some(function (resource) {
 	return resource.path === "_flow/resources/guide/authoring.md";
 }), "MCP Flow guides should be searchable as project resources");
