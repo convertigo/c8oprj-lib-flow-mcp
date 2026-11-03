@@ -17,22 +17,10 @@ const _flow = {
 }
 
 function Greeting({ input, config, result }) {
-  local.name = text.trim({
-    $$id: "cleanName",
-    text: input.name,
-  })
-  if({
-    $$id: "checkName",
-    condition: local.name == "",
-    $$then: function () {
-      throw({
-        $$id: "missingName",
-        code: "NAME_REQUIRED",
-        message: "name is required",
-        status: 400,
-      })
-    },
-  })
+  local.name = text.trim({ text: input.name })
+  if (local.name == "") {
+    throw { code: "NAME_REQUIRED", message: "name is required", status: 400 }
+  }
   result.message = `Hello ${local.name}`
 }
 ```
@@ -48,7 +36,7 @@ function Greeting({ input, config, result }) {
   `result.x = block({...})`. `const x = block({...})` is accepted and stored
   as `local.x`, but the writer emits `local.x = …`, so write that form.
   A plain value assignment such as `result.message = "Hello"` is stored as a
-  `set` node and written back as `set({ $$id, path, value })`.
+  `set` node and stays an assignment when formatted.
 - **`$$out`** is the explicit capture metadata, only for destinations an
   assignment cannot express. An assignment and a disagreeing `$$out` give
   `FLOW_SOURCE_OUTPUT_CONFLICT`; chained or bodied assignments give
@@ -65,11 +53,11 @@ function Greeting({ input, config, result }) {
   spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
   `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (optional, 2 is the
   only value), `inputs`, `outputs`, `config` (an object), `tests`.
-- **Control flow is blocks with slots.** A JavaScript `if (...) { } else { }`
-  statement is read as an `if` block; loops and `throw` statements are
-  rejected (`FLOWSCRIPT_UNSUPPORTED_SYNTAX`): loop with `forEach` (or `while`
-  with `maxIterations`), and nest an `if` in the else branch instead of
-  `else if`. Raise errors with `throw({ code, message, status, details })`.
+- **Language statements** stay script: assignments, `if (...) { ... } else { ... }`,
+  `return { answer: input.value }`, bare `return`, and
+  `throw { code: "INVALID", message: "Invalid input", status: 400 }`.
+  Catalog blocks stay calls, including captures `local.rows = sql.query({ ... })`.
+  Loops keep their block calls in phase 1; natural loops are a later phase.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency), with a `status` when one fits:
   the Flow answers its error alone and a frontend action fails and stops its
@@ -157,22 +145,23 @@ discover one output; use `flow-requestable-schema` explicitly if needed.
 
 ```javascript
 json.array({
-  $$id: "rows",
   path: "local.rows",
   itemType: {
-    type: "object",
-    properties: {
-      label: { type: "string" },
-      size: { type: "number" },
+    "type": "object",
+    "properties": {
+      "label": {
+        "type": "string",
+      },
+      "size": {
+        "type": "number",
+      },
     },
   },
 })
 forEach({
-  $$id: "eachItem",
   items: input.items,
   $$nodes: function () {
     json.push({
-      $$id: "addRow",
       path: "local.rows",
       value: {
         label: current.label,
@@ -181,25 +170,15 @@ forEach({
     })
   },
 })
-if({
-  $$id: "isEmpty",
-  condition: local.rows.length == 0,
-  $$then: function () {
-    result.status = "empty"
-  },
-  $$else: function () {
-    if({
-      $$id: "isSingle",
-      condition: local.rows.length == 1,
-      $$then: function () {
-        result.status = "single"
-      },
-      $$else: function () {
-        result.status = "many"
-      },
-    })
-  },
-})
+if (local.rows.length == 0) {
+  result.status = "empty"
+} else {
+  if (local.rows.length == 1) {
+    result.status = "single"
+  } else {
+    result.status = "many"
+  }
+}
 result.rows = local.rows
 ```
 
@@ -219,7 +198,6 @@ names; a value that does not match the declared type is refused with
 
 ```javascript
 local.rows = list.map({
-  $$id: "rows",
   items: input.items,
   select: {
     label: current.label,
@@ -227,36 +205,20 @@ local.rows = list.map({
 })
 result.rows = local.rows
 local.rates = json.object({
-  $$id: "rates",
   $$fields: function () {
-    json.field({
-      $$id: "eur",
-      key: "EUR",
-      value: 1,
-    })
-    json.field({
-      $$id: "usd",
-      key: "USD",
-      value: 1.1,
-    })
+    json.field({ key: "EUR", value: 1 })
+    json.field({ key: "USD", value: 1.1 })
   },
 })
-local.codes = object.keys({
-  $$id: "codes",
-  source: local.rates,
-})
-local.usd = object.get({
-  $$id: "usd",
-  source: local.rates,
-  key: "USD",
-})
+local.codes = object.keys({ source: local.rates })
+local.usd = object.get({ source: local.rates, key: "USD" })
 result.codes = local.codes
 result.usd = local.usd
 ```
 
 - Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
-  `select` takes an expression or object literal, not a block call; for a
-  per-item block, use `forEach` with a `json.push` into a typed array.
+  `select` takes an expression, object literal or named block call evaluated
+  for each item. A block nested there can use `$$id` for an explicit name.
 - `object.firstEntry({ source })` returns one `{ key, value }`.
 - For repeated external work, model one item and iterate: store rows in
   `config.*` or a small data block and call one per-item FlowScript block.
@@ -264,9 +226,10 @@ result.usd = local.usd
 
 ```javascript
 config.use({
-  $$id: "slowHttp",
-  http: {
-    timeout: 30000,
+  overrides: {
+    http: {
+      timeout: 30000,
+    },
   },
   $$then: function () {
     result.timeout = config.http.timeout
@@ -344,12 +307,16 @@ schema) through two platform blocks, never through Java internals:
 
 ```javascript
 local.preview = config.mutate({
-  $$id: "preview",
   project: "sampleApp",
-  configuration: "dataLab",          // default is the config branch, a name is configs.<name>
+  configuration: "dataLab",
   path: "data.sources.orders",
-  op: "set",                         // set, merge or remove
-  value: { provider: "sql", connection: "labPg", table: "orders", readOnly: true },
+  op: "set",
+  value: {
+    provider: "sql",
+    connection: "labPg",
+    table: "orders",
+    readOnly: true,
+  },
   dryRun: true,
 })
 // confirm with revision: local.preview.previousRevision, persist: "draft" or "save"
@@ -373,9 +340,11 @@ symbol, whose default may be a test or development value:
 
 ```javascript
 const _flow = {
-  "sourceVersion": 2,
   "accessibility": "private",
-  "inputs": { ... },
+}
+
+function Internal({ input, config, result }) {
+  result.ok = true
 }
 ```
 
@@ -422,15 +391,45 @@ body is not native JSON.
 6. After `code-run` proves the result and `code-promote` succeeds, stop. No
    shell confirmation (`git`, `sed`, `cat`, HTTP scripts).
 
-## Formatting and defaults
+## Source ownership and formatting
 
-The canonical writer puts one property per line, engine attributes first
-(`$$id`, `$$comment`, `$$disabled`, `$$out`), then business properties, then
-slots. The first write of a non-canonical file reorders it completely: expect
-that diff and do not "repair" it; patch the returned revision afterwards.
-A property edit (Studio or mutation) that sets a value back to the block
-default removes it from the source: absent means default, and a present
-default value stays valid.
+`code-set` and `code-patch` keep and compile your exact text. Diagnostics use
+its line numbers. An equivalent spelling is understood; a guessed block name,
+key or positional call is refused with a `proposedPatch`: line, before, after,
+and exact `oldText`/`newText` edits for `code-patch`. Review it; no suggestion
+is ever applied automatically, including when an old client sends `autoCorrect`.
+
+Only `code-promote` and Studio tree edits format. Promotion checks the tree
+before and after formatting and saves nothing if the program changes. Its
+answer includes `linted`, `changedLines` and the text-hash `revision`. An
+unchanged text keeps its revision; continue with it without another `code-get`.
+The formatter is idempotent, with code width 120.
+
+Names are implicit: the assignment destination (`answer`), the instruction
+(`if`, `throw`, `return`) or the local block name (`trim`). Repetitions use
+`if2`, `if3`, skipping explicit names. Names remain assigned during editing;
+a new node takes the next free counter even when inserted above an old one.
+Reload recalculates them in source order. Node tools accept these names for
+the current revision; identify a diagnostic by its source line.
+
+Use a JavaScript label for an explicit name: `cleanName: local.name =
+text.trim({ text: input.name })`, or `checkName: if (...) { ... }`. Studio
+Rename writes the label; renaming back to the implicit name removes it.
+Duplicate explicit names are errors. Existing `$$id` is still read and is
+formatted as a label, or omitted when redundant. A block nested in a property
+keeps `$$id` when an explicit name is needed there.
+
+A comment attached to the next instruction is its Comment (`$$comment`),
+written one `//` line per text line, without reflow. A blank line separates a
+standalone `comment` node; a comment at the end of a body is also standalone.
+These nodes are visible in the tree, have no properties, and are removed
+when execution is prepared. At most one authored blank line is kept before
+its node, including after a Studio property edit.
+
+Natural syntax cannot carry every block attribute: a disabled statement, a
+`set` with additional properties, or a conflicting `$$out` keeps its generic
+call form. `set({ ... })` remains valid for every existing source.
+A property edit that restores a block default can omit that property.
 
 ## Maintenance edits
 
@@ -547,8 +546,8 @@ a scalar spelling are removed only when unambiguous. Never rely on a fallback
 to zero, false or the first enum constant.
 
 `code-check` reports invalid `_flow.inputs` and `_flow.accessibility` values at
-their source line. `code-set`, `code-patch` and `code-promote` report safe
-normalizations in `fixes` and return the corrected source. Native operations
+their source line. Equivalent native scalar spellings are understood without
+rewriting the source. Native operations
 return `normalizations` with property, before and after; inspect them.
 
 For inputs, use a supported JSON `type`, boolean `required`/`isFileUpload`, a

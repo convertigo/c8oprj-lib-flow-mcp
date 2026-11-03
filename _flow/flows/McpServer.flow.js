@@ -35,7 +35,6 @@ function McpServer({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -46,7 +45,6 @@ function McpServer({ input, config, result }) {
     out: "local.response",
   })
   return({
-    $$id: "returnValue",
     value: local.response,
   })
 }

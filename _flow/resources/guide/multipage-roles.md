@@ -52,7 +52,7 @@ text, hence `String(...)`:
 
 ```javascript
 if (String(config.demo.login) !== "true") {
-  throw({ code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 })
+  throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 }
 }
 ```
 

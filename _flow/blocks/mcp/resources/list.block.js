@@ -47,7 +47,6 @@ function mcp_resources_list({ input, config, result }) {
     pattern: "**/*.md",
   })
   set({
-    $$id: "resources",
     path: "local.resources",
     value: [],
   })
@@ -126,7 +125,6 @@ function mcp_resources_list({ input, config, result }) {
     $$id: "payload",
     $$fields: function () {
       json.field({
-        $$id: "resources",
         key: "resources",
         value: local.resources,
       })

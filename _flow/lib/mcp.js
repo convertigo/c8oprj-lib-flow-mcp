@@ -3755,7 +3755,7 @@
 		}
 		var name = toolName(request);
 		var out = {};
-		["ok", "qname", "name", "block", "target", "runtime", "format", "dry", "unchanged", "written", "finalized", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared",
+		["ok", "qname", "name", "block", "target", "runtime", "format", "dry", "unchanged", "written", "finalized", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared", "linted", "changedLines",
 			"dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];

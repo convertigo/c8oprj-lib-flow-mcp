@@ -33,16 +33,8 @@ What they demonstrate:
   `sample_list_filter_sort_map`:
 
 ```javascript
-local.hotCities = list.filter({
-  $$id: "keepHotCities",
-  items: input.cities,
-  where: current.temperature >= 35,
-})
-result.cities = list.map({
-  $$id: "names",
-  items: local.hotCities,
-  select: current.city,
-})
+local.hotCities = list.filter({ items: input.cities, where: current.temperature >= 35 })
+result.cities = list.map({ items: local.hotCities, select: current.city })
 ```
 
 Use samples as patterns, not as templates to copy blindly. Keep new executable

@@ -42,7 +42,8 @@ another endpoint to bypass consent.
 2. Capture a block result with an assignment: `local.feed = requestable.call({
    requestable: ".GetFeed" })`. Write one statement per line; never join two
    Flow statements with `;` on one line.
-3. `$$id`, `$$comment`, `$$disabled`, `$$out` and slots such as `$$then` are
+3. Names are implicit; a JavaScript label names an instruction explicitly.
+   `$$id` remains readable. `$$comment`, `$$disabled`, `$$out` and slots such as `$$then` are
    engine attributes. Plain names (`id`, `disabled`, `out`, `comment`) are
    ordinary business properties.
 4. Source headers hold static literals only: `_flow` describes an executable
@@ -136,7 +137,7 @@ encode a block in `qname`.
   ran it for an anonymous call): prove access control with a session that is
   not an administrator. Exploration, authoring, test and
   qualification Flows are always private.
-- `throw({ code, message, status })` what must interrupt the caller: the
+- `throw { code, message, status }` what must interrupt the caller: the
   answer is the error alone and a frontend call fails and stops its chain.
   Return a normal result (`ok: false` with a reason) for an outcome the caller
   handles, such as a wrong password or nothing found.

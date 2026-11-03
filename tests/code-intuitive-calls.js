@@ -75,16 +75,15 @@ try {
 		"the text lists the edits, with the reason of those below the threshold: " + refused.text);
 	assert(refused.value.next === patch.next && /code-patch edits with this revision/.test(patch.next), "next says how to apply it: " + refused.value.next);
 
-	// autoCorrect: the confident ones written and listed, the others proposed on the new working copy
+	// A compatibility flag never changes the authored source or applies a guess.
 	var auto = tool(3, "code-set", { name: "Report", code: intuitive, autoCorrect: true, revision: refused.value.revision });
-	assert(auto.value.autoCorrected && auto.value.autoCorrected.edits.length === 9 && auto.value.proposedPatch.edits.length === 2 &&
-		auto.value.code.indexOf('email.send({ to: input.email, subject: "Report", text: "Your report is ready." })') !== -1,
-		"autoCorrect writes the 9 confident edits and proposes 2: " + JSON.stringify(auto.value).substring(0, 1500));
-	assert(auto.text.indexOf("Auto-corrected 9 calls (confidence >= 0.9), written in code:") !== -1 &&
-		auto.text.indexOf("line 13 (0.92): smtp.send(") !== -1, "the text says what autoCorrect changed: " + auto.text);
+	assert(!auto.value.autoCorrected && auto.value.proposedPatch.edits.length===11,"all guesses remain proposals");
+	var read=tool(30,"code-get",{name:"Report"});
+	assert(read.value.code===intuitive&&read.value.revision===refused.value.revision,"unchanged exact draft and revision");
+	assert(auto.text.indexOf("Auto-corrected")<0&&auto.text.indexOf("Proposed patch")>=0,"text describes suggestions only");
 	var left = auto.value.proposedPatch;
 	var patched = tool(4, "code-patch", { name: "Report", revision: left.revision, edits: left.edits });
-	assert(patched.value.ok === true && !patched.value.proposedPatch, "the proposed edits pass unchanged to code-patch: " + patched.text);
+	assert(patched.value.ok === true, "the proposed edits pass unchanged to code-patch: " + patched.text);
 	var checked = tool(5, "code-check", { name: "Report" });
 	assert(checked.value.ok === true, "the result passes code-check: " + checked.text);
 

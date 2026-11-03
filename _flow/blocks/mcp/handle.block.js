@@ -66,7 +66,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -96,7 +95,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -111,7 +109,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -126,7 +123,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -141,7 +137,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -156,7 +151,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -171,7 +165,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -186,7 +179,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -201,7 +193,6 @@ function mcp_handle({ input, config, result }) {
         out: "local.response",
       })
       return({
-        $$id: "returnValue",
         value: local.response,
       })
     },
@@ -212,7 +203,6 @@ function mcp_handle({ input, config, result }) {
     out: "local.response",
   })
   return({
-    $$id: "returnValue",
     value: local.response,
   })
 }

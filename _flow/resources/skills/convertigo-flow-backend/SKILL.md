@@ -14,7 +14,7 @@ Keep this role across backend lots instead of spawning a replacement agent.
 `let`, `local.x =` and `result.x =` assignments, `if (...) { } else { }`,
 `return`, and block calls `name({ ... })` whose `$$then`, `$$else`,
 `$$nodes`, `$$try`, `$$catch` functions are slots of child nodes, each node
-named by its `$$id`. Outside the subset, write instead:
+named implicitly, or explicitly by a JavaScript label. Outside the subset, write instead:
 - a loop: `forEach({ items, $$nodes() {...} })` (the item is `current`) or
   `while({ condition, maxIterations, $$nodes() {...} })`; as in a JavaScript
   forEach callback, a bare `return` in the body goes on with the next item
@@ -51,22 +51,15 @@ handles. Otherwise the value of `requestable.call` is the result of the called
 Flow as it is, without envelope (`result.items` gives `{ items }`); only
 `requestable-execute` shows the HTTP answer under its own `payload`, beside `attr`.
 
-**Write calls as JavaScript first; the MCP translates them.** A call that is
-not FlowScript is mapped onto the catalog instead of only refused:
-`Object.assign({}, a, b)` becomes `object.merge`, `JSON.stringify(x)` `json.stringify({ value: x })`,
-`crypto.md5(x)` `crypto.hash({ text: x, algorithm: "md5" })`, `smtp.send`
-`email.send` (with `body` as `text`), `Math.pow(x, 2)` `x * x`, a guessed key
-(`order`) its property (`direction`), positional arguments their properties
-by type and kind, or by contract order when several fit (then only proposed).
-`code-set`, `code-patch` and `code-check` answer these edits in
-`proposedPatch` (confidence and reason each); pass them as `code-patch`
-`edits` with its `revision`, or send `autoCorrect: true` to apply those at or
-above the threshold (0.9, `authoring.intuitiveCall.autoCorrectConfidence` in
-`_flow/engine.yaml`, never under 0.8) and read `autoCorrected`. `parseInt`,
-`parseFloat`, an ambiguous mapping, a block of another namespace and a block
-inside a condition stay proposals: their reason says why. `Math.max(a, b)` and
-the other expression functions need no edit. Statements are not translated:
-a loop, `try` and `throw` stay the blocks listed above.
+**Source remains yours until promotion.** Write natural assignments, `if`,
+`return` and `throw { code, message, status }`; catalog blocks take one object
+of named properties. `code-set` and `code-patch` compile your exact text. Guessed
+names, keys and positional calls produce a suggested patch with line, before
+and after. Review and send the edits with their revision; they are never
+applied automatically. Promotion formats once, checks the same tree and returns
+`linted`, `changedLines` and the text revision. If unchanged, keep that revision.
+Labels name instructions explicitly; omitted names use source-order counters.
+Read `flow://guide/authoring` for comments, blank lines and generic-call fallbacks.
 
 **Config.** A Flow reads `config.<path>` (the `config` scope). Its values
 merge value by value (objects merge, other values replace), weakest first:
