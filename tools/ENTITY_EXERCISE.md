@@ -26,6 +26,19 @@ an application account. Its optional deployment step signs in through the real
 application, initializes twice as ADMIN and signs out. A separate cookie jar first proves an anonymous session. These five HTTP calls
 are counted separately from MCP construction tools.
 
+After a cold runtime restart, wait for application readiness before entering
+credentials. The exercise browser proof polls CurrentSession in the same fresh
+browser cookie context, without an MCP bearer, until it returns the session
+contract with authenticated:false; the wait is bounded to 120 seconds. Reuse
+that cookie context for every poll and the later sign-in.
+
+TCP readiness and HTTP 200 alone are insufficient: during migration,
+CurrentSession and SignIn can answer error code "-1" with a message that the
+project is in migration process. Retry later while migration finishes. This
+response does not classify a password. The home page's Status bound to
+signInCall displays call failures, including startup failures, even when the
+CallSequence error branch leaves its output state unchanged.
+
 `summary.json` records attempted tool calls, total JSON-RPC requests, deployment
 HTTP calls and whether the scenario completed. A refused source, runtime loss
 or failed build keeps `complete:false`; its partial transcript remains evidence.

@@ -13,9 +13,15 @@ between backend and frontend specialists, as described in
    `flow://guide/entities`, `flow://guide/authoring` and
    `flow://guide/frontend-svelte` before writing sources.
 2. Read the real user manager sign-in/session contracts with `flow-block-get`.
-   Wait for the target runtime and authentication provider to finish initializing
-   before acceptance; TCP readiness alone does not prove that a sign-in Flow is
-   ready. Configure its storage independently of the equipment storage. Sign-in checks
+   A listening TCP port does not prove that the application is ready. Before
+   filling credentials in a fresh browser session, poll CurrentSession with that
+   same cookie jar until it returns a valid session result, authenticated:false.
+   Bound the wait (120 seconds in the exercise proof). During project migration,
+   CurrentSession or SignIn can return HTTP 200 with error code "-1" and a message
+   saying that the project is in migration process. This migration response asks
+   for a later retry; it does not classify the credentials. Wait for migration to
+   finish before signing in, and show call errors through Status. Configure the
+   authentication storage independently of the equipment storage. Sign-in checks
    credentials; the entity actor and roles are resolved from the application
    session. The responsible-person relation uses the imported account directory,
    never an assumed table name. Do not create a demonstration user picker.
