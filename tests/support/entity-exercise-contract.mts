@@ -5,8 +5,10 @@ import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
+import {existsSync} from 'node:fs';
 const provider=process.env.FLOW_FRONTBUILDER_RESOURCE_ROOT!;
-const entity=resolve(import.meta.dirname,'../../../lib_flow_entity');
+// Side-by-side checkout: the library directory or its repository name.
+const entity=['lib_flow_entity','c8oprj-lib-flow-entity'].map(name=>resolve(import.meta.dirname,'../../..',name)).find(path=>existsSync(path))??resolve(import.meta.dirname,'../../../lib_flow_entity');
 const engine=process.env.FLOW_ENGINE_RESOURCE_ROOT!;
 const {loadDocument}=await import(pathToFileURL(resolve(provider,'src-builder/frontDocument.ts')).href);
 const {generateSvelteProject}=await import(pathToFileURL(resolve(provider,'src-builder/generateSvelteProject.ts')).href);

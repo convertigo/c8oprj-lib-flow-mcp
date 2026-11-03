@@ -1,7 +1,7 @@
 {
   "engineFirst": [
     "authoring-headless.js", "authoring-mutate-shapes.js", "block-contract-pointers.js",
-    "experience-push.js", "experience-cost.js", "frontend-new-page-validation.js",
+    "entity-model-tools.js", "experience-push.js", "experience-cost.js", "frontend-new-page-validation.js",
     "frontend-private-requestable.js", "icon-sources-carried.js", "mcp-auth-routing-contract.js",
     "mcp-hot-path-benchmark.js", "mcp-resources-contract.js", "native-property-values.js",
     "resource-content-config-warnings.js", "resource-patch-hunks.js", "setup-codex-contract.js",
