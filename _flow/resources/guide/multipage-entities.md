@@ -13,7 +13,9 @@ between backend and frontend specialists, as described in
    `flow://guide/entities`, `flow://guide/authoring` and
    `flow://guide/frontend-svelte` before writing sources.
 2. Read the real user manager sign-in/session contracts with `flow-block-get`.
-   Configure its storage independently of the equipment storage. Sign-in checks
+   Wait for the target runtime and authentication provider to finish initializing
+   before acceptance; TCP readiness alone does not prove that a sign-in Flow is
+   ready. Configure its storage independently of the equipment storage. Sign-in checks
    credentials; the entity actor and roles are resolved from the application
    session. The responsible-person relation uses the imported account directory,
    never an assumed table name. Do not create a demonstration user picker.
@@ -45,7 +47,11 @@ between backend and frontend specialists, as described in
    perimeter; the admin page requests all rows. The server checks both requests.
 6. Build a shared Layout with session refresh on navigation, role-dependent
    links, PageContent and sign-out. The Flow Svelte syntax and session lifecycle
-   are in `flow://guide/multipage-roles`; use the real user manager logout here. After successful sign-in, send ADMIN to
+   are in `flow://guide/multipage-roles`; use the real user manager logout here. Display a Status bound to the sign-in
+   CallSequence action, for example `<Status $$id="loginStatus"
+   actionId="signInCall" />`. CallSequence transport/Flow failures live in action
+   error state and may not write its $$out; binding only page.login.error hides
+   them. Keep a separate result message for normal business-error responses. After successful sign-in, send ADMIN to
    administration and USER to their own equipment.
    Mark protected facades with the required accessibility/session settings.
    CurrentSession must answer authenticated:false normally for anonymous callers,

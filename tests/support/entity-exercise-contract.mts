@@ -27,6 +27,7 @@ test('MCP entity exercise keeps role guards, selection events, lexical cells and
  for(const route of ['','mine/','admin/']){
   const code=await readFile(join(built.generatedRoot,'src/routes/'+route+'+page.svelte'),'utf8');
   assert.doesNotThrow(()=>compile(code,{filename:route+'+page.svelte',generate:'client'}));
+  if(!route){assert.match(code,/<Status\b/);assert.match(code,/loginStatus/);}
   if(route){
    assert.match(code,/#snippet (?:flowSnippet_)?cell\(row, field\)/);
    assert.match(code,/onselect=\{/);assert.match(code,/onsaved=\{/);assert.match(code,/ondeleted=\{/);
