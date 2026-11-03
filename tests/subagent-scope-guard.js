@@ -37,6 +37,7 @@ var writes = {
 		["flow-resource-delete", { project: "App", path: "./_flow/frontbuilder/svelte/model/App/src/app.flow.css" }]
 	],
 	backend: [
+		["flow-entity-model-set", { project: "App", model: {}, expectedRevision: "missing" }],
 		["code-set", flowSource], ["code-patch", { project: "App", qname: "App.ListItems", revision: "r1", patch: "@@" }],
 		["code-promote", { project: "App", qname: "App.ListItems" }], ["code-discard", { project: "App", qname: "App.ListItems" }],
 		["code-set", { project: "App", target: "frontend", block: "App.formatLabel", code: "x" }],
@@ -57,6 +58,7 @@ var writes = {
 		["flow-resource-patch", { project: "App", scope: "engine-internal", files: [] }]
 	],
 	neither: [
+		["flow-entity-model-get", { project: "App" }], ["flow-entity-model-check", { project: "App", model: {} }],
 		["code-get", frontendSource], ["code-get", flowSource], ["code-rg", { project: "App", pattern: "items" }], ["code-run", flowSource],
 		["code-check", frontendSource], ["flow-resource-get", { project: "App", path: "docs/generated/PROGRESS.md" }],
 		["flow-resource-patch", { project: "App", path: "docs/backend-notes.md", content: "x" }], ["flow-project-reference", { project: "App", reference: "lib_flow_sql" }],

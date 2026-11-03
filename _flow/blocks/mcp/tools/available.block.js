@@ -70,6 +70,9 @@ const _meta = {
 		"flow-fullsync-scaffold": true,
 		"flow-crud-upsert": true,
 		"flow-crud-proof": true,
+		"flow-entity-model-get": true,
+		"flow-entity-model-check": true,
+		"flow-entity-model-set": true,
 		"flow-project-bootstrap": true,
 		"flow-project-metadata": true,
 		"flow-project-symbol-set": true,
@@ -317,6 +320,9 @@ const _meta = {
 		}
 		if (toolName === "frontend-svelte-action" || toolName === "frontend-svelte-actions") {
 			delete schema.properties.browserDebugPort;
+		}
+		if (/^flow-entity-model-(?:get|check|set)$/.test(toolName)) {
+			schema.required = toolName === "flow-entity-model-get" ? ["project"] : toolName === "flow-entity-model-check" ? ["project", "model"] : ["project", "model", "expectedRevision"];
 		}
 		if (toolName === "authoring-palette") {
 			schema.properties.parentPath = {

@@ -2475,6 +2475,7 @@
 		"flow-code-promote": true,
 		"flow-code-set": true,
 		"flow-fullsync-scaffold": true,
+		"flow-entity-model-set": true,
 		"flow-object-remove": true,
 		"flow-project-reference": true,
 		"flow-project-remove": true,
@@ -2599,6 +2600,9 @@
 			"frontend-svelte-tree": true,
 			"flow-app-progress": true,
 			"flow-catalog": true,
+			"flow-entity-model-get": true,
+			"flow-entity-model-check": true,
+			"flow-entity-model-set": true,
 			"flow-list": true,
 			"flow-object-remove": true,
 			"flow-project-metadata": true,
@@ -4978,6 +4982,7 @@
 		"flow-project-symbol-set": true, "project-save": true, "report-create": true, "scheduler-apply": true, "subagent-run": true
 	};
 	var BACKEND_WRITE_TOOLS = {
+		"flow-entity-model-set": true,
 		"flow-block-code-patch": true, "flow-block-code-set": true, "flow-block-mock": true, "flow-code-discard": true,
 		"flow-code-patch": true, "flow-code-promote": true, "flow-code-set": true, "flow-fullsync-scaffold": true,
 		"flow-object-remove": true, "flow-schema-reset": true, "flow-sync-inputs": true

@@ -1,0 +1,208 @@
+{
+  "references": [
+    "lib_flow_engine",
+    "lib_flow_entity",
+    "lib_flow_sql",
+    "lib_flow_crud_data",
+    "lib_flow_frontbuilder_svelte",
+    "lib_UserManager"
+  ],
+  "model": {
+    "version": 2,
+    "modelVersion": 3,
+    "imports": {
+      "userManager": "lib_UserManager"
+    },
+    "entities": {
+      "Utilisateur": {
+        "extends": "userManager.User"
+      },
+      "Equipement": {
+        "label": "Équipements",
+        "display": {
+          "title": "libelle",
+          "subtitle": "numeroSerie"
+        },
+        "permissions": {
+          "read": [
+            "USER",
+            "ADMIN"
+          ],
+          "create": [
+            "USER",
+            "ADMIN"
+          ],
+          "update": [
+            "USER",
+            "ADMIN"
+          ],
+          "delete": [
+            "ADMIN"
+          ]
+        },
+        "traits": [
+          {
+            "Journalisé": {
+              "fields": [
+                "libelle",
+                "numeroSerie",
+                "responsable"
+              ]
+            }
+          },
+          "Activable",
+          "Horodaté",
+          {
+            "Possédé": {
+              "owner": "responsable",
+              "unrestricted": [
+                "ADMIN"
+              ]
+            }
+          },
+          {
+            "Échéance": {
+              "reference": [
+                "dateDerniereVerification"
+              ],
+              "delay": {
+                "months": 6
+              },
+              "timeZone": "Europe/Paris"
+            }
+          },
+          "Révisé"
+        ],
+        "fields": {
+          "libelle": {
+            "type": "string",
+            "label": "Libellé",
+            "maxLength": 120
+          },
+          "numeroSerie": {
+            "type": "string",
+            "label": "Numéro de série",
+            "maxLength": 80
+          },
+          "responsable": {
+            "type": "string",
+            "label": "Responsable",
+            "relation": {
+              "entity": "Utilisateur",
+              "labelField": "libelle"
+            },
+            "where": {
+              "and": [
+                {
+                  "field": "actif",
+                  "op": "eq",
+                  "value": true
+                },
+                {
+                  "field": "role",
+                  "op": "eq",
+                  "value": "USER"
+                }
+              ]
+            }
+          },
+          "dateDerniereVerification": {
+            "type": "date",
+            "label": "Dernière vérification",
+            "notFuture": true
+          },
+          "noteInterne": {
+            "type": "string",
+            "label": "Note interne",
+            "nullable": true,
+            "visibleTo": [
+              "ADMIN"
+            ],
+            "table": false
+          }
+        }
+      },
+      "Operation": {
+        "label": "Registre immuable",
+        "display": {
+          "title": "libelle"
+        },
+        "permissions": {
+          "read": [
+            "ADMIN"
+          ],
+          "create": [
+            "ADMIN"
+          ],
+          "update": [
+            "ADMIN"
+          ],
+          "delete": [
+            "ADMIN"
+          ]
+        },
+        "traits": [
+          "Immuable",
+          "Révisé",
+          {
+            "Journalisé": {
+              "fields": [
+                "libelle"
+              ]
+            }
+          }
+        ],
+        "fields": {
+          "libelle": {
+            "type": "string",
+            "label": "Libellé",
+            "maxLength": 120
+          }
+        }
+      }
+    }
+  },
+  "resources": [
+    {
+      "path": "_flow/engine.yaml",
+      "edits": [
+        {
+          "oldText": "config:\n",
+          "newText": "config:\n  entities:\n    gateway: true\n    actorProvider: userManager.actor\n    connection: app\n  sql:\n    connections:\n      app:\n        url: jdbc:hsqldb:file:.//_flow/resources/sql/database/entities;shutdown=true\n        dialect: hsqldb\n        user: SA\n        password: \"${${PROJECT}.db.password.secret=}\"\n        nativeRead: true\n        nativeWrite: true\n"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "name": "SignIn",
+      "code": "const _flow={sourceVersion:2,accessibility:\"public\",inputs:{user:{type:\"string\"},password:{type:\"string\",visibility:-1}}}\nfunction SignIn({input,config,result}) {\n local.login=requestable.call({requestable:\"lib_UserManager.SignIn\",input:{user:input.user,password:input.password,rememberMe:\"false\"}})\n if(local.login.error){return local.login}\n local.actor=userManager.actor({})\n return local.actor\n}\n",
+      "authenticateAfter": false
+    },
+    {
+      "name": "Initialize",
+      "code": "const _flow={sourceVersion:2,accessibility:\"private\"}\nfunction Initialize({input,config,result}) {\n local.schema=entity.initialize({entity:\"Equipement\"})\n return local.schema\n}\n",
+      "run": false
+    },
+    {
+      "sourceFile": "_flow/frontbuilder/svelte/model/${PROJECT}/src/routes/mine/+page.flow.svelte",
+      "code": "<script module>export const _flow = { sourceVersion: 2, page: { id: \"mine\", route: \"/mine\", title: \"Mes équipements\" } };</script>\n<FlowComponent $$id=\"mine\"><Structure><PageShell $$id=\"shell\"><Children><PageHeader $$id=\"header\" title=\"Mes équipements\" /><EntityTable $$id=\"table\" entity=\"Equipement\" targetProject=\"${PROJECT}\" scope=\"mine\"><Empty><Text $$id=\"empty\" text=\"Aucun équipement\" /></Empty></EntityTable><EntityForm $$id=\"form\" entity=\"Equipement\" targetProject=\"${PROJECT}\"><Actions><Text $$id=\"hint\" text=\"Les droits sont contrôlés par le serveur\" /></Actions></EntityForm></Children></PageShell></Structure></FlowComponent>\n"
+    },
+    {
+      "sourceFile": "_flow/frontbuilder/svelte/model/${PROJECT}/src/routes/admin/+page.flow.svelte",
+      "code": "<script module>export const _flow = { sourceVersion: 2, page: { id: \"admin\", route: \"/admin\", title: \"Administration\" } };</script>\n<FlowComponent $$id=\"admin\"><Structure><PageShell $$id=\"shell\"><Children><PageHeader $$id=\"header\" title=\"Administration\" /><EntityTable $$id=\"table\" entity=\"Equipement\" targetProject=\"${PROJECT}\" scope=\"all\"><Empty><Text $$id=\"empty\" text=\"Aucun équipement\" /></Empty></EntityTable><EntityForm $$id=\"form\" entity=\"Equipement\" targetProject=\"${PROJECT}\"><Actions><Text $$id=\"hint\" text=\"Les droits sont contrôlés par le serveur\" /></Actions></EntityForm></Children></PageShell></Structure></FlowComponent>\n"
+    },
+    {
+      "sourceFile": "_flow/frontbuilder/svelte/model/${PROJECT}/src/routes/+page.flow.svelte",
+      "code": "<script module>export const _flow = { sourceVersion: 2, page: { id: \"home\", route: \"/\", title: \"Connexion\" } };</script>\n<FlowComponent $$id=\"home\"><Variables><State $$id=\"email\" type=\"string\" value=\"\"/><State $$id=\"password\" type=\"string\" value=\"\"/><State $$id=\"login\" type=\"object\" value={{}}/></Variables><Structure><PageShell $$id=\"shell\"><Children><PageHeader $$id=\"header\" title=\"Équipements\"/><Form $$id=\"signIn\"><Children><Input $$id=\"emailInput\" label=\"Email\" value=\"@page.email\"><Events><OnInput $$id=\"emailTyped\"><Actions><SetValue $$id=\"setEmail\" target=\"page.email\" value=\"@event.value\"/></Actions></OnInput></Events></Input><Input $$id=\"passwordInput\" label=\"Mot de passe\" type=\"password\" value=\"@page.password\"><Events><OnInput $$id=\"passwordTyped\"><Actions><SetValue $$id=\"setPassword\" target=\"page.password\" value=\"@event.value\"/></Actions></OnInput></Events></Input><Button $$id=\"submit\" label=\"Connexion\" type=\"submit\"/></Children><Events><OnSubmit $$id=\"submitLogin\"><Actions><CallSequence $$id=\"signInCall\" requestable=\"${PROJECT}.SignIn\" $$out=\"page.login\"><Variables><Variable name=\"user\" value=\"@page.email\"/><Variable name=\"password\" value=\"@page.password\"/></Variables></CallSequence><If $$id=\"authenticated\" test=\"@page.login.user\"><Then><Navigate $$id=\"openMine\" page=\"mine\"/></Then></If></Actions></OnSubmit></Events></Form></Children></PageShell></Structure></FlowComponent>\n",
+      "existing": true
+    }
+  ],
+  "build": true,
+  "limits": [
+    "Static Cell/Field snippets compile without parameter bindings in the current frontbuilder.",
+    "Flow Svelte widget events for row selection and form refresh are not yet exposed; these constructed pages support list and create, not an existing-row edit chain.",
+    "Native demo role/browser acceptance is qualified separately; this construction transcript proves sources, model revision safety, palette discovery and build.",
+    "MCP code-run does not inherit the authenticated application context; the private initializer is saved but its execution is qualified by the separate runtime suite."
+  ]
+}

@@ -27,6 +27,11 @@ const _meta = {
       "type": "object",
       "description": "Optional argument overrides merged after MCP arguments.",
     },
+    "jsonArguments": {
+      "kind": "literal",
+      "type": "object",
+      "description": "Optional destination-to-source argument map. Serializes opaque JSON data before calling an authoring capability, preserving template-looking strings."
+    },
     "workspaceSearch": {
       "kind": "literal",
       "type": "boolean",
@@ -324,6 +329,15 @@ const _meta = {
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
+				// Structured authoring data must cross callBlock as literal JSON, without
+				// recursively evaluating template-looking business field defaults.
+				Object.keys(props.jsonArguments || {}).forEach(function (destination) {
+					var source = String(props.jsonArguments[destination]);
+					if (Object.prototype.hasOwnProperty.call(args, source)) {
+						args[destination] = JSON.stringify(args[source]);
+						if (destination !== source) delete args[source];
+					}
+				});
 				// flow-catalog and authoring-palette: the result kept for the same prepared arguments and revisions.
 				var kept = mcp.stableToolLookup(ctx, request, target, args);
 				if (kept && kept.response) {
