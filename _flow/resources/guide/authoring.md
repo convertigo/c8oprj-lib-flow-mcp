@@ -217,8 +217,8 @@ result.usd = local.usd
 ```
 
 - Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
-  `select` takes an expression or object literal, not a block call; for a
-  per-item block, use `forEach` with a `json.push` into a typed array.
+  `select` takes an expression, object literal or named block call evaluated
+  for each item. A block nested there can use `$$id` for an explicit name.
 - `object.firstEntry({ source })` returns one `{ key, value }`.
 - For repeated external work, model one item and iterate: store rows in
   `config.*` or a small data block and call one per-item FlowScript block.
