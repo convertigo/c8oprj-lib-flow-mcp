@@ -217,3 +217,15 @@ only when the comment teaches a DSL rule, for example:
 `// Only call Flow blocks with one object containing named parameters.`
 Rhino sample blocks should start with:
 `// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+
+## Backend FlowScript phase 1 (0.2.21 engine / 0.2.32 MCP)
+
+For backend authoring, code-set and code-patch keep and compile the exact submitted text. Corrections are proposals only,
+including with autoCorrect:true. Accept equivalent syntax without rewriting it. Promote alone formats the draft and checks
+that parsing the result preserves the program; it reports linted, changedLines and the text-hash revision.
+Prefer assignments, native if/else, return and throw object statements. Catalog blocks take one named object; captures
+remain assignments. Generic calls including set({path,value}) remain supported. Backend names are implicit in source order;
+use a JavaScript label for an explicit name, and $$id only for explicitly named calls nested inside a property value.
+Attached comments are // lines; separated or trailing comments are comment nodes, removed before execution. Preserve one
+blank line before a node with model metadata, hidden from properties. Backend print width is 120. Natural loops are phase 2.
+These backend rules take precedence over older backend examples above; frontend naming and component syntax are unchanged.

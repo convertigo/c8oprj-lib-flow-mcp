@@ -25,7 +25,7 @@ server runs the same project with its production build.
 (Rhino parser) into an AST and turned into a tree of *blocks*: the `_flow`
 header gives inputs, accessibility and config; each call such as
 `sql.query({...})` or `if({ condition, $$then() {...} })` is one block node
-with its properties, identified by `$$id`; property values are literals or
+with its properties, identified by its source line and implicit name; property values are literals or
 expressions over the scopes `input`, `config`, `local`, `result`. The engine
 runs that tree step by step, not your text: it can trace each step, learn the
 schema of each output (so later blocks, pickers and the frontend see real
@@ -44,7 +44,7 @@ palette. That is why:
   can serialize, show and analyze. Logic that needs more becomes a project
   block (FlowScript or a Rhino block) with a contract, reused by name;
 - a quoted value is a text, a bare value is an expression; a scope name
-  (`input`, `result`...) is never a local name; `$$id` names a step and keeps
+  (`input`, `result`...) is never a local name; a JavaScript label names a step and keeps
   two dollars (beware `String.replace`, where `$$` writes `$`).
 
 **Flow Svelte is a subset of Svelte 5, for the same reasons.** A
@@ -220,22 +220,14 @@ Use `code-patch` for a focused revision-checked maintenance edit. Use
 Use `flow-catalog` only when search/examples are insufficient. The canonical
 block call takes one object argument: `block.name({ key: value })`.
 
-**Write intuitively, then read the proposed patch.** Write the calls of the
-first draft as you would in JavaScript: `Object.assign`, `JSON.stringify`,
-`Math.pow`, `parseInt`, `console.log`, a guessed block name (`smtp.send`,
-`crypto.md5`), a guessed key or positional arguments. A refused `code-set`, `code-patch` or
-`code-check` of a Flow answers `proposedPatch`: one edit per such call, mapped
-onto the catalog, each `{ oldText, newText, line, confidence, reason, block }`,
-on the `revision` of the working copy. Read the reasons, then pass the edits
-you keep unchanged as `code-patch` `edits` with that revision. Or send
-`code-set` (or `code-patch`) with `autoCorrect: true`: the edits at or above
-`autoCorrectThreshold` (0.9 by default, never under 0.8) are applied before the
-check, listed in `autoCorrected` with the complete written `code`, and the
-others are proposed again. An edit below the threshold changes a behavior,
-picks among equally likely mappings, moves the call to another namespace or
-sits in a condition, and its reason says which; `unresolved` lists the calls
-with no mapping. Only then read `flow-block-get` or the palette. Statements
-are not translated: loops and `try` stay the blocks of How Flow Works.
+**Understand or propose, never rewrite at write time.** Use the natural
+backend statements documented in `flow://guide/authoring`. `code-set` and
+`code-patch` keep exact text and its diagnostic line numbers. A refused call
+can return `proposedPatch.edits` with line, before/after and exact replacement
+text. Review then apply the edits explicitly with `code-patch` and its revision.
+`autoCorrect` never applies guesses. `code-promote` formats, verifies the same
+tree and returns `linted`, `changedLines`, `revision`; unchanged text keeps its
+revision. Names are implicit unless a JavaScript label names the instruction.
 
 Project-local blocks are saved directly by `code-set`/`code-patch`; they have
 no promote step. Prefer standard blocks, then a project-local FlowScript block.

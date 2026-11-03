@@ -33,7 +33,6 @@ const _flow = {
 
 function sample_blocks_flow_and_rhino({ input, config, result }) {
   local.greeting = sample.formatGreeting({
-    $$id: "greeting",
     $$comment: "Only call Flow blocks with one object containing named parameters.",
     name: input.name,
     city: input.city,
@@ -63,7 +62,6 @@ function sample_blocks_flow_and_rhino({ input, config, result }) {
     ],
   })
   local.hotCities = list.filter({
-    $$id: "hotCities",
     items: local.cities,
     where: current.temperature >= input.minTemperature,
   })
@@ -73,7 +71,6 @@ function sample_blocks_flow_and_rhino({ input, config, result }) {
     select: current.name,
   })
   set({
-    $$id: "greeting",
     path: "result.greeting",
     value: local.greeting,
   })
@@ -83,7 +80,6 @@ function sample_blocks_flow_and_rhino({ input, config, result }) {
     value: local.hash.digest,
   })
   set({
-    $$id: "hotCities",
     path: "result.hotCities",
     value: local.hotCityNames,
   })

@@ -45,23 +45,21 @@ libraries, fragments).
    revision stays refused. `FLOW_CODE_UNSAVED_WORKING_COPY` gives the `qname`
    and `revision` to resume.
 
-Backend writes (`code-set`, `code-patch`) apply only unambiguous corrections:
-a nested block call lifted into a named intermediate, positional arguments
-named from the block contract, a statically read input or block property
-declared. Each one is listed in `fixes` (`code`, `line`, `before`, `after`)
-with the complete corrected code: inspect them, and use the returned
-`revision` for the next patch. Everything that changes the meaning stays a
-refusal with its diagnostic (unknown block, ambiguous signature, changed
-execution conditions, repeated external calls).
+Backend writes keep the exact submitted text. Equivalent forms compile without
+rewriting. A guessed block name, key, positional call or lifted intermediate
+is offered as a `proposedPatch` with line, before/after and exact replacement
+edits. Review it and patch explicitly; `autoCorrect` never applies it.
+Promotion alone formats and checks the same tree, returning `linted`,
+`changedLines`, and the text revision. Unchanged text keeps its revision.
 
 Typical source edits:
 
 - change a value: patch the property line inside the call identified by its
-  `$$id`;
+  source line or implicit name;
 - skip a node: add `$$disabled: true` (FlowScript) or `$$disabled={true}`
   (Flow Svelte); remove it to restore the node;
 - insert a node: add the new call on its own line next to its sibling, with a
-  new unique `$$id`;
+  new unique source line or implicit name;
 - move a node into a slot: cut its call into the `$$then`, `$$else`,
   `$$nodes` or `$$fields` function (FlowScript) or the slot tag (Flow Svelte).
 

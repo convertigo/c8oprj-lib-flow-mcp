@@ -123,7 +123,6 @@ function codex_setup({ input, config, result }) {
     path: startsWith(input.codexHome, '{{') ? '~/.codex' : default(input.codexHome, '~/.codex'),
   })
   local.skillPath = path.resolveHome({
-    $$id: "skillPath",
     path: local.codexHome,
     suffix: "skills/convertigo-flow-mcp/SKILL.md",
   })
@@ -138,7 +137,6 @@ function codex_setup({ input, config, result }) {
     suffix: "skills/convertigo-flow-frontend-svelte/SKILL.md",
   })
   local.configPath = path.resolveHome({
-    $$id: "configPath",
     path: local.codexHome,
     suffix: "config.toml",
   })
@@ -250,7 +248,6 @@ function codex_setup({ input, config, result }) {
         value: local.mcpUrl,
       })
       json.field({
-        $$id: "skillPath",
         key: "skillPath",
         value: local.skillPath,
       })
@@ -265,7 +262,6 @@ function codex_setup({ input, config, result }) {
         value: local.frontendSkillPath,
       })
       json.field({
-        $$id: "configPath",
         key: "configPath",
         value: local.configPath,
       })

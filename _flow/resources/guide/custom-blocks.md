@@ -48,7 +48,7 @@ const _meta = {
   },
 }
 
-function crm_customerLabel({ input }) {
+function crm_customerLabel({ input, config, result }) {
   return input.name + " #" + input.id
 }
 ```
@@ -56,11 +56,7 @@ function crm_customerLabel({ input }) {
 A caller captures the result with an assignment:
 
 ```javascript
-local.label = crm.customerLabel({
-  $$id: "label",
-  name: "Ada",
-  id: "42",
-})
+local.label = crm.customerLabel({ name: "Ada", id: "42" })
 result.label = local.label
 ```
 
@@ -171,7 +167,7 @@ A trait declares properties shared by many blocks, documented once:
 in `_meta.traits`, as a list of names or as an object that changes, per trait
 property, only its `default`, `label`, `category` or adds a `note`:
 
-```javascript
+```text
 traits: { "proof.greeting": { salutation: { default: "Bonjour", note: "French here." } } }
 ```
 
