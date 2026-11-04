@@ -152,6 +152,19 @@
 		return globalPath("__flowEngineDir");
 	}
 
+	function toolPathContext(request, ctx) {
+		var args = toolArguments(request);
+		var parent = splitAuthoringParentPath(args.parentPath);
+		var target = { projectDir: args.projectDir, project: args.project || parent && parent.project };
+		try {
+			resolveProjectDir(target);
+		} catch (_unresolvedProject) {
+			// An invalid target must not prevent reporting the original tool error.
+		}
+		// Response paths belong to the requested project, even when it is inside the MCP host.
+		return target.projectDir ? { scopes: { request: target } } : ctx;
+	}
+
 	function shortenKnownSuffix(path) {
 		var markers = ["/_flow/", "/_c8oProject/"];
 		for (var i = 0; i < markers.length; i++) {
@@ -2166,7 +2179,7 @@
 		var schemas = tools && typeof tools.length === "number" ? tools.map(function (tool) {
 			return { inputSchema: tool.inputSchema, outputSchema: tool.outputSchema };
 		}) : null;
-		response = sanitizeForMcp(response, ctx);
+		response = sanitizeForMcp(response, toolPathContext(request, ctx));
 		if (schemas && response.result && response.result.tools) {
 			response.result.tools.forEach(function (tool, index) {
 				if (schemas[index].inputSchema !== undefined) tool.inputSchema = schemas[index].inputSchema;
@@ -2222,7 +2235,7 @@
 		if (value && typeof value === "object") {
 			Object.keys(notices).forEach(function (key) { value[key] = notices[key]; });
 		}
-		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, ctx)));
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, toolPathContext(request, ctx))));
 	}
 
 	function isSveltePaletteRequest(request) {
@@ -2367,7 +2380,7 @@
 				code: normalized.code, hint: normalized.hint, details: normalized.details
 			}));
 		}
-		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(Object.assign({ error: normalized }, authoringArgumentWarning(request) ? {argumentWarning: authoringArgumentWarning(request)} : {}), ctx)));
+		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(Object.assign({ error: normalized }, authoringArgumentWarning(request) ? {argumentWarning: authoringArgumentWarning(request)} : {}), toolPathContext(request, ctx))));
 	}
 
 	function toolOutputSchema(successSchema) {

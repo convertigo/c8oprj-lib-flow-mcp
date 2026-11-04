@@ -1076,8 +1076,11 @@ assertTrue(failedProviderInsertion === true && rolledBackProvider.project === "C
 	rolledBackProvider.reference === "BrokenCharts" && providerCacheClearCount === 4,
 	"Generic provider insertion should roll back a newly created reference when descriptor application fails");
 
-var targetDir = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),
-	"lib_flow_mcp_target_" + java.lang.System.currentTimeMillis());
+// Reproduce nested projects on every host, regardless of java.io.tmpdir.
+var targetParent = Packages.java.nio.file.Files.createTempDirectory("lib_flow_mcp_parent_").toFile();
+Packages.org.apache.commons.io.FileUtils.writeStringToFile(new java.io.File(targetParent, "c8oProject.yaml"),
+	"↓SmokeParent [core.Project]:\n", "UTF-8");
+var targetDir = new java.io.File(targetParent, "lib_flow_mcp_target");
 targetDir.mkdirs();
 var targetProjectDir = String(targetDir.getAbsolutePath());
 var targetFlowCode = [
@@ -1493,12 +1496,14 @@ var frontendSvelteFullTextPalette = callTool(13931, "frontend-svelte-palette", {
 assertTrue(frontendSvelteTextPaletteItem.apply &&
 	frontendSvelteTextPaletteItem.insert === undefined && frontendSvelteFullTextPalette.insert &&
 	frontendSvelteTextPaletteItem.apply.tool === "frontend-svelte-mutate" &&
-	frontendSvelteTextPaletteItem.apply.arguments.sourceFile ===
-		"_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.op === "append" &&
 	frontendSvelteTextPaletteItem.apply.arguments.mutation.path.indexOf("frontAst") === 0 &&
 	JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.mutation.value) === JSON.stringify(frontendSvelteFullTextPalette.insert),
 	"MCP frontend-svelte-palette should return an executable source-backed mutation");
+assertTrue(frontendSvelteTextPaletteItem.apply.arguments.sourceFile ===
+	"_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	"MCP frontend-svelte-palette should return a target-relative sourceFile: " +
+		JSON.stringify(frontendSvelteTextPaletteItem.apply.arguments.sourceFile));
 Packages.org.apache.commons.io.FileUtils.writeStringToFile(frontendPageFile, [
 	FLOW_V2_HEADER,
 	"<FlowComponent $$id=\"home\" label=\"Home\">",
@@ -3437,7 +3442,7 @@ assertTrue(frontendMockStructured.ok === true &&
 	"MCP flow-block-mock should create a canonical frontend block and browser implementation: " + JSON.stringify(frontendMockStructured));
 var frontendMockDescriptor = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(targetDir, "_flow/blocks/smoke/normalizeLabel.block.js"), "UTF-8"));
-assertTrue(frontendMockDescriptor.indexOf('"targets": [\n    "frontend"') !== -1 &&
+assertTrue(/"targets"\s*:\s*\[\s*"frontend"\s*\]/.test(frontendMockDescriptor) &&
 	frontendMockDescriptor.indexOf('"file": "normalizeLabel.browser.js"') !== -1,
 	"Frontend mock descriptor should expose the frontend target and adjacent implementation.");
 var frontendBlockRead = callTool(1322, "code-get", {
