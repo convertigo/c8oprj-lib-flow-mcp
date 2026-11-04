@@ -11,9 +11,9 @@ Start here: the default Flow authoring route, the source contract, the project l
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` |
-| Entities with list/detail/form screens, reference data, roles: generate first | `flow://guide/crud` |
+| Business app with roles and per-user data: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` |
-| Several pages with sign-in, roles and a per-user data perimeter | `flow://guide/multipage-roles` |
+| Custom multi-page app without an entity model | `flow://guide/multipage-roles` |
 | Svelte-only frontend | `flow://guide/frontend-svelte` |
 | Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |
 | FullSync server DBOs and client actions | `flow://guide/fullsync` |
@@ -232,11 +232,13 @@ After every tool call, check `result.error` in the structured result and read it
 
 ## Frontend entry
 
-When the application is a set of entities with list, detail and form
-screens, generate it from a model with `flow-crud-upsert` first
-(`flow://guide/crud`), then add the business Flows and pages. For backend plus
-Svelte work, read `flow://guide/fullstack-paperboard` before coding; for several pages with sign-in, roles and a per-user data perimeter,
-then read `flow://guide/multipage-roles`. For Svelte-only work, read
+For a business app with roles and per-user data, add the `lib_flow_entity`
+project reference with `flow-project-reference`, then read
+`flow://guide/entities` and `flow://guide/multipage-entities` before coding.
+For explicitly requested generated CRUD, read `flow://guide/crud`.
+For backend plus Svelte work, read `flow://guide/fullstack-paperboard`;
+for custom multi-page apps without an entity model, read
+`flow://guide/multipage-roles`. For Svelte-only work, read
 `flow://guide/frontend-svelte` and use
 `code-get` / `code-set` on `sourceFile`, with `authoring-tree`,
 `authoring-palette`, `authoring-mutate`, `frontend-svelte-actions` and

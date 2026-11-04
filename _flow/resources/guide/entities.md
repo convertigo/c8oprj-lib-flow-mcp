@@ -102,3 +102,96 @@ The server removes hidden fields and enforces ownership, permissions and
 revision checks. Hiding an action or a management link is only presentation.
 Test anonymous, ordinary-user and administrator sessions over HTTP, then test
 the pages. A page loading or a successful model write is not that proof.
+
+## Atomic business actions: borrow and return a book
+
+Use **one backend Flow with `sql.transaction` child nodes** for a business
+operation that writes several entities. `entity.save` joins the parent SQL
+transaction; its hooks and allowlisted journal writes join it too. This needs
+no new entity block, generated CRUD Flow, or Java change.
+
+Preconditions for this example:
+
+- `Livre` has `disponible: boolean` (default true); `Pret` has the `livre`
+  and `adherent` relations and `rendu: boolean` (default false).
+- Both `Livre` and `Pret` use the `Révisé` trait, on the same named SQL
+  connection `app`. Initialize the schema explicitly as ADMIN before use.
+- The authenticated application role has read/create/update rights needed by
+  the operation. This example grants the two writes to `BIBLIOTHECAIRE`;
+  `ADHERENT` does not acquire those rights by calling the Flow. Keep the real
+  session actor provider and the model's ownership rules. A domain member key
+  is not automatically the authenticated user's identifier.
+- Add the `lib_flow_entity` project reference. Read the installed contracts of
+  `sql.transaction`, `entity.read` and `entity.save` before adapting the names.
+
+Borrow in a single request:
+
+```javascript
+const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: {
+  livre: { type: "object" }, adherent: { type: "string" }
+} }
+function Emprunter({ input, config, result }) {
+  sql.transaction({ connection: "app", $$nodes: function () {
+    local.livre = entity.read({ entity: "Livre", key: input.livre })
+    if (!local.livre.values.disponible) {
+      throw({ code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté", status: 409 })
+    }
+    local.pret = entity.save({ entity: "Pret", values: {
+      livre: local.livre.key.id, adherent: input.adherent, rendu: false
+    } })
+    local.updated = entity.save({ entity: "Livre", key: local.livre.key,
+      revision: local.livre.revision, values: { disponible: false } })
+  } })
+  result.pret = local.pret
+}
+```
+
+Return in a single request:
+
+```javascript
+const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: {
+  pret: { type: "object" }
+} }
+function Rendre({ input, config, result }) {
+  sql.transaction({ connection: "app", $$nodes: function () {
+    local.pret = entity.read({ entity: "Pret", key: input.pret })
+    if (local.pret.values.rendu) {
+      throw({ code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu", status: 409 })
+    }
+    local.livre = entity.read({ entity: "Livre", key: { id: local.pret.values.livre } })
+    local.closed = entity.save({ entity: "Pret", key: local.pret.key,
+      revision: local.pret.revision, values: { rendu: true } })
+    local.updated = entity.save({ entity: "Livre", key: local.livre.key,
+      revision: local.livre.revision, values: { disponible: true } })
+  } })
+  result.pret = local.closed
+}
+```
+
+`livre` and `pret` inputs are resource keys such as `{id:"1"}`. Use the revision
+read **inside** the transaction. A stale competing writer conflicts and rolls
+back the new loan as well. On conflict, reload and retry the entire business
+action; do not retry only the last save. An identity sequence may have gaps
+after rollback; this is not an orphaned record.
+
+Keep the default `onError:"throw"`, propagate every failure, and return the
+business result after the scope commits. Do not catch and suppress a child
+failure, return early inside the scope, or send mail/HTTP side effects there:
+JDBC rollback only covers database writes on that connection. Two successive
+HTTP calls to EntityGateway are separate transactions. The `steps` form of
+`sql.transaction` is for configured named SQL statements; entity calls belong
+in `$$nodes`, without an additional nested `sql.transaction`.
+
+For loans, use these business actions from frontend ordinary actions rather
+than exposing the two writes as separate form submissions. A transaction does
+not itself prohibit another permitted CRUD route: model permissions and server
+hooks must also cover any route the application exposes. It does not grant
+privileges to an ADHERENT or impersonate a librarian.
+
+Regression: `lib_flow_entity/tests/borrowing-transaction.js`, run with
+`tools/run-borrowing-tests.sh` (HSQLDB by default, `postgresql` with JDBC test
+environment variables). It verifies committed borrow/return, unavailable-book
+refusal, failure between and after both writes, validation of the second save,
+stale competing borrow, failed return, audit rollback, and a negative control
+without the parent scope. The stale competitor is a deterministic interleaving,
+not a simultaneous-thread stress test.
