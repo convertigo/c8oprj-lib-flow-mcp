@@ -22,6 +22,9 @@ avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
 checks, and report which visible assertion failed instead of treating an HTTP
 200 or a rendered anonymous page as proof of the authenticated path.
 
+A verifier gets at most two reruns after focused repairs, on failed paths only;
+collecting its `runId` is still the same run. Report any paths left unverified.
+
 Reuse the current browser context; open at most one additional context per role
 being proved (for example, USER and manager), and keep it until that role's
 checks finish. Sign out through the application (`SignOut`/`Logout`) before

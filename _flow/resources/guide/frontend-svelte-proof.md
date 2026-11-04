@@ -60,11 +60,14 @@ contexts, retry once, and report it.
 
 ```text
 subagent-run({ profile:"verifier",
-  task:"Prove that a signed-in member submits two requests.",
+  task:"Prove the loan page for a member, a librarian and a member at the loan limit.",
   inputs:{ url:"<openUrl of dev.sync or dev.open>",
-    paths:["Sign in as member.demo / demo", "Select two requests, submit them"],
-    checks:["Both statuses become \"Submitted\""],
-    hints:"demo accounts: member.demo / demo" } })
+    paths:["Member: open loans and borrow an available book",
+      "Librarian: open loans", "Member at loan limit: try an available book"],
+    checks:["Accessible heading Prêts; tables named Mes prêts or Tous les prêts and Catalogue",
+      "Borrow action only for the member on available rows",
+      "Loan limit refusal is visible and the loan list is unchanged"],
+    hints:"Use the configured demo accounts and an available book for the refusal" } })
 -> status:"running", runId -> subagent-run({ runId }) until the report
 ```
 
@@ -75,6 +78,13 @@ timing measure.
 
 In browser tools, `browser_wait_for.time` is in **seconds**, at most 30:
 use `2`, never `2000`.
+
+Check heading roles and table accessible names, not only visible text:
+`Text variant="title"` is a paragraph; use `PageHeader` or
+`Heading level="1"`. Find tables by caption. Check both present and absent
+actions for each role and row state (`flow://guide/multipage-roles/pages`).
+For a server refusal, check the application error and visible `Status`, then
+read the state again to prove no write occurred; HTTP 200 alone is insufficient.
 
 Before handing a frontend over, when your tool list offers it, have the
 verifier or `browser-verify` apply the visual checklist, passed as `checks`,
@@ -91,5 +101,6 @@ and dark, 1366px and 390px wide):
   with a toast; an empty list shows an `EmptyState` or its table `emptyText`;
 - form fields grouped in `FormSection`s with labels;
 - no horizontal overflow of the page at 390px; tables scroll in their surface. The verifier is
-read-only: fix what it reports with the Flow tools, then run it again on the
-failed paths only.
+read-only: allow one run and at most two reruns after focused repairs, on failed
+paths only. Collecting the same `runId` does not count as a rerun; report checks
+left undone when that limit is reached.

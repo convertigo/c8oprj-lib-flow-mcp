@@ -35,7 +35,7 @@ the contract, two specialists build one side each, the main agent integrates.
    neither side while the specialists run.
 3. **Integrate (main agent).** Read the two handoffs, hand the missing fields
    to the backend as a small lot and then the binding to the frontend,
-   `dev.sync`, prove the paths with the verifier, `project-save`, and update
+   `dev.sync`, prove the paths within the verifier budget, `project-save`, and update
    `PROGRESS.md` (lots done with their proof, open issues, next step).
 
 Starting the specialists:

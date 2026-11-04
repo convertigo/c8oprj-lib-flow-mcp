@@ -20,6 +20,13 @@ const entity = ["lib_flow_entity", "c8oprj-lib-flow-entity"]
 const blankLayout = '<script module>export const _flow = {sourceVersion: 2};</script><FlowComponent $$id="root"><Structure><PageContent $$id="content" /></Structure></FlowComponent>';
 const blankPage = '<script module>export const _flow = {sourceVersion: 2};</script><FlowComponent $$id="home"><Structure><Text $$id="homeText" text="Home" /></Structure></FlowComponent>';
 
+function tableNamed(document: Document, name: string) {
+  const table = Array.from(document.querySelectorAll("table"))
+    .find(table => table.querySelector("caption")?.textContent?.trim() === name);
+  assert.ok(table, `Missing table with accessible caption: ${name}`);
+  return table;
+}
+
 // A guide and its sub-guides (<guide>-*.md), entry first: split guides keep their examples in the family.
 async function family(guide: string) {
   if (guide === 'entities') {
@@ -109,6 +116,62 @@ test("the documented server table sends paging, filter and sort parameters to th
   await pause();
   assert.deepEqual(parameters(), { offset: 0, limit: 10, query: "Alice", sortKey: "room", sortDirection: "asc" });
   assert.deepEqual(f.errors, []);
+});
+
+for (const role of ["MEMBER", "LIBRARIAN"]) {
+  test(`the documented loan page has accessible names and row permissions for ${role}`, async t => {
+    const page = await example("multipage-roles", "libraryPage");
+    const library = { role, loans: [{ id: "loan-1", title: "Germinal" }], books: [
+      { id: "book-1", title: "Bel-Ami", available: true, canBorrow: role === "MEMBER" },
+      { id: "book-2", title: "Germinal", available: false, canBorrow: false }
+    ] };
+    const answers = { ".LibraryPage": library, ".BorrowBook": { ok: true } };
+    const f = await layoutPageFixture(t, blankLayout, page, answers);
+    assert.deepEqual(f.doc.diagnostics, []);
+    const document = f.dom.window.document;
+    assert.equal(document.querySelector("h1")?.textContent, "Prêts");
+    const caption = role === "LIBRARIAN" ? "Tous les prêts" : "Mes prêts";
+    const loans = tableNamed(document, caption);
+    assert.match(loans.textContent!, /Germinal/);
+    const books = tableNamed(document, "Catalogue");
+    const rows = Array.from(books.querySelectorAll("tbody tr"));
+    const available = rows.find(row => row.textContent!.includes("Bel-Ami"))!;
+    const unavailable = rows.find(row => row.textContent!.includes("Germinal"))!;
+    const borrowActions = (root: ParentNode) => Array.from(root.querySelectorAll("button, a"))
+      .filter(action => action.textContent?.trim() === "Emprunter");
+    assert.equal(borrowActions(available).length, role === "MEMBER" ? 1 : 0);
+    assert.equal(borrowActions(unavailable).length, 0);
+    assert.equal(borrowActions(document).length, role === "MEMBER" ? 1 : 0);
+    if (role === "MEMBER") {
+      library.books[0].available = false;
+      library.books[0].canBorrow = false;
+      (borrowActions(available)[0] as HTMLButtonElement).click();
+      await new Promise(done => f.dom.window.setTimeout(done, 70));
+      const request = f.requests.find((r: any) => r.requestable === ".BorrowBook")!;
+      assert.deepEqual(JSON.parse(JSON.stringify(request.parameters)), { bookId: "book-1" });
+      assert.equal(f.calls.filter((call: string) => call === ".LibraryPage").length, 2);
+      assert.equal(borrowActions(document).length, 0);
+    }
+    assert.deepEqual(f.errors, []);
+  });
+}
+
+test("the documented loan page displays a server refusal and stops before refreshing", async t => {
+  const page = await example("multipage-roles", "libraryPage");
+  const message = "Limite de 3 prêts en cours atteinte";
+  const loans = ["Germinal", "Candide", "Le Petit Prince"].map((title, id) => ({ id: String(id), title }));
+  const f = await layoutPageFixture(t, blankLayout, page, {
+    ".LibraryPage": { role: "MEMBER", loans, books: [{ id: "book-1", title: "Bel-Ami", available: true, canBorrow: true }] },
+    ".BorrowBook": { error: { code: "LOAN_LIMIT", message, status: 409 } }
+  });
+  const document = f.dom.window.document;
+  const button = Array.from(document.querySelectorAll("button")).find(button => button.textContent?.trim() === "Emprunter")!;
+  button.click();
+  await new Promise(done => f.dom.window.setTimeout(done, 70));
+  assert.match(f.text(), new RegExp(message));
+  assert.deepEqual(f.calls, [".LibraryPage", ".BorrowBook"]);
+  assert.equal(tableNamed(document, "Mes prêts").querySelectorAll("tbody tr").length, 3);
+  assert.ok(f.errors.some((error: string) => error.includes(message)));
 });
 
 test('the documented natural Svelte page binds input, updates state and renders keyed items', async t => {

@@ -364,7 +364,7 @@
   "file": "multipage-roles.md",
   "currentOnly": true,
   "old": "required\" }`: a `CallSequence` fails on it as on any error, but a client that\ntests the status, or wants the code of the application, needs the Flow to check\nthe user itself and `throw({ code, message, status: 401 })`. Write these names in lowercase in",
-  "new": "required\" }`: a `CallSequence` fails on it as on any error. If a client needs\nan application-specific code, the Flow must check\nthe user itself and `throw({ code, message })`. Write these names in lowercase in"
+  "new": "required\" }`: a `CallSequence` fails on it as on any error. If a client needs\nan application-specific code, the Flow must check\nthe user itself and `throw { code, message }`. Write these names in lowercase in"
  },
  {
   "family": "multipage-roles",
@@ -1046,5 +1046,15 @@
   "family": "frontend-svelte",
   "old": "On a project loaded in Convertigo, MCP writes are working copies like Studio edits (`draft:true`, `dirty:true`): they are previewed and checked at once and written to disk by **Save project**. Standalone runs write the files.",
   "new": "`code-set` and `code-patch` validate, then atomically save canonical `.flow.svelte`, `app.flow.css`\nand `theme.flow.css` files, also in Studio. No promotion; `code-check` is the dry-run. Backend Flows\nkeep `code-run` → `code-promote`. Before declaring a batch finished, check `unsavedSources.count` in\n`dev.sync`, build or `flow-app-progress`: it must be `0`. Resolve each draft with `code-promote`\n(Flow), a direct Svelte save, or `code-discard` to abandon it."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "The verifier is read-only: fix what it reports with the Flow tools, then run it again on the failed paths only.",
+  "new": "The verifier is read-only: allow one run and at most two reruns after focused repairs, on failed paths only. Collecting the same `runId` does not count as a rerun; report checks left undone when that limit is reached."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "`dev.sync`, prove the paths with the verifier, `project-save`, and update",
+  "new": "`dev.sync`, prove the paths within the verifier budget, `project-save`, and update"
  }
 ]

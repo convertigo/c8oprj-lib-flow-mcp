@@ -48,7 +48,7 @@ try {
  }
  // FlowScript v3 (B line): the backend authoring family and the backend skills teach v3. Their examples are translated
  // and run by tests/flowscript-v3-guide-examples.js of lib_flow_engine; a v3 text is never formatted from its tree.
- var v3Sources=/\/(guide\/(authoring[^\/]*|authoring\/[^\/]+|start|start\/syntax)\.md|skills\/convertigo-flow-(backend|mcp)\/SKILL\.md)$/;
+ var v3Sources=/\/(guide\/(authoring[^\/]*|authoring\/[^\/]+|start|start\/syntax|multipage-roles\/pages)\.md|skills\/convertigo-flow-(backend|mcp)\/SKILL\.md)$/;
  function transform(document,where) {
   return document.replace(/```(flowscript|javascript|js)\n([\s\S]*?)```/g,function(fence,lang,text,offset){
    if(/\(function\s*\(|^function\s*\(input\)/.test(text))return fence; // Explicit native implementation.
@@ -66,5 +66,21 @@ try {
   if(update&&before!==after)files.writeStringToFile(file,after,'UTF-8');
  });});
  assert(examples>=20,'No silent omission of teaching sources: '+examples);
+ // Execute the v3 row projection with the server state prepared by its surrounding Flow.
+ var rolesGuide=read(new java.io.File(mcpRoot,'_flow/resources/guide/multipage-roles/pages.md'));
+ var projection=/```javascript\n(const books = list\.map\([\s\S]*?)```/.exec(rolesGuide);
+ assert(projection,'The roles guide must provide the row permission projection');
+ ['MEMBER','LIBRARIAN',''].forEach(function(role){
+  var catalog={books:[{id:'1',title:'Bel-Ami',available:true},{id:'2',title:'Germinal',available:false}],loans:[{id:'3',title:'Germinal'}]};
+  var code='const _flow = { sourceVersion: 3 }\nfunction LibraryPage({ input, config, result }) {\n'
+   +'  local.user = input.user\n  local.catalog = input.catalog\n'+projection[1]+'}\n';
+  var run=api('flowCodeRun',{name:'LibraryPage',code:code,
+   input:{user:{role:role},catalog:catalog},includeTrace:false});
+  assert(run.ok,'The role projection must run: '+JSON.stringify(run));
+  assert(run.result.role===role,'The page receives the server role');
+  assert(run.result.books[0].canBorrow===(role==='MEMBER'),'Only a member can borrow an available book');
+  assert(run.result.books[1].canBorrow===false,'No role can borrow an unavailable book');
+  assert(JSON.stringify(run.result.loans)===JSON.stringify(catalog.loans),'The permitted loans are preserved');
+ });
  print('flowscript-teaching-examples OK ('+examples+' extracted examples, '+checks+' checks)');
 } finally {files.deleteDirectory(temporary);}

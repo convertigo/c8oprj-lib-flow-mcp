@@ -240,7 +240,11 @@ invisible to all of them; a refusal says what to write instead.
   or `browser-verify`, in light and dark, at 1366px and 390px: frame and
   current page, page headers, tables for records, badges for statuses, no
   stray status text, toasts for success, grouped forms, no horizontal
-  overflow. Fix what it reports with the application blocks and theme tokens.
+  overflow. Check accessible headings and table names, absent actions for
+  unauthorized roles, and a visible server refusal with no write. Fix failed
+  paths with the application blocks and theme tokens; at most two verifier
+  reruns after focused repairs, on failed paths only. Collecting a `runId`
+  does not count as a rerun; report checks left undone at the limit.
 - Treat `flow-app-progress` as structural readiness only. Browser proof must
   also confirm that referenced images load without 404 responses.
 - Do not call `flow-app-progress` on the simple fast path unless a structural

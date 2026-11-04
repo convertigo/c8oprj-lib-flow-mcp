@@ -11,7 +11,7 @@ forbid HTTP; `private` is for internal calls. Without a signed-in user,
 HTTP 200 and the engine error `{ code: "-1", message: "Authentication
 required" }`: a `CallSequence` fails on it as on any error. If a client needs
 an application-specific code, the Flow must check
-the user itself and `throw({ code, message })`. Write these names in lowercase in
+the user itself and `throw { code, message }`. Write these names in lowercase in
 FlowScript. Keep the initializations and the scheduled job private. A server, and
 a recent Studio, refuse them over HTTP to anyone but an administrator (an
 older Studio still ran them for an anonymous call): prove a refusal with a

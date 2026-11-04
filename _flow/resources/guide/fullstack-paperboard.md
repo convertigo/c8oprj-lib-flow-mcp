@@ -15,7 +15,10 @@ or an explicit user request for direct SQL.
 
 The default goal is a runnable POC: one backend pass, one frontend application
 pass, build, and one useful browser path. One application pass may contain
-several Page sources. Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`). Exhaustive
+several Page sources. Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`).
+Allow one verifier run and at most two reruns after focused repairs, on failed
+paths only; collecting the same `runId` is not a rerun. Report checks left
+undone when that limit is reached. Exhaustive
 schemas, offline/history edge cases and visual refinement belong to explicit
 hardening; functional Page separation and transitions do not.
 

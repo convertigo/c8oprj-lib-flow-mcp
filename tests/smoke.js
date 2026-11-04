@@ -3455,7 +3455,7 @@ assertTrue(frontendMockStructured.ok === true &&
 	"MCP flow-block-mock should create a canonical frontend block and browser implementation: " + JSON.stringify(frontendMockStructured));
 var frontendMockDescriptor = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
 	new java.io.File(targetDir, "_flow/blocks/smoke/normalizeLabel.block.js"), "UTF-8"));
-assertTrue(/"targets"\s*:\s*\[\s*"frontend"\s*\]/.test(frontendMockDescriptor) &&
+assertTrue(/"targets"\s*:\s*\[\s*"frontend"\s*,?\s*\]/.test(frontendMockDescriptor) &&
 	frontendMockDescriptor.indexOf('"file": "normalizeLabel.browser.js"') !== -1,
 	"Frontend mock descriptor should expose the frontend target and adjacent implementation.");
 var frontendBlockRead = callTool(1322, "code-get", {

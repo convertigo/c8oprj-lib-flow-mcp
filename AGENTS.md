@@ -84,6 +84,7 @@ import local or generated images with frontend-svelte-asset-import and reuse the
 before Playwright, call frontend-svelte-action with actionId dev.open and require browserControlReady:true
 multi-step browser proofs (sign-in, several pages, forms) go to the relayed subagent-run with profile:"verifier" and the viewer openUrl; browser-verify for one visual check; Playwright only for one quick evaluation
 several Flows and pages: contract first, then backend and frontend specialists in parallel (Parallel Build of flow://guide/fullstack-paperboard; in Vibe the relayed subagent-run constructor with inputs.scope)
+application verification: one verifier run and at most two reruns after focused repairs, on failed paths only; collecting the same runId is not a rerun
 code-set with block:"ns.name" and the complete _meta + implementation only when reusable vocabulary is needed
 flow-resource-search / flow-resource-get / flow-resource-patch for project types, editors, libraries, fragments, Java sources (libs/src) and other resources
 ```

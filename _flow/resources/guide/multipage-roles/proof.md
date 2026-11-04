@@ -51,7 +51,9 @@ Finally prove the pages with each role through one relayed
 `subagent-run({profile:"verifier", task, inputs:{project, url, paths, checks, hints}})`:
 `url` is the viewer `openUrl`, one path per role (sign in, open each page, check
 the visible rows and the downloaded file), the demo accounts in `hints`. While
-it answers `status:"running"`, call it again with its `runId` alone. Do not
+it answers `status:"running"`, call it again with its `runId` alone. Allow at
+most two reruns after focused repairs, on failed paths only. Report unchecked
+paths when that limit is reached. Do not
 walk these paths yourself with Playwright. After each MCP tool, read
 `result.error`, its code and its message before retrying. `FLOW_INPUT_REQUIRED`
 and `FLOW_INPUT_TYPE_INVALID` point to an input contract;

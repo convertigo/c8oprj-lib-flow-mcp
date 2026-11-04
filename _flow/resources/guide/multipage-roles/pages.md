@@ -53,6 +53,67 @@ beyond that, return a limit error rather than a truncated list presented as
 complete. The `filterOps` and `sortable` metadata must reflect only the filters
 and sorts that the server accepts.
 
+### Role labels and row actions
+
+Compare roles explicitly: `role === "LIBRARIAN"`. Testing `@page.role`
+alone accepts any non-empty role, including `"MEMBER"`.
+
+For a loan page, let the protected `.LibraryPage` Flow read the current
+account into `local.user` and the permitted books and loans into
+`local.catalog`. The server filters loans by that account; the browser supplies
+neither role nor owner. Finish the Flow with this FlowScript v3 projection:
+
+```javascript
+const books = list.map({
+  items: local.catalog.books,
+  select: {
+    id: current.id,
+    title: current.title,
+    available: current.available,
+    canBorrow: current.available && local.user.role === "MEMBER",
+  },
+})
+return { role: local.user.role, books, loans: local.catalog.loans }
+```
+
+`available` is a boolean. `DataTable.rowActions[].when` reads a path in
+each row, not a role expression. Return `canBorrow` with each book;
+`when:"available"` would expose borrowing to a librarian. Bind the result:
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2 };</script>
+<FlowComponent $$id="libraryPage">
+  <Variables><State $$id="library" type="object" value={{ role: "", books: [], loans: [] }} /></Variables>
+  <Events><OnMount $$id="init"><Actions>
+    <CallSequence $$id="loadLibrary" requestable=".LibraryPage" $$out="page.library" />
+  </Actions></OnMount></Events>
+  <Structure>
+    <PageHeader $$id="header" title="Prêts" />
+    <DataTable $$id="loans" source="@page.library.loans"
+      caption={page.library.role === "LIBRARIAN" ? "Tous les prêts" : "Mes prêts"}
+      columns={[{ path: "title", label: "Livre" }]} />
+    <DataTable $$id="books" caption="Catalogue" source="@page.library.books"
+      columns={[{ path: "title", label: "Livre" }]}
+      rowActions={[{ id: "borrow", label: "Emprunter", when: "canBorrow" }]}>
+      <Events><OnClick $$id="borrowClick"><Actions>
+        <CallSequence $$id="borrow" requestable=".BorrowBook">
+          <Variables><Variable name="bookId" value="@event.value.row.id" /></Variables>
+        </CallSequence>
+        <CallSequence $$id="reloadLibrary" requestable=".LibraryPage" $$out="page.library" />
+      </Actions></OnClick></Events>
+    </DataTable>
+    <Status $$id="borrowStatus" actionId="borrow" />
+  </Structure>
+</FlowComponent>
+```
+
+The caption compares the role. The action sends only the selected book id;
+`.BorrowBook` reads the session and checks role, availability and loan limit
+again before writing. A hidden button is not authorization. A refusal stops
+the chain and appears in `Status`; success reloads the rows. Prove both roles
+with available and unavailable books, then a member at the loan limit with an
+available book: show the refusal and confirm that loans remain unchanged.
+
 ## 5. Export the same list
 
 Also read `flow://lib/lib_flow_frontend_data_svelte/csv`. The DataGrid in

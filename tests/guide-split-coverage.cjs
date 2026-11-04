@@ -123,6 +123,23 @@ for (const [entry, family] of Object.entries(families)) {
         'authoring: complete Greeting example lost');
       continue;
     }
+    if (entry === 'frontend-svelte' && paragraph.startsWith('```text subagent-run({ profile:"verifier"')) {
+      const proof = read(path.join(guideDir, 'frontend-svelte-proof.md'));
+      for (const phrase of ['subagent-run({ profile:"verifier"', 'Accessible heading Prêts',
+        'Borrow action only for the member', 'Loan limit refusal is visible', 'subagent-run({ runId })'])
+        assert.ok(proof.includes(phrase), `frontend-svelte: loan verifier rewrite lost "${phrase}"`);
+      checkedParagraphs++;
+      continue;
+    }
+    if (entry === 'fullstack-paperboard' && paragraph.startsWith('The default goal is a runnable POC:')) {
+      const overview = read(path.join(guideDir, 'fullstack-paperboard.md'));
+      for (const phrase of ['one backend pass, one frontend application',
+        'Keep each repair on a failed path', 'at most two reruns',
+        'same `runId` is not a rerun', 'Exhaustive\nschemas, offline/history edge cases'])
+        assert.ok(overview.includes(phrase), `fullstack-paperboard: delivery rewrite lost "${phrase}"`);
+      checkedParagraphs++;
+      continue;
+    }
     const v3 = v3Rewrites.find(item => item.family === entry && item.oldStart && paragraph.startsWith(normalize(item.oldStart)));
     if (v3) {
       for (const phrase of v3.keep) assert.ok(union.includes(normalize(phrase)), `${entry}: v3 rewrite lost "${phrase}"`);
