@@ -103,9 +103,11 @@ for Svelte actions. Business rules stay in Flows.
   `authoring-palette`, never from library sources or other folders. Call it
   once for each block whose contract the guide or a diagnostic (`contract`)
   does not give, before writing its call.
-- Entities with list/detail/form screens: generate the schema, Flows and
-  pages with `flow-crud-upsert` (`flow://guide/crud`) before writing any CRUD
-  Flow; its output is read-only, so change the model and call its Flows.
+- Business entities with roles and per-user data: declare them in the entity
+  model of `lib_flow_entity` (`flow://guide/entities`) and use the `entity.*`
+  blocks; the writes of one business action go together in the `$$nodes` of
+  one `sql.transaction`. Generated CRUD (`flow-crud-upsert`,
+  `flow://guide/crud`) only when the request asks for it explicitly.
 - SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
   and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
   JDBC call or a Rhino block for SQL. Declare the tables in `schema.json` and
