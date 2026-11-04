@@ -70,3 +70,33 @@ test("the documented server table sends paging, filter and sort parameters to th
   assert.deepEqual(parameters(), { offset: 0, limit: 10, query: "Alice", sortKey: "room", sortDirection: "asc" });
   assert.deepEqual(f.errors, []);
 });
+
+test('the documented natural Svelte page binds input, updates state and renders keyed items', async t => {
+  const source = await example('frontend-svelte', 'naturalSvelte');
+  const f = await layoutPageFixture(t, blankLayout, source, {});
+  assert.deepEqual(f.doc.diagnostics.filter((d: any) => d.level === 'error'), []);
+  assert.equal(f.dom.window.document.querySelector('h1')?.textContent, 'Hello Ada');
+  assert.equal(f.dom.window.document.querySelector('li')?.textContent, 'Guide');
+  f.dom.window.document.querySelector('button')!.click();
+  const input = f.dom.window.document.querySelector('input')!;
+  input.value = 'Lin'; input.dispatchEvent(new f.dom.window.Event('input', {bubbles:true}));
+  await new Promise(done => f.dom.window.setTimeout(done, 40));
+  assert.equal(f.dom.window.document.querySelector('h1')?.textContent, 'Hello Lin');
+  assert.match(f.text(), /Count: 1/);
+  assert.deepEqual(f.errors, []);
+});
+
+test('the documented layout containers keep their slots, properties and rendered contents', async t => {
+  const source = await example('frontend-svelte', 'layoutBasics');
+  const f = await layoutPageFixture(t, blankLayout, source, {});
+  assert.deepEqual(f.doc.diagnostics.filter((d: any) => d.level === 'error'), []);
+  assert.match(f.text(), /Library.*Available resources.*2 resources.*Refresh.*Guide.*Examples/);
+  const nodes = (items: any[]): any[] => items.flatMap(node => [node, ...nodes(node.children || [])]);
+  const byId = new Map(nodes(f.doc.pageNodes).map(node => [node.id, node]));
+  for (const [id, tag] of [['frame','PageShell'],['column','ColumnLayout'],['heading','PageHeader'],['toolbar','RowLayout'],['cards','GridLayout'],['first','Card'],['second','Card']]) {
+    assert.equal(byId.get(id)?.tag, tag);
+  }
+  assert.equal(byId.get('toolbar').props.justify.value, 'space-between');
+  assert.equal(byId.get('cards').props.minColumnWidth, '220px');
+  assert.deepEqual(f.errors, []);
+});

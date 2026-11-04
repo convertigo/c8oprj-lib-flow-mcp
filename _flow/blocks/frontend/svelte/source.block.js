@@ -663,6 +663,9 @@ const _meta = {
 				Object.keys(props).forEach(function (name) {
 					// $$ attributes are engine attributes, checked by the engine.
 					if (name.indexOf("$$") === 0 || accepted.indexOf(name) !== -1) return;
+					// The provider parsed and lowered these Svelte attributes to typed event/action nodes.
+					if (/^on:/.test(name) || (name !== "once" && /^on[a-z]/.test(name))) return;
+					if (/^bind:(value|checked)$/.test(name) && accepted.indexOf(name.slice(5)) !== -1) return;
 					diagnostics.push({
 						severity: "error",
 						code: "FRONTEND_PROPERTY_UNKNOWN",
@@ -683,7 +686,7 @@ const _meta = {
 		return diagnostics;
 	}
 
-	function validate(ctx, props, path, source) {
+	function validate(ctx, props, path, source, propose) {
 		if (isStylesheet(path)) {
 			var cssDiagnostics = [];
 			var cssSource = String(source || "");
@@ -832,22 +835,38 @@ const _meta = {
 				});
 			}
 		}
+		// Syntax diagnostics come from Svelte; show their exact location before textual contract checks.
+		diagnostics.sort(function (a, b) { return (b.svelte ? 1 : 0) - (a.svelte ? 1 : 0); });
 		return {
 			ok: !diagnostics.some(function (item) { return item.severity === "error"; }),
 			sourceFile: path.relative,
 			diagnostics: diagnostics,
 			errorCount: diagnostics.filter(function (item) { return item.severity === "error"; }).length,
 			warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length,
-			proposedPatch: diagnostics.some(function (item) { return item.severity === "error"; })
+			proposedPatch: propose !== false && diagnostics.some(function (item) { return item.severity === "error"; })
 				? sourceProposal(ctx, props, path, source, diagnostics) : null
 		};
 	}
 
 	// Render the provider's existing, typed fixes against the refused text, without writing a draft.
 	// A client can apply one exact replacement to its submitted text and retry code-set.
-	function sourceProposal(ctx, props, path, source, diagnostics) {
-		var mutations = diagnostics.filter(function (d) { return d.fix && d.fix.op === "replace" && d.fix.path; })
-			.map(function (d) { return d.fix; });
+	function sourceProposal(ctx, props, path, source, diagnostics, depth) {
+		var syntax = diagnostics.filter(function (d) { return d.proposedPatch && d.proposedPatch.edits; })[0];
+		if (syntax) {
+			var repaired = source;
+			for (var i = 0; i < syntax.proposedPatch.edits.length; i++) {
+				var edit = syntax.proposedPatch.edits[i];
+				if (!edit.oldText || repaired.split(edit.oldText).length !== 2) return null;
+				repaired = repaired.split(edit.oldText).join(edit.newText);
+			}
+			return finishProposal(repaired);
+		}
+		var mutations = [];
+		diagnostics.forEach(function (d) {
+			(d.fixes || (d.fix ? [d.fix] : [])).forEach(function (fix) {
+				if (["replace", "remove"].indexOf(fix.op) !== -1 && fix.path) mutations.push(fix);
+			});
+		});
 		var after = source;
 		if (mutations.length && typeof ctx.authoringMutateSource === "function") {
 			try {
@@ -866,9 +885,23 @@ const _meta = {
 			});
 			after = lines.join("\n");
 		}
-		if (after === source) return null;
-		return {base:"submitted", edits:[{line:1, before:source, after:after, oldText:source, newText:after}],
-			next:"Apply these exact edits to the submitted text, then retry code-set with the same revision. The refused frontend source was not saved."};
+		return finishProposal(after);
+		function finishProposal(candidate) {
+			if (candidate === source) return null;
+			// A syntax fix can expose a typed correction. Bundle at most three mechanical stages
+			// into one proposal; all checks remain dry runs and the submitted source stays refused.
+			if ((depth || 0) < 2) {
+				try {
+					var checked = validate(ctx, props, path, candidate, false);
+					if (!checked.ok) {
+						var follow = sourceProposal(ctx, props, path, candidate, checked.diagnostics, (depth || 0) + 1);
+						if (follow && follow.edits && follow.edits.length === 1 && follow.edits[0].oldText === candidate) candidate = follow.edits[0].newText;
+					}
+				} catch (_notApplicable) { /* Keep the first exact correction and its original diagnostic. */ }
+			}
+			return {base:"submitted", edits:[{line:1, before:source, after:candidate, oldText:source, newText:candidate}],
+				next:"Apply these exact edits to the submitted text, then retry code-set with the same revision. The refused frontend source was not saved."};
+		}
 	}
 
 	function requireValid(validation) {

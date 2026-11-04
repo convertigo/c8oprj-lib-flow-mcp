@@ -70,14 +70,145 @@ state), `Events` (lifecycle) and `Structure` (visible UI only):
 - Put `class` and layout properties on the first visible child of
   `Structure`, usually `PageShell`. Lifecycle blocks never go in `Structure`.
 - Wrapper tags such as `Children`, `Events`, `Actions`, `Params`, `Query`,
-  `Then` and `Else` are exact. Spreads, directives and unknown children are
-  rejected, never dropped silently.
+  `Then` and `Else` are exact. Supported Svelte control blocks, event attributes and explicit
+  bindings are described below. Other directives, spreads and unknown children
+  are rejected, never dropped silently.
 - Canonical formatting is one attribute per line: `$$` attributes first, then
   business attributes sorted alphabetically. The first write of a compact or
   unsorted file reorders all of it; expect that diff and continue from the
   returned revision (use `code-rg` extracts afterwards). A property edited
   back to its default (a literal equal to the default included) is removed
   from the source; absent means default.
+
+## Svelte syntax that Flow accepts
+
+The installed `svelte/compiler` parses every source before Flow checks its
+contracts. Syntax errors include Svelte's message, code, line and column.
+A mechanical correction is offered as `error.details.proposedPatch.edits`;
+apply it to the submitted text and retry. No syntax repair is saved silently.
+
+Inside `Structure` and visible content slots, ordinary HTML (`p`, `div`,
+headings, `span`, lists, links, images, sections, `strong`, `em`, `br` and
+form controls) creates native elements. Text and `{expression}` stay inline.
+HTML attributes, `class`, `style`, `aria-*` and `data-*` keep their values;
+unknown properties and known invalid binding paths are still refused.
+Use a Flow widget for its extra behavior, such as a DataTable's typed row events.
+
+Use `{#if condition}…{:else}…{/if}` and
+`{#each items as item, index (item.id)}…{:else}…{/each}`. An each item is a
+single name; destructuring, await/snippet directives and spreads are outside
+this authoring subset. Existing `If` and `ForEach` blocks remain valid.
+
+`onclick={() => page.count = page.count + 1}` and its `on:click` spelling
+create the same typed event/action chain. These small handlers assign declared
+State values; use `Events > OnClick > Actions` for Flow calls and longer
+workflows. Event modifiers and arbitrary functions are refused. A handler's
+`event` is Flow's normalized event: `event.value`, `event.checked`, `event.key`.
+For input, `bind:value={page.name}` is explicit two-way binding on native
+controls and bindable Flow widgets. `value={page.name}` only displays it.
+`bind:checked` binds a checkbox's boolean State. Derived values are read-only.
+
+```svelte
+<script module>export const _flow = {sourceVersion: 2};</script>
+<FlowComponent $$id="naturalSvelte">
+  <Variables>
+    <State $$id="name" value="Ada" />
+    <State $$id="count" value={0} />
+    <State $$id="items" value={[{id: 1, name: "Guide"}]} />
+  </Variables>
+  <Structure>
+    <section class="summary">
+      <h1>Hello {page.name}</h1>
+      <Input $$id="nameInput" label="Name" bind:value={page.name} />
+      <button onclick={() => page.count = page.count + 1}>Add</button>
+      {#if page.count > 0}<p>Count: {page.count}</p>{/if}
+      <ul>{#each page.items as item (item.id)}<li>{item.name}</li>{/each}</ul>
+    </section>
+  </Structure>
+</FlowComponent>
+```
+
+Pure action values use the same brace syntax: `test={event.value === "save"}`,
+`value={page.count + 1}`, `value={JSON.stringify([String(event.value.id)])}`.
+Sources, literals, arithmetic, comparisons, boolean/nullish operators,
+conditionals, arrays and `String`, `Number`, `Boolean`, `JSON.stringify`,
+`Array.isArray` are lowered to typed compositions. Every source remains
+schema checked. Browser globals, side effects, arbitrary function calls and
+dynamic property access need a declared portable block. Keep quoted
+`"@path === 'value'"` out of tests: it is ambiguous text, so Flow proposes a
+patch rather than changing its meaning silently.
+
+## Layout containers in a small page
+
+| Widget | Purpose and useful properties |
+| --- | --- |
+| `PageShell` | Page frame with `maxWidth` and `padding`; owns the page's visible children. |
+| `PageHeader` | One title and optional description at the top of the page. |
+| `ColumnLayout` | Vertical sequence; `gap` separates children, `align` aligns them horizontally. |
+| `RowLayout` | Horizontal sequence; `justify` distributes width, `align` aligns vertically, `wrap` allows another line. Use `space-between`, not `between`. |
+| `GridLayout` | Repeated cards; `minColumnWidth` lets the grid choose how many columns fit. |
+| `Card` | A grouped surface; put its content in `Children`. |
+| `AppShell` / `PageContent` | Shared layout and page outlet; see the tested session Layout below. |
+
+`Children` is a slot wrapper, not another visible container. Properties belong
+to the container itself. Keep gaps in CSS lengths (`"16px"`), and get enum
+values from `authoringContract`; inventing a `variant` or a CSS property name
+on a widget does not create that behavior.
+
+```svelte
+<script module>export const _flow = {sourceVersion: 2};</script>
+<FlowComponent $$id="layoutBasics">
+  <Structure>
+    <PageShell $$id="frame" maxWidth="960px" padding="24px"><Children>
+      <ColumnLayout $$id="column" gap="16px"><Children>
+        <PageHeader $$id="heading" title="Library" description="Available resources" />
+        <RowLayout $$id="toolbar" justify="space-between" align="center"><Children>
+          <Text $$id="total" text="2 resources" />
+          <Button $$id="refresh" label="Refresh" variant="secondary" />
+        </Children></RowLayout>
+        <GridLayout $$id="cards" minColumnWidth="220px"><Children>
+          <Card $$id="first"><Children><Text $$id="firstTitle" text="Guide" /></Children></Card>
+          <Card $$id="second"><Children><Text $$id="secondTitle" text="Examples" /></Children></Card>
+        </Children></GridLayout>
+      </Children></ColumnLayout>
+    </Children></PageShell>
+  </Structure>
+</FlowComponent>
+```
+
+## Avoid the remaining writing round trips
+
+- Create navigation target Pages first. For mutually linked pages, write their
+  content without navigation, then add the links after all Page ids exist.
+  A missing Page is not replaced with a guessed destination.
+- Declare State before reading `page.name`; read `code-get` for actual action
+  results and schema paths. A `null` initial field leaves its future shape
+  unknown; an explicit schema still constrains it. Do not delete a path merely
+  to make a validation error disappear.
+- Portable block results use `$$out="page.name"`. `SetValue`, `UpdateList`
+  and `UpdateNumber` use `target`. The diagnostic offers the exact rename
+  when the destination is unambiguous.
+- Keep `$$id` unique in the document, including its root and Variables. Use
+  `pageLoans` for the root and `loans` for its State. Only engine attributes
+  have two dollars; use a catalog widget's real properties and enum variants.
+- `code-patch` takes `edits: [{oldText, newText}]`. Each `oldText` must match
+  exactly once in the last source read. If you have the entire replacement,
+  use `code-set`; keep the current revision and inspect `code-get` after a
+  stale revision. A refused source has not become the new working copy.
+
+## Svelte documentation and licensing
+
+The syntax explanations and small examples above adapt the official Svelte
+[markup](https://svelte.dev/docs/svelte/basic-markup),
+[if](https://svelte.dev/docs/svelte/if), [each](https://svelte.dev/docs/svelte/each)
+and [bind](https://svelte.dev/docs/svelte/bind) documentation (Svelte Contributors,
+MIT). The frontend skill adapts the official
+[svelte-code-writer](https://github.com/sveltejs/ai-tools/blob/b33e0f721d57bd9a158f86082012dc45f090e6d7/tools/skills/svelte-code-writer/SKILL.md)
+workflow: consult the relevant syntax documentation, validate with the installed
+compiler, and exercise the result before delivery. Flow's supported subset and
+contracts above still apply. The copyright and full permission notices are
+shipped in `_flow/resources/licenses/svelte-MIT.txt` and
+`_flow/resources/licenses/ai-tools-MIT.txt`.
 
 ## Authoring Loop
 
@@ -376,9 +507,10 @@ In a source attribute, `@` belongs to a quoted binding (`value="@event.value"`),
 not JavaScript braces (`value={@event.value}` is invalid Svelte). Keep quotes
 balanced: `label='Livres "disponibles"'` uses different outer and inner
 quotes. A comparison in a quoted attribute is not a source reference; use a
-portable computation for an action test. Backslash-escaping a double quote does not escape an HTML attribute.
+an expression such as `test={page.count > 0}` for an action test. Backslash-escaping a double quote does not escape an HTML attribute.
 Read a portable computation's contract before composing client actions;
-`JSON.stringify([@event.value.row.id])` is not a portable binding.
+`JSON.stringify([@event.value.row.id])` is invalid JavaScript; use
+`value={JSON.stringify([event.value.row.id])}`.
 
 Create target Pages before writing a `Navigate` to their **Page id**. Use the
 `authoringContract.pages` and bindings from `code-get` for actual names and
@@ -393,7 +525,7 @@ When the provider supplies a typed correction, `code-set` now also returns
 has not replaced the previous source. See `flow://guide/search-and-edit` for
 the revision rule.
 
-Client action parameters reject free browser expressions; use a source, a
+Client action parameters accept the pure expressions described above; use a source, a
 literal or a portable block for computation.
 
 `Combobox` is the standard searchable choice. Its default contract is closed:
@@ -403,8 +535,8 @@ label; `@event.value` is then the selected value or the typed text, so one
 backend Flow must resolve an existing id or create the value and reject an
 empty label. Do not emulate this with `Input`, `ForEach` and buttons.
 
-An `Input` or `Textarea` value only displays its binding: typing never writes
-the state back. Keep the text with an event and `@event.value`: `OnInput` runs
+An `Input` or `Textarea` `value` only displays its binding. Use
+`bind:value={page.name}` to write State on input, or an explicit event. Keep the text with an event and `@event.value`: `OnInput` runs
 on each keystroke, `OnChange` when the edit is committed (leaving the field).
 A free text on several lines (a comment, a description) is a `Textarea`
 (`rows`, `maxlength`, `placeholder`, `required`), never a one-line `Input`;

@@ -43,7 +43,7 @@ try {
  FU.writeStringToFile(new File(temp,'_flow/engine.yaml'),'version: 1\nconfig:\n  frontbuilder:\n    svelte:\n      target: svelte5\n      resourceRoot: '+String(java.lang.System.getenv('FLOW_FRONTBUILDER_RESOURCE_ROOT'))+'\n      modelPath: '+home+'\n','UTF-8');
  actor('Default');r=call('code-get',{kind:'source'});assert(r.ok && r.sourceFile===home,'default source read '+JSON.stringify(r));
  r=call('code-set',{sourceFile:home,code:page});assert(r.ok && r.revisionInferred,'default source observed '+JSON.stringify(r));
- var rejected=page.replace('<Structure />','<Events><OnMount><Actions><If test={page.st}><Then><SetValue target="page.st" value={false} /></Then></If></Actions></OnMount></Events><Structure />');
+ var rejected=page.replace('<Structure />','<Events><OnMount><Actions><If test="@page.st === true"><Then><SetValue target="page.st" value={false} /></Then></If></Actions></OnMount></Events><Structure />');
  r=call('code-set',{sourceFile:home,code:rejected});assert(r.error && r.error.details.proposedPatch,'portable binding proposal '+JSON.stringify(r));
  assert(String(FU.readFileToString(new File(temp,home),'UTF-8'))===page,'refused frontend not written');
  var proposal=r.error.details.proposedPatch;

@@ -70,5 +70,5 @@ function rejected(code,expected){var out=callTool(1,'frontend-svelte-code-set',{
  assertTrue(!new File(targetDir,file).exists(),'refused new page must not be written');}
 var header='<script module>export const _flow={sourceVersion:2};</script><FlowComponent $$id="new">';
 rejected(header+'<Structure><Text variant="h1" /></Structure></FlowComponent>','FRONTEND_PROPERTY_VALUE_INVALID');
-rejected(header+'<Variables><State $$id="st" type="object" value={null} /></Variables><Events><OnMount><Actions><If $$id="hasSession" test={page.st !== null}><Then><SetValue target="st" value={"text" + page.st} /></Then></If></Actions></OnMount></Events><Structure /></FlowComponent>','FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE');
+rejected(header+'<Variables><State $$id="st" type="object" value={null} /></Variables><Events><OnMount><Actions><If $$id="hasSession" test={window.sessionReady()}><Then><SetValue target="st" value={"text" + page.st} /></Then></If></Actions></OnMount></Events><Structure /></FlowComponent>','FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE');
 print('frontend-new-page-validation OK');

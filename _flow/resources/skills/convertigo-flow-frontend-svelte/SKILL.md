@@ -18,25 +18,28 @@ Svelte compiler parses it, then the frontbuilder keeps only what it can model:
   `<Structure>` (what is shown), `<Events>` (`OnMount`, `OnAfterNavigate`,
   widget events, each with `<Actions>`: `CallSequence`, `SetValue`, `If`,
   `Navigate`...) and `<Styles>`;
-- in a slot, only declared components: palette widgets (`Text`, `Button`,
-  `DataTable`...) and the directives `If` (or `{#if}`), `Each`, `Await`,
-  `DataRender`; named slots are child tags (`<Then>`, `<Else>`,
-  `<Columns>`...).
-An HTML element, raw text, `{#each}` or a `{...}` tag in markup is refused
-(`FLOW_SOURCE_NODE_UNSUPPORTED`: use a declared component); `on:`, `bind:`,
-`class:` directives and spreads are refused
-(`FLOW_SOURCE_ATTRIBUTE_UNSUPPORTED`): use `<Events>` and properties.
+- in visible slots, declared Flow widgets and ordinary HTML elements, inline
+  text and `{expression}`, `{#if}` / `{#each}`, or the explicit Flow directives
+  `If`, `ForEach`, `Await` and `DataRender`; named slots remain child tags.
+Use Svelte event attributes (`onclick`, also `on:click`) with small arrow
+handlers assigning declared State, and `bind:value={page.name}` for explicit
+input binding. Use `Events > OnClick > Actions` for Flow calls. Destructured
+iteration items, arbitrary handler functions, event modifiers, other directives
+and spreads remain outside the subset and are diagnosed.
 
 **An attribute value has one of three meanings.** A quoted `"@source.path"`
 alone (`"@local.me.user.name"`, a state, a Flow result) is a binding, checked
-against the known schemas; any other quoted value is literal text (a quoted
+against the known schemas; a quoted value without Svelte interpolation is literal text (a quoted
 `"@x === 'A'"` is a text, so a test on it is always true); `{expression}` is
 JavaScript evaluated in the browser over the states. `$$id`, `$$out`,
 `$$disabled` and `$$comment` take literals.
 
 Keep `@` out of JavaScript braces: `value="@event.value"` is a source,
 `value={@event.value}` is invalid. Client action arguments require portable
-values; use a literal, source or portable block instead of free JavaScript.
+values. Pure expressions (comparisons, arithmetic, arrays, conditionals and
+`JSON.stringify`, `String`, `Number`, `Boolean`, `Array.isArray`) resolve their
+reads through the same source contracts. Browser globals and arbitrary calls
+need a portable block.
 Create navigation target Pages first; use their Page ids and the actual schemas
 from `code-get`. An action `If` puts actions directly in `Then`/`Else`.
 
@@ -217,3 +220,10 @@ invisible to all of them; a refusal says what to write instead.
 Return a compact handoff containing changed pages/components, backend bindings,
 viewer readiness, browser acceptance evidence, the visual checklist result and
 remaining visual defects.
+
+Before finalizing a changed source, consult the relevant official Svelte syntax
+section when uncertain, validate it with Flow's installed Svelte compiler, and
+exercise its visible behavior. This workflow adapts the MIT-licensed official
+Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte` for the
+source and bundled permission notices. Read its tested layout examples before
+inventing widget properties or variants.
