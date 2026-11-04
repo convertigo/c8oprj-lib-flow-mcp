@@ -34,6 +34,17 @@ against the known schemas; any other quoted value is literal text (a quoted
 JavaScript evaluated in the browser over the states. `$$id`, `$$out`,
 `$$disabled` and `$$comment` take literals.
 
+Keep `@` out of JavaScript braces: `value="@event.value"` is a source,
+`value={@event.value}` is invalid. Client action arguments require portable
+values; use a literal, source or portable block instead of free JavaScript.
+Create navigation target Pages first; use their Page ids and the actual schemas
+from `code-get`. An action `If` puts actions directly in `Then`/`Else`.
+
+A refused frontend write is not saved. Apply `error.details.proposedPatch.edits`
+to the text you submitted, then retry `code-set` with the previous revision.
+Use the returned revision after success; an identified MCP conversation can
+reuse its last observation when omitted, but a concurrent edit is still refused.
+
 **The generator writes a real SvelteKit application** from the tree:
 `+layout.svelte` / `+page.svelte` routes (`ssr = false`, `adapter-static`,
 production build in `DisplayObjects/mobile/`), Flow calls through the

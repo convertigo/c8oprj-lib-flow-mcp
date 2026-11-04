@@ -837,8 +837,38 @@ const _meta = {
 			sourceFile: path.relative,
 			diagnostics: diagnostics,
 			errorCount: diagnostics.filter(function (item) { return item.severity === "error"; }).length,
-			warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length
+			warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length,
+			proposedPatch: diagnostics.some(function (item) { return item.severity === "error"; })
+				? sourceProposal(ctx, props, path, source, diagnostics) : null
 		};
+	}
+
+	// Render the provider's existing, typed fixes against the refused text, without writing a draft.
+	// A client can apply one exact replacement to its submitted text and retry code-set.
+	function sourceProposal(ctx, props, path, source, diagnostics) {
+		var mutations = diagnostics.filter(function (d) { return d.fix && d.fix.op === "replace" && d.fix.path; })
+			.map(function (d) { return d.fix; });
+		var after = source;
+		if (mutations.length && typeof ctx.authoringMutateSource === "function") {
+			try {
+				var preview = ctx.authoringMutateSource({projectDir:String(props.projectDir), sourceFile:path.absolute,
+					surface:"frontend", builder:"svelte", source:source, frontendSourceDrafts:checkedDrafts(ctx, props, path, source),
+					mutations:mutations, dryRun:true, write:false, persist:false});
+				if (preview && preview.ok === true && typeof preview.source === "string") after = preview.source;
+			} catch (_notApplicable) { /* A suggestion must never hide the original diagnostic. */ }
+		}
+		if (after === source) {
+			var lines = source.split("\n");
+			diagnostics.forEach(function (d) {
+				if (d.code !== "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" || !d.line || !/^\$[A-Za-z]+$/.test(d.property || "")) return;
+				var line = lines[d.line - 1], before = d.property + "=";
+				if (line && line.split(before).length === 2) lines[d.line - 1] = line.split(before).join("$" + before);
+			});
+			after = lines.join("\n");
+		}
+		if (after === source) return null;
+		return {base:"submitted", edits:[{line:1, before:source, after:after, oldText:source, newText:after}],
+			next:"Apply these exact edits to the submitted text, then retry code-set with the same revision. The refused frontend source was not saved."};
 	}
 
 	function requireValid(validation) {
@@ -847,7 +877,7 @@ const _meta = {
 			var error = new Error(String(first.message || "Invalid frontend source."));
 			error.code = String(first.code || "FRONTEND_SOURCE_INVALID");
 			error.hint = String(first.hint || "Call code-check with the same sourceFile and inline code for structured diagnostics; a refused new source has not been saved.");
-			error.details = {sourceFile: validation.sourceFile, line: first.line, column: first.column, property: first.property, diagnostics: validation.diagnostics};
+			error.details = {proposedPatch: validation.proposedPatch || undefined, sourceFile: validation.sourceFile, line: first.line, column: first.column, property: first.property, diagnostics: validation.diagnostics};
 			throw error;
 		}
 	}

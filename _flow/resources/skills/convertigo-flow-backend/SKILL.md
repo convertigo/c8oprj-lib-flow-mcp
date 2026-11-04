@@ -22,7 +22,8 @@ named implicitly, or explicitly by a JavaScript label. Outside the subset, write
 - `try {} catch {}`: `try({ error: "local.failure", $$try() {...},
   $$catch() {...} })`, the error (`code`, `message`, `status`) at that path;
 - `throw new Error()`: `throw({ code, message, status, details })`;
-- a block call inside an expression: assign it to a local first;
+- a block call under a method or inside a per-item projection: use an explicit
+  intermediate in that same branch/iterator or a named per-item block;
 - a nested function: a helper function at top level.
 
 **An expression is evaluated by the engine, not by JavaScript:** literals,
@@ -30,11 +31,20 @@ scope paths (`input`, `config`, `local`, `result`, `current`), `+ - * / %`,
 comparisons (`===` strict, `==` loose), `&& || !`, ternary, `??`, template
 literals, computed index (`rows[i]`, `byId[input.id]`), `round(x, digits)`,
 `floor`, `ceil`, `abs`, `min`, `max` (also as `Math.*`), `String`, `Number`,
+`Array.isArray`, `typeof`,
 and methods from a fixed list (text `trim`, `toLowerCase`, `includes`,
 `slice`, `split`, `replace`, `padStart`...; lists `includes`, `slice`,
 `join`, `at`, `length`; numbers `toFixed`). Anything else is a block
 (`list.filter`, `list.map`, `list.sort`, `date.*`, `json.*`); a regex
 literal is refused for `text.match({ text, pattern })` and its `.matched`.
+
+Assignment expressions can contain block calls in arithmetic, comparisons and
+`&&`, `||`, `??`, `?:`: the compiler preserves evaluation order and lazy branches.
+Slots accept `$$nodes() { ... }`, `$$nodes: () => { ... }` and
+`$$nodes: function () { ... }`; close both braces of `... } })`. Always two
+`$` signs: JavaScript replacement strings consume `$$`; use a callback or
+`split(oldText).join(newText)` to build source. `throw.code` must be a literal;
+a `requiresChoice` patch deliberately leaves `CHOOSE_ERROR_CODE` to fill in.
 
 **A run executes the tree, node by node.** Each block (a `_meta` contract
 and its implementation) receives its evaluated properties and writes its
@@ -58,6 +68,10 @@ names, keys and positional calls produce a suggested patch with line, before
 and after. Review and send the edits with their revision; they are never
 applied automatically. Promotion formats once, checks the same tree and returns
 `linted`, `changedLines` and the text revision. If unchanged, keep that revision.
+A refused write with `written:true` has become the working copy: patch its new
+revision, not the previous successful one. An identified MCP conversation may
+omit the revision after reading/writing that source; concurrent changes still
+fail. Prefer the explicit returned revision (see `flow://guide/search-and-edit`).
 Labels name instructions explicitly; omitted names use source-order counters.
 Read `flow://guide/authoring` for comments, blank lines and generic-call fallbacks.
 

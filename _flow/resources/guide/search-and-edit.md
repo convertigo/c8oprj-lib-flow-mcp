@@ -2,6 +2,23 @@
 
 Locate existing Flow code with `flow-search` and `code-rg`, then change it with the smallest revision-checked `code-patch`.
 
+For `code-set` and `code-patch`, prefer the returned `revision`. If it is
+omitted, an authenticated MCP conversation (`X-Convertigo-Conversation-Id`
+or `Mcp-Session-Id`, with a separate subagent run) can reuse the revision of
+its last `code-get` or actual write to that source. This observation expires
+after one hour and may be evicted earlier. It never means “use the latest
+revision”: a concurrent edit still fails. Without an observation, the existing
+revision requirement applies. An explicit revision always wins.
+
+A refused backend write with `written:true` is the new working copy: use the
+revision in that refusal. A refused frontend write is **not** saved: apply
+`error.details.proposedPatch.edits` to the submitted text and retry `code-set`
+with the previous revision. Backend `proposedPatch.edits` can be sent directly
+to `code-patch` with `proposedPatch.revision`. A patch marked `requiresChoice`
+needs the indicated value first. Do not resend the last successful text as a
+patch base. `oldText` must match exactly once; use `code-set` for a whole source.
+
+
 ## Find
 
 `flow-search` is the Flow equivalent of `rg` over one project. Project scope

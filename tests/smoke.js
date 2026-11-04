@@ -908,6 +908,8 @@ var preparedPaletteArgs = {
 	builder: "svelte"
 };
 var fakeMcp = {
+	observedSourceRevision: function () { return false; },
+	rememberSourceRevision: function () {},
 	requestValue: function (_ctx, value) { return value; },
 	prepareToolArguments: function () { return preparedPaletteArgs; },
 	qualifyAuthoringPath: function (args, path) { return args.project + "::" + path; },

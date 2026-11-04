@@ -163,6 +163,26 @@ body `$$then: () => { ... }` are the same slot; an arrow with an expression
 body, an async function or a function under a name the block does not declare
 as a slot is refused, and the refusal names the slots of the block.
 
+Keep **two** dollar signs on engine attributes and slots (`$$id`, `$$nodes`).
+When building text with JavaScript, use `split(oldText).join(newText)` or a
+replacement callback: a replacement string interprets `$$` as one dollar.
+Close both the slot body and the argument object: `$$nodes() { ... } })`.
+The diagnostic supplies an exact edit for a mistaken prefix or an unambiguous
+missing argument brace; source is never silently rewritten.
+
+`Array.isArray(value)` and `typeof value` are expressions. A block in an
+assignment's comparison/arithmetic or `&&`, `||`, `??`, `?:` is evaluated once,
+left to right, only in the branch that needs it. For example:
+`local.overdue = local.open && date.compare({left: current.dueDate, right: local.today}) < 0`.
+Inside a `list.map` projection, use a named per-item block for multi-step work;
+do not move work on `current` before the iterator. Block calls under arbitrary
+JavaScript methods still require explicit intermediates in the same branch.
+
+`throw.code` is a **literal public code**, for example `"INVALID_INPUT"`.
+Keep dynamic data in `message` or `details`. Its proposed edit contains
+`"CHOOSE_ERROR_CODE"` and `requiresChoice:true`: replace that placeholder with
+the intended public contract before applying it.
+
 Collections are created typed, then mutated explicitly: `json.array({ path,
 itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
 `json.put({ path, key, value })`. Destinations are static `local.`/`result.`

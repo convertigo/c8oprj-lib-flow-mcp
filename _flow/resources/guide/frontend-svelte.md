@@ -372,6 +372,27 @@ Sources:
 </ForEach>
 ```
 
+In a source attribute, `@` belongs to a quoted binding (`value="@event.value"`),
+not JavaScript braces (`value={@event.value}` is invalid Svelte). Keep quotes
+balanced: `label='Livres "disponibles"'` uses different outer and inner
+quotes. A comparison in a quoted attribute is not a source reference; use a
+portable computation for an action test. Backslash-escaping a double quote does not escape an HTML attribute.
+Read a portable computation's contract before composing client actions;
+`JSON.stringify([@event.value.row.id])` is not a portable binding.
+
+Create target Pages before writing a `Navigate` to their **Page id**. Use the
+`authoringContract.pages` and bindings from `code-get` for actual names and
+paths; do not guess state/action ids, properties or schema fields. An `If`
+action's `Then`/`Else` contains actions directly, without another `Actions`.
+Each `$$id` must be unique in its source.
+
+When the provider supplies a typed correction, `code-set` now also returns
+`error.details.proposedPatch` with exact `line`, `before`/`after` and
+`oldText`/`newText`. Review and apply it to the refused text, then retry
+`code-set`. It may fix one diagnostic while others remain; the refused text
+has not replaced the previous source. See `flow://guide/search-and-edit` for
+the revision rule.
+
 Client action parameters reject free browser expressions; use a source, a
 literal or a portable block for computation.
 

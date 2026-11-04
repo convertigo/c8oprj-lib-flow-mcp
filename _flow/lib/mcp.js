@@ -485,7 +485,7 @@
 	function intuitiveCallLines(value) {
 		function shown(edit) {
 			var before = String(edit.oldText || "").trim(), after = String(edit.newText || "").trim();
-			return "line " + edit.line + " (" + edit.confidence + "): " + (before.length > 90 ? before.substring(0, 90) + "…" : before) +
+			return "line " + edit.line + (edit.confidence === undefined ? "" : " (" + edit.confidence + ")") + ": " + (before.length > 90 ? before.substring(0, 90) + "…" : before) +
 				" -> " + (after.length > 110 ? after.substring(0, 110) + "…" : after);
 		}
 		var lines = "";
@@ -495,9 +495,9 @@
 				applied.slice(0, 12).map(function (edit) { return "\n- " + shown(edit); }).join("") +
 				(applied.length > 12 ? "\n- " + (applied.length - 12) + " more in structuredContent.autoCorrected." : "");
 		}
-		var patch = value.proposedPatch;
+		var patch = value.proposedPatch || value.error && value.error.details && value.error.details.proposedPatch;
 		if (patch && patch.edits && patch.edits.length) {
-			lines += "\nProposed patch" + (patch.revision ? " on revision " + patch.revision : "") + " (structuredContent.proposedPatch.edits, ready for code-patch edits):" +
+			lines += "\nProposed patch" + (patch.revision ? " on revision " + patch.revision : "") + " (" + (value.proposedPatch ? "structuredContent.proposedPatch.edits" : "structuredContent.error.details.proposedPatch.edits") + (patch.requiresChoice ? ", choose the marked value before applying" : patch.base === "submitted" ? ", apply to submitted text before code-set" : ", ready for code-patch edits") + "):" +
 				patch.edits.slice(0, 12).map(function (edit) { return "\n- " + shown(edit) + (edit.confidence < patch.threshold ? " — " + String(edit.reason || "") : ""); }).join("") +
 				(patch.edits.length > 12 ? "\n- " + (patch.edits.length - 12) + " more in structuredContent.proposedPatch.edits." : "");
 		}
@@ -2876,7 +2876,11 @@
 	function runToolBlock(ctx, request, options, handler) {
 		try {
 			var args = prepareToolArguments(ctx, request, options || {});
-			return toolResponse(request, persistSourceMutationResult(request, args, handler(args)), ctx);
+			var inferred = observedSourceRevision(ctx, request, args);
+			var result = persistSourceMutationResult(request, args, handler(args));
+			rememberSourceRevision(ctx, request, args, result);
+			if (inferred && result) result.revisionInferred = true;
+			return toolResponse(request, result, ctx);
 		} catch (e) {
 			return toolError(request, e, ctx);
 		}
@@ -3769,7 +3773,7 @@
 		var name = toolName(request);
 		var out = {};
 		["ok", "qname", "name", "block", "target", "runtime", "format", "dry", "unchanged", "written", "finalized", "promoted", "blockAlreadySaved", "dirty", "exists", "discarded", "revision", "oldRevision", "workingRevision", "officialRevision", "draftCleared", "linted", "changedLines",
-			"dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
+			"revisionInferred", "dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
 			if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
 				out[key] = value[key];
 			}
@@ -4359,7 +4363,7 @@
 			return value;
 		}
 		var out = {};
-		["ok", "title", "message", "sourceFile", "revision", "oldRevision", "contentLength",
+		["ok", "title", "message", "sourceFile", "revision", "oldRevision", "revisionInferred", "proposedPatch", "contentLength",
 			"hunks", "errorCount", "warningCount", "written", "writtenFile", "writtenFiles", "writtenBytes",
 			"draft", "dirty", "sourceId", "selectionSourcePath", "path", "selectionPath", "parentPath",
 			"created", "mutationCount", "refreshed", "schemaRequestable", "schemaLearned"].forEach(function (key) {
@@ -5431,6 +5435,40 @@
 	}
 
 	// After a tools/call: a tool that may write drops the kept project answers; flow-cache-clear drops them all.
+	// An omitted revision means the last source this authenticated conversation actually read/wrote,
+	// never the source at write time. The existing writer still compares it (and rechecks under its lock).
+	// Use the bounded, expiring server store; unidentified clients keep the explicit-revision contract.
+	function sourceObservationKey(ctx, args, request) {
+		var http = stableServletRequest(ctx), caller = stableCaller(ctx), conversation = "", subagent = "";
+		if (!http || !caller) return null;
+		try { conversation = String(http.getHeader("X-Convertigo-Conversation-Id") || http.getHeader("Mcp-Session-Id") || ""); } catch (e) {}
+		if (!conversation) return null;
+		try { subagent = String(http.getHeader("X-Convertigo-Subagent-Run") || ""); } catch (e) {}
+		var target = args.sourceFile ? "source:" + String(args.sourceFile).replace(/\\/g, "/")
+			: /flow-block-code-/.test(toolName(request)) ? "block:" + String(args.block || args.name || "") + ":" + String(args.target || "backend") : "flow:" + String(args.name || args.flow || args.qname || "").split(".").pop();
+		if (target === "flow:" || !args.projectDir) return null;
+		return stableEntry("source-observation", [caller, conversation, subagent, canonicalPath(new File(String(args.projectDir))), target,
+			stableGeneration()], 60 * 60 * 1000);
+	}
+
+	function observedSourceRevision(ctx, request, args) {
+		if (!/(?:^|-)code-(?:set|patch)$/.test(toolName(request)) || args.revision || args.baseRevision || args.baseHash) return false;
+		var key = sourceObservationKey(ctx, args, request), observation = key && stableRead(key);
+		if (!observation || !observation.revision) return false;
+		args.revision = observation.revision;
+		return true;
+	}
+
+	function rememberSourceRevision(ctx, request, args, result) {
+		if (!result || !result.revision) return;
+		var name = toolName(request);
+		if (!/(?:^|-)code-(?:get|set|patch)$/.test(name) ||
+			!(result.written === true || /-get$/.test(name) && result.ok === true)) return;
+		if (result.sourceFile && !args.sourceFile) args = Object.assign({}, args, {sourceFile:result.sourceFile});
+		var key = sourceObservationKey(ctx, args, request);
+		if (key) stableWrite(key, {revision: String(result.revision)});
+	}
+
 	function stableToolCalled(name) {
 		name = String(name || "");
 		if (STABLE_READ_TOOLS[name] === true) {
@@ -5462,6 +5500,8 @@
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
+		observedSourceRevision: observedSourceRevision,
+		rememberSourceRevision: rememberSourceRevision,
 		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,

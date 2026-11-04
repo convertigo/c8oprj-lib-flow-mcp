@@ -329,6 +329,7 @@ const _meta = {
 					resolveProject: boolProp(props.resolveProject, true)
 				});
 				merge(args, extraArgs(ctx, props.args));
+				var revisionInferred = mcp.observedSourceRevision(ctx, request, args);
 				// Structured authoring data must cross callBlock as literal JSON, without
 				// recursively evaluating template-looking business field defaults.
 				Object.keys(props.jsonArguments || {}).forEach(function (destination) {
@@ -367,6 +368,8 @@ const _meta = {
 					result = mcp.qualifyAuthoringResult(args, result);
 				}
 				result = mcp.persistSourceMutationResult(request, args, result);
+				mcp.rememberSourceRevision(ctx, request, args, result);
+				if (revisionInferred && result) result.revisionInferred = true;
 				if (target === "authoring.mutate" || target === "frontend.asset.import") {
 					result = syncFrontendDevAfterMutation(ctx, args, result);
 				}
