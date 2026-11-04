@@ -97,7 +97,7 @@ const _meta = {
 
 	// An MCP client without resources/read (Vibe 3 lists MCP tools only) asks flow-resource-get for a guide or skill
 	// URI. Without a project, or when the project does not answer it (no such resource, a project not created yet),
-	// the Flow MCP resource answers, its text in structuredContent as the other Flow tools return their data: the
+	// the Flow MCP resource answers; finalizeResponse selects readable text or the compatible structured result. The
 	// guides that tell how to start are readable before any project exists.
 	var MCP_RESOURCE_URI = /^flow:\/\/(?:(?:guide|lib|skills)\/|ace(?:\/|$))/;
 	function withExperience(ctx, mcp, request, response) {
@@ -147,7 +147,7 @@ const _meta = {
 		}
 		var text = texts.join("\n");
 		return mcp.finalizeResponse(ctx, request, mcp.jsonRpcResult(request.id, {
-			content: [{ type: "text", text: "OK. " + uri + " read as an MCP resource (" + text.length + " characters). Use structuredContent.text." }],
+			content: [{ type: "text", text: "Resource text is in text (structuredContent.text in the MCP envelope). Read this response, not the URI again. For plain Markdown, request format: text." }],
 			structuredContent: {
 				ok: true,
 				uri: uri,
@@ -180,6 +180,10 @@ const _meta = {
 					return response;
 				}
 				var block = toolMap(ctx)[name];
+				var format = request.params && request.params.arguments && request.params.arguments.format;
+				if (name === "flow-resource-get" && format !== undefined && format !== "text" && format !== "structured") {
+					throw { code: "INVALID_ARGUMENT", message: "flow-resource-get format must be text or structured." };
+				}
 				if (!block && typeof ctx.blockNames === "function" && ctx.blockNames().indexOf("mcp.tools.server") !== -1) {
 					var serverResponse = ctx.callBlock("mcp.tools.server", { mode: "call", request: request }, { trace: false });
 					if (serverResponse) {

@@ -96,11 +96,19 @@ server (rights, perimeters, state rules), never only in the page.
   feature needs them. Do not load every guide pre-emptively.
 - Record every successfully read guide URI for the current turn. Never read the
   same URI again after a successful response, including after compaction.
-- Without MCP `resources/read` in your client (Vibe lists tools only), read a
-  guide with `flow-resource-get` and its `uri` (`flow://guide/<name>` or
-  `flow://lib/<library>/<guide>`), without `project`: it needs none, so read
-  `flow://guide/start` before creating the project. The text is in
-  `structuredContent.text`.
+- Without MCP `resources/read`, call `flow-resource-get({uri,format:"text"})`
+  for a guide (`flow://guide/<name>`, `flow://lib/<library>/<guide>` or
+  `flow://skills/<skill>/SKILL`), without `project`. Read `flow://guide/start`
+  before creating a project. The result is plain Markdown, stored only once.
+  In Vibe `run_typescript`, use
+  `console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`.
+  Do not return/JSON.stringify the string: that escapes its newlines. In Codex
+  code mode, emit the MCP text blocks with `text(block.text)`.
+  If a client truncates, read its saved output; do not fetch the guide again.
+  Existing calls without `format` retain a structured result whose document
+  field is `text`: `result.text` when unwrapped (Vibe), or
+  `result.structuredContent.text` for an MCP envelope. Reuse that result.
+
 
 Keep one specialist role through repair passes. Do not spawn a replacement
 specialist merely to continue the same application.

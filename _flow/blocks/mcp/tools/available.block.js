@@ -483,6 +483,10 @@ const _meta = {
 				"otherwise nothing is written (EDIT_TEXT_NOT_FOUND, EDIT_TEXT_NOT_UNIQUE with the lines). Simpler than a diff for a targeted change.";
 		}
 		if (toolName === "flow-resource-get") {
+			schema.properties.format = {
+				type: "string", enum: ["text", "structured"], default: "structured",
+				description: "Use text to read a guide once as plain Markdown. In run_typescript: console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri, format:'text'})); do not return/JSON.stringify it. Structured (default for existing callers) exposes the single document field text; a code wrapper may unwrap structuredContent."
+			};
 			schema.properties.uri = {
 				type: "string",
 				description: "A resource uri returned by flow-resource-search, or a Flow MCP guide or skill (flow://guide/start, flow://lib/<library>/<guide>, flow://skills/<skill>/SKILL), which needs no project."
@@ -628,7 +632,7 @@ const _meta = {
 		} else if (name === "flow-resource-delete") {
 			description = "Deletes one project-local Flow resource. Requires project, path and optionally baseHash.";
 		} else if (name === "flow-resource-get") {
-			description = "Reads a project resource preview (project and path or uri) with its hash for flow-resource-patch, or a guide/skill URI without project. Text is always in structuredContent.text; content is a compatibility alias. flow://guide/<name>, flow://lib/<library>/<guide> and flow://skills/<skill>/SKILL return the whole guide, for clients without resources/read.";
+			description = "Read a guide once with {uri,format:'text'}: plain Markdown, no duplicated document or structuredContent. In run_typescript use console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:'text'})), not return or JSON.stringify. flow://guide/<name>, flow://lib/<library>/<guide> and flow://skills/<skill>/SKILL need no project. Project resources need project and path or uri; text format includes preview metadata/hash for flow-resource-patch. Existing calls default to structured format with one document field: text (structuredContent.text in an MCP envelope, result.text when unwrapped). If the client truncates, read its saved output; never fetch the same guide again.";
 		} else if (name === "flow-resource-patch") {
 			description = "Changes one project resource read by flow-resource-get: edits, exact replacements [{ oldText, newText }] as code-patch takes them, each oldText occurring once; patch, a unified diff of that text (several hunks applied in order, --- a/ +++ b/ headers optional, a hunk whose numbers are off applied where its lines match once, a mismatch answered with the expected and actual lines), or content, the whole new text. baseHash is the hash flow-resource-get returned (required with content); the text is written as computed, line for line, and hash is the next baseHash. fromFile copies a file of the workspace instead, byte for byte. scope engine-internal synchronizes bounded lib_flow_engine internals with staging, hash checks and rollback.";
 		} else if (name === "flow-cache-clear") {

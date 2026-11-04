@@ -105,6 +105,9 @@ assert(index.indexOf('3 entries') >= 0 && index.indexOf('MISSING_FLOW_QNAME') >=
 assert(call('resources/read', {uri:'flow://ace/../sql', projectDir:app}).error, 'Unknown/path traversal resource must be refused');
 var viaTool = tool('flow-resource-get', {projectDir:app, uri:uri});
 assert(viaTool.result.structuredContent.text === sqlText, 'Clients without resource support need flow-resource-get');
+assert(/Resource text is in text/.test(viaTool.result.structuredContent.content), 'Legacy field redirects without a duplicate drawer');
+var plainDrawer = tool('flow-resource-get', {projectDir:app, uri:uri, format:'text'}).result;
+assert(!plainDrawer.structuredContent && plainDrawer.content[0].text === sqlText, 'Readable drawer is complete with no competing structured data');
 var changed = sqlText.replace('Check the orders table', 'Probe the orders table');
 assert(changed.length === sqlText.length, 'Invalidation fixture must keep the same size');
 Files.writeString(sqlFile.toPath(), changed, UTF8);

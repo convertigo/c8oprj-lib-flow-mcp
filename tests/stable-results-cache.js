@@ -241,7 +241,13 @@ try {
 		"the skill was not read");
 	var viaTool = call(505, "flow-resource-get", { uri: "flow://guide/start" });
 	assert(viaTool.response.id === 505 && viaTool.response.result.structuredContent.text === edited, "flow-resource-get lost the guide");
-	var unknown = read(506, "flow://guide/missing-guide");
+	assert(/Resource text is in text/.test(viaTool.response.result.structuredContent.content), "cached guide has no duplicate alias");
+ var plainGuide = call(509, "flow-resource-get", {uri:"flow://guide/start", format:"text"});
+ assert(!plainGuide.response.result.structuredContent && plainGuide.response.result.content[0].text === edited,
+  "text format must not reuse the structured presentation");
+ assert(call(510, "flow-resource-get", {uri:"flow://guide/start"}).response.result.structuredContent.text === edited,
+  "text format must not mutate the cached document");
+ var unknown = read(506, "flow://guide/missing-guide");
 	assert(unknown.response.error && unknown.response.id === 506 && read(507, "flow://guide/missing-guide").response.error, "an unknown guide was answered");
 	assert(read(508, "flow://guide/start", bearerB).response.id === 508 && count("resource") >= 4, "the guide of another caller shared an entry");
 

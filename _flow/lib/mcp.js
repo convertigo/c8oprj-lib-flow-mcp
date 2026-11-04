@@ -2188,9 +2188,26 @@
 		}
 		if (request && request.method === "tools/call" && response && response.result) {
 			var structured = response.result.structuredContent;
-			if (toolName(request) === "flow-resource-get" && structured && !structured.error) {
-				if (typeof structured.text === "string" && structured.content === undefined) structured.content = structured.text;
-				else if (typeof structured.content === "string" && structured.text === undefined) structured.text = structured.content;
+			if (toolName(request) === "flow-resource-get" && structured && !structured.error && structured.ok !== false) {
+				// One document per response. Keep old callers explicit about the renamed field;
+				// readable calls opt out of structuredContent (some clients prefer it over content).
+				var resourceText = typeof structured.text === "string" ? structured.text : structured.content;
+				if (typeof resourceText === "string") {
+					if (toolArguments(request).format === "text") {
+						var metadata = {};
+						Object.keys(structured).forEach(function (key) {
+							if (key !== "text" && key !== "content") metadata[key] = structured[key];
+						});
+						// Guides are complete documents. Project previews also need their hash,
+						// truncation flag and notices, separate from the source text.
+						var prefix = structured.source === "resources/read" ? "" : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
+						response.result.content = [{ type: "text", text: prefix + resourceText }];
+						delete response.result.structuredContent;
+					} else {
+						structured.text = resourceText;
+						structured.content = "Resource text is in text (structuredContent.text in the MCP envelope). Use that field from this response; do not fetch again.";
+					}
+				}
 			}
 			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
 		}

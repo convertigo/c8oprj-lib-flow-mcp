@@ -57,14 +57,14 @@ function run(args, projectOwns, projectError) {
 	assert(guide.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.read", uri + ": the project first, then the MCP resource: " + guide.calls);
 	assert(result && !result.isError && result.structuredContent.text === GUIDE && result.structuredContent.uri === uri, uri + " is read: " + JSON.stringify(guide.response));
 	assert(result.structuredContent.source === "resources/read" && result.structuredContent.mimeType === "text/markdown", "it says where it comes from");
-	assert(result.content.length === 1 && /read as an MCP resource/.test(result.content[0].text) && result.content[0].text.indexOf(GUIDE) === -1,
+	assert(result.content.length === 1 && /Resource text is in text/.test(result.content[0].text) && result.content[0].text.indexOf(GUIDE) === -1,
 		"the content is a short summary, the text stays in structuredContent");
 	assert(guide.written === guide.response && guide.response.id === 17, "the answer is written to out with the request id");
 });
 
 var own = run({ project: "App", uri: "flow://guide/frontend-svelte" }, true);
-assert(own.response.result.structuredContent.text === "own", "Project resources expose text with content as alias");
-assert(own.calls.join(",") === "mcp.tool.flow.resource.get" && own.response.result.structuredContent.content === "own", "a project resource keeps precedence");
+assert(own.response.result.structuredContent.text === "own", "Project resources expose canonical text");
+assert(own.calls.join(",") === "mcp.tool.flow.resource.get" && /Resource text is in text/.test(own.response.result.structuredContent.content), "a project resource keeps precedence");
 
 var other = run({ project: "App", uri: "flow://App/resources/x.md" }, false);
 assert(other.calls.join(",") === "mcp.tool.flow.resource.get" && other.response.result.structuredContent.error.code === "UNKNOWN_RESOURCE",
@@ -80,7 +80,7 @@ assert(missing.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.rea
 	assert(bare.calls.join(",") === "mcp.resources.read", uri + " without project goes to resources/read alone: " + bare.calls);
 	assert(bare.response.result.structuredContent.text === GUIDE && bare.response.result.structuredContent.source === "resources/read" &&
 		!bare.response.result.isError && bare.response.id === 17, uri + " is read without project: " + JSON.stringify(bare.response));
-	assert(bare.response.result.structuredContent.content === GUIDE, "MCP guide text retains the content alias");
+	assert(/Resource text is in text/.test(bare.response.result.structuredContent.content), "Legacy content explicitly redirects");
 });
 var bareMissing = run({ uri: "flow://guide/missing" }, false);
 assert(bareMissing.calls.join(",") === "mcp.resources.read" && bareMissing.response.result.structuredContent.error.code === "UNKNOWN_RESOURCE" &&
@@ -98,4 +98,15 @@ assert(notCreated.calls.join(",") === "mcp.tool.flow.resource.get,mcp.resources.
 
 var path = run({ project: "App", path: "_flow/resources/guide/x.md" }, false);
 assert(path.calls.join(",") === "mcp.tool.flow.resource.get", "a path read is not redirected");
+["flow://guide/start", "flow://lib/lib_flow_sql/sql", "flow://skills/convertigo-flow-mcp/SKILL"].forEach(function(uri) {
+ var readable = run({uri:uri, format:"text"}, false).response.result;
+ assert(!readable.structuredContent && readable.content.length === 1 && readable.content[0].text === GUIDE,
+  "Readable guide is one raw Markdown block: " + uri);
+});
+var readableProject = run({project:"App", uri:"flow://App/resources/x.md", format:"text"}, true).response.result;
+assert(!readableProject.structuredContent && /Resource metadata:/.test(readableProject.content[0].text) && /\n\nown$/.test(readableProject.content[0].text), "Project text uses the same formatter");
+var badFormat = run({uri:"flow://guide/start", format:"other"}, false);
+assert(badFormat.calls.length === 0 && badFormat.response.result.structuredContent.error.code === "INVALID_ARGUMENT", "Unknown formats fail before reading");
+var textMissing = run({uri:"flow://guide/missing", format:"text"}, false).response.result;
+assert(textMissing.isError && textMissing.structuredContent.error.code === "UNKNOWN_RESOURCE", "Readable missing guide is still an error");
 print("resource-get-mcp-uri OK (" + count + " checks)");

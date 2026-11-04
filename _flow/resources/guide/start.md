@@ -21,10 +21,15 @@ Start here: the default Flow authoring route, the source contract, the project l
 | MCP JSONL tracing | `flow://guide/tracing` |
 | Ordered tags and named project configurations | `flow://guide/tags` |
 
-Guides are served whole by `resources/read`; read each one once per task. A
-client without `resources/read` calls `flow-resource-get({ uri })` with the
-same `flow://guide/`, `flow://lib/` or `flow://skills/` uri and no project: the
-text is in `structuredContent.text`.
+Read each guide once per task. Use `resources/read`, or
+`flow-resource-get({uri,format:"text"})` for `flow://guide/`, `flow://lib/`
+and `flow://skills/` URIs without a project. This returns plain Markdown.
+In Vibe `run_typescript`, print the returned string with
+`console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`;
+returning it or JSON-stringifying it escapes newlines. If the client truncates,
+read its saved output instead of fetching the guide again. Old calls without
+`format` keep the structured result: the document field is `text` (directly
+on the unwrapped result in Vibe, under `structuredContent` in an MCP envelope).
 
 If `tools/list` advertises `report-create`, use that relayed tool for at most one
 concise product friction per turn: a missing capability or a workaround also counts, even when
@@ -215,36 +220,23 @@ After every tool call, check `result.error` in the structured result and read it
 - Workspace cleanup: `flow-project-remove({ project, dryRun:true })` first;
   `action:"delete"` only after `safe:true`; never `force:true` without
   reviewing every blocker.
-- Delete one object of a project (a Flow, a connector, a transaction, a Flow
-  item) as the Studio Delete does: `flow-object-remove({ project, qname })`
-  lists what goes with it (a Flow takes its source and learned schemas), then
-  `dryRun:false` deletes it and saves the project, so that a Flow can then take
-  its name. It is refused while the project holds unsaved Studio work (listed
-  by the dry run in `unsavedChanges`, Flow drafts included): ask the user to
-  save first. A Flow with its own unsaved draft is never deleted
-  (`FLOW_HAS_UNSAVED_DRAFT`): `code-discard` or `code-promote` it first.
-  `saveProject:false` only deletes in the loaded project, for the next Save;
-  creating a Flow with the name of a sequence whose deletion is not saved is
-  refused (`FLOW_NAME_DELETION_UNSAVED`). A `.flow.js` left without its Flow
-  (`type:"OrphanFlowSource"`) goes the same way with its `qname`. Never delete
-  a `.flow.js` or edit project YAML instead.
+- Delete a Flow, connector, transaction or Flow item with
+  `flow-object-remove({project,qname})`: review its dry-run plan, then use
+  `dryRun:false`. Save other unsaved Studio work first; discard or promote
+  a Flow's own draft before deleting it. The tool removes sources and schemas
+  and saves the project; `saveProject:false` defers that save and name reuse.
+  Orphan sources use their `qname` too. Never delete source files or edit
+  project YAML instead. See `flow://guide/search-and-edit` for details.
 - Tracing: Convertigo symbol `flow.mcp.traceJsonl`, see `flow://guide/tracing`.
 
 ## Frontend entry
 
-For a business app with roles and per-user data, add the `lib_flow_entity`
-project reference with `flow-project-reference`, then read
-`flow://guide/entities` and `flow://guide/multipage-entities` before coding.
-For explicitly requested generated CRUD, read `flow://guide/crud`.
-For backend plus Svelte work, read `flow://guide/fullstack-paperboard`;
-for custom multi-page apps without an entity model, read
-`flow://guide/multipage-roles`. For Svelte-only work, read
-`flow://guide/frontend-svelte` and use
-`code-get` / `code-set` on `sourceFile`, with `authoring-tree`,
-`authoring-palette`, `authoring-mutate`, `frontend-svelte-actions` and
-`frontend-svelte-action`. Pages live under
-`_flow/frontbuilder/svelte/model/<App>/src/routes`; generated Svelte is never
-edited.
+Choose the task guide from the table above before coding. Business apps with
+roles and per-user data need the `lib_flow_entity` project reference and both
+entity guides. For Svelte, use `code-get` / `code-set` on `sourceFile`, then
+`authoring-tree`, `authoring-palette` and `authoring-mutate` as needed. Run the
+viewer through `frontend-svelte-action`. Pages live under
+`_flow/frontbuilder/svelte/model/<App>/src/routes`; never edit generated Svelte.
 
 ## Non-secret project switches
 

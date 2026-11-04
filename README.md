@@ -435,9 +435,28 @@ The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 readable with `resources/read`.
 
 A client without `resources/read` (Vibe lists MCP tools only) reads the same
-resources with `flow-resource-get` and their `uri`, its text in
-`structuredContent.text` (`mcpResourceThroughTool` in
-`_flow/blocks/mcp/tools/call.block.js`). A `flow://guide/`, `flow://lib/` or
+resources with `flow-resource-get({uri,format:"text"})`. It returns plain
+Markdown in the MCP text block, without a `structuredContent` copy. In Vibe
+`run_typescript`, use `console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`:
+Vibe unwraps the result, and returning a string JSON-escapes its newlines.
+In Codex code mode, emit each returned MCP text block with `text(block.text)`.
+Read each guide once; if the client truncates it, continue from its saved
+output, not another MCP read.
+
+For compatibility, omitted `format` (or `format:"structured"`) keeps the
+structured object. Its only document field is `text` (`result.text` in an
+unwrapping client, `result.structuredContent.text` in the MCP envelope).
+The former `content` alias contains a short migration instruction, never a
+second document or a silent missing value. Text mode is opt-in so existing
+programs are not unexpectedly handed a string instead of their object.
+The same formatter handles project resources: text mode prefixes the preview
+with a separate metadata paragraph (including `hash`, `truncated`, and any
+warnings); only the following document is source text for patches. Structured
+mode keeps the metadata fields next to `text`. Errors keep their existing
+structured and readable diagnostic contract. `resources/read` is unchanged.
+
+`mcpResourceThroughTool` in `_flow/blocks/mcp/tools/call.block.js` supplies the
+resource, and `finalizeResponse` selects its presentation. A `flow://guide/`, `flow://lib/` or
 `flow://skills/` uri needs no project: without one the MCP resource answers at
 once, so an agent reads the start guide before creating its project. With a
 project, a project resource of that uri keeps precedence, and the MCP resource
