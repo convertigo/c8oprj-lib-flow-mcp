@@ -5,16 +5,7 @@ Backend FlowScript: the source dialect with verified examples, then the write, r
 ## A complete Flow
 
 ```javascript
-const _flow = {
-  "sourceVersion": 2,
-  "inputs": {
-    "name": {
-      "type": "string",
-      "description": "Person name.",
-      "default": "Ada",
-    },
-  },
-}
+const _flow = { sourceVersion: 2, inputs: { name: { type: "string", description: "Person name.", default: "Ada" } } }
 
 function Greeting({ input, config, result }) {
   local.name = text.trim({ text: input.name })
@@ -146,28 +137,12 @@ discover one output; use `flow-requestable-schema` explicitly if needed.
 ```javascript
 json.array({
   path: "local.rows",
-  itemType: {
-    "type": "object",
-    "properties": {
-      "label": {
-        "type": "string",
-      },
-      "size": {
-        "type": "number",
-      },
-    },
-  },
+  itemType: { "type": "object", "properties": { "label": { "type": "string" }, "size": { "type": "number" } } },
 })
 forEach({
   items: input.items,
   $$nodes: function () {
-    json.push({
-      path: "local.rows",
-      value: {
-        label: current.label,
-        size: current.field,
-      },
-    })
+    json.push({ path: "local.rows", value: { label: current.label, size: current.field } })
   },
 })
 if (local.rows.length == 0) {
@@ -197,12 +172,7 @@ names; a value that does not match the declared type is refused with
 ## Lists, maps and config
 
 ```javascript
-local.rows = list.map({
-  items: input.items,
-  select: {
-    label: current.label,
-  },
-})
+local.rows = list.map({ items: input.items, select: { label: current.label } })
 result.rows = local.rows
 local.rates = json.object({
   $$fields: function () {
@@ -226,11 +196,7 @@ result.usd = local.usd
 
 ```javascript
 config.use({
-  overrides: {
-    http: {
-      timeout: 30000,
-    },
-  },
+  overrides: { http: { timeout: 30000 } },
   $$then: function () {
     result.timeout = config.http.timeout
   },
@@ -311,12 +277,7 @@ local.preview = config.mutate({
   configuration: "dataLab",
   path: "data.sources.orders",
   op: "set",
-  value: {
-    provider: "sql",
-    connection: "labPg",
-    table: "orders",
-    readOnly: true,
-  },
+  value: { provider: "sql", connection: "labPg", table: "orders", readOnly: true },
   dryRun: true,
 })
 // confirm with revision: local.preview.previousRevision, persist: "draft" or "save"
@@ -339,9 +300,7 @@ symbol, whose default may be a test or development value:
 ## Accessibility
 
 ```javascript
-const _flow = {
-  "accessibility": "private",
-}
+const _flow = { accessibility: "private" }
 
 function Internal({ input, config, result }) {
   result.ok = true
