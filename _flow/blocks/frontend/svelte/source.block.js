@@ -1431,7 +1431,13 @@ const _meta = {
 			} else if (operation === "patch") {
 				var patch = String(props.codepatch || props.patch || "");
 				var edits = props.edits !== undefined && props.edits !== null ? props.edits : undefined;
-				if (!patch && edits === undefined) throw new Error("code-patch requires codepatch (a unified diff) or edits ([{ oldText, newText }]) for a Flow Svelte source.");
+				if (!patch && edits === undefined) {
+					var missingEdits = new Error("code-patch requires codepatch (a unified diff) or edits ([{ oldText, newText }]) for a Flow Svelte source.");
+					missingEdits.code = "FRONTEND_PATCH_EDITS_REQUIRED";
+					missingEdits.hint = "For a complete replacement, call code-set with sourceFile, code and the last code-get revision. For a patch, pass exact edits or a unified diff. No source was changed.";
+					missingEdits.details = {sourceFile: path.relative, expectedArguments: ["sourceFile", "revision", "edits"], replacementTool: "code-set"};
+					throw missingEdits;
+				}
 				if (!props.revision) throw new Error("code-patch requires the revision returned by code-get.");
 				assertSetRevision(ctx, props, path);
 				var patchRequest = {

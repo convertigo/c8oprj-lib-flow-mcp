@@ -525,6 +525,17 @@ When the provider supplies a typed correction, `code-set` now also returns
 has not replaced the previous source. See `flow://guide/search-and-edit` for
 the revision rule.
 
+Unknown navigation targets report `availablePages` with their exact ids and
+routes. A missing binding source reports the complete `availableReferences`;
+a missing field reports `sourceSchema`. Choose from those contracts without
+inventing a State or removing a field just to make validation pass. DataTable
+row actions emit `OnClick` with `@event.value.action` and `@event.value.row`:
+an invented `OnRowAction` remains an error, with an explicit rename proposal
+only when the table has no existing OnClick handler. Other invented events
+need a choice from the returned `emittedEvents` and `eventContracts`.
+`FRONTEND_PATCH_EDITS_REQUIRED` means a patch has no edits or unified diff;
+send a complete replacement to `code-set` with the last read revision.
+
 Client action parameters accept the pure expressions described above; use a source, a
 literal or a portable block for computation.
 

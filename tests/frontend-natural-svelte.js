@@ -94,4 +94,15 @@ assertTrue(fix && checked(fix.edits[0].newText).ok===true,'layout enum correctio
 var portable=header+state+'<Events><OnMount><Actions><NumberAdd $$id="sum" left={1} right={2} target="page.count" /></Actions></OnMount></Events><Structure /></FlowComponent>';
 var result=checked(portable);
 assertTrue(result.proposedPatch && result.proposedPatch.edits[0].newText.indexOf('$$out')>=0,'portable target diagnostic offers output patch: '+JSON.stringify(result));
+var eventSource=header+'<Variables><State $$id="rows" value={[]} /><State $$id="picked" value="" /></Variables><Structure>'+
+ '<DataTable source="@page.rows" rowActions={[{id:"pick",label:"Pick"}]}><Events><OnRowAction><Actions>'+
+ '<SetValue target="page.picked" value="@event.value.action" /></Actions></OnRowAction></Events></DataTable></Structure></FlowComponent>';
+var eventCheck=checked(eventSource);
+assertTrue(eventCheck.ok===false && eventCheck.proposedPatch,'invented event remains refused with an explicit patch: '+JSON.stringify(eventCheck));
+assertTrue(checked(eventCheck.proposedPatch.edits[0].newText).ok===true,'event patch passes the real provider');
+rejected(eventSource,'FRONTEND_COMPONENT_EVENT_UNKNOWN');
+var missingEdits=callTool(3,'code-patch',{projectDir:targetProjectDir,sourceFile:file,code:eventSource,responseDetail:'full'});
+assertTrue(missingEdits.error && missingEdits.error.code==='FRONTEND_PATCH_EDITS_REQUIRED','invalid patch arguments have a specific client error: '+JSON.stringify(missingEdits));
+assertTrue(missingEdits.error.hint.indexOf('code-set')>=0,'complete source is explicitly redirected to code-set');
+assertTrue(!new File(targetDir,file).exists(),'argument refusal does not create a page');
 print('frontend-natural-svelte OK');
