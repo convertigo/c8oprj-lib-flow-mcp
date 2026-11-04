@@ -692,7 +692,12 @@ const _meta = {
 				var block = contractFor(name);
 				var descriptor = block ? descriptorFor(block, byName, contractFor) : null;
 				if (descriptor) {
-					descriptor.outputSchema = ctx.lib("mcp").toolOutputSchema(descriptor.outputSchema);
+					// outputSchema promises structuredContent on every successful call. Resource
+					// reads also support text-only results, with one copy of the document for both
+					// direct and programmatic clients, so they cannot advertise that promise.
+					if (descriptor.name !== "flow-resource-get") {
+						descriptor.outputSchema = ctx.lib("mcp").toolOutputSchema(descriptor.outputSchema);
+					}
 					tools.push(descriptor);
 				}
 			});

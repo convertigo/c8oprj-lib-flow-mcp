@@ -95,6 +95,7 @@ call(50, "tools/list").result.tools.forEach(function (tool) { tools[tool.name] =
 // Words that look like tool names but are values ("runtime": "flow-svelte").
 var notTools = { "flow-svelte": true };
 var toolPattern = /(^|[\s`(\[{,"'])((?:code|flow|authoring|frontend-svelte)-[a-z][a-z0-9-]*[a-z0-9])/g;
+assertTrue(!/`flow-(?:tree|get)`/.test(routerSkill.text), "The router skill must not advertise private tools");
 guideFiles.forEach(function (file) {
   var text = readText("_flow/resources/guide/" + file);
   var match;

@@ -2191,6 +2191,7 @@
 			if (toolName(request) === "flow-resource-get" && structured && !structured.error && structured.ok !== false) {
 				// One document per response. Keep old callers explicit about the renamed field;
 				// readable calls opt out of structuredContent (some clients prefer it over content).
+				// tools/list deliberately omits outputSchema for this mixed-format tool.
 				var resourceText = typeof structured.text === "string" ? structured.text : structured.content;
 				if (typeof resourceText === "string") {
 					if (toolArguments(request).format === "text") {

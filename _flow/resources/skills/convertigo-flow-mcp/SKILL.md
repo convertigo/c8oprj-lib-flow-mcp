@@ -115,7 +115,9 @@ specialist merely to continue the same application.
 
 ## Non-Negotiable Boundaries
 
-After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`. Relayed tools keep the legacy MCP response.
+After every tool call, handle `isError:true` or the client's tool exception and
+read the diagnostic before retrying. When a structured result is available,
+also check `result.error` and its `message`. Relayed tools keep the legacy MCP response.
 
 - Address every tool call with an explicit `project` (or `projectDir` only in
   standalone tests). The MCP host project is not the target project.
@@ -315,8 +317,6 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   contracts; do not adopt stale learned schemas.
 - `flow-resource-*` is for bounded non-FlowScript project resources, never for
   canonical Flow Svelte sources.
-- `flow-tree`, `flow-get` and raw mutations are model-conversion debugging
-  tools, not the normal authoring workflow.
 
 For public request inputs, declare explicit `_flow.inputs`; add `_flow.outputs`
 only after reviewing a verified static or learned result contract. Keep domain
