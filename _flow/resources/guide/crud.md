@@ -288,12 +288,7 @@ local.session = requestable.call({ requestable: ".desk_session" })
 if (!local.session.permissions.tickets.update) {
   throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
 }
-local.ticket = requestable.call({
-  requestable: ".desk_tickets_read",
-  input: {
-    id: input.id,
-  },
-})
+local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
 ```
 
 Apply registers the connection (`sql.connections.<connection>`), the SQL
@@ -322,64 +317,36 @@ of the model (`desk` here), which the project configuration already carries.
 
 ```javascript
 const _flow = {
-  "sourceVersion": 2,
-  "accessibility": "hidden",
-  "authenticatedContextRequired": true,
-  "inputs": {
-    "id": {
-      "type": "string",
-    },
-  },
-  "config": {
-    "sql": {
-      "writes": {
-        "ticket_resolve_update": {
-          "connection": "desk",
-          "operation": "update",
-          "minAffectedRows": 1,
-          "maxAffectedRows": 1,
-          "sql": "UPDATE \"PUBLIC\".\"tickets\" SET \"status\"='resolved', \"resolved_at\"=:resolved_at, \"updated_at\"=:updated_at WHERE \"id\"=:id AND \"status\"<>'resolved'",
-          "parameters": [
-            {
-              "name": "resolved_at",
-              "type": "timestamp",
-              "auto": "update",
-            },
-            {
-              "name": "updated_at",
-              "type": "timestamp",
-              "auto": "update",
-            },
-            {
-              "name": "id",
-              "type": "int64",
-            },
+  sourceVersion: 2,
+  accessibility: "hidden",
+  authenticatedContextRequired: true,
+  inputs: { id: { type: "string" } },
+  config: {
+    sql: {
+      writes: {
+        ticket_resolve_update: {
+          connection: "desk",
+          operation: "update",
+          minAffectedRows: 1,
+          maxAffectedRows: 1,
+          sql: "UPDATE \"PUBLIC\".\"tickets\" SET \"status\"='resolved', \"resolved_at\"=:resolved_at, \"updated_at\"=:updated_at WHERE \"id\"=:id AND \"status\"<>'resolved'",
+          parameters: [
+            { name: "resolved_at", type: "timestamp", auto: "update" },
+            { name: "updated_at", type: "timestamp", auto: "update" },
+            { name: "id", type: "int64" },
           ],
         },
-        "ticket_resolve_event": {
-          "connection": "desk",
-          "operation": "insert",
-          "minAffectedRows": 1,
-          "maxAffectedRows": 1,
-          "generatedKey": {
-            "column": "id",
-            "type": "int64",
-          },
-          "sql": "INSERT INTO \"PUBLIC\".\"events\" (\"ticket_id\", \"kind\", \"actor\", \"logged_at\") VALUES (:ticket_id, 'resolved', :actor, :logged_at)",
-          "parameters": [
-            {
-              "name": "ticket_id",
-              "type": "int64",
-            },
-            {
-              "name": "actor",
-              "type": "string",
-            },
-            {
-              "name": "logged_at",
-              "type": "timestamp",
-              "auto": "create",
-            },
+        ticket_resolve_event: {
+          connection: "desk",
+          operation: "insert",
+          minAffectedRows: 1,
+          maxAffectedRows: 1,
+          generatedKey: { column: "id", type: "int64" },
+          sql: "INSERT INTO \"PUBLIC\".\"events\" (\"ticket_id\", \"kind\", \"actor\", \"logged_at\") VALUES (:ticket_id, 'resolved', :actor, :logged_at)",
+          parameters: [
+            { name: "ticket_id", type: "int64" },
+            { name: "actor", type: "string" },
+            { name: "logged_at", type: "timestamp", auto: "create" },
           ],
         },
       },
@@ -392,29 +359,11 @@ function ticket_resolve({ input, config, result }) {
   if (local.session.role !== "agent" && local.session.role !== "manager") {
     throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
   }
-  local.ticket = requestable.call({
-    requestable: ".desk_tickets_read",
-    input: {
-      id: input.id,
-    },
-  })
+  local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
   local.done = sql.transaction({
     steps: [
-      {
-        id: "ticket",
-        statement: "ticket_resolve_update",
-        parameters: {
-          id: input.id,
-        },
-      },
-      {
-        id: "event",
-        statement: "ticket_resolve_event",
-        parameters: {
-          ticket_id: input.id,
-          actor: local.session.user,
-        },
-      },
+      { id: "ticket", statement: "ticket_resolve_update", parameters: { id: input.id } },
+      { id: "event", statement: "ticket_resolve_event", parameters: { ticket_id: input.id, actor: local.session.user } },
     ],
   })
   result.resolved = local.done.committed
@@ -451,12 +400,7 @@ function my_tickets({ input, config, result }) {
   if (!local.session.permissions.tickets.list) {
     throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
   }
-  local.mine = sql.query({
-    query: "my_tickets_rows",
-    parameters: {
-      user: local.session.user,
-    },
-  })
+  local.mine = sql.query({ query: "my_tickets_rows", parameters: { user: local.session.user } })
   result.rows = local.mine.rows
 }
 ```
@@ -526,11 +470,7 @@ with its `resource` and rows (`flow-block-get` gives the `data.csv` contract):
 ```javascript
 local.list = requestable.call({
   requestable: ".desk_tickets_list",
-  input: {
-    offset: 0,
-    limit: 200,
-    includeResource: true,
-  },
+  input: { offset: 0, limit: 200, includeResource: true },
 })
 local.file = data.csv({ resource: local.list.resource, rows: local.list.page.rows, filename: "tickets.csv" })
 result.file = local.file
