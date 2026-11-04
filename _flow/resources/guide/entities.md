@@ -127,21 +127,32 @@ Preconditions for this example:
 Borrow in a single request:
 
 ```javascript
-const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: {
-  livre: { type: "object" }, adherent: { type: "string" }
-} }
+const _flow = {
+  sourceVersion: 2,
+  authenticatedContextRequired: true,
+  inputs: { livre: { type: "object" }, adherent: { type: "string" } },
+}
+
 function Emprunter({ input, config, result }) {
-  sql.transaction({ connection: "app", $$nodes: function () {
-    local.livre = entity.read({ entity: "Livre", key: input.livre })
-    if (!local.livre.values.disponible) {
-      throw({ code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté", status: 409 })
-    }
-    local.pret = entity.save({ entity: "Pret", values: {
-      livre: local.livre.key.id, adherent: input.adherent, rendu: false
-    } })
-    local.updated = entity.save({ entity: "Livre", key: local.livre.key,
-      revision: local.livre.revision, values: { disponible: false } })
-  } })
+  sql.transaction({
+    connection: "app",
+    $$nodes: function () {
+      local.livre = entity.read({ entity: "Livre", key: input.livre })
+      if (!local.livre.values.disponible) {
+        throw { code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté", status: 409 }
+      }
+      local.pret = entity.save({
+        entity: "Pret",
+        values: { livre: local.livre.key.id, adherent: input.adherent, rendu: false },
+      })
+      local.updated = entity.save({
+        entity: "Livre",
+        key: local.livre.key,
+        revision: local.livre.revision,
+        values: { disponible: false },
+      })
+    },
+  })
   result.pret = local.pret
 }
 ```
@@ -149,21 +160,31 @@ function Emprunter({ input, config, result }) {
 Return in a single request:
 
 ```javascript
-const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: {
-  pret: { type: "object" }
-} }
+const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: { pret: { type: "object" } } }
+
 function Rendre({ input, config, result }) {
-  sql.transaction({ connection: "app", $$nodes: function () {
-    local.pret = entity.read({ entity: "Pret", key: input.pret })
-    if (local.pret.values.rendu) {
-      throw({ code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu", status: 409 })
-    }
-    local.livre = entity.read({ entity: "Livre", key: { id: local.pret.values.livre } })
-    local.closed = entity.save({ entity: "Pret", key: local.pret.key,
-      revision: local.pret.revision, values: { rendu: true } })
-    local.updated = entity.save({ entity: "Livre", key: local.livre.key,
-      revision: local.livre.revision, values: { disponible: true } })
-  } })
+  sql.transaction({
+    connection: "app",
+    $$nodes: function () {
+      local.pret = entity.read({ entity: "Pret", key: input.pret })
+      if (local.pret.values.rendu) {
+        throw { code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu", status: 409 }
+      }
+      local.livre = entity.read({ entity: "Livre", key: { id: local.pret.values.livre } })
+      local.closed = entity.save({
+        entity: "Pret",
+        key: local.pret.key,
+        revision: local.pret.revision,
+        values: { rendu: true },
+      })
+      local.updated = entity.save({
+        entity: "Livre",
+        key: local.livre.key,
+        revision: local.livre.revision,
+        values: { disponible: true },
+      })
+    },
+  })
   result.pret = local.closed
 }
 ```

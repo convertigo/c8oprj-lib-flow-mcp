@@ -12,7 +12,7 @@ function all(root,extension) {
  var out=[];function visit(dir){var list=dir.listFiles();for(var i=0;list&&i<list.length;i++){if(list[i].isDirectory())visit(list[i]);else if(String(list[i].getName()).endsWith(extension))out.push(list[i]);}}visit(root);return out;
 }
 try {
- files.writeStringToFile(new java.io.File(temporary,'c8oProject.yaml'),'projectName: lib_flow_sql\nprojectName: lib_flow_crud_data\n','UTF-8');
+ files.writeStringToFile(new java.io.File(temporary,'c8oProject.yaml'),'projectName: lib_flow_sql\nprojectName: lib_flow_crud_data\nprojectName: lib_flow_entity\n','UTF-8');
  var engine=eval(read(new java.io.File(engineRoot,'Engine.js')));
  function api(method,args){return JSON.parse(engine[method](JSON.stringify(args)));}
  // A guide teaches this real project-local vocabulary before its caller example.
