@@ -83,3 +83,12 @@ for (const [name, text] of Object.entries({entities, multi, router, backend})) {
 }
 assert.ok(entities.includes('SQL_TRANSACTION_ROLLBACK_ONLY') && entities.includes('even if its error is caught'));
 console.log('entity-backend-review-contract: exact DDL guarantee and borrowed rollback semantics agree');
+
+for (const text of [entities, multi, router, backend]) {
+  assert.ok(text.includes('MariaDB') && text.includes('HSQLDB') && text.includes('PostgreSQL'));
+  assert.ok(text.includes('private:false') && /without (?:a )?guards?/.test(text));
+  assert.ok(text.includes('dryRun:true') && text.includes('code-run'));
+}
+assert.ok(entities.includes('metadata-only') && entities.includes('explicit public keys'));
+assert.ok(!entities.includes('403 with the available additive plan'));
+console.log('entity-publication-contract: exported unguarded blocks, typed scope and bounded public diagnostics');
