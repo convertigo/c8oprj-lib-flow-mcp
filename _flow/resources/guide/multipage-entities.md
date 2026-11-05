@@ -179,7 +179,8 @@ project migrates; bound retries and surface failures with `Status`.
 ## Me and logout
 
 The public `CurrentUser` is the `me` endpoint: anonymous is a normal result;
-an inactive account or revoked role is refused by the server provider.
+an inactive account is refused by the server provider. A revoked role stops
+authorizing entity operations as soon as the server table changes.
 
 <!-- example: current-user -->
 ```javascript

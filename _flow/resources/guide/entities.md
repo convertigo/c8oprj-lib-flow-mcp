@@ -25,7 +25,9 @@ resolve the actor again and recurse.
 
 For a project with its own account table, the following minimal configuration
 uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
-`ROLE` is a server-validated role, the last two columns are booleans. The SQL
+`ROLE` is a role stored by server-side administration, the last two columns
+are booleans. Entity permission lists authorize your domain role names; they
+need not be named USER, MANAGER or ADMIN. The SQL
 connection `app` is configured separately (see the multi-page recipe). Both
 queries remain private, parameterized and bounded. The demo switch defaults off.
 
@@ -76,8 +78,7 @@ function block({ input, config, result }) {
   }
   local.accounts = sql.query({ query: "actorBySession", parameters: { user: local.user }, limit: 1 })
   local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
-  if (!local.account || (local.account.role !== "USER" && local.account.role !== "MANAGER" && local.account.role !==
-    "ADMIN")) {
+  if (!local.account || !local.account.role) {
     throw { code: "FORBIDDEN", message: "Active account required", status: 403 }
   }
   return { user: local.account.user, roles: [local.account.role] }
