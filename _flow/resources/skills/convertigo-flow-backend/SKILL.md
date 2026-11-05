@@ -204,3 +204,5 @@ Use describe capabilities for custom commands (Toolbar context.permissions.creat
 ordinary select/saved/deleted events for editing and refresh, and ownershipFilter
 only as an extra display filter, never a substitute for server scope. The form
 uses create/update, never upsert. See flow://guide/entities, One access policy.
+
+A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.

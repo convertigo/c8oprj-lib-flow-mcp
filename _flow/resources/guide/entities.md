@@ -220,7 +220,7 @@ writes are `create`, `update`, `delete`. `save` is classified by its supplied
 identity (update requires an existing row; never upsert), never by client
 `write`. Unknown operations, `initialize` and `demoReset` return
 `ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
-Authorization runs **before** schema bootstrap: refusal causes no DDL.
+A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.
 `describe.permissions` evaluates create/update/delete, including an additional
 authorization slot, without hooks or mutation;
 policies and slots must be safe to evaluate for a capability, with an empty
@@ -590,6 +590,8 @@ read **inside** the transaction. A stale competing writer conflicts and rolls
 back the new loan as well. On conflict, reload and retry the entire business
 action; do not retry only the last save. An identity sequence may have gaps
 after rollback; this is not an orphaned record.
+
+A failed Entity mutation marks a borrowed `sql.transaction` rollback-only even if its error is caught: commit raises `SQL_TRANSACTION_ROLLBACK_ONLY` (409), or explicitly reports `committed:false` with `onError:"return"`.
 
 Keep the default `onError:"throw"`, propagate every failure, and return the
 business result after the scope commits. Do not catch and suppress a child

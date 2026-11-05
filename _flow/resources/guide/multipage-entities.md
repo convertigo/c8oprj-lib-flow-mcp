@@ -49,6 +49,8 @@ replace that provider with `lib_UserManager` for real accounts and passwords.
 It extends the entity recipe rather than replacing the explicit SQL escape
 hatch in `flow://guide/multipage-roles`.
 
+A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.
+
 ## 1. Prepare and declare once
 
 Bootstrap the target with

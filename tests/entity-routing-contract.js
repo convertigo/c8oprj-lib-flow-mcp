@@ -74,3 +74,12 @@ assert.ok(!multi.includes('following frontend palier'), 'The recipe is usable wi
 assert.match(multi, /<Toolbar><If[^>]+context\.permissions\.create/);
 assert.ok(!multi.includes('scope="mine"'), 'The nominal page relies on the server owner perimeter');
 console.log('entity-front-guide-contract: local transport, capabilities and display filters agree');
+
+// The backend contract distinguishes static authorization from row/hook decisions.
+const ddlGuarantee = 'A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.';
+for (const [name, text] of Object.entries({entities, multi, router, backend})) {
+  assert.ok(text.includes(ddlGuarantee), name + ': ' + ddlGuarantee);
+  assert.ok(!text.includes('refusal causes no DDL'), name + ' must not promise rollback of bootstrap DDL');
+}
+assert.ok(entities.includes('SQL_TRANSACTION_ROLLBACK_ONLY') && entities.includes('even if its error is caught'));
+console.log('entity-backend-review-contract: exact DDL guarantee and borrowed rollback semantics agree');
