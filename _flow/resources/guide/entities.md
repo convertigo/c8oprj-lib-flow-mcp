@@ -217,8 +217,10 @@ identity (update requires an existing row; never upsert), never by client
 `write`. Unknown operations, `initialize` and `demoReset` return
 `ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
 Authorization runs **before** schema bootstrap: refusal causes no DDL.
-`describe.permissions` evaluates create/update/delete without hooks or mutation;
-policies must be safe to evaluate for a capability, with an empty key/payload.
+`describe.permissions` evaluates create/update/delete, including an additional
+authorization slot, without hooks or mutation;
+policies and slots must be safe to evaluate for a capability, with an empty
+key/payload. Neither may recursively call a controlled entity operation.
 
 The gateway delegates to `entity.applyGateway({entity,operation,payload})`.
 An optional `$$authorize` slot runs after the policy and can only deny or add
