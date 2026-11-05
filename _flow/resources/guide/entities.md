@@ -224,8 +224,10 @@ actor block (**Authentication** below); without it, `roles.includes(...)` is fal
 and everyone gets the narrowest scope. Scope fields can be relations, as above.
 A relation's labels, options and validation read its target through this same
 policy: keep a referenced directory readable when signed in (hide its other fields
-with `visibleTo`). If the policy refuses the target, labels are omitted with the run
-warning `ENTITY_RELATION_LABELS_OMITTED`; options and validation are refused.
+with `visibleTo`). If the policy, a model ACL or a slot refuses the target (401 or
+403; a 404 still fails the read), labels are omitted with the run warning
+`ENTITY_RELATION_LABELS_OMITTED`; options and validation return `ENTITY_FORBIDDEN`
+"Relation non autorisée." naming only `details.field`. A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused.
 
 Without that block, the same default applies: nonempty
 `getAuthenticatedUser()` for reads, all writes refused. A cookie alone is not
@@ -258,7 +260,8 @@ composition and jobs. Do not expose an unguarded trusted primitive publicly.
 `entity.list` returns **one page**: `rows`, `total`, `hasMore`, `nextOffset`
 (`limit` 25 by default, 200 at most). `options.filter` is ANDed with the policy
 scope and takes the same short form, `{field: value}` (equalities, relations
-included; an array means one of), or `{field, op, value}` with `eq`, `in`,
+included; an array means one of, `null` an empty value, an absent value is
+`ENTITY_FILTER_INVALID`), or `{field, op, value}` with `eq`, `in`,
 `contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`. Do not use `rows`
 as the whole list without checking `hasMore`: `code-set` warns
 `ENTITY_LIST_PAGE_UNCHECKED`, and a run that gets a partial page without an

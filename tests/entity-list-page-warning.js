@@ -49,6 +49,10 @@ try {
  check(/## Lists: filters and pages/.test(guide)&&/ENTITY_LIST_PAGE_UNCHECKED/.test(guide)&&/ENTITY_LIST_INCOMPLETE/.test(guide)&&/local\.page\.hasMore/.test(guide)&&/nextOffset/.test(guide),'guide documents pages and both warnings');
  check(/\{field: value\}/.test(guide)&&/relations\s+included/.test(guide),'guide documents the short filter form on relations');
  check(/return \{ scope: \{ requesterId: input\.request\.user \} \}/.test(guide)&&/actorProvider/.test(guide)&&/ENTITY_RELATION_LABELS_OMITTED/.test(guide),'guide shows the role scope, the actor provider and omitted relation labels');
+ // C1, C2, C4 of the 05/11 review: neutral refusals, writes that do not touch the relation, absent filter values.
+ check(guide.indexOf('A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused.')>=0,'guide states which writes need a refused relation target');
+ check(/Relation non autorisée\."\s+naming only `details\.field`/.test(guide)&&/a 404 still fails the read/.test(guide),'guide states the neutral relation refusal');
+ check(/an absent value is\s+`ENTITY_FILTER_INVALID`/.test(guide),'guide states that an absent filter value is an error');
  var failed=results.filter(function(r){return !r.passed;}),regressions=results.filter(function(r){return r.regression;});
  var passed=negative?failed.length===regressions.length&&failed.every(function(r){return r.regression;}):failed.length===0;
  print(JSON.stringify({passed:passed,baseline:negative,checks:checks,regressionChecks:regressions.length,failures:failed.map(function(r){return r.name;})}));
