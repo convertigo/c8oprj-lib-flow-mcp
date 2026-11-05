@@ -169,8 +169,8 @@ with `flow-block-get` before use.
 `app.entityAccess` **only if missing**. Its response lists created/preserved
 sources and the policy decisions still required. Neither is regenerated on
 model edits. There is no shared library gateway, project selector, gateway
-configuration flag or migration fallback. The backend contract below replaces
-the prototype; widget transport is a separate following palier.
+configuration flag or migration fallback. The widgets call this local gateway directly; omitting `targetProject` uses
+the application serving the frontend.
 
 `app.entityAccess` receives `input.request = {entity, operation, write, key,
 payload, user, roles?}`. `user` is exclusively the authenticated server session;
