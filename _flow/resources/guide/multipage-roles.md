@@ -1,9 +1,17 @@
-# Flow Multi-Page Application with Roles
+# Flow Multi-Page Roles: Direct SQL Alternative
 
-Ordered recipe for a multi-page Flow application with a session, roles, a server-side data perimeter, a CSV export, a scheduled job and an audit journal.
+Alternative recipe for an explicit direct-SQL application, or an application without persisted business data.
 
-This recipe builds a small room-booking application: a user sees their own
-bookings; a manager sees every booking and the journal. Its demonstration
+Any persisted business data with roles uses `lib_flow_entity` by default:
+read `flow://guide/entities` then `flow://guide/multipage-entities` instead.
+Use this guide only when there is no persisted business data or the user
+explicitly requests direct SQL. Sign-in, CSV export, a scheduled job and audit
+are independent additions (`flow://guide/start`),
+not reasons to choose this alternative.
+
+The persisted room-booking example below applies only to an explicit request
+for direct SQL: a user sees their own bookings; a manager sees every booking
+and the journal. Its demonstration
 sign-in is disabled by default.
 
 ## 1. Prepare the contracts

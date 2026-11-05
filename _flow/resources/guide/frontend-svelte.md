@@ -8,6 +8,12 @@ read `flow://guide/fullstack-paperboard` first. Read
 `flow://guide/frontend-svelte-routing` only for optional/rest/matched segments,
 route groups or advanced layouts.
 
+For any persisted business data with roles, add `lib_flow_entity` and read
+`flow://guide/entities` then `flow://guide/multipage-entities` before wiring
+the pages. Sign-in, CSV, jobs and audit do not change that data route. Only no
+persisted business data or an explicit request for direct SQL selects
+`flow://guide/multipage-roles`.
+
 ## Mental Model
 
 An application is made of Pages. A distinct business step is a Page; a small

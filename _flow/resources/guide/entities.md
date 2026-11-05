@@ -4,9 +4,121 @@ Declare business data once, validate and revision its model with MCP, then use e
 
 Read `flow://guide/multipage-entities` for the ordered application recipe.
 The target project references `lib_flow_entity`, the SQL and CRUD data libraries,
-and the Svelte frontbuilder. Authentication uses the Flow port of
-`lib_UserManager`; account selectors and client-supplied roles do not establish
-an identity. Read each available contract with `flow-block-get` before use.
+and the Svelte frontbuilder. Authentication may use the Flow port of
+`lib_UserManager` or a project actor provider backed by the server session.
+Client-supplied roles never establish rights. Read each available contract
+with `flow-block-get` before use.
+
+## Authentication
+
+`config.entities.actorProvider` names an ordinary **project block**, called with
+**no inputs (`{}`)** on every entity operation. The default is `userManager.actor`.
+It returns `{user: string, roles: string[]}`; return active, authorized roles
+from the server directory, never from request inputs or browser state. Entity
+resolution first requires `context.getAuthenticatedUser()` (401 if absent),
+then rejects a missing actor, a non-array `roles`, a `user` different from that
+session identity, or roles lacking read permission (`ENTITY_FORBIDDEN`, 403).
+It does not cache actors with model plans. Create/update/delete permissions and
+ownership are then checked for that same actor. A hook also receives this actor.
+
+For a project with its own account table, the following minimal configuration
+uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
+`ROLE` is a server-validated role, the last two columns are booleans. The SQL
+connection `app` is configured separately (see the multi-page recipe). Both
+queries remain private, parameterized and bounded. The demo switch defaults off.
+
+<!-- example: actor-config -->
+```yaml
+config:
+  entities:
+    connection: app
+    gateway: true
+    actorProvider: app.actor
+  demo:
+    login: "${<project>.demo.login=false}"
+  sql:
+    queries:
+      actorBySession:
+        connection: app
+        readOnly: true
+        expose: false
+        maxRows: 1
+        sql: 'SELECT USER_ID AS "user", ROLE AS "role" FROM APP_USER WHERE USER_ID=:user AND ACTIVE=TRUE'
+        parameters: [{name: user, type: string}]
+        columns: [{name: user, type: string, nullable: false}, {name: role, type: string, nullable: false}]
+      demoAccount:
+        connection: app
+        readOnly: true
+        expose: false
+        maxRows: 1
+        sql: 'SELECT USER_ID AS "user" FROM APP_USER WHERE USER_ID=:user AND ACTIVE=TRUE AND DEMO=TRUE'
+        parameters: [{name: user, type: string}]
+        columns: [{name: user, type: string, nullable: false}]
+```
+
+Save this block with `code-set({project,block:"app.actor",code:...})`:
+
+<!-- example: actor-block -->
+```javascript
+const _meta = {
+  sourceVersion: 2,
+  private: true,
+  properties: {},
+  outputs: { out: { type: "object", properties: { user: { type: "string" }, roles: { type: "array", items: { type: "string" } } } } },
+}
+
+function block({ input, config, result }) {
+  local.user = session.authenticatedUser({})
+  if (!local.user) {
+    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+  }
+  local.accounts = sql.query({ query: "actorBySession", parameters: { user: local.user }, limit: 1 })
+  local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
+  if (!local.account || (local.account.role !== "USER" && local.account.role !== "MANAGER" && local.account.role !==
+    "ADMIN")) {
+    throw { code: "FORBIDDEN", message: "Active account required", status: 403 }
+  }
+  return { user: local.account.user, roles: [local.account.role] }
+}
+```
+
+`session.authenticate` **sets** a server session; it does not verify a password.
+A demo picker may call the flow below only after an administrator explicitly
+enables the symbol. A chosen demo account is looked up on the server before
+opening the session; a client-supplied role is unused. Keep demo accounts neutral
+and distinct from real accounts, and hide the picker when the switch is off.
+Do not enable this route in production. Authentication is separate from the
+choice of entities, direct SQL, CSV or scheduling.
+
+<!-- example: demo-login -->
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "hidden", inputs: { account: { type: "string" } } }
+
+function DemoLogin({ input, config, result }) {
+  if (String(config.demo.login) !== "true") {
+    throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 }
+  }
+  local.accounts = sql.query({ query: "demoAccount", parameters: { user: input.account }, limit: 1 })
+  local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
+  if (!local.account) {
+    throw { code: "FORBIDDEN", message: "Demo account required", status: 403 }
+  }
+  session.authenticate({ user: local.account.user })
+  local.actor = app.actor({})
+  result.authenticated = true
+  result.user = local.actor.user
+  result.roles = local.actor.roles
+}
+```
+
+Prefer **`lib_UserManager` for real accounts, passwords and user administration**:
+reference it, use its sign-in/session flows, and retain the default actor provider.
+For a responsible-person relation to that directory, use the imported
+`userManager.User` provider below; do not assume its storage. A project directory
+can instead expose its non-secret account identifiers through a read-only entity.
+Never accept an arbitrary user parameter in a production session-setting flow.
+The MCP authoring token identifies the author, not an application user; browser
+sessions and test sessions remain separate.
 
 ## Model authoring without generated code
 
@@ -25,11 +137,12 @@ FlowScript. Entity operations interpret it; this tool creates neither CRUD
 Flows nor pages. Keep project-specific validation and side effects as ordinary
 Flow hooks. SQL initialization is explicit and preserves existing data.
 
+<!-- example: equipment-model -->
 ```json
 {"version":2,"modelVersion":1,"entities":{"Equipement":{"label":"Equipment","display":{"title":"libelle"},"permissions":{"read":["USER","ADMIN"],"create":["USER","ADMIN"],"update":["USER","ADMIN"],"delete":["ADMIN"]},"traits":["Activable","Horodaté","Révisé"],"fields":{"libelle":{"type":"string","maxLength":120},"dateDerniereVerification":{"type":"date","notFuture":true}}}}}
 ```
 
-For ownership and responsible-person pickers, declare `imports: {userManager:
+When using lib_UserManager for ownership and responsible-person pickers, declare `imports: {userManager:
 "lib_UserManager"}` and a local read-only `Utilisateur` entity with
 `extends:"userManager.User"`, rather than copying its SQL table. Read the installed entity and user
 manager contracts for the exact identity type, directory adapter and allowed
@@ -126,6 +239,7 @@ Preconditions for this example:
 
 Borrow in a single request:
 
+<!-- example: borrow-book -->
 ```javascript
 const _flow = {
   sourceVersion: 2,
@@ -159,6 +273,7 @@ function Emprunter({ input, config, result }) {
 
 Return in a single request:
 
+<!-- example: return-book -->
 ```javascript
 const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: { pret: { type: "object" } } }
 

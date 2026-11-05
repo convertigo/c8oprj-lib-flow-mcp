@@ -6,6 +6,13 @@ Use this guide for a Flow task that must deliver a backend plus a Svelte
 frontend, especially when the user asks for an application from a short prompt
 or for a legacy Convertigo screen to be rebuilt with Flow technologies.
 
+Choose the data route first: any persisted business data with roles uses
+`lib_flow_entity` and `flow://guide/entities`, then
+`flow://guide/multipage-entities`. Sign-in (real or demonstration), CSV, jobs
+and audit are independent additions; their presence does not select direct
+SQL. `flow://guide/multipage-roles` is reserved for no persisted business data
+or an explicit user request for direct SQL.
+
 The default goal is a runnable POC: one backend pass, one frontend application
 pass, build, and one useful browser path. One application pass may contain
 several Page sources. Stop after at most two focused repairs. Exhaustive
@@ -23,8 +30,8 @@ frontend at the same time instead of one after the other: the main agent sets
 the contract, two specialists build one side each, the main agent integrates.
 
 1. **Contract first (main agent).** Golden Path steps 1 to 3, then the data
-   model (entities, ids, fields; the `schema.json` of `lib_flow_sql` for SQL
-   data) and every Flow a page calls: its `_flow.inputs`, the fields of its
+   model (entities, ids, fields; an explicit direct-SQL request uses the
+   `schema.json` of `lib_flow_sql`) and every Flow a page calls: its `_flow.inputs`, the fields of its
    result and a minimal body that returns demo-shaped data with those exact
    names and types. `code-run` then `code-promote` each one so the frontend
    pickers see its fields. Write the contracts, the pages with the Flows they
@@ -117,7 +124,9 @@ source, including a structured literal for intentionally static content.
 ## Golden Path
 
 1. Bootstrap the exact target project with `flow-project-bootstrap({ project,
-   ui:true })` when FlowEngine or the Svelte builder is missing. Never edit
+   ui:true })` when FlowEngine or the Svelte builder is missing. For persisted
+   business data with roles, include `references:["lib_flow_entity"]` or add
+   that reference with `flow-project-reference` before writing drafts. Never edit
    `c8oProject.yaml`, `_c8oProject/**/*.yaml`, `_private/svelte` or
    `DisplayObjects` directly. Immediately call
    `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`

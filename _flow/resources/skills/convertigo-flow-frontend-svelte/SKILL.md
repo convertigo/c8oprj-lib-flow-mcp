@@ -66,6 +66,14 @@ invisible to all of them; a refusal says what to write instead.
 - Read `flow://guide/frontend-svelte` once from the server named exactly
   `convertigo-flow`, never from the Legacy server named `convertigo`. Read the
   routing or FullSync guide only when the application requires it.
+- For any persisted business data with roles, use the entity route: add the
+  `lib_flow_entity` project reference and read `flow://guide/entities` plus
+  `flow://guide/multipage-entities` before wiring `EntityTable`/`EntityForm`.
+  Demonstration sign-in, CSV export, jobs and audit are independent additions;
+  their entry point is `flow://guide/start`.
+  Use `flow://guide/multipage-roles` only with no persisted business data or
+  an explicit user request for direct SQL. Never replace entity permissions
+  or per-user scopes with checks confined to the page.
 - Record every successfully read guide URI for the current turn and never read
   that URI again, including after compaction or a repair pass.
 - Author Flow Svelte source and palette-backed blocks, never generated Svelte,

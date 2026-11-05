@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "private": true,
-  "description": "Reads the declared entity model and its SHA-256 revision.",
+  "description": "Reads the interpreted entity model and its SHA-256 revision. Default data route for persisted business data with roles: reference lib_flow_entity and follow flow://guide/entities then flow://guide/multipage-entities.",
   "icon": "mdi:database-cog",
   "properties": {
     "request": {

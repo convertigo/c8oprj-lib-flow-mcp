@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "private": true,
-  "description": "Validates an entity model without writing, with structured diagnostics.",
+  "description": "Validates an interpreted entity model without writing, with structured diagnostics. Use after flow-entity-model-get and before revisioned flow-entity-model-set; creates no CRUD code.",
   "icon": "mdi:database-cog",
   "properties": {
     "request": {

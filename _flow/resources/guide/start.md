@@ -11,15 +11,23 @@ Start here: the default Flow authoring route, the source contract, the project l
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` |
-| Business app with roles and per-user data: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` |
-| Custom multi-page app without an entity model | `flow://guide/multipage-roles` |
+| No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` |
 | Svelte-only frontend | `flow://guide/frontend-svelte` |
 | Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |
 | FullSync server DBOs and client actions | `flow://guide/fullsync` |
 | Locate and patch existing code | `flow://guide/search-and-edit` |
 | MCP JSONL tracing | `flow://guide/tracing` |
 | Ordered tags and named project configurations | `flow://guide/tags` |
+
+The data route takes precedence: any persisted business data with roles uses
+entities by default, including when the application also needs sign-in, a CSV
+export, a scheduled job or an audit journal. These are independent additions,
+not reasons to replace the entity model with direct SQL. Use
+`flow://guide/multipage-roles` only when there is no persisted business data or
+the user explicitly requests direct SQL. Generated CRUD is reserved for an
+explicit request for generated CRUD.
 
 Read each guide once per task. Use `resources/read`, or
 `flow-resource-get({uri,format:"text"})` for `flow://guide/`, `flow://lib/`
@@ -38,6 +46,28 @@ reproduction without secrets or personal data. The server's existing feedback
 consent applies. If the tool is absent or refuses reporting, mention the friction
 in the final answer; do not enable reporting, write an agent-local file or call
 another endpoint to bypass consent.
+
+## Authentication and add-ons
+
+Choose the data route above first. Authentication, exports, jobs and auditing
+can be added to either route; needing one of them does not select direct SQL.
+
+- Authentication: `flow://guide/entities` describes the session
+  and actor-provider contract for entities, with real account providers or an
+  explicitly requested demonstration session. Client-supplied roles never
+  establish an identity.
+- Demonstration sign-in: `flow://guide/multipage-entities`. A Flow
+  that opens a session without a password runs only when
+  `String(config.demo.login) === "true"`. Bootstrap declares this as the
+  global symbol `<project>.demo.login`, false by default; enable it only on a
+  demo server or in the Studio. A demo sign-in does not require direct SQL.
+- CSV export: `flow://guide/multipage-entities`. Reuse the same
+  server-side permissions and filters as the entity read.
+- Scheduled work: `flow://guide/multipage-entities`. A private,
+  bounded service Flow has an explicit server-side contract and does not rely
+  on a browser session.
+- Audit: `flow://guide/multipage-entities`. Keep the authorized mutation
+  and its permitted audit fields in the same transaction; never log secrets.
 
 ## Source contract in five rules
 
@@ -129,11 +159,8 @@ encode a block in `qname`.
   `=Origin` or `*` on an application with a session cookie: any site could
   call it in the name of a signed-in user. List the origins (`#`) when a
   separate front end needs them.
-- A demo sign-in (a Flow that opens a session without a password) runs only
-  when `String(config.demo.login) === "true"`. The bootstrap declares
-  `config.demo.login` as the global symbol `<project>.demo.login`, false by
-  default; set it to `true` only on a demo server or the Studio
-  (`flow://guide/multipage-roles`).
+- For sign-in and the independent CSV, job and audit additions, use
+  `flow://guide/start`; keep the chosen data route.
 - Keep a Flow `private` unless a frontend or an external client calls it:
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
@@ -169,7 +196,9 @@ encode a block in `qname`.
 
 ## Drafts, Save and caches
 
-- Add references before drafts (SQL needs `lib_flow_sql` and `lib_flow_crud_data`).
+- Add references before drafts: persisted business data with roles needs
+  `lib_flow_entity`; its storage/transaction layer and explicit direct SQL use
+  `lib_flow_sql` and `lib_flow_crud_data`.
   On `PROJECT_HAS_STUDIO_DRAFTS`, retain Flow code with `code-get`, then
   `code-promote` valid drafts. For drafts needing the reference: retain code,
   `code-discard`, add the reference, then restore with `code-set`.
@@ -233,8 +262,9 @@ After every tool call, check `result.error` in the structured result and read it
 ## Frontend entry
 
 Choose the task guide from the table above before coding. Business apps with
-roles and per-user data need the `lib_flow_entity` project reference and both
-entity guides. For Svelte, use `code-get` / `code-set` on `sourceFile`, then
+persisted business data and roles need the `lib_flow_entity` project reference
+and both entity guides, including with demonstration sign-in, CSV or jobs.
+For Svelte, use `code-get` / `code-set` on `sourceFile`, then
 `authoring-tree`, `authoring-palette` and `authoring-mutate` as needed. Run the
 viewer through `frontend-svelte-action`. Pages live under
 `_flow/frontbuilder/svelte/model/<App>/src/routes`; never edit generated Svelte.

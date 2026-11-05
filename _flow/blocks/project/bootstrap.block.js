@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "uses": ["project-starter"],
-  "description": "Bootstraps a Convertigo project for Flow authoring: a new project holds only its project bean, its FlowEngine and its references (no connector, no sequence), then FlowEngine metadata is added through DBO APIs.",
+  "description": "Bootstraps a Convertigo project for Flow authoring: a new project holds only its project bean, its FlowEngine and its references (no connector, no sequence), then FlowEngine metadata is added through DBO APIs. Any persisted business data with roles uses lib_flow_entity by default; sign-in, CSV and jobs are independent additions.",
   "icon": "mdi:application-import",
   "properties": {
     "project": {
@@ -20,7 +20,7 @@ const _meta = {
       "kind": "literal",
       "type": "boolean",
       "default": false,
-      "description": "Also configure the experimental Svelte frontbuilder.",
+      "description": "Also configure the experimental Svelte frontbuilder. For persisted business data with roles, include lib_flow_entity in references and follow flow://guide/multipage-entities; authentication, CSV and jobs do not select direct SQL.",
     },
     "references": {
       "kind": "literal",
@@ -29,7 +29,7 @@ const _meta = {
         "type": "string",
       },
       "default": [],
-      "description": "Existing Convertigo projects to reference after bootstrap.",
+      "description": "Existing Convertigo projects to reference after bootstrap. Include lib_flow_entity for persisted business data with roles, including with demonstration sign-in, CSV or jobs.",
     },
     "corsOrigin": {
       "kind": "text",
@@ -645,7 +645,7 @@ const _meta = {
 					symbol: name + ".demo.login",
 					value: false,
 					note: "Off by default. A sign-in Flow without password (demo accounts) must refuse unless String(config.demo.login) === \"true\"; " +
-						"set the global symbol " + name + ".demo.login to true only on a demo server or the Studio. See flow://guide/multipage-roles."
+						"set the global symbol " + name + ".demo.login to true only on a demo server or the Studio. See flow://guide/start; authentication mode does not change the entity data route."
 				};
 			}
 			result.configuredSvelte = flow.configuredSvelte;

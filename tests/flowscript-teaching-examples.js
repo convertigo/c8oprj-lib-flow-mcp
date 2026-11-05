@@ -20,6 +20,13 @@ try {
  var customExample=/```(?:javascript|flowscript)\n([\s\S]*?)```/.exec(customText)[1];
  var created=api('blockCodeSet',{name:'crm.customerLabel',code:customExample});
  assert(created.ok,'custom-block guide must compile: '+JSON.stringify(created));
+ // Register the ordinary project actor taught before its callers, rather than accepting an unknown block.
+ var entityText=read(new java.io.File(mcpRoot,'_flow/resources/guide/entities.md'));
+ var actorExample=/<!-- example: actor-block -->\s*```javascript\n([\s\S]*?)```/.exec(entityText);
+ assert(actorExample,'Entity guide must teach its actor block');
+ var actorCreated=api('blockCodeSet',{name:'app.actor',code:actorExample[1]});
+ assert(actorCreated.ok,'Entity actor guide must compile: '+JSON.stringify(actorCreated));
+
  function canonical(text,where) {
   var meta='',body=text.trim(),isBlock=/^const _meta\s*=/.test(body);
   if (isBlock) {

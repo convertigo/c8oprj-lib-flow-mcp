@@ -1,11 +1,18 @@
-# Flow CRUD Fast Path
+# Flow Generated CRUD
 
-Build a data application from an entity model with flow-crud-upsert, then add hand-written business Flows and pages on top of what it generates.
+Generate CRUD only on an explicit request, then add hand-written business Flows and pages on top of the generated model.
+
+Use this generated path only when the user explicitly requests generated
+CRUD. For any persisted business data with roles, the default is interpreted
+entities: `flow://guide/entities`, then `flow://guide/multipage-entities`.
+Authentication, CSV export and scheduled jobs do not select generated CRUD
+or direct SQL (`flow://guide/start`).
 
 ## When to use it
 
-Use it first, before writing any CRUD Flow or page by hand, when the
-application is mostly a set of entities with list, detail and form screens:
+When the user explicitly requests generated CRUD, use this guide before
+writing generated CRUD Flows or pages. It suits a set of entities with list,
+detail and form screens:
 reference data managed by an administrator, records with a status, relations
 between them, roles that may read or change each entity. One model gives the
 SQL schema and seed, the secured Flows, the session and the pages in seconds;
@@ -497,14 +504,14 @@ A list returns at most 200 rows: call it again with the next `offset` until
 `DATA_CSV_SCHEMA_INVALID` on a `timestamp` field, your `lib_flow_crud_data`
 predates timestamp export: pass flat rows (`list.map` over `page.rows`) with
 typed `columns`. Serve the file from a `.bin` facade with `file.respond`
-(`flow://guide/multipage-roles`).
+(`flow://guide/start`).
 
 ### Scheduled jobs
 
 A job has no session, so the generated entity Flows refuse it
 (`UNAUTHENTICATED`). Write a private Flow that works through named SQL with
 the copied connection, as a business action does, bounded and idempotent;
-schedule it as `flow://guide/multipage-roles` shows.
+schedule it as `flow://guide/multipage-entities` shows.
 
 ## Before delivery
 

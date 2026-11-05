@@ -85,13 +85,17 @@ server (rights, perimeters, state rules), never only in the page.
 - Start your own sub-agents in the foreground, independent ones together in
   one call, and wait for their reports before ending your turn: some hosts
   stop a background sub-agent when the turn ends.
-- A business application with roles and per-user data: add the
+- Any persisted business data with roles: use entities by default. Add the
   `lib_flow_entity` project reference (`flow-project-reference`), then read
-  `flow://guide/entities` and `flow://guide/multipage-entities` once, before
-  coding. Generated CRUD (`flow://guide/crud`, `flow-crud-upsert`) only when
-  the request asks for it explicitly.
-- A custom multi-page app without an entity model (sign-in, an export or a
-  scheduled job): read `flow://guide/multipage-roles` once.
+  `flow://guide/entities` and `flow://guide/multipage-entities` once before
+  coding. This rule still applies when sign-in is a demonstration picker,
+  or the application also needs a CSV export, scheduled job or audit journal.
+  These additions do not select direct SQL; use
+  `flow://guide/start` for their entry points.
+  Generated CRUD (`flow://guide/crud`, `flow-crud-upsert`) only when the
+  request asks for it explicitly.
+- Only with no persisted business data, or when the user explicitly requests
+  direct SQL: read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
   feature needs them. Do not load every guide pre-emptively.
 - Record every successfully read guide URI for the current turn. Never read the
@@ -342,6 +346,6 @@ share) is a delivery. Its definition of done adds the production build
 (`frontend-svelte-action` `build`, served under `DisplayObjects/mobile/`, user
 links on that URL), the demo sign-in off by default behind `config.demo.login`,
 `corsOrigin` left on the same-origin default, and database passwords through
-symbol references (`flow://guide/multipage-roles`).
+symbol references (`flow://guide/start`).
 
 Native bean writes refuse invalid scalar values; inspect `fixes` and `normalizations` (property, before, after) before continuing. Never rely on an invalid value becoming zero, false or the first enum constant.

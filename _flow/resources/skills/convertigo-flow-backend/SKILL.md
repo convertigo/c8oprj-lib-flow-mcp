@@ -106,6 +106,15 @@ for Svelte actions. Business rules stay in Flows.
   edit or the ranked candidate returned by code diagnostics, or one focused
   catalog lookup. Provider and
   workspace discovery are internal MCP concerns, not a separate agent tool.
+- Choose the data route before low-level storage discovery. Any persisted
+  business data with roles uses entities by default: add the `lib_flow_entity`
+  project reference, read `flow://guide/entities` and
+  `flow://guide/multipage-entities`, declare the model once and use `entity.*`.
+  A demonstration sign-in, CSV export, scheduled job or audit journal is an
+  independent addition, not a reason to rewrite CRUD or ownership in SQL.
+  `flow://guide/multipage-roles` is only for no persisted business data or a
+  user's explicit request for direct SQL. Generated CRUD (`flow-crud-upsert`,
+  `flow://guide/crud`) likewise requires an explicit request.
 - Data access (SQL databases, CouchDB, Baserow, shared CRUD contracts) comes
   from workspace libraries: when a diagnostic or `flow-catalog` lists
   `workspaceProviders`, reference that library with `flow-project-reference`
@@ -117,30 +126,37 @@ for Svelte actions. Business rules stay in Flows.
   `authoring-palette`, never from library sources or other folders. Call it
   once for each block whose contract the guide or a diagnostic (`contract`)
   does not give, before writing its call.
-- Business entities with roles and per-user data: declare them in the entity
-  model of `lib_flow_entity` (`flow://guide/entities`) and use the `entity.*`
-  blocks; the writes of one business action go together in the `$$nodes` of
-  one `sql.transaction`. Generated CRUD (`flow-crud-upsert`,
-  `flow://guide/crud`) only when the request asks for it explicitly.
-- SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
-  and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
+- Keep the writes of one business action together in the `$$nodes` of one
+  `sql.transaction`, including entity writes and their audit.
+- SQL is the storage/transaction layer for entities and bounded service jobs;
+  it is not a competing default application model. When that layer or an
+  explicitly requested direct-SQL application needs SQL, use `lib_flow_sql`
+  only (reads, writes, transactions, schema and demo data): read
+  `flow://lib/lib_flow_sql/sql` first and never write a
   JDBC call or a Rhino block for SQL. Add both `lib_flow_sql` and
   `lib_flow_crud_data` references before writing drafts; the latter owns
   `data.read` / `data.write` and the scalar validation used by `sql.query`.
-  Create schema/seed JSON resources before engine.yaml refers to them.
-  `seed:true` requires a configured dataFile; omit seed when the Flow inserts
-  its own rows with sql.write. Declare the tables in `schema.json` and
-  the sample rows in `data.json`, apply them with `sql.initialize`, then read
-  and write through `data.read` / `data.write` on a `sql.table` resource. The
-  HSQLDB development database lives in the project resources; PostgreSQL or
-  another database reuses the same declarations and Flows by configuration
-  only. Keep `sql.write` / `sql.transaction` for business operations beyond
-  CRUD. A missing SQL capability is a friction to report, not a reason to
-  bypass the library.
-- Accounts, sign-in, roles and password reset come from the Flow libraries
-  `lib_UserManager` and `lib_OAuth` (Google, Microsoft, OpenID): reference
-  them and call their Flows; never store, hash or check passwords in the
-  application, even for a demo.
+  For entities, use the model initialization recipe; do not duplicate entity
+  fields in a separate SQL schema or replace entity permissions with SQL
+  facades. When configuration references schema/seed JSON resources, create
+  those resources first. `seed:true` requires a configured dataFile; omit seed
+  when the Flow inserts its own rows with sql.write. For an explicitly
+  requested direct-SQL application, declare tables in `schema.json` and sample
+  rows in `data.json`, apply them with `sql.initialize`, then read and write
+  through `data.read` / `data.write` on a `sql.table` resource. The HSQLDB
+  development database lives in project resources; PostgreSQL or another
+  database reuses the declarations and Flows by configuration only. Keep
+  `sql.write` / `sql.transaction` for bounded service work beyond entity CRUD.
+  A missing SQL capability is a friction to report, not a reason to bypass
+  the library.
+- Real accounts, sign-in and password reset come from the Flow libraries
+  `lib_UserManager` and `lib_OAuth` (Google, Microsoft, OpenID): reference them
+  and call their Flows; never store, hash or check passwords in the application.
+  When a demonstration sign-in is explicitly requested, follow
+  `flow://guide/entities` and
+  `flow://guide/multipage-entities`: a guarded server-side session
+  and actor provider establish identity and roles; client parameters do not.
+  Authentication mode does not change the entity data route.
 - `email.send` uses the SMTP server of the platform (global symbols
   `lib_flow_engine.smtp.*`); do not configure a server in the project. Wrap
   it in `try` when a failed delivery must not stop the Flow.
