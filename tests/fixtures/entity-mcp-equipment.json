@@ -168,7 +168,7 @@
       "edits": [
         {
           "oldText": "config:\n",
-          "newText": "config:\n  entities:\n    gateway: true\n    actorProvider: userManager.actor\n    connection: app\n  sql:\n    connections:\n      app:\n        url: jdbc:hsqldb:file:.//_flow/resources/sql/database/entities;shutdown=true\n        dialect: hsqldb\n        user: SA\n        password: \"${${PROJECT}.db.password.secret=}\"\n        nativeRead: true\n        nativeWrite: true\n"
+          "newText": "config:\n  entities:\n    actorProvider: userManager.actor\n    connection: app\n  sql:\n    connections:\n      app:\n        url: jdbc:hsqldb:file:.//_flow/resources/sql/database/entities;shutdown=true\n        dialect: hsqldb\n        user: SA\n        password: \"${${PROJECT}.db.password.secret=}\"\n        nativeRead: true\n        nativeWrite: true\n"
         }
       ]
     }
