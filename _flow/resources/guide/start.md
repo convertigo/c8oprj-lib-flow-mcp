@@ -25,6 +25,8 @@ Persisted business data with roles defaults to entities, also with demo login,
 CSV, jobs or audit: these are independent additions. Direct SQL and generated
 CRUD require an explicit request. With no persisted business data, use
 `flow://guide/multipage-roles`.
+An imposed HTTP contract (Flow names, error codes/statuses, JSON keys) keeps
+entities: see Your own HTTP contract over entities in `flow://guide/entities`.
 
 Read each guide once. Use `resources/read`, or
 `flow-resource-get({uri,format:"text"})` for guide/library/skill URIs without a

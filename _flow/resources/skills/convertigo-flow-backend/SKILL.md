@@ -112,6 +112,7 @@ for Svelte actions. Business rules stay in Flows.
   `flow://guide/multipage-entities`, declare the model once and use `entity.*`.
   A demonstration sign-in, CSV export, scheduled job or audit journal is an
   independent addition, not a reason to rewrite CRUD or ownership in SQL.
+  Imposed HTTP names, error codes/statuses and JSON keys also keep entities: see Your own HTTP contract over entities in `flow://guide/entities`.
   `flow://guide/multipage-roles` is only for no persisted business data or a
   user's explicit request for direct SQL. Generated CRUD (`flow-crud-upsert`,
   `flow://guide/crud`) likewise requires an explicit request.

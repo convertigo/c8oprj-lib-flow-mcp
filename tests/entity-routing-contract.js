@@ -47,4 +47,14 @@ assert.ok(upsert.includes('explicitly requests generated CRUD') && upsert.includ
 assert.ok(guide('multipage-entities').includes('flow-project-bootstrap({project,ui:true,references:["lib_flow_entity","lib_flow_sql","lib_flow_crud_data"]})'), 'The nominal bootstrap includes the entity reference in one call');
 const entityGet = read('_flow/blocks/mcp/tool/flow/entity/model/get.block.js');
 assert.ok(entityGet.includes('lib_flow_entity') && entityGet.includes('flow://guide/multipage-entities'));
+assert.match(start, /imposed HTTP contract[\s\S]*?Your own HTTP contract over entities/);
+assert.match(backend, /Imposed HTTP names, error codes\/statuses and JSON keys also keep entities/);
+const entities = guide('entities');
+assert.ok(entities.indexOf('## Your own HTTP contract over entities') < entities.indexOf('## Authentication'));
+assert.ok(entities.indexOf('<!-- example: http-save-reservation -->') < entities.indexOf('## Authentication'));
+for (const code of ['ENTITY_UNAUTHENTICATED', 'ENTITY_FORBIDDEN', 'ENTITY_NOT_FOUND', 'ENTITY_VALIDATION', 'ENTITY_CONFLICT', 'BOOKING_WINDOW_CONFLICT']) assert.ok(entities.includes('| ' + (code === 'BOOKING_WINDOW_CONFLICT' ? "Your hook's code/status" : code)), code + ' has an adaptation policy');
+const multi = guide('multipage-entities');
+const quick = multi.slice(multi.indexOf('## Quick path'), multi.indexOf('Use this route'));
+assert.ok(quick.split('\n').length >= 30 && quick.split('\n').length <= 50, 'Quick path stays readable in 30–50 lines');
+assert.ok(quick.includes('HTTP') && quick.includes('Possédé') && quick.includes('The detail follows'));
 console.log('entity-routing-contract: documentation entry points agree');

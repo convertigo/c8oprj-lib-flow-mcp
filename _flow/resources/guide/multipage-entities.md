@@ -2,6 +2,45 @@
 
 Build a role-based booking application with session authentication, per-user entities, ordinary widget events, CSV export, a scheduled check and atomic auditing.
 
+## Quick path: contract first, details below
+
+1. Bootstrap with `flow-project-bootstrap` and direct references to
+   `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when
+   a Svelte application is needed. Do not generate CRUD sources.
+2. Read **Your own HTTP contract over entities** in `flow://guide/entities`
+   first when Flow names, JSON keys or error codes are imposed. They do not
+   require direct SQL: ordinary public Flows wrap `entity.*`.
+3. Configure one SQL connection and declare Room/Reservation once with
+   `flow-entity-model-check` then `flow-entity-model-set` using its revision.
+   Keep IDs/revisions as text and dates as ISO; no duplicate business schema.
+4. Install the private `app.actor` from the entities guide. It reads only the
+   authenticated server session and the server directory; never client roles.
+5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` below.
+   Prepare only neutral demo accounts; leave the demo switch off by default.
+   Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker.
+6. Declare permissions and `Possédé` in the model: USER sees their rows,
+   MANAGER/ADMIN sees all. The server sets ownership, not the form.
+7. Explicitly run private account preparation as an administrator, enable
+   demo sign-in only in the demo environment, then initialize model tables
+   with the authorized initialization Flow. Replay preserves existing rows.
+8. Add the private BookingRule hook below. It locks the room, checks overlap
+   across all owners, and throws on refusal; data and audit roll back together.
+   For an imposed 409, use HttpBookingRule from the entities guide instead.
+9. Expose only the named Flows your HTTP contract needs: guard the session,
+   validate inputs, call entity.list/read/save/delete, translate known errors,
+   return exact keys. For example, convert hidden-row 404 uniformly to 403.
+10. When screens are required, wire EntityTable selection to EntityForm and
+    saved/deleted events back to refresh, as below. HTTP facades do not require
+    these widgets; use them when they reduce screen code.
+11. Add CSV through the same authorized entity list, Journalisé with an
+    allowlist, and a private scheduled worker as independent additions.
+    No fabricated browser actor for jobs; keep their switch off by default.
+12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input,
+    overlap, stale revision, deletion and logout. Promote the verified Flows.
+
+The detail follows. Keep the model and permissions as the source of truth;
+only the small HTTP facade adapts names, error codes and response keys.
+
 Use this route for persisted business data with roles. Authentication, exports
 and scheduled work are additions, not a reason to choose direct SQL. This
 recipe uses a small project account table for a **demo disabled by default**;

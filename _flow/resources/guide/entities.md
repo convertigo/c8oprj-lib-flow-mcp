@@ -1,6 +1,150 @@
 # Interpreted Flow Entities
 
-Declare business data once, validate and revision its model with MCP, then use entity blocks and schema-driven EntityTable and EntityForm widgets.
+Declare business data once, expose your own HTTP contract with entity blocks, and add schema-driven widgets when useful.
+
+## Your own HTTP contract over entities
+
+No widget or generated CRUD is required. Name public Flows as your application
+contract requires: `MyReservations` → `entity.list`, `ReadReservation` →
+`entity.read` (not `entity.get`), `SaveReservation` → `entity.save`,
+`DeleteReservation` → `entity.delete`. Use the same guard and error translation
+for each endpoint; keep SQL, ownership and audit in the declared model.
+With the Reservation model in `flow://guide/multipage-entities`, this
+complete create/update facade accepts flat request fields and returns exact keys:
+
+<!-- example: http-save-reservation -->
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "hidden" }
+
+function SaveReservation({ input, config, result }) {
+  local.user = session.authenticatedUser({})
+  if (!local.user) {
+    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+  }
+  local.roomId = text.match({ text: input.room || "", pattern: "^[0-9]+$" })
+  if (typeof input.title !== "string" || !input.title.trim() || typeof input.room !== "string" ||
+    !local.roomId.matched || !input.starts || !input.ends) {
+    throw { code: "VALIDATION_FAILED", message: "Title, room and dates required", status: 400 }
+  }
+  try({
+    error: "local.failure",
+    $$try: function () {
+      local.row = entity.save({
+        entity: "Reservation",
+        key: input.id ? { id: input.id } : {},
+        revision: input.revision || "",
+        values: { title: input.title, room: input.room, starts: input.starts, ends: input.ends },
+      })
+    },
+    $$catch: function () {
+      if (local.failure.code === "ENTITY_UNAUTHENTICATED" || local.failure.code === "UNAUTHENTICATED") {
+        throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+      }
+      if (local.failure.code === "ENTITY_VALIDATION") {
+        throw { code: "VALIDATION_FAILED", message: local.failure.message, status: 400 }
+      }
+      if (local.failure.code === "ENTITY_NOT_FOUND" || local.failure.code === "ENTITY_FORBIDDEN" ||
+        local.failure.code === "FORBIDDEN") {
+        throw { code: "FORBIDDEN", message: "Reservation unavailable", status: 403 }
+      }
+      if (local.failure.code === "ENTITY_CONFLICT") {
+        throw { code: "REVISION_CONFLICT", message: "Reload before saving", status: 409 }
+      }
+      if (local.failure.code === "BOOKING_WINDOW_CONFLICT") {
+        throw { code: "BOOKING_WINDOW_CONFLICT", message: local.failure.message, status: 409 }
+      }
+      if (local.failure.code === "BOOKING_OVERLAP") {
+        throw { code: "ROOM_ALREADY_BOOKED", message: local.failure.message, status: 409 }
+      }
+      throw { code: "BOOKING_FAILED", message: "Booking service unavailable", status: 500 }
+    },
+  })
+  return {
+    reservation: {
+      id: local.row.key.id,
+      revision: local.row.revision,
+      title: local.row.values.title,
+      roomId: local.row.values.room,
+      starts: local.row.values.starts,
+      ends: local.row.values.ends,
+    },
+  }
+}
+```
+
+Identifiers/revisions stay text, including int64 above 2^53; dates stay ISO.
+`Possédé` supplies the owner from the server actor and scopes reads/writes.
+Its hidden/absent-row 404 becomes 403 **for both** in this contract: do not
+unmask another user's row to distinguish them. If the contract requires 404,
+keep that code instead. Adapt only the facade's JSON keys to your contract.
+
+<!-- example: http-list-reservations -->
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "hidden" }
+
+function MyReservations({ input, config, result }) {
+  local.user = session.authenticatedUser({})
+  if (!local.user) {
+    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+  }
+  local.actor = app.actor({})
+  if (local.actor.roles.indexOf("USER") < 0 && local.actor.roles.indexOf("MANAGER") < 0 &&
+    local.actor.roles.indexOf("ADMIN") < 0) {
+    throw { code: "FORBIDDEN", message: "Booking role required", status: 403 }
+  }
+  local.page = entity.list({ entity: "Reservation", options: { limit: 20, offset: input.offset || 0 } })
+  local.rows = list.map({
+    items: local.page.rows,
+    select: {
+      id: current.key.id,
+      title: current.values.title,
+      starts: current.values.starts,
+      ends: current.values.ends,
+    },
+  })
+  return { reservations: local.rows, total: local.page.total }
+}
+```
+
+For an imposed business 409, set `Reservation.hooks.beforeSave` to
+`HttpBookingRule`. It adds the application's date-order refusal and reuses the
+detailed recipe's locked overlap check. Its code/status reach the Flow unchanged:
+
+<!-- example: http-booking-rule -->
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "private", authenticatedContextRequired: true }
+
+function HttpBookingRule({ input, config, result }) {
+  local.values = input.mutation.patch
+  if (!input.mutation.creating) {
+    local.previous = entity.read({ entity: "Reservation", key: input.mutation.key })
+    local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
+  }
+  if (local.values.starts >= local.values.ends) {
+    throw { code: "BOOKING_WINDOW_CONFLICT", message: "End must follow start", status: 409 }
+  }
+  flow.call({ flow: "BookingRule", input: input })
+}
+```
+
+| Native error | Application example | Where to adapt |
+|---|---|---|
+| ENTITY_UNAUTHENTICATED / 401 | UNAUTHENTICATED / 401 | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
+| ENTITY_FORBIDDEN / 403 | FORBIDDEN / 403 | Prevent with server actor roles, or convert in catch. Never trust client roles. |
+| ENTITY_NOT_FOUND / 404 (also outside Possédé) | FORBIDDEN / 403 | Convert in catch, uniformly for absent and hidden rows; keep 404 if required instead. |
+| ENTITY_VALIDATION / 422 | VALIDATION_FAILED / 400 | Validate inputs before save; convert remaining model validation in catch. |
+| ENTITY_CONFLICT / 409 | REVISION_CONFLICT / 409 | Convert in catch; reload, do not blindly retry. |
+| Your hook's code/status | BOOKING_WINDOW_CONFLICT / 409 | Throw in the hook; preserve that literal code/status in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED / 409. |
+
+A throw code is literal text: add one catch branch per expected business code,
+not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED / 500
+at this public boundary, without exposing internal errors; never report success.
+A thrown error interrupts the Flow: HTTP status is its `status`, JSON contains
+`error.code`, `error.message`, `error.status`, and no success result. Use
+`return { ... }` for exact success keys, not `{error:...}` as a successful result.
+For demo login and `me`, use the project actor in **Authentication** below and
+**Demo login** in `flow://guide/multipage-entities`; the switch stays off by
+default. Login/session shape is independent of the choice of entities.
 
 Read `flow://guide/multipage-entities` for the ordered application recipe.
 The target project references `lib_flow_entity`, the SQL and CRUD data libraries,
