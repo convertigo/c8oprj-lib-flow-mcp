@@ -53,9 +53,23 @@ try {
   assert(/Required for a new check/.test(descriptor.inputSchema.properties.paths.description),'paths property explicit');
   assert(!descriptor.inputSchema.required&&JSON.stringify(original)===originalJson,'no global requirement on resume and no legacy mutation');
   assert(!descriptor.inputSchema.properties.inputs&&/subagent-run/.test(descriptor.description)&&/profile:\u0022verifier/.test(descriptor.description),'historical schema routes Flow to the existing verifier tool');
+  function structuralSchema(value){
+   if(Array.isArray(value))return value.map(structuralSchema);
+   if(!value||typeof value!=='object')return value;
+   var out={};Object.keys(value).filter(function(k){return k!=='description';}).forEach(function(k){out[k]=structuralSchema(value[k]);});return out;
+  }
+  assert(JSON.stringify(structuralSchema(descriptor.inputSchema))===JSON.stringify(structuralSchema(original.inputSchema)),'entire legacy schema preserved except descriptions');
+  var contract=eval(read(root+'/tests/fixtures/legacy-verifier-inputs.js'));
+  var example=/For Flow use subagent-run\((\{[\s\S]*?\})\);/.exec(descriptor.description);
+  assert(example,'fallback example found');
+  var forwarded=eval('('+example[1]+')'),inputs=contract.inputs(forwarded);
+  assert(Object.keys(forwarded).every(function(k){return contract.arguments.indexOf(k)>=0;})&&forwarded.profile==='verifier'&&forwarded.task.length,'fallback uses accepted legacy sequence arguments');
+  assert(inputs.project==='MyApp'&&inputs.url==='<openUrl from dev.open>'&&inputs.paths.length===1,'actual legacy parser retains required viewer inputs');
+
   original.inputSchema.properties.inputs={type:'object'};
   var extended=mcp.legacyRelayTools({convertigoContext:function(){return {httpServletRequest:{getScheme:function(){return 'http';},getLocalPort:function(){return server.getAddress().getPort();},getContextPath:function(){return '/convertigo';},getHeader:function(){return null;}}};}})[0];
   assert(/include inputs.project/.test(extended.description)&&!/cannot carry/.test(extended.description),'compatible schema documents project directly');
+  assert(JSON.stringify(structuralSchema(extended.inputSchema))===JSON.stringify(structuralSchema(original.inputSchema)),'extended schema also preserves every non-description field');
  } finally {server.stop(0);}
  print('bench-frictions-1105 OK ('+checks+' checks)');
 } finally {FU.deleteDirectory(temp);}
