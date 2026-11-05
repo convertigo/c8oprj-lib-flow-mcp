@@ -205,4 +205,4 @@ ordinary select/saved/deleted events for editing and refresh, and ownershipFilte
 only as an extra display filter, never a substitute for server scope. The form
 uses create/update, never upsert. See flow://guide/entities, One access policy.
 
-A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.
+A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.

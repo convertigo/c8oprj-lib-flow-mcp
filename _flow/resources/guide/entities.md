@@ -184,7 +184,8 @@ Creation imposes scope values over forged input. Updates, including hook writes,
 must remain in scope or their transaction (audit included) rolls back.
 
 The generated policy is the explicit default. Open anonymous reads simply by
-editing `publicRead`; writes still require an application decision:
+editing `publicRead`; uncomment and adapt the role example to scope rows per role
+(this also opens the matching writes):
 
 <!-- example: default-access-policy -->
 ```javascript
@@ -199,15 +200,32 @@ function block({ input, config, result }) {
   if (!input.request.user) {
     throw { code: "ENTITY_UNAUTHENTICATED", message: "Sign in to read entities.", status: 401 }
   }
+  // Rows per role, for reads and writes: ADMIN every ticket, SUPPORT the tickets assigned
+  // to it, anyone else the tickets they requested (creation imposes requesterId).
+  // input.request.roles needs config.entities.actorProvider (flow://guide/entities).
+  // if (input.request.entity === "Ticket") {
+  //   if (input.request.roles.includes("ADMIN")) {
+  //     return {}
+  //   }
+  //   if (input.request.roles.includes("SUPPORT")) {
+  //     return { scope: { assigneeId: input.request.user } }
+  //   }
+  //   return { scope: { requesterId: input.request.user } }
+  // }
   if (input.request.write) {
-    // To open writes for session users and keep them inside their own rows:
-    // return { scope: { owner: input.request.user } }
-    // Use the actual owner field declared by your entity; never a client identity.
     throw { code: "ENTITY_FORBIDDEN", message: "Writes are disabled by the application policy.", status: 403 }
   }
   return {}
 }
 ```
+
+`input.request.roles` exists only when `config.entities.actorProvider` names your
+actor block (**Authentication** below); without it, `roles.includes(...)` is false
+and everyone gets the narrowest scope. Scope fields can be relations, as above.
+A relation's labels, options and validation read its target through this same
+policy: keep a referenced directory readable when signed in (hide its other fields
+with `visibleTo`). If the policy refuses the target, labels are omitted with the run
+warning `ENTITY_RELATION_LABELS_OMITTED`; options and validation are refused.
 
 Without that block, the same default applies: nonempty
 `getAuthenticatedUser()` for reads, all writes refused. A cookie alone is not
@@ -220,7 +238,7 @@ writes are `create`, `update`, `delete`. `save` is classified by its supplied
 identity (update requires an existing row; never upsert), never by client
 `write`. Unknown operations, `initialize` and `demoReset` return
 `ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
-A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.
+A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 `describe.permissions` evaluates create/update/delete, including an additional
 authorization slot, without hooks or mutation;
 policies and slots must be safe to evaluate for a capability, with an empty
@@ -234,6 +252,32 @@ The scaffold has **no slot**, so it never authorizes twice. Direct public
 facades use `checkAccess:true` instead; it is a source option, never copied
 from HTTP input. Trusted defaults (`false`) remain for private application
 composition and jobs. Do not expose an unguarded trusted primitive publicly.
+
+## Lists: filters and pages
+
+`entity.list` returns **one page**: `rows`, `total`, `hasMore`, `nextOffset`
+(`limit` 25 by default, 200 at most). `options.filter` is ANDed with the policy
+scope and takes the same short form, `{field: value}` (equalities, relations
+included; an array means one of), or `{field, op, value}` with `eq`, `in`,
+`contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`. Do not use `rows`
+as the whole list without checking `hasMore`: `code-set` warns
+`ENTITY_LIST_PAGE_UNCHECKED`, and a run that gets a partial page without an
+offset warns `ENTITY_LIST_INCOMPLETE`.
+
+```javascript
+local.page = entity.list({
+  entity: "Ticket",
+  checkAccess: true,
+  options: { limit: 200, filter: { equipmentId: input.equipmentId } },
+})
+if (local.page.hasMore) {
+  throw { code: "TOO_MANY_ROWS", message: "Narrow the filter", status: 413 }
+}
+result.tickets = local.page.rows
+```
+
+To page instead, pass `offset: input.offset || 0` and return `local.page.nextOffset`
+(`null` on the last page) with the rows.
 
 ## Schema initialization and demo reset
 

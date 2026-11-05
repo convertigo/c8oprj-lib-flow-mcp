@@ -76,7 +76,7 @@ assert.ok(!multi.includes('scope="mine"'), 'The nominal page relies on the serve
 console.log('entity-front-guide-contract: local transport, capabilities and display filters agree');
 
 // The backend contract distinguishes static authorization from row/hook decisions.
-const ddlGuarantee = 'A refusal by a policy, model ACL or authorization slot, including on a relation target, triggers no DDL; a refusal depending on data or a hook can occur after schema creation.';
+const ddlGuarantee = 'A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.';
 for (const [name, text] of Object.entries({entities, multi, router, backend})) {
   assert.ok(text.includes(ddlGuarantee), name + ': ' + ddlGuarantee);
   assert.ok(!text.includes('refusal causes no DDL'), name + ' must not promise rollback of bootstrap DDL');
