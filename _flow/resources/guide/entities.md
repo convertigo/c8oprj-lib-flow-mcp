@@ -203,6 +203,7 @@ function block({ input, config, result }) {
   // Rows per role, for reads and writes: ADMIN every ticket, SUPPORT the tickets assigned
   // to it, anyone else the tickets they requested (creation imposes requesterId).
   // input.request.roles needs config.entities.actorProvider (flow://guide/entities).
+  // Uncommented, it also opens delete and field rewrites (SUPPORT may rewrite requesterId, a requester choose assigneeId): restrict by input.request.operation or a model ACL.
   // if (input.request.entity === "Ticket") {
   //   if (input.request.roles.includes("ADMIN")) {
   //     return {}
