@@ -40,6 +40,9 @@ function SaveReservation({ input, config, result }) {
       if (local.failure.code === "ENTITY_UNAUTHENTICATED" || local.failure.code === "UNAUTHENTICATED") {
         throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
       }
+      if (local.failure.code === "ENTITY_SCHEMA_MISSING") {
+        throw { code: "ENTITY_SCHEMA_MISSING", message: local.failure.message, status: 403 }
+      }
       if (local.failure.code === "ENTITY_VALIDATION") {
         throw { code: "VALIDATION_FAILED", message: local.failure.message, status: 400 }
       }
@@ -132,6 +135,7 @@ function HttpBookingRule({ input, config, result }) {
 | ENTITY_UNAUTHENTICATED / 401 | UNAUTHENTICATED / 401 | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
 | ENTITY_FORBIDDEN / 403 | FORBIDDEN / 403 | Prevent with server actor roles, or convert in catch. Never trust client roles. |
 | ENTITY_NOT_FOUND / 404 (also outside Possédé) | FORBIDDEN / 403 | Convert in catch, uniformly for absent and hidden rows; keep 404 if required instead. |
+| ENTITY_SCHEMA_MISSING / 403 | ENTITY_SCHEMA_MISSING / 403 | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
 | ENTITY_VALIDATION / 422 | VALIDATION_FAILED / 400 | Validate inputs before save; convert remaining model validation in catch. |
 | ENTITY_CONFLICT / 409 | REVISION_CONFLICT / 409 | Convert in catch; reload, do not blindly retry. |
 | Your hook's code/status | BOOKING_WINDOW_CONFLICT / 409 | Throw in the hook; preserve that literal code/status in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED / 409. |
