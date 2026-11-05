@@ -7,7 +7,11 @@ Declare business data once, expose your own HTTP contract with entity blocks, an
 No widget or generated CRUD is required. Name public Flows as your application
 contract requires: `MyReservations` → `entity.list`, `ReadReservation` →
 `entity.read` (not `entity.get`), `SaveReservation` → `entity.save`,
-`DeleteReservation` → `entity.delete`. Use the same guard and error translation
+`DeleteReservation` → `entity.delete`. Use `checkAccess: true` on each public facade call (or the local
+`EntityGateway`); a session guard alone is not an authorization policy.
+`flow-entity-model-set` creates the project-owned gateway and `app.entityAccess`
+without overwriting either. Edit that one policy before opening writes;
+see **One access policy** below. Use the same guard and error translation
 for each endpoint; keep SQL, ownership and audit in the declared model.
 With the Reservation model in `flow://guide/multipage-entities`, this
 complete create/update facade accepts flat request fields and returns exact keys:
@@ -31,6 +35,7 @@ function SaveReservation({ input, config, result }) {
     $$try: function () {
       local.row = entity.save({
         entity: "Reservation",
+        checkAccess: true,
         key: input.id ? { id: input.id } : {},
         revision: input.revision || "",
         values: { title: input.title, room: input.room, starts: input.starts, ends: input.ends },
@@ -47,7 +52,7 @@ function SaveReservation({ input, config, result }) {
         throw { code: "VALIDATION_FAILED", message: local.failure.message, status: 400 }
       }
       if (local.failure.code === "ENTITY_NOT_FOUND" || local.failure.code === "ENTITY_FORBIDDEN" ||
-        local.failure.code === "FORBIDDEN") {
+        local.failure.code === "ENTITY_SCOPE_VIOLATION" || local.failure.code === "FORBIDDEN") {
         throw { code: "FORBIDDEN", message: "Reservation unavailable", status: 403 }
       }
       if (local.failure.code === "ENTITY_CONFLICT") {
@@ -76,7 +81,9 @@ function SaveReservation({ input, config, result }) {
 ```
 
 Identifiers/revisions stay text, including int64 above 2^53; dates stay ISO.
-`Possédé` supplies the owner from the server actor and scopes reads/writes.
+`checkAccess: true` applies the policy scope and the optional model restrictions,
+including `Possédé` and `visibleTo`. Trusted calls default to `false` and do not
+apply those access restrictions; their public caller must protect them.
 Its hidden/absent-row 404 becomes 403 **for both** in this contract: do not
 unmask another user's row to distinguish them. If the contract requires 404,
 keep that code instead. Adapt only the facade's JSON keys to your contract.
@@ -90,12 +97,11 @@ function MyReservations({ input, config, result }) {
   if (!local.user) {
     throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
   }
-  local.actor = app.actor({})
-  if (local.actor.roles.indexOf("USER") < 0 && local.actor.roles.indexOf("MANAGER") < 0 &&
-    local.actor.roles.indexOf("ADMIN") < 0) {
-    throw { code: "FORBIDDEN", message: "Booking role required", status: 403 }
-  }
-  local.page = entity.list({ entity: "Reservation", options: { limit: 20, offset: input.offset || 0 } })
+  local.page = entity.list({
+    entity: "Reservation",
+    checkAccess: true,
+    options: { limit: 20, offset: input.offset || 0 },
+  })
   local.rows = list.map({
     items: local.page.rows,
     select: {
@@ -133,7 +139,7 @@ function HttpBookingRule({ input, config, result }) {
 | Native error | Application example | Where to adapt |
 |---|---|---|
 | ENTITY_UNAUTHENTICATED / 401 | UNAUTHENTICATED / 401 | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
-| ENTITY_FORBIDDEN / 403 | FORBIDDEN / 403 | Prevent with server actor roles, or convert in catch. Never trust client roles. |
+| ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION / 403 | FORBIDDEN / 403 | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |
 | ENTITY_NOT_FOUND / 404 (also outside Possédé) | FORBIDDEN / 403 | Convert in catch, uniformly for absent and hidden rows; keep 404 if required instead. |
 | ENTITY_SCHEMA_MISSING / 403 | ENTITY_SCHEMA_MISSING / 403 | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
 | ENTITY_VALIDATION / 422 | VALIDATION_FAILED / 400 | Validate inputs before save; convert remaining model validation in catch. |
@@ -156,6 +162,72 @@ and the Svelte frontbuilder. Authentication may use the Flow port of
 `lib_UserManager` or a project actor provider backed by the server session.
 Client-supplied roles never establish rights. Read each available contract
 with `flow-block-get` before use.
+
+## One access policy, local to the application
+
+`flow-entity-model-set` creates a public `EntityGateway` and a private
+`app.entityAccess` **only if missing**. Its response lists created/preserved
+sources and the policy decisions still required. Neither is regenerated on
+model edits. There is no shared library gateway, project selector, gateway
+configuration flag or migration fallback. The backend contract below replaces
+the prototype; widget transport is a separate following palier.
+
+`app.entityAccess` receives `input.request = {entity, operation, write, key,
+payload, user, roles?}`. `user` is exclusively the authenticated server session;
+`roles`, when requested, comes exclusively from the configured actor provider.
+Client `user`, `roles`, `write`, `scope`, `project` and `checkAccess` have no
+control over authorization. Normal termination allows; throw
+`{code,message,status}` denies. Return `{scope:{field:value}}` to add **typed
+stored-field equalities**. No predicate language: client filters/search are
+ANDed with scope, also for count, options, relation validation and labels.
+Creation imposes scope values over forged input. Updates, including hook writes,
+must remain in scope or their transaction (audit included) rolls back.
+
+The generated policy is the explicit default. Open anonymous reads simply by
+editing `publicRead`; writes still require an application decision:
+
+<!-- example: default-access-policy -->
+```javascript
+const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+
+function block({ input, config, result }) {
+  // Entities readable without sign-in: for example ["Room"], or ["*"].
+  local.publicRead = []
+  if (!input.request.user && !(!input.request.write && (local.publicRead.includes("*") ||
+    local.publicRead.includes(input.request.entity)))) {
+    throw { code: "ENTITY_UNAUTHENTICATED", message: "Sign in to read entities.", status: 401 }
+  }
+  // Open writes here deliberately, using server identity/roles and a typed scope.
+  if (input.request.write) {
+    throw { code: "ENTITY_FORBIDDEN", message: "Writes are disabled by the application policy.", status: 403 }
+  }
+  return {}
+}
+```
+
+Without that block, the same default applies: nonempty
+`getAuthenticatedUser()` for reads, all writes refused. A cookie alone is not
+authentication. There is **no model ACL by default**. A declared `permissions`
+ACL adds refusals after the policy; `["ADMIN"]` cannot open a policy-denied write.
+`visibleTo` and `Possédé` access restrictions apply only on controlled calls.
+
+The closed read operations are `list`, `read`, `count`, `options`, `describe`;
+writes are `create`, `update`, `delete`. `save` is classified by its supplied
+identity (update requires an existing row; never upsert), never by client
+`write`. Unknown operations, `initialize` and `demoReset` return
+`ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
+Authorization runs **before** schema bootstrap: refusal causes no DDL.
+`describe.permissions` evaluates create/update/delete without hooks or mutation;
+policies must be safe to evaluate for a capability, with an empty key/payload.
+
+The gateway delegates to `entity.applyGateway({entity,operation,payload})`.
+An optional `$$authorize` slot runs after the policy and can only deny or add
+scope equalities. Its `current.request` is the server request; return
+`{scope:{...}}` for extra equalities. Replacing a previous equality is refused.
+The scaffold has **no slot**, so it never authorizes twice. Direct public
+facades use `checkAccess:true` instead; it is a source option, never copied
+from HTTP input. Trusted defaults (`false`) remain for private application
+composition and jobs. Do not expose an unguarded trusted primitive publicly.
 
 ## Schema initialization and demo reset
 
@@ -184,21 +256,22 @@ uses the SQL typed seed in dependency order. External provider entities are not
 SQL tables and cannot be seeded this way. Cyclic dependencies need an explicit
 application reset. See the complete public `demo_reset` and seed in
 `flow://guide/multipage-entities`; its optional guard belongs to the application.
-Reset bypasses business hooks/permissions; ordinary CRUD remains session-bound.
+Reset bypasses business hooks/access checks. Public CRUD must use the local
+gateway or explicit `checkAccess: true`; trusted primitives are not session-bound.
 
 ## Authentication
 
-`config.entities.actorProvider` names an ordinary **project block**, called with
-**no inputs (`{}`)** on every entity operation. The default is `userManager.actor`.
-It returns `{user: string, roles: string[]}`; return active, authorized roles
-from the server directory, never from request inputs or browser state. Entity
-resolution first requires `context.getAuthenticatedUser()` (401 if absent),
-then rejects a missing actor, a non-array `roles`, a `user` different from that
-session identity, or roles lacking read permission (`ENTITY_FORBIDDEN`, 403).
-It does not cache actors with model plans. Create/update/delete permissions and
-ownership are then checked for that same actor. A hook also receives this actor.
-Read the directory directly in this provider: calling `entity.*` here would
-resolve the actor again and recurse.
+`config.entities.actorProvider` optionally names a **project block**, called with
+**no inputs (`{}`)** only when the policy reads `request.roles`, or declared
+ACL/visibility/owner rules need roles. There is no default provider. It returns
+`{user: string, roles: string[]}` from the server directory. A provider user
+which differs from `context.getAuthenticatedUser()` is refused (403); an
+anonymous session cannot invent an actor. Actors are never cached with models.
+Without an ACL or `checkAccess`, entity primitives require neither actor nor
+session. `Possédé` still fills its owner from the session or a supplied value;
+`Journalisé` records the session user or `system`; revision, timestamps,
+validation and immutability remain active. Read the directory directly in the
+provider; controlled entity calls from an access policy are rejected as recursion.
 
 For a project with its own account table, the following minimal configuration
 uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
@@ -213,7 +286,6 @@ queries remain private, parameterized and bounded. The demo switch defaults off.
 config:
   entities:
     connection: app
-    gateway: true
     actorProvider: app.actor
   demo:
     login: "${<project>.demo.login=false}"
@@ -292,7 +364,7 @@ function DemoLogin({ input, config, result }) {
 ```
 
 Prefer **`lib_UserManager` for real accounts, passwords and user administration**:
-reference it, use its sign-in/session flows, and retain the default actor provider.
+reference it, use its sign-in/session flows, and set actorProvider to userManager.actor.
 For a responsible-person relation to that directory, use the imported
 `userManager.User` provider below; do not assume its storage. A project directory
 can instead expose its non-secret account identifiers through a read-only entity.
@@ -391,7 +463,7 @@ Native Svelte callers can also pass `cell_<field>` / `field_<field>` overrides,
 for example `cell_libelle` and `field_noteInterne`. These are concrete names,
 not angle-bracket wildcard slots. Preserve all other slots during an edit.
 
-The server removes hidden fields and enforces ownership, permissions and
+With checkAccess:true, the server removes hidden fields and enforces scope, optional ACLs and
 revision checks. Hiding an action or a management link is only presentation.
 Test anonymous, ordinary-user and administrator sessions over HTTP, then test
 the pages. A page loading or a successful model write is not that proof.
@@ -414,7 +486,7 @@ Preconditions for this example:
 - The authenticated application role has read/create/update rights needed by
   the operation. This example grants the two writes to `BIBLIOTHECAIRE`;
   `ADHERENT` does not acquire those rights by calling the Flow. Keep the real
-  session actor provider and the model's ownership rules. A domain member key
+  session actor provider, app.entityAccess policy and optional model ownership rules. A domain member key
   is not automatically the authenticated user's identifier.
 - Add the `lib_flow_entity` project reference. Read the installed contracts of
   `sql.transaction`, `entity.read` and `entity.save` before adapting the names.
@@ -433,16 +505,18 @@ function Emprunter({ input, config, result }) {
   sql.transaction({
     connection: "app",
     $$nodes: function () {
-      local.livre = entity.read({ entity: "Livre", key: input.livre })
+      local.livre = entity.read({ entity: "Livre", checkAccess: true, key: input.livre })
       if (!local.livre.values.disponible) {
         throw { code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté", status: 409 }
       }
       local.pret = entity.save({
         entity: "Pret",
+        checkAccess: true,
         values: { livre: local.livre.key.id, adherent: input.adherent, rendu: false },
       })
       local.updated = entity.save({
         entity: "Livre",
+        checkAccess: true,
         key: local.livre.key,
         revision: local.livre.revision,
         values: { disponible: false },
@@ -463,19 +537,21 @@ function Rendre({ input, config, result }) {
   sql.transaction({
     connection: "app",
     $$nodes: function () {
-      local.pret = entity.read({ entity: "Pret", key: input.pret })
+      local.pret = entity.read({ entity: "Pret", checkAccess: true, key: input.pret })
       if (local.pret.values.rendu) {
         throw { code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu", status: 409 }
       }
-      local.livre = entity.read({ entity: "Livre", key: { id: local.pret.values.livre } })
+      local.livre = entity.read({ entity: "Livre", checkAccess: true, key: { id: local.pret.values.livre } })
       local.closed = entity.save({
         entity: "Pret",
+        checkAccess: true,
         key: local.pret.key,
         revision: local.pret.revision,
         values: { rendu: true },
       })
       local.updated = entity.save({
         entity: "Livre",
+        checkAccess: true,
         key: local.livre.key,
         revision: local.livre.revision,
         values: { disponible: true },
@@ -502,7 +578,7 @@ in `$$nodes`, without an additional nested `sql.transaction`.
 
 For loans, use these business actions from frontend ordinary actions rather
 than exposing the two writes as separate form submissions. A transaction does
-not itself prohibit another permitted CRUD route: model permissions and server
+not itself prohibit another permitted CRUD route: the application policy, optional model ACLs and server
 hooks must also cover any route the application exposes. It does not grant
 privileges to an ADHERENT or impersonate a librarian.
 

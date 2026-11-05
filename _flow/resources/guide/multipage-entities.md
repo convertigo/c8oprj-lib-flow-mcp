@@ -2,6 +2,9 @@
 
 Build a role-based booking application with session authentication, per-user entities, ordinary widget events, CSV export, a scheduled check and atomic auditing.
 
+> This delivery validates the backend policy. UI examples below are preserved
+> for the following frontend palier; its transport update is still required.
+
 ## Quick path: contract first, details below
 
 1. Bootstrap with `flow-project-bootstrap` and direct references to
@@ -18,8 +21,9 @@ Build a role-based booking application with session authentication, per-user ent
 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` below.
    Prepare only neutral demo accounts; leave the demo switch off by default.
    Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker.
-6. Declare permissions and `Possédé` in the model: USER sees their rows,
-   MANAGER/ADMIN sees all. The server sets ownership, not the form.
+6. Edit scaffolded `app.entityAccess` with the policy below: USER sees their
+   rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly
+   opens selected entities. Writes stay closed until this application decision.
 7. Declare the typed entity demo seed below and call the public `demo_reset`
    before sign-in. No ADMIN cookie or separate initialization Flow is needed.
    Its guard belongs to the application; the library imposes none.
@@ -27,7 +31,8 @@ Build a role-based booking application with session authentication, per-user ent
    across all owners, and throws on refusal; data and audit roll back together.
    For an imposed 409, use HttpBookingRule from the entities guide instead.
 9. Expose only the named Flows your HTTP contract needs: guard the session,
-   validate inputs, call entity.list/read/save/delete, translate known errors,
+   validate inputs, call entity.list/read/save/delete with checkAccess:true,
+    translate known errors,
    return exact keys. For example, convert hidden-row 404 uniformly to 403.
 10. When screens are required, wire EntityTable selection to EntityForm and
     saved/deleted events back to refresh, as below. HTTP facades do not require
@@ -38,7 +43,7 @@ Build a role-based booking application with session authentication, per-user ent
 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input,
     overlap, stale revision, deletion and logout. Promote the verified Flows.
 
-The detail follows. Keep the model and permissions as the source of truth;
+The detail follows. Keep app.entityAccess as the unique application policy;
 only the small HTTP facade adapts names, error codes and response keys.
 
 Use this route for persisted business data with roles. Authentication, exports
@@ -80,7 +85,6 @@ Never convert them with `Number` or `parseInt`.
   "demo": {"dataFile":"_flow/resources/entities/demo.json"},
   "entities": {
     "Room": {
-      "permissions": {"read":["USER","MANAGER","ADMIN"],"create":["MANAGER","ADMIN"],"update":["MANAGER","ADMIN"],"delete":["ADMIN"]},
       "traits": ["Révisé"],
       "display": {"title":"name"},
       "fields": {
@@ -88,7 +92,6 @@ Never convert them with `Number` or `parseInt`.
       }
     },
     "Reservation": {
-      "permissions": {"read":["USER","MANAGER","ADMIN"],"create":["USER","MANAGER","ADMIN"],"update":["USER","MANAGER","ADMIN"],"delete":["MANAGER","ADMIN"]},
       "traits": ["Révisé","Horodaté",{"Possédé":{"owner":"owner","unrestricted":["MANAGER","ADMIN"]}},{"Journalisé":{"fields":["title","room","starts","ends","status","owner"]}}],
       "hooks": {"beforeSave":"BookingRule"},
       "display": {"title":"title"},
@@ -227,8 +230,8 @@ is true. Never add a role input. A demo identity is not a real password check.
 
 Keep the MCP bearer (source author) distinct from application cookie sessions.
 After `demo_reset`, sign in through the application; never infer this identity
-from `code-run` or its author token. Normal `entity.*` operations still require
-the server session and model permissions. Their first use ensures the additive
+from `code-run` or its author token. Public `entity.*` calls use `checkAccess:true` and the unique application policy.
+Trusted private calls require no session or model ACL. Their first use ensures the additive
 schema once per JVM/connection/model fingerprint; no initialization screen or
 ADMIN cookie is needed. Explicit `entity.initialize({})` is available for
 maintenance or a read-only `dryRun` / `verifyOnly`, without a session.
@@ -267,6 +270,53 @@ function Logout({ input, config, result }) {
   return { authenticated: false, user: null }
 }
 ```
+
+## Application access, one editable block
+
+Model-set has created `EntityGateway` and the default private
+`app.entityAccess` without overwriting existing code. Replace **only the policy**
+with this application decision. The actor provider above supplies server roles.
+No gateway slot or config key is needed; no model ACL opens additional rights.
+`Audit`/`APP_USER` retain optional deny-only ACLs as a second restriction.
+
+<!-- example: booking-access-policy -->
+```javascript
+const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+
+function block({ input, config, result }) {
+  // Explicit public catalog reads only; leave empty for authenticated reads.
+  local.publicRead = []
+  if (!input.request.user) {
+    if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
+      return {}
+    }
+    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+  }
+  local.roles = input.request.roles || []
+  local.manager = local.roles.includes("MANAGER") || local.roles.includes("ADMIN")
+  if (!local.manager && !local.roles.includes("USER")) {
+    throw { code: "FORBIDDEN", message: "Booking role required", status: 403 }
+  }
+  if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !local.manager)) {
+    throw { code: "FORBIDDEN", message: "Directory or audit unavailable", status: 403 }
+  }
+  if (input.request.write && ((input.request.entity === "Room" && !local.manager) || (input.request.operation ===
+    "delete" && !local.manager))) {
+    throw { code: "FORBIDDEN", message: "Manager action required", status: 403 }
+  }
+  if (input.request.entity === "Reservation" && !local.manager) {
+    return { scope: { owner: input.request.user } }
+  }
+  return {}
+}
+```
+
+`publicRead` is the single explicit opt-in for anonymous reads. Carefully choose
+public entities, including their fields and relations. Server scope is also
+applied to labels, options and counts. `Possédé` remains a reusable checked
+ownership trait; private hooks may read across owners deliberately.
+`initialize` and `demoReset` are not gateway operations and are not protected by
+this policy. Their public calling Flow supplies its own guard as below.
 
 ## 2. Apply the rule in an ordinary hook
 
@@ -420,7 +470,7 @@ custom cell, preserve the generic lexical snippet arguments described in
 
 ## Export CSV
 
-The export reuses `entity.list`, so forged users and roles cannot widen its
+The export reuses `entity.list` with `checkAccess:true`, so forged users and roles cannot widen its
 perimeter. This minimal export has no client filter and is explicitly complete
 up to 200 rows: if more exist, refuse rather than silently export one page.
 When adding screen filters, validate and pass the **same** filters here. For
@@ -431,7 +481,7 @@ larger exports use a bounded paging loop, not a client-side CSV encoder.
 const _flow = { sourceVersion: 2, accessibility: "hidden", authenticatedContextRequired: true }
 
 function ExportBookings({ input, config, result }) {
-  local.page = entity.list({ entity: "Reservation", options: { limit: 200, orderBy: "id" } })
+  local.page = entity.list({ entity: "Reservation", checkAccess: true, options: { limit: 200, orderBy: "id" } })
   if (local.page.hasMore) {
     throw { code: "EXPORT_LIMIT", message: "Narrow the export below 201 rows", status: 413 }
   }

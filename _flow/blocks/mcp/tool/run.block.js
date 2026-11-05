@@ -358,6 +358,15 @@ const _meta = {
 				} else {
 					result = ctx.callBlock(target, args, { trace: false });
 				}
+				if (target === "entity.model.set" && result && result.ok && result.scaffold &&
+						result.scaffold.created.indexOf("EntityGateway") >= 0) {
+					// Reuse ordinary Flow registration: the entity library writes sources,
+					// while this authoring tool owns live DBO/declaration persistence.
+					var gatewayFile = new Packages.java.io.File(String(args.projectDir), "_flow/flows/EntityGateway.flow.js");
+					result.scaffold.registration = mcp.registerFlowDbo(Object.assign({}, args, {
+						name: "EntityGateway", refresh: false, saveProject: false
+					}), {format:"flowscript", code:String(Packages.java.nio.file.Files.readString(gatewayFile.toPath()))});
+				}
 				if (target === "block.get") {
 					result = withLongDescription(ctx, args, result);
 				}

@@ -138,7 +138,7 @@ for Svelte actions. Business rules stay in Flows.
   `lib_flow_crud_data` references before writing drafts; the latter owns
   `data.read` / `data.write` and the scalar validation used by `sql.query`.
   For entities, use the model initialization recipe; do not duplicate entity
-  fields in a separate SQL schema or replace entity permissions with SQL
+  fields in a separate SQL schema or replace app.entityAccess with SQL
   facades. When configuration references schema/seed JSON resources, create
   those resources first. `seed:true` requires a configured dataFile; omit seed
   when the Flow inserts its own rows with sql.write. For an explicitly
@@ -190,3 +190,12 @@ for Svelte actions. Business rules stay in Flows.
 
 Return a compact handoff containing changed Flow/block QNames, effective output
 schemas, remaining mocks, validation evidence and the frontend contract.
+
+Entity backend access: model-set scaffolds a project-local EntityGateway and the
+unique private app.entityAccess without overwriting existing sources. Reads
+require an authenticated user by default; publicRead explicitly opens anonymous
+entities. Writes stay denied until the application policy opens them. Optional
+model ACLs only add denials. Public custom facades use checkAccess:true; trusted
+entity primitives default to false. Gateway operations are list/read/count/
+options/describe/create/update/delete (save classifies create/update); never
+initialize or demoReset. See flow://guide/entities, One access policy.

@@ -7,7 +7,9 @@ var __flowEngineDir = String(new java.io.File(engineDir).getCanonicalPath());
 var __flowProjectDir = String(new java.io.File(projectDir).getCanonicalPath());
 var engine = eval(String(FileUtils.readFileToString(new java.io.File(engineDir,"Engine.js"),"UTF-8")));
 var source = String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/flows/McpServer.flow.js"),"UTF-8"));
-var target = Files.createTempDirectory("entity-mcp-tools-").toFile();
+var workspace = Files.createTempDirectory(new java.io.File(projectDir,"../.cache/entity-tests").getCanonicalFile().toPath(),"entity-mcp-tools-").toFile();
+var target = new java.io.File(workspace,"EntityToolsTest");
+["lib_flow_engine","lib_flow_entity","lib_flow_sql","lib_flow_crud_data"].forEach(function(n){Files.createSymbolicLink(new java.io.File(workspace,"c8oprj-"+n.replace(/_/g,"-")).toPath(),new java.io.File(projectDir,"../"+n).getCanonicalFile().toPath());});
 var calls=0,assertions=0;
 function assert(value,message){assertions++;if(!value)throw new Error(message);}
 function rpc(method,params){
@@ -17,7 +19,7 @@ function rpc(method,params){
 }
 function tool(name,args){var response=rpc("tools/call",{name:name,arguments:args});return response.result&&response.result.structuredContent;}
 try {
- FileUtils.writeStringToFile(new java.io.File(target,"c8oProject.yaml"),"convertigo: 8.5.0.m006\n↓EntityToolsTest [core.Project]:\n  version: 1.0\n", "UTF-8");
+ FileUtils.writeStringToFile(new java.io.File(target,"c8oProject.yaml"),"convertigo: 8.5.0.m006\n↓EntityToolsTest [core.Project]:\n  version: 1.0\n  ↓entities [references.ProjectSchemaReference]:\n    projectName: lib_flow_entity\n", "UTF-8");
  var names=rpc("tools/list").result.tools;
  ["get","check","set"].forEach(function(op){
   var descriptor=names.filter(function(t){return t.name==="flow-entity-model-"+op;})[0];
@@ -37,6 +39,16 @@ try {
  assert(noRevision&&(noRevision.ok===false||!!noRevision.error),"Set without revision refused");
  var saved=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:"missing"});
  assert(saved&&saved.ok===true,"Initial write failed: "+JSON.stringify(saved));
+ assert(saved.scaffold&&saved.scaffold.created.indexOf("EntityGateway")>=0&&saved.scaffold.created.indexOf("block:app.entityAccess")>=0,"Local gateway and policy were scaffolded");
+ assert(/publicRead/.test(saved.scaffold.message)&&/Writes stay denied/.test(saved.scaffold.message),"Scaffold reports application decisions");
+ var gateway=new java.io.File(target,"_flow/flows/EntityGateway.flow.js"),policy=new java.io.File(target,"_flow/blocks/app/entityAccess.block.js");
+ assert(String(FileUtils.readFileToString(gateway,"UTF-8")).indexOf("$$authorize")<0,"Scaffold has no second authorization slot");
+ var authored=String(FileUtils.readFileToString(policy,"UTF-8"))+"\n// Application-owned policy\n";
+ FileUtils.writeStringToFile(policy,authored,"UTF-8");
+ var gatewayText=String(FileUtils.readFileToString(gateway,"UTF-8"));
+ var replay=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:saved.revision});
+ assert(replay.ok&&replay.scaffold.created.length===0&&replay.scaffold.preserved.length===2,"Scaffold replay preserves application sources");
+ assert(String(FileUtils.readFileToString(policy,"UTF-8"))===authored&&String(FileUtils.readFileToString(gateway,"UTF-8"))===gatewayText,"Neither custom policy nor gateway was overwritten");
  var read=tool("flow-entity-model-get",args);
  assert(read&&read.model.entities.Equipment.fields.label.default==="{{ 6 * 7 }}","Model text stays literal");
  assert(/^[0-9a-f]{64}$/.test(read.revision),"Model revision is SHA-256");
@@ -47,4 +59,4 @@ try {
  var unchanged=tool("flow-entity-model-get",args);
  assert(unchanged&&unchanged.revision===read.revision,"Refused writes preserve file");
  print(JSON.stringify({ok:true,protocolCalls:calls,assertions:assertions}));
-} finally {FileUtils.deleteDirectory(target);}
+} finally {FileUtils.deleteDirectory(workspace);}

@@ -349,3 +349,12 @@ links on that URL), the demo sign-in off by default behind `config.demo.login`,
 symbol references (`flow://guide/start`).
 
 Native bean writes refuse invalid scalar values; inspect `fixes` and `normalizations` (property, before, after) before continuing. Never rely on an invalid value becoming zero, false or the first enum constant.
+
+Entity backend access: model-set scaffolds a project-local EntityGateway and the
+unique private app.entityAccess without overwriting existing sources. Reads
+require an authenticated user by default; publicRead explicitly opens anonymous
+entities. Writes stay denied until the application policy opens them. Optional
+model ACLs only add denials. Public custom facades use checkAccess:true; trusted
+entity primitives default to false. Gateway operations are list/read/count/
+options/describe/create/update/delete (save classifies create/update); never
+initialize or demoReset. See flow://guide/entities, One access policy.
