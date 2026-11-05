@@ -302,7 +302,7 @@ const _meta = {
 	// The model property of flow-entity-model-check/-set: the format lib_flow_entity checks (entity-format.js),
 	// with the example an empty flow-entity-model-get returns. tests/entity-model-tools.js keeps them aligned.
 	var ENTITY_MODEL_FORMAT = "Complete entity model as JSON data, never code. Format version 2: check and set refuse any other key, " +
-		"naming its full path and the accepted values, every problem at once. " +
+		"naming its full path, the accepted values and the correct form, every problem at once. " +
 		"Model: version (2, required), modelVersion (positive integer, raised when the schema changes), entities {Name: entity}, " +
 		"traits {Name: project trait}, demo {dataFile}, imports {alias: project}. " +
 		"Entity: fields {name: field}, identity, label, display {title, subtitle}, traits, " +
