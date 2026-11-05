@@ -2401,7 +2401,11 @@
 			var diagnostic = withBlockContract(request, withWorkspaceProviders(request,
 				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true));
 			normalized.details = diagnostic;
-			if (diagnostic.next) normalized.hint = diagnostic.next + (normalized.hint ? " " + normalized.hint : "");
+			if (diagnostic.next) {
+				if (diagnostic.workspaceProviders && diagnostic.workspaceProviders.length) normalized.hint = diagnostic.next;
+				else if (String(normalized.hint || "").indexOf(diagnostic.next) < 0)
+					normalized.hint = diagnostic.next + (normalized.hint ? " " + normalized.hint : "");
+			}
 		}
 		if (request.method && request.method !== "tools/call") {
 			return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, normalized.message, {

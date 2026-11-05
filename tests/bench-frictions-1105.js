@@ -29,9 +29,12 @@ try {
    assert(response.error.details.workspaceProviders[0].project==='lib_flow_crud_data','real workspace provider '+name);
    assert(response.error.hint.indexOf('flow-project-reference')>=0&&response.error.hint.indexOf(name)>=0,'reference recovery '+name);
    assert(response.error.details.contract.indexOf(name)>=0,'contract targets the exact provider '+name);
+   assert(response.error.hint.indexOf('Inspect the closest')<0,'exact provider takes precedence over approximations '+name);
   }else if(name==='list.slice'){
    assert(raw.error.details.candidates.some(function(c){return c.block==='list.take';}),'existing slice alternative');
    assert(!response.error.details.workspaceProviders&&response.error.hint.indexOf('list.take')>=0,'do not suggest an unrelated workspace reference for a slice');
+   var twice=mcp.toolError({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'flow-block-get',arguments:{project:'App',name:name}}},response.error).result.structuredContent;
+   assert(twice.error.hint===response.error.hint,'error enrichment is idempotent');
   }
  });
  // Only the descriptor comes from this loopback stub; no browser or legacy server is called.
