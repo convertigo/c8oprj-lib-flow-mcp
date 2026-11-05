@@ -1789,7 +1789,11 @@
 			var error = new Error("Saving project " + args.project + " would also save unsaved Studio work (" +
 				pending.slice(0, 10).join(", ") + (pending.length > 10 ? ", ..." : "") + "). Nothing was changed.");
 			error.code = "PROJECT_HAS_STUDIO_DRAFTS";
-			error.hint = "Let the user save the project, or retry without saveProject.";
+			error.hint = "Resolve the listed drafts before saving the project or adding a reference: code-get each Flow to retain its exact code, " +
+				"then code-promote({project,name,revision}) if valid, or code-discard({project,name}) after retaining it. " +
+				"If validation needs the missing reference, retain the code, discard that invalid draft, add the reference, then code-set the retained code. " +
+				"Save other Studio drafts explicitly. Add all required references before writing new Flows.";
+			error.details = {project:String(args.project),pendingDrafts:pending,requiresChoice:true};
 			throw error;
 		}
 		return saveProject;
@@ -2393,6 +2397,12 @@
 	function toolError(request, error, ctx) {
 		request = request || {};
 		var normalized = normalizeToolError(error);
+		if (normalized.code === "UNKNOWN_BLOCK") {
+			var diagnostic = withBlockContract(request, withWorkspaceProviders(request,
+				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true));
+			normalized.details = diagnostic;
+			if (diagnostic.next) normalized.hint = diagnostic.next + (normalized.hint ? " " + normalized.hint : "");
+		}
 		if (request.method && request.method !== "tools/call") {
 			return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, normalized.message, {
 				code: normalized.code, hint: normalized.hint, details: normalized.details
@@ -3649,7 +3659,7 @@
 		return found ? String(new Packages.java.lang.String(Files.readAllBytes(new File(found.file).toPath()), StandardCharsets.UTF_8)) : null;
 	}
 
-	function withWorkspaceProviders(request, diagnostic) {
+	function withWorkspaceProviders(request, diagnostic, exactOnly) {
 		if (!diagnostic || diagnostic.code !== "UNKNOWN_BLOCK") return diagnostic;
 		var block = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "");
 		var target = String(toolArguments(request).project || "");
@@ -3659,12 +3669,14 @@
 		} catch (e) {
 			providers = [];
 		}
+		if (exactOnly) providers = providers.filter(function (provider) { return provider.block === block; });
 		if (!providers.length) return diagnostic;
 		var guides = libraryGuides().filter(function (guide) { return guide.project === providers[0].project; });
 		diagnostic.workspaceProviders = providers;
 		if (guides.length) diagnostic.workspaceGuides = guides.map(function (guide) { return guide.uri; });
 		diagnostic.candidateDecision = { recommendation: "reference", tool: "flow-project-reference",
 			reference: providers[0].project, bestBlock: providers[0].block };
+		delete diagnostic.contract;
 		diagnostic.next = "The workspace project " + providers[0].project + " provides " + providers[0].block +
 			": add it with flow-project-reference({project:\"" + (target || "<project>") + "\", reference:\"" + providers[0].project +
 			"\"}), use the block, then check again. Do not mock a block that a workspace library provides." +
@@ -4630,6 +4642,20 @@
 		"X-Convertigo-Reveal-Mode", "X-Convertigo-No-Log", "X-Convertigo-Subagent-Run"];
 	var LEGACY_RELAY_NOTE = " (Relayed to the Convertigo MCP of this server.)";
 
+	function relayedBrowserDescriptor(copy) {
+		var props = copy.inputSchema && copy.inputSchema.properties;
+		copy.description = String(copy.description || "") +
+			" A new check requires non-empty paths describing the journeys to walk (checks alone is insufficient). " +
+			(props && props.inputs
+				? 'For a Flow dev viewer, include inputs.project with the application project: {url:"<openUrl from dev.open>",paths:["Open the home page and check its title"],inputs:{project:"MyApp"}}. '
+				: 'This browser-verify schema cannot carry inputs.project, which a Flow dev viewer requires. For Flow use subagent-run({profile:"verifier",task:"Verify the home page",inputs:{project:"MyApp",url:"<openUrl from dev.open>",paths:["Open the home page and check its title"]}}); collect its report with subagent-run({runId}). ') +
+			"Resume a running check with verificationId alone.";
+		if (props && props.paths) props.paths.description = "Required for a new check: non-empty plain-language journeys to walk (prefer an array). checks does not replace paths.";
+		if (props && props.inputs) props.inputs.description = String(props.inputs.description || "") +
+			" For a Flow dev viewer, include project: the application project name; required before dev.ensure can run.";
+		return copy;
+	}
+
 	function legacyRelayEnabled() {
 		return String(System.getProperty("convertigo.flow.mcp.legacyRelay", "true")).toLowerCase() !== "false";
 	}
@@ -4855,6 +4881,7 @@
 			}).map(function (tool) {
 				var copy = neutralRelayDescriptions(JSON.parse(JSON.stringify(tool)));
 				copy.description = String(copy.description || "") + LEGACY_RELAY_NOTE;
+				if (String(copy.name) === "browser-verify") return relayedBrowserDescriptor(copy);
 				return String(copy.name) === "subagent-run" ? relayedSubagentDescriptor(copy) : copy;
 			});
 		} catch (e) {

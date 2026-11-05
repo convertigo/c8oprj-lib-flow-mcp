@@ -169,14 +169,15 @@ encode a block in `qname`.
 
 ## Drafts, Save and caches
 
+- Add references before drafts (SQL needs `lib_flow_sql` and `lib_flow_crud_data`).
+  On `PROJECT_HAS_STUDIO_DRAFTS`, retain Flow code with `code-get`, then
+  `code-promote` valid drafts. For drafts needing the reference: retain code,
+  `code-discard`, add the reference, then restore with `code-set`.
 - Studio edits are in-memory working copies: the Properties **Apply** button
   changes a draft, **Save project** writes files, Reload discards drafts.
-- On a project loaded in Convertigo, MCP shares those working copies:
-  frontend sources, Catalog components and sources created from palette
-  items are written as FlowEngine drafts (`draft:true`), and `code-get`,
-  trees, checks and the dev preview read them. Tell the user to **Save
-  project** when the work is done; a tool `saveProject` is refused while
-  other unsaved Studio work exists.
+- MCP reads and previews share Studio working copies (`draft:true`), including
+  frontend, Catalog and palette-created sources. Ask for **Save project** when
+  done; `saveProject` refuses while other unsaved Studio work exists.
 - `code-set` / `code-patch` on a Flow update its working copy (the Studio
   shows it unsaved); `code-promote` with the returned `revision` saves it.
   Project `.block.js` sources are written directly by `code-set`, which is

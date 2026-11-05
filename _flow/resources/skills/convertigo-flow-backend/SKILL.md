@@ -124,7 +124,12 @@ for Svelte actions. Business rules stay in Flows.
   `flow://guide/crud`) only when the request asks for it explicitly.
 - SQL goes through `lib_flow_sql` only (reads, writes, transactions, schema
   and demo data): read `flow://lib/lib_flow_sql/sql` first and never write a
-  JDBC call or a Rhino block for SQL. Declare the tables in `schema.json` and
+  JDBC call or a Rhino block for SQL. Add both `lib_flow_sql` and
+  `lib_flow_crud_data` references before writing drafts; the latter owns
+  `data.read` / `data.write` and the scalar validation used by `sql.query`.
+  Create schema/seed JSON resources before engine.yaml refers to them.
+  `seed:true` requires a configured dataFile; omit seed when the Flow inserts
+  its own rows with sql.write. Declare the tables in `schema.json` and
   the sample rows in `data.json`, apply them with `sql.initialize`, then read
   and write through `data.read` / `data.write` on a `sql.table` resource. The
   HSQLDB development database lives in the project resources; PostgreSQL or
