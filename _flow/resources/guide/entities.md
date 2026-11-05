@@ -281,7 +281,7 @@ To page instead, pass `offset: input.offset || 0` and return `local.page.nextOff
 
 ## Schema initialization and demo reset
 
-The schema is ensured on the first authorized entity operation, once per JVM,
+The schema is ensured on the first authorized data operation, once per JVM,
 connection settings and model fingerprint. Only additive changes are applied;
 `autoVersion` derives the next schema version, while removed/changed columns
 are refused before writes. No MCP database access or initialization step is
@@ -294,7 +294,7 @@ or a library demo switch.** The application protects any public caller. Private
 Convertigo code has no internal ACL. The configured database account and its
 DDL/DML grants are the production boundary; use a secret password symbol and
 a restricted account, not root. Missing CREATE rights return a clear
-ENTITY_SCHEMA_MISSING / 403 with the available additive plan.
+ENTITY_SCHEMA_MISSING / 403 without the DDL plan; see Backend preview boundary.
 
 Declare `demo: {dataFile: "_flow/resources/entities/demo.json"}` in the model.
 The JSON seed maps entity names to rows using **field names**, not SQL columns;
@@ -658,3 +658,42 @@ refusal, failure between and after both writes, validation of the second save,
 stale competing borrow, failed return, audit rollback, and a negative control
 without the parent scope. The stale competitor is a deterministic interleaving,
 not a simultaneous-thread stress test.
+
+
+## Backend preview boundary
+
+Entity data operations support **HSQLDB and PostgreSQL only**. MariaDB is not
+qualified for Entity CRUD; the SQL initializer's MariaDB support is separate.
+Other dialects return `ENTITY_DIALECT_UNQUALIFIED` / 400 before data bootstrap.
+
+`describe` is metadata-only: no DDL, hooks or mutation. Its explicit public keys
+are name, label, identity, traits (names only), fields, display, ui, permissions
+and revision. Fields contain only UI scalars/constraints; readable relations
+expose only entity and labelField. Unreadable relations have no relation metadata
+and are read-only. Rules, provider sources, SQL storage/columns and internal
+relation predicates never enter this contract. Capabilities are general dry
+probes, not an authorization for every row or value.
+
+Scope equality uses the field's type: exact decimal/int64 text, local timestamps
+with optional millisecond fraction, strict strings/booleans and explicit null.
+No conversion to JavaScript Number. Directory filters use the same equality;
+an OR with a non-identity branch cannot be reduced to an identity prefilter.
+
+`entity.initialize` and `entity.demoReset` are **exported blocks without a guard,
+to call from a Flow protected by the application** (`private:false` in the block
+catalog). They are not public HTTP endpoints by themselves and are not technically
+private blocks. Keeping them exported lets project Flows and agent pickers call
+them normally; changing visibility would hide the intended installation path.
+
+In trusted mode, creating a Possédé row prefers the authenticated server session
+for its owner; without a session, an explicit owner is preserved. No ACL is added.
+Controlled calls still use the application policy, scope and ownership rules.
+
+Application failures contain no SQL object/constraint names or DDL plan.
+`ENTITY_SCHEMA_MISSING` / 403 invites the administrator to fix the database.
+The structural plan stays in the server author-diagnostic log. An authenticated
+MCP author can run `entity.initialize({dryRun:true})` through `code-run` in a
+private project Flow to inspect the full additive plan; no ADMIN application
+cookie is required. Keep that author preview separate from the public gateway.
+SQL row locks share SQL binding/deadlines/error translation: concurrent retry is
+409, backend timeout/cancellation is 504; a cancelled Flow keeps SQL_CANCELLED.

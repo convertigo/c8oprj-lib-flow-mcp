@@ -206,3 +206,11 @@ only as an extra display filter, never a substitute for server scope. The form
 uses create/update, never upsert. See flow://guide/entities, One access policy.
 
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
+
+Entity data operations support HSQLDB and PostgreSQL only; MariaDB is not qualified
+for Entity CRUD. initialize/demoReset are exported blocks without guards
+(private:false), called by an application-protected Flow. Trusted owner creation
+prefers the session, else an explicit owner. describe is metadata-only, with an
+explicit UI projection and no unreadable relation metadata. SQL names/DDL stay
+out of public errors; the authenticated MCP author can use code-run with
+entity.initialize({dryRun:true}) for the additive plan. See Backend preview boundary.

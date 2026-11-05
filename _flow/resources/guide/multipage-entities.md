@@ -581,6 +581,16 @@ may have HTTP 200 with a Flow error: show `Status`, not only a result field.
 Keep sources in Git and runtime data out. Run `flow-block-mock-list`, build with
 `frontend-svelte-action` build, try the published URL, and run
 `flow-app-progress` hardening. Keep CORS same-origin, symbols for credentials,
-demo login/jobs off by default, private initialization and documented production
+demo login/jobs off by default, application-protected initialization and documented production
 identity/database choices. Entity example tests execute every backend/config
 fence above; `frontend-guide-examples` compiles the exact layout and editor.
+
+
+Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support
+is not Entity qualification. `initialize`/`demoReset` remain exported blocks
+without guards (`private:false`), called from a Flow protected by the application.
+Trusted ownership prefers a live session, otherwise preserves an explicit owner.
+`describe` is metadata-only and bounded; unreadable relation targets are omitted.
+Public errors omit SQL names and DDL. Author diagnostics and the additive preview
+stay in the server log and authenticated MCP `code-run` of `entity.initialize`
+with `dryRun:true`. See Backend preview boundary in `flow://guide/entities`.
