@@ -3800,6 +3800,42 @@
 		return out;
 	}
 
+	// entity.list returns one page. A Flow that keeps its rows without an offset uses them as the whole list:
+	// it must read hasMore, nextOffset or total of that page somewhere (refuse, narrow or page).
+	function entityListPageWarnings(code) {
+		var text = String(code || ""), out = [], pattern = /([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*=\s*entity\.list\(/g, match;
+		if (text.indexOf("entity.list(") < 0) return out;
+		while ((match = pattern.exec(text)) && out.length < 5) {
+			var target = match[1], start = match.index + match[0].length, depth = 1, end = start, quote = "";
+			for (; end < text.length && depth > 0; end++) {
+				var c = text.charAt(end);
+				if (quote) { if (c === "\\") end++; else if (c === quote) quote = ""; }
+				else if (c === "\"" || c === "'" || c === "`") quote = c;
+				else if (c === "(") depth++;
+				else if (c === ")") depth--;
+			}
+			if (/^result(\.|$)/.test(target) || /\boffset\s*:/.test(text.substring(start, end))) continue;
+			var escaped = target.replace(/[.$]/g, "\\$&");
+			if (new RegExp(escaped + "\\??\\.(hasMore|nextOffset|total)\\b").test(text)) continue;
+			out.push({ severity: "warning", code: "ENTITY_LIST_PAGE_UNCHECKED", block: "entity.list", path: target,
+				line: text.substring(0, match.index).split("\n").length,
+				message: "entity.list returns one page (limit 25 by default, 200 at most): " + target + ".rows is not the whole list when " + target + ".hasMore is true.",
+				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. See flow://guide/entities, Lists: filters and pages." });
+		}
+		return out;
+	}
+
+	function addEntityListPageWarnings(request, value) {
+		if (!value || typeof value !== "object" || value.ok === false) return;
+		var args = toolArguments(request) || {}, code = typeof value.code === "string" ? value.code : typeof args.code === "string" ? args.code : "";
+		var file = value.workingCodeFile || value.codeFile;
+		if (!code && file) {
+			try { code = String(new Packages.java.lang.String(Files.readAllBytes(new File(String(file)).toPath()), StandardCharsets.UTF_8)); } catch (e) { code = ""; }
+		}
+		var found = entityListPageWarnings(code);
+		if (found.length) value.warnings = found.concat(value.warnings || []);
+	}
+
 	function compactFlowCodeWriteToolValue(request, value) {
 		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
 			return value;
@@ -4549,6 +4585,7 @@
 				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard" ||
 				name === "code-set" || name === "code-patch" || name === "code-check" ||
 				name === "code-promote" || name === "code-status" || name === "code-discard") {
+			if (/^(flow-)?code-(set|patch|check)$/.test(name)) addEntityListPageWarnings(request, value);
 			return compactFlowCodeWriteToolValue(request, value);
 		}
 		if (name === "flow-block-code-set" || name === "flow-block-code-patch") {
