@@ -153,6 +153,35 @@ and the Svelte frontbuilder. Authentication may use the Flow port of
 Client-supplied roles never establish rights. Read each available contract
 with `flow-block-get` before use.
 
+## Schema initialization and demo reset
+
+The schema is ensured on the first authorized entity operation, once per JVM,
+connection settings and model fingerprint. Only additive changes are applied;
+`autoVersion` derives the next schema version, while removed/changed columns
+are refused before writes. No MCP database access or initialization step is
+needed when writing the model. An explicit `entity.initialize({})` can also run
+without a session; `dryRun:true` previews, `verifyOnly:true` checks a DBA schema.
+`config.entities.schema: verify` makes the automatic check read-only.
+
+**Neither entity.initialize nor entity.demoReset is protected by session, role
+or a library demo switch.** The application protects any public caller. Private
+Convertigo code has no internal ACL. The configured database account and its
+DDL/DML grants are the production boundary; use a secret password symbol and
+a restricted account, not root. Missing CREATE rights return a clear
+ENTITY_SCHEMA_MISSING / 403 with the available additive plan.
+
+Declare `demo: {dataFile: "_flow/resources/entities/demo.json"}` in the model.
+The JSON seed maps entity names to rows using **field names**, not SQL columns;
+IDs are text, dates ISO, and owner/currentUser values must be explicit because
+there is no actor. Stored read-only fields can be seeded; computed fields cannot.
+Auto timestamps are filled by the server. `entity.demoReset({})` explicitly
+empties the model's SQL tables (including mapped tables and the journal), then
+uses the SQL typed seed in dependency order. External provider entities are not
+SQL tables and cannot be seeded this way. Cyclic dependencies need an explicit
+application reset. See the complete public `demo_reset` and seed in
+`flow://guide/multipage-entities`; its optional guard belongs to the application.
+Reset bypasses business hooks/permissions; ordinary CRUD remains session-bound.
+
 ## Authentication
 
 `config.entities.actorProvider` names an ordinary **project block**, called with
@@ -375,7 +404,9 @@ Preconditions for this example:
 - `Livre` has `disponible: boolean` (default true); `Pret` has the `livre`
   and `adherent` relations and `rendu: boolean` (default false).
 - Both `Livre` and `Pret` use the `Révisé` trait, on the same named SQL
-  connection `app`. Initialize the schema explicitly as ADMIN before use.
+  connection `app`. The additive schema is ensured on first use; no ADMIN
+  initialization facade is needed. Use the application’s public `demo_reset`
+  before demo sign-in, as in `flow://guide/multipage-entities`.
 - The authenticated application role has read/create/update rights needed by
   the operation. This example grants the two writes to `BIBLIOTHECAIRE`;
   `ADHERENT` does not acquire those rights by calling the Flow. Keep the real

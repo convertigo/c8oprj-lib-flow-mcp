@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "private": true,
-  "description": "Validates and atomically writes an interpreted entity model with mandatory revision control. Creates no generated CRUD code; follow flow://guide/multipage-entities for role-based applications.",
+  "description": "Validates and atomically writes an interpreted entity model with mandatory revision control. Creates no generated CRUD code. The runtime ensures additive schema on first entity use, without an ADMIN initialization facade; follow flow://guide/multipage-entities for role-based applications.",
   "icon": "mdi:database-cog",
   "properties": {
     "request": {

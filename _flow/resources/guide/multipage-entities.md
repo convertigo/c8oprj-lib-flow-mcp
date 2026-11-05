@@ -20,9 +20,9 @@ Build a role-based booking application with session authentication, per-user ent
    Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker.
 6. Declare permissions and `Possédé` in the model: USER sees their rows,
    MANAGER/ADMIN sees all. The server sets ownership, not the form.
-7. Explicitly run private account preparation as an administrator, enable
-   demo sign-in only in the demo environment, then initialize model tables
-   with the authorized initialization Flow. Replay preserves existing rows.
+7. Declare the typed entity demo seed below and call the public `demo_reset`
+   before sign-in. No ADMIN cookie or separate initialization Flow is needed.
+   Its guard belongs to the application; the library imposes none.
 8. Add the private BookingRule hook below. It locks the room, checks overlap
    across all owners, and throws on refusal; data and audit roll back together.
    For an imposed 409, use HttpBookingRule from the entities guide instead.
@@ -77,12 +77,15 @@ Never convert them with `Number` or `parseInt`.
 {
   "version": 2,
   "modelVersion": 1,
+  "demo": {"dataFile":"_flow/resources/entities/demo.json"},
   "entities": {
     "Room": {
       "permissions": {"read":["USER","MANAGER","ADMIN"],"create":["MANAGER","ADMIN"],"update":["MANAGER","ADMIN"],"delete":["ADMIN"]},
       "traits": ["Révisé"],
       "display": {"title":"name"},
-      "fields": {"name":{"type":"string","maxLength":100}}
+      "fields": {
+        "name":{"type":"string","maxLength":100}
+      }
     },
     "Reservation": {
       "permissions": {"read":["USER","MANAGER","ADMIN"],"create":["USER","MANAGER","ADMIN"],"update":["USER","MANAGER","ADMIN"],"delete":["MANAGER","ADMIN"]},
@@ -103,9 +106,24 @@ Never convert them with `Number` or `parseInt`.
       "storage": {"table":"FLOW_ENTITY_AUDIT","columns":{"entityKey":"ENTITY_KEY","valuesJson":"VALUES_JSON"}},
       "display": {"title":"operation"},
       "fields": {
-        "entity":{"type":"string"},"entityKey":{"type":"string"},
-        "operation":{"type":"string"},"actor":{"type":"string"},
-        "at":{"type":"timestamp"},"valuesJson":{"type":"string"}
+        "entity":{"type":"string"},
+        "entityKey":{"type":"string"},
+        "operation":{"type":"string"},
+        "actor":{"type":"string"},
+        "at":{"type":"timestamp"},
+        "valuesJson":{"type":"string"}
+      }
+    },
+    "APP_USER": {
+      "label": "Demo directory",
+      "identity": ["user"],
+      "display": {"title":"user"},
+      "permissions": {"read":[],"create":[],"update":[],"delete":[]},
+      "fields": {
+        "user":{"type":"string","column":"USER_ID","maxLength":100},
+        "role":{"type":"string","maxLength":20},
+        "active":{"type":"boolean"},
+        "demo":{"type":"boolean"}
       }
     }
   }
@@ -130,11 +148,6 @@ config:
         password: "${<project>.db.password.secret=}"
         nativeRead: true
         nativeWrite: true
-    initializers:
-      accounts:
-        connection: app
-        schemaFile: _flow/resources/sql/accounts/schema.json
-        dataFile: _flow/resources/sql/accounts/data.json
     writes:
       lockRoom:
         connection: app
@@ -164,30 +177,44 @@ config:
 For HSQLDB keep the database under the protected `_flow/resources/sql/` path,
 ignore its files in Git and use an external DBMS for production. CAR replacement
 can replace a development database. Do not duplicate the business entity schema
-in SQL JSON. Only the separate account directory needs an explicit schema and
-seed. Save these as the two paths configured above:
+in SQL JSON. The technical `APP_USER` directory is declared in the same model,
+with no entity CRUD permissions; the private actor reads it directly. There is
+no separate account schema, preparation Flow or ADMIN initialization step.
+Save this typed **entity field** seed at `_flow/resources/entities/demo.json`:
 
-<!-- example: accounts-schema -->
+<!-- example: booking-demo-seed -->
 ```json
-{"version":1,"tables":[{"name":"APP_USER","primaryKey":["USER_ID"],"columns":[{"name":"USER_ID","type":"string","length":100},{"name":"ROLE","type":"string","length":20},{"name":"ACTIVE","type":"boolean"},{"name":"DEMO","type":"boolean"}]}]}
+{"entities":{"Reservation":[],"Room":[{"id":"1","name":"Room A"}],"APP_USER":[{"user":"demo-alpha","role":"USER","active":true,"demo":true},{"user":"demo-beta","role":"USER","active":true,"demo":true},{"user":"demo-manager","role":"ADMIN","active":true,"demo":true}]}}
 ```
 
-<!-- example: accounts-data -->
-```json
-{"tables":[{"table":"APP_USER","key":["USER_ID"],"rows":[{"USER_ID":"demo-alpha","ROLE":"USER","ACTIVE":true,"DEMO":true},{"USER_ID":"demo-beta","ROLE":"USER","ACTIVE":true,"DEMO":true},{"USER_ID":"demo-manager","ROLE":"ADMIN","ACTIVE":true,"DEMO":true}]}]}
-```
+`entity.initialize` and `entity.demoReset` have **no session, role or demo-switch
+protection**. Convertigo Private is not an internal ACL: a public Flow calling
+private code is responsible for exposing it. Protect public entry points in the
+application according to its contract. Production relies on the configured DB
+account's grants (password from a secret symbol), normally not a root account.
+The initializer only creates/adds; the separate reset explicitly deletes data.
 
-Run this private setup once as a platform administrator; it creates only the
-separate directory and inserts missing demo keys. Replays preserve edits:
+Here the application chooses its existing demo-login switch for `demo_reset`.
+Remove or adapt this guard when your application's contract requires another
+policy. The library neither enforces this switch nor an `allowOnServer` flag.
 
-<!-- example: prepare-accounts -->
+<!-- example: demo-reset -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
+const _flow = { sourceVersion: 2, accessibility: "hidden" }
 
-function PrepareAccounts({ input, config, result }) {
-  result.setup = sql.initialize({ initializer: "accounts", seed: true })
+function demo_reset({ input, config, result }) {
+  if (String(config.demo.login) !== "true") {
+    throw { code: "DEMO_RESET_DISABLED", message: "Demo reset is disabled", status: 403 }
+  }
+  result.reset = entity.demoReset({})
 }
 ```
+
+Call this public HTTP Flow before sign-in, without any cookie; it initializes
+the model tables, empties them in relation/FK order and reapplies the seed.
+Replay returns the same demo rows, including the neutral directory. Other
+application databases are not involved. It bypasses entity permissions and hooks
+intentionally; use `entity.save` for ordinary authorized business writes.
 
 ## Demo login
 
@@ -199,22 +226,12 @@ for the demonstration; show the picker only when `CurrentUser.demoLoginEnabled`
 is true. Never add a role input. A demo identity is not a real password check.
 
 Keep the MCP bearer (source author) distinct from application cookie sessions.
-After signing in as `demo-manager` through the application, initialize entities
-through this hidden facade with that same ADMIN cookie jar; `entity.initialize`
-checks ADMIN. Never infer this identity from `code-run` or its author token.
-
-<!-- example: initialize-bookings -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden", authenticatedContextRequired: true }
-
-function InitializeBookings({ input, config, result }) {
-  result.setup = entity.initialize({ entity: "Room" })
-}
-```
-
-Add one Room as ADMIN through its EntityForm. Initialize twice and verify the
-room remains. Poll the session endpoint with the **same cookie jar** while the
-project migrates; bound retries and surface failures with `Status`.
+After `demo_reset`, sign in through the application; never infer this identity
+from `code-run` or its author token. Normal `entity.*` operations still require
+the server session and model permissions. Their first use ensures the additive
+schema once per JVM/connection/model fingerprint; no initialization screen or
+ADMIN cookie is needed. Explicit `entity.initialize({})` is available for
+maintenance or a read-only `dryRun` / `verifyOnly`, without a session.
 
 ## Me and logout
 
