@@ -27,11 +27,29 @@ try {
   assert(descriptor.inputSchema.required.indexOf("project")>=0,"Project is required");
   if(op==="set")assert(descriptor.inputSchema.required.indexOf("expectedRevision")>=0,"Revision is required");
  });
+ var described={};names.forEach(function(t){described[t.name]=t;});
+ assert(/empty model .*returns format.*example/.test(described["flow-entity-model-get"].description),"Get announces the format of an empty model");
  var missing=tool("flow-entity-model-get",{});
  assert(missing&&missing.error&&/explicit project/.test(missing.error.message),"Project omission is refused");
  var args={projectDir:String(target.getAbsolutePath())};
  var first=tool("flow-entity-model-get",args);
  assert(first&&first.revision==="missing","Blank model has missing revision: "+JSON.stringify(first));
+ // The model format: the entity library returns it for an empty model, and the tool contracts hold the same keys and example.
+ assert(first.model===null&&first.format&&first.example&&first.example.version===2,"Empty model returns format and example: "+JSON.stringify(first));
+ var format=first.format,exampleText=JSON.stringify(first.example);
+ ["check","set"].forEach(function(op){
+  var descriptor=described["flow-entity-model-"+op],contract=descriptor.inputSchema.properties.model.description;
+  assert(contract.indexOf("Example: "+exampleText)>=0,op+" model contract holds the example: "+contract);
+  format.types.concat(format.model,format.entity,format.field,format.relation,format.auto,Object.keys(format.traits)).forEach(function(key){assert(contract.indexOf(key)>=0,op+" model contract names "+key);});
+  Object.keys(format.traits).forEach(function(trait){format.traits[trait].forEach(function(parameter){assert(contract.indexOf(parameter)>=0,op+" model contract names the "+trait+" parameter "+parameter);});});
+  assert(/model property gives the format and an example/.test(descriptor.description),op+" points to the model format");
+ });
+ var bogus=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{},bogusSection:{}}});
+ assert(bogus&&bogus.valid===false&&bogus.diagnostics.some(function(d){return d.path==="bogusSection"&&/Accepted: version, modelVersion, entities/.test(d.message);}),"Invented section refused: "+JSON.stringify(bogus));
+ var relation=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{Pret:{fields:{materiel:{type:"relation"}}}}}});
+ assert(relation&&relation.valid===false&&relation.diagnostics.some(function(d){return d.path==="entities.Pret.fields.materiel.type"&&d.message.indexOf("Accepted types: "+format.types.join(", "))>=0&&d.message.indexOf('"relation":{"entity"')>=0;}),"Relation type refused with the types and the relation form: "+JSON.stringify(relation));
+ var example=tool("flow-entity-model-check",{projectDir:args.projectDir,model:first.example});
+ assert(example&&example.valid===true,"Published example is valid: "+JSON.stringify(example));
  var model={version:2,modelVersion:1,entities:{Equipment:{fields:{label:{type:"string",default:"{{ 6 * 7 }}"}}}}};
  var check=tool("flow-entity-model-check",{projectDir:args.projectDir,model:model});
  assert(check&&check.valid===true,"Valid model check failed: "+JSON.stringify(check));

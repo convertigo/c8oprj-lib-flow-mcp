@@ -299,6 +299,29 @@ const _meta = {
 		return name === "out" || OMIT_SCHEMA_PROPERTIES[name] === true;
 	}
 
+	// The model property of flow-entity-model-check/-set: the format lib_flow_entity checks (entity-format.js),
+	// with the example an empty flow-entity-model-get returns. tests/entity-model-tools.js keeps them aligned.
+	var ENTITY_MODEL_FORMAT = "Complete entity model as JSON data, never code. Format version 2: check and set refuse any other key, " +
+		"naming its full path and the accepted values, every problem at once. " +
+		"Model: version (2, required), modelVersion (positive integer, raised when the schema changes), entities {Name: entity}, " +
+		"traits {Name: project trait}, demo {dataFile}, imports {alias: project}. " +
+		"Entity: fields {name: field}, identity, label, display {title, subtitle}, traits, " +
+		"permissions {read, create, update, delete: role lists; none means no model ACL}, hooks {beforeSave, afterSave, beforeDelete: Flow name}, " +
+		"readOnly, storage {table, columns}, source, extends. " +
+		"Identity: field names, [\"id\"] by default. An int64 identity is auto-incremented by the database: keep [\"id\"] without declaring id, " +
+		"never send it on create, read it in row.key.id. " +
+		"Field: type, label, nullable (default false), required, maxLength, precision, scale, values (enum), default, " +
+		"auto (create, update, currentUser, currentRole), readOnly, computed, notFuture, visibleTo (role list), secret, table, column, relation, where. " +
+		"Types: string, text, enum, int64, decimal, boolean, date, timestamp; no array or json type: store serialized JSON in a text field. " +
+		"Relation: not a type; the field has the type of the target identity (int64) and relation {entity, labelField, where}. " +
+		"Traits: Révisé, Horodaté, Activable, Immuable, Journalisé {fields: [...]}, " +
+		"Possédé {owner: field, unrestricted: [roles]} (needs Révisé; adds the owner field, filled with the session user unless an unrestricted role sets it), " +
+		"Échéance {reference: [date fields], delay: {months}, timeZone}. " +
+		"Example: {\"version\":2,\"modelVersion\":1,\"entities\":{\"Team\":{\"identity\":[\"id\"],\"display\":{\"title\":\"name\"},\"fields\":{\"name\":{\"type\":\"string\",\"maxLength\":80}}}," +
+		"\"Task\":{\"identity\":[\"id\"],\"traits\":[\"Révisé\",{\"Possédé\":{\"owner\":\"requester\",\"unrestricted\":[\"MANAGER\"]}}],\"display\":{\"title\":\"title\"}," +
+		"\"fields\":{\"title\":{\"type\":\"string\",\"maxLength\":120},\"status\":{\"type\":\"enum\",\"values\":[\"OPEN\",\"DONE\"],\"default\":\"OPEN\"}," +
+		"\"team\":{\"type\":\"int64\",\"relation\":{\"entity\":\"Team\",\"labelField\":\"name\"}},\"due\":{\"type\":\"date\",\"nullable\":true}}}}}";
+
 	function inputSchema(block, toolName) {
 		var schema = {
 			type: "object",
@@ -323,6 +346,7 @@ const _meta = {
 		}
 		if (/^flow-entity-model-(?:get|check|set)$/.test(toolName)) {
 			schema.required = toolName === "flow-entity-model-get" ? ["project"] : toolName === "flow-entity-model-check" ? ["project", "model"] : ["project", "model", "expectedRevision"];
+			if (schema.properties.model) schema.properties.model.description = ENTITY_MODEL_FORMAT;
 		}
 		if (toolName === "authoring-palette") {
 			schema.properties.parentPath = {
