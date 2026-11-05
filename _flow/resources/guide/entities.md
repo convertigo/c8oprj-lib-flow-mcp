@@ -413,8 +413,8 @@ business model, frontend source, journal or tool output.
 
 `"version": 2` is required. `flow-entity-model-check` and `flow-entity-model-set`
 refuse an unknown section, entity or field property, type, trait or trait
-parameter, naming its full path (`entities.Task.fields.team.type`) and the
-accepted values, every problem at once. The `model` property of both tools
+parameter, naming its full path (`entities.Task.fields.team.type`), the
+accepted values and the correct form, every problem at once. The `model` property of both tools
 lists every accepted key; `flow-entity-model-get` on an empty model returns the
 same `format` and this `example`:
 
@@ -436,6 +436,10 @@ same `format` and this `example`:
   trait adds and fills with the session user, and the roles that see every row;
   it needs `Révisé`. `Journalisé` takes `{fields: [...]}`; `Révisé`, `Horodaté`,
   `Activable` and `Immuable` take no parameter.
+- **Outputs:** with a literal entity name, `entity.list`, `entity.read`,
+  `entity.describe` and `entity.options` declare the fields of that entity, so
+  pickers and binding diagnostics offer them. `labels.<relation>` is optional:
+  it is omitted when the related entity is refused.
 
 ## Reusable widgets and named snippets
 

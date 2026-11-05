@@ -94,6 +94,14 @@ server (rights, perimeters, state rules), never only in the page.
   `flow://guide/start` for their entry points.
   Generated CRUD (`flow://guide/crud`, `flow-crud-upsert`) only when the
   request asks for it explicitly.
+- Entities cost less than SQL plus screens for business data with roles,
+  lists and forms: one declared model gives the EntityTable and EntityForm
+  screens, the access policy and its scope, the local EntityGateway,
+  revisions (`Révisé`) and the journal (`Journalisé`). Declare it with
+  `flow-entity-model-check` then `flow-entity-model-set`; their `model`
+  property lists every accepted key, and each refusal gives the correct form.
+  A complete model to adapt (auto-incremented `id`, enum, relation, `Possédé`):
+  `{"version":2,"modelVersion":1,"entities":{"Team":{"identity":["id"],"display":{"title":"name"},"fields":{"name":{"type":"string","maxLength":80}}},"Task":{"identity":["id"],"traits":["Révisé",{"Possédé":{"owner":"requester","unrestricted":["MANAGER"]}}],"display":{"title":"title"},"fields":{"title":{"type":"string","maxLength":120},"status":{"type":"enum","values":["OPEN","DONE"],"default":"OPEN"},"team":{"type":"int64","relation":{"entity":"Team","labelField":"name"}},"due":{"type":"date","nullable":true}}}}}`
 - Only with no persisted business data, or when the user explicitly requests
   direct SQL: read `flow://guide/multipage-roles` once.
 - Read routing, FullSync, custom-block or Rhino guides only when the requested
