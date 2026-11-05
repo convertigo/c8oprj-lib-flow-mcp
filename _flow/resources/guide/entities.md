@@ -266,7 +266,8 @@ included; an array means one of, `null` an empty value, an absent value is
 `contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`. Do not use `rows`
 as the whole list without checking `hasMore`: `code-set` warns
 `ENTITY_LIST_PAGE_UNCHECKED`, and a run that gets a partial page without an
-offset warns `ENTITY_LIST_INCOMPLETE`.
+offset warns `ENTITY_LIST_INCOMPLETE`. The first is a heuristic on the source text:
+it can miss a case (false negatives) and never proves that a list is complete.
 
 ```javascript
 local.page = entity.list({

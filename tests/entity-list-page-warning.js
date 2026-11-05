@@ -51,6 +51,7 @@ try {
  check(/return \{ scope: \{ requesterId: input\.request\.user \} \}/.test(guide)&&/actorProvider/.test(guide)&&/ENTITY_RELATION_LABELS_OMITTED/.test(guide),'guide shows the role scope, the actor provider and omitted relation labels');
  // C1, C2, C4 of the 05/11 review: neutral refusals, writes that do not touch the relation, absent filter values.
  check(guide.indexOf('A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused.')>=0,'guide states which writes need a refused relation target');
+ check(/The first is a heuristic on the source text:\s+it can miss a case \(false negatives\)/.test(guide),'guide says the page lint is a heuristic');
  check(guide.indexOf('A create also sets it when a default, an auto rule, the policy scope or the Possédé owner fills it.')>=0,'guide states that server-filled values set the relation');
  check(/Relation non autorisée\."\s+naming only `details\.field`/.test(guide)&&/a 404 still fails the read/.test(guide),'guide states the neutral relation refusal');
  check(/an absent value is\s+`ENTITY_FILTER_INVALID`/.test(guide),'guide states that an absent filter value is an error');
