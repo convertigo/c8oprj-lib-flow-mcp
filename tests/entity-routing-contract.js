@@ -44,7 +44,7 @@ for (const name of ['fullstack-paperboard', 'frontend-svelte', 'crud']) {
 const upsert = read('_flow/blocks/mcp/tool/flow/crud/upsert.block.js');
 assert.ok(!upsert.includes('Use it first'), 'Generated CRUD tool cannot override the entity default');
 assert.ok(upsert.includes('explicitly requests generated CRUD') && upsert.includes('prefer interpreted entities by default'));
-assert.ok(guide('multipage-entities').includes('flow-project-bootstrap({project,ui:true,references:["lib_flow_entity"]})'), 'The nominal bootstrap includes the entity reference in one call');
+assert.ok(guide('multipage-entities').includes('flow-project-bootstrap({project,ui:true,references:["lib_flow_entity","lib_flow_sql","lib_flow_crud_data"]})'), 'The nominal bootstrap includes the entity reference in one call');
 const entityGet = read('_flow/blocks/mcp/tool/flow/entity/model/get.block.js');
 assert.ok(entityGet.includes('lib_flow_entity') && entityGet.includes('flow://guide/multipage-entities'));
 console.log('entity-routing-contract: documentation entry points agree');

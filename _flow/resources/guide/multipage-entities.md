@@ -12,9 +12,10 @@ hatch in `flow://guide/multipage-roles`.
 ## 1. Prepare and declare once
 
 Bootstrap the target with
-`flow-project-bootstrap({project,ui:true,references:["lib_flow_entity"]})`.
-For an existing project, add that reference with `flow-project-reference`
-(dry run first). Keep its SQL/CRUD dependencies and the Svelte provider available. Read
+`flow-project-bootstrap({project,ui:true,references:["lib_flow_entity","lib_flow_sql","lib_flow_crud_data"]})`.
+For an existing project, add missing references with `flow-project-reference`
+(dry run first). Declare the SQL/CRUD dependencies directly: the block catalog
+reads direct project references. `ui:true` adds the Svelte provider. Read
 `flow://guide/entities`, `flow://guide/authoring` and
 `flow://guide/frontend-svelte`; agree the backend/frontend contract as in
 `flow://guide/fullstack-paperboard`. Read block contracts with `flow-block-get`.

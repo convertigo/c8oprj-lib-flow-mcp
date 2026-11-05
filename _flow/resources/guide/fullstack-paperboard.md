@@ -125,7 +125,7 @@ source, including a structured literal for intentionally static content.
 
 1. Bootstrap the exact target project with `flow-project-bootstrap({ project,
    ui:true })` when FlowEngine or the Svelte builder is missing. For persisted
-   business data with roles, include `references:["lib_flow_entity"]` or add
+   business data with roles, include `references:["lib_flow_entity","lib_flow_sql","lib_flow_crud_data"]` or add
    that reference with `flow-project-reference` before writing drafts. Never edit
    `c8oProject.yaml`, `_c8oProject/**/*.yaml`, `_private/svelte` or
    `DisplayObjects` directly. Immediately call
