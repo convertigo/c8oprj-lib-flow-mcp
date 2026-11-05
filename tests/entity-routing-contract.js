@@ -58,3 +58,19 @@ const quick = multi.slice(multi.indexOf('## Quick path'), multi.indexOf('Use thi
 assert.ok(quick.split('\n').length >= 30 && quick.split('\n').length <= 50, 'Quick path stays readable in 30–50 lines');
 assert.ok(quick.includes('HTTP') && quick.includes('Possédé') && quick.includes('The detail follows'));
 console.log('entity-routing-contract: documentation entry points agree');
+
+// The front follows the same project-local boundary as HTTP facades.
+for (const name of ['entities', 'multipage-entities', 'frontend-svelte']) {
+  const text = guide(name);
+  assert.ok(text.includes('EntityGateway') && text.includes('targetProject'), name + ' states the local transport default');
+  assert.ok(text.includes('ownershipFilter'), name + ' separates display filtering from policy scope');
+  assert.ok(!/targetProject="(?:BookingApp|EquipmentApp)"/.test(text), name + ' keeps the nominal path configuration-free');
+}
+for (const text of [router, backend, frontend]) {
+  assert.ok(text.includes('targetProject') && text.includes('optional'), 'Skills document optional cross-project transport');
+  assert.ok(text.includes('context.permissions.create'), 'Custom New commands follow describe capabilities');
+}
+assert.ok(!multi.includes('following frontend palier'), 'The recipe is usable without a future transport step');
+assert.match(multi, /<Toolbar><If[^>]+context\.permissions\.create/);
+assert.ok(!multi.includes('scope="mine"'), 'The nominal page relies on the server owner perimeter');
+console.log('entity-front-guide-contract: local transport, capabilities and display filters agree');

@@ -14,6 +14,11 @@ the pages. Sign-in, CSV, jobs and audit do not change that data route. Only no
 persisted business data or an explicit request for direct SQL selects
 `flow://guide/multipage-roles`.
 
+EntityTable and EntityForm use the application's local `EntityGateway`;
+`targetProject` is optional and selects another application only when explicit.
+Use effective `describe` capabilities for custom create/edit/delete commands.
+The optional `ownershipFilter` display filter never replaces server policy scope.
+
 ## Mental Model
 
 An application is made of Pages. A distinct business step is a Page; a small

@@ -74,6 +74,13 @@ invisible to all of them; a refusal says what to write instead.
   Use `flow://guide/multipage-roles` only with no persisted business data or
   an explicit user request for direct SQL. Never replace entity permissions
   or per-user scopes with checks confined to the page.
+  EntityTable/EntityForm use the current application's local EntityGateway; omit
+  targetProject unless selecting another application. Put custom New in Toolbar
+  behind context.permissions.create; describe controls save/delete capabilities.
+  Wire ordinary select/saved/deleted events to the editor and refreshKey. The
+  form uses create/update. ownershipFilter is a display filter, not server scope.
+  Preserve the built-in sign-in (401), forbidden (403), field error (400/422)
+  and conflict Reload (409) states.
 - Record every successfully read guide URI for the current turn and never read
   that URI again, including after compaction or a repair pass.
 - Author Flow Svelte source and palette-backed blocks, never generated Svelte,

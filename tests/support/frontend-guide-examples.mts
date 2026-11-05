@@ -182,10 +182,11 @@ for (const plan of entityExamples) {
       const tags = source.match(/<Entity(?:Table|Form)\b[^>]*>/g) || [];
       assert.equal(tags.length, 2, "The selection/editor example keeps both native entity widgets");
       for (const tag of tags) {
-        assert.match(tag, new RegExp(`targetProject="${plan.project}"`), "Every entity widget names the application project explicitly");
+        assert.doesNotMatch(tag, /targetProject=/, "The nominal guide uses the serving application's gateway without transport configuration");
+        assert.doesNotMatch(tag, /\sscope=/, "A display filter is never confused with the policy scope");
       }
       const code = generated.get(plan.route ? plan.route + "/+page.svelte" : "+page.svelte")!;
-      assert.match(code, new RegExp(`targetProject=(?:"${plan.project}"|\\{"${plan.project}"\\})`), "The generated native widget transport retains the target project");
+      assert.doesNotMatch(code, /targetProject=/, "The generated native widgets retain their local-project default");
       assert.match(code, /onselect=\{/);
       if (plan.id === "bookingEditor") {
         assert.match(code, /onsaved=\{/);
@@ -193,6 +194,9 @@ for (const plan of entityExamples) {
         assert.match(code, /oncancel=\{/);
         assert.match(code, /refreshKey=/);
         assert.match(code, /row=/);
+        assert.match(source, /<Toolbar><If[^>]+test=\{context\.permissions\.create\}/, "The New command follows effective capabilities");
+        assert.match(code, /#snippet (?:flowSnippet_)?toolbar\(context\)/, "Permissions use the generic lexical snippet argument");
+        assert.match(code, /context\.permissions\.create/);
       }
     } else {
       // The shared layout fixture has only a home route. Preserve the exact

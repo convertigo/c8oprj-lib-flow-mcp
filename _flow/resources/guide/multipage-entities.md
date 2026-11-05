@@ -2,9 +2,6 @@
 
 Build a role-based booking application with session authentication, per-user entities, ordinary widget events, CSV export, a scheduled check and atomic auditing.
 
-> This delivery validates the backend policy. UI examples below are preserved
-> for the following frontend palier; its transport update is still required.
-
 ## Quick path: contract first, details below
 
 1. Bootstrap with `flow-project-bootstrap` and direct references to
@@ -32,11 +29,10 @@ Build a role-based booking application with session authentication, per-user ent
    For an imposed 409, use HttpBookingRule from the entities guide instead.
 9. Expose only the named Flows your HTTP contract needs: guard the session,
    validate inputs, call entity.list/read/save/delete with checkAccess:true,
-    translate known errors,
-   return exact keys. For example, convert hidden-row 404 uniformly to 403.
-10. When screens are required, wire EntityTable selection to EntityForm and
-    saved/deleted events back to refresh, as below. HTTP facades do not require
-    these widgets; use them when they reduce screen code.
+   translate known errors, then return exact keys. For example, convert hidden-row 404 uniformly to 403.
+10. Add EntityTable/EntityForm without targetProject: they use this application
+    EntityGateway. Put New in its Toolbar, guarded by context.permissions.create;
+    wire select to the form and saved/deleted to refresh, as below.
 11. Add CSV through the same authorized entity list, Journalisé with an
     allowlist, and a private scheduled worker as independent additions.
     No fabricated browser actor for jobs; keep their switch off by default.
@@ -406,11 +402,20 @@ replay sign-in. Navigate only in the successful login/logout action chain.
 </FlowComponent>
 ```
 
-For the guarded `mine` page, use this editing chain; create and delete actions
-follow the effective model permissions. MANAGER uses the same widgets without
-a forced `scope="mine"`; the user perimeter is enforced server-side in both.
-Business validation uses 422 so EntityForm shows its message; 409 is reserved
-for the stale-revision reload path. A conflict is shown by EntityForm; its Reload command reloads before retry.
+For the guarded `mine` page, use this editing chain. Omit `targetProject`: both
+widgets call this application's public `EntityGateway`, never a library Flow.
+Only cross-project screens set `targetProject` to the other application.
+`describe` returns effective capabilities: put New inside the table Toolbar
+and test `context.permissions.create`; EntityForm hides denied save/delete
+actions and sends `create` for a new row, `update` for an existing key.
+MANAGER uses the same widgets: `app.entityAccess` decides the server perimeter.
+
+The optional table `ownershipFilter="mine"` narrows an authorized result; it is
+not the policy's typed `scope` and cannot grant access. Leave it unset for the
+nominal path. A 401 invites sign-in, 403 reports a forbidden action, and 400
+shows field validation when supplied. Native model validation can also return
+422. A 409 shows the existing Reload command before retrying the stale row.
+The widgets clear old rows while reloading after a permission/session change.
 
 <!-- example: booking-editor -->
 ```svelte
@@ -429,18 +434,20 @@ for the stale-revision reload path. A conflict is shown by EntityForm; its Reloa
     <PageHeader $$id="heading" title="My bookings" />
     <Status $$id="sessionStatus" actionId="me" />
     <If $$id="authenticated" test={page.session.authenticated}><Then>
-      <Button $$id="create" label="New booking"><Events><OnClick $$id="new"><Actions>
-        <SetValue $$id="clear" target="page.row" value={null} />
-        <SetValue $$id="open" target="page.editing" value={true} />
-      </Actions></OnClick></Events></Button>
-      <EntityTable $$id="bookings" entity="Reservation" targetProject="BookingApp" scope="mine" refreshKey="@page.refresh">
+      <EntityTable $$id="bookings" entity="Reservation" refreshKey="@page.refresh">
+        <Toolbar><If $$id="mayCreate" test={context.permissions.create}><Then>
+          <Button $$id="create" label="New booking"><Events><OnClick $$id="new"><Actions>
+            <SetValue $$id="clear" target="page.row" value={null} />
+            <SetValue $$id="open" target="page.editing" value={true} />
+          </Actions></OnClick></Events></Button>
+        </Then></If></Toolbar>
         <Events><OnSelect $$id="select"><Actions>
           <SetValue $$id="keep" target="page.row" value="@event.value" />
           <SetValue $$id="edit" target="page.editing" value={true} />
         </Actions></OnSelect></Events>
       </EntityTable>
       <If $$id="editor" test={page.editing}><Then>
-        <EntityForm $$id="form" entity="Reservation" targetProject="BookingApp" row="@page.row">
+        <EntityForm $$id="form" entity="Reservation" row="@page.row">
           <Events>
             <OnSaved $$id="saved"><Actions>
               <SetValue $$id="closeSaved" target="page.editing" value={false} />

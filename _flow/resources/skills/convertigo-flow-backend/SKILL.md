@@ -198,4 +198,9 @@ entities. Writes stay denied until the application policy opens them. Optional
 model ACLs only add denials. Public custom facades use checkAccess:true; trusted
 entity primitives default to false. Gateway operations are list/read/count/
 options/describe/create/update/delete (save classifies create/update); never
-initialize or demoReset. See flow://guide/entities, One access policy.
+initialize or demoReset. EntityTable/EntityForm call this application's local
+EntityGateway by default; targetProject is optional, only for another application.
+Use describe capabilities for custom commands (Toolbar context.permissions.create),
+ordinary select/saved/deleted events for editing and refresh, and ownershipFilter
+only as an extra display filter, never a substitute for server scope. The form
+uses create/update, never upsert. See flow://guide/entities, One access policy.
