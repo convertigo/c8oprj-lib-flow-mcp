@@ -200,7 +200,7 @@ for (const plan of entityExamples) {
       // the real multi-route document rather than deleting that link for a mock.
       const logout = doc.model.backendCalls.find((call: any) => call.requestable === ".Logout");
       assert.ok(logout, "The layout calls the application logout Flow");
-      assert.equal(logout.parameters?.__disableAutologin, true, "Logout must prevent automatic sign-in replay");
+      assert.deepEqual(logout.parameters?.__disableAutologin, { mode: "literal", value: true }, "Logout must prevent automatic sign-in replay with a literal true");
       assert.ok(doc.model.clientActions.some((action: any) => action.kind === "backendCall" && action.backendCall === logout.id));
       assert.ok(doc.model.clientActions.some((action: any) => action.kind === "navigate" && action.page === "home"));
       const nodes = walk(doc.model.components.flatMap((component: any) => component.nodes || []));
