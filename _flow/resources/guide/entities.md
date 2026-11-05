@@ -228,7 +228,7 @@ policy: keep a referenced directory readable when signed in (hide its other fiel
 with `visibleTo`). If the policy, a model ACL or a slot refuses the target (401 or
 403; a 404 still fails the read), labels are omitted with the run warning
 `ENTITY_RELATION_LABELS_OMITTED`; options and validation return `ENTITY_FORBIDDEN`
-"Relation non autorisée." naming only `details.field`. A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused.
+"Relation non autorisée." naming only `details.field`. A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused. A create also sets it when a default, an auto rule, the policy scope or the Possédé owner fills it.
 
 Without that block, the same default applies: nonempty
 `getAuthenticatedUser()` for reads, all writes refused. A cookie alone is not
