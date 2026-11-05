@@ -18,6 +18,12 @@ For an existing project, add that reference with `flow-project-reference`
 `flow://guide/entities`, `flow://guide/authoring` and
 `flow://guide/frontend-svelte`; agree the backend/frontend contract as in
 `flow://guide/fullstack-paperboard`. Read block contracts with `flow-block-get`.
+Write blocks and Flows with `code-set` (then `code-promote` for executable
+Flows). Read and patch `_flow/engine.yaml` and the SQL JSON resources with
+`flow-resource-get` / `flow-resource-patch`, using their `baseHash`. Set demo
+server symbols with `flow-project-symbol-set`; keep their source defaults off.
+Replace `<project>` in symbol names here and in the actor guide with the exact
+target project name, so enabling the bootstrap symbol changes the same setting.
 
 Use `flow-entity-model-get`, `flow-entity-model-check`, then
 `flow-entity-model-set` with the returned revision. This model creates no CRUD

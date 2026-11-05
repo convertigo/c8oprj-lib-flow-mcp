@@ -20,6 +20,8 @@ then rejects a missing actor, a non-array `roles`, a `user` different from that
 session identity, or roles lacking read permission (`ENTITY_FORBIDDEN`, 403).
 It does not cache actors with model plans. Create/update/delete permissions and
 ownership are then checked for that same actor. A hook also receives this actor.
+Read the directory directly in this provider: calling `entity.*` here would
+resolve the actor again and recurse.
 
 For a project with its own account table, the following minimal configuration
 uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
