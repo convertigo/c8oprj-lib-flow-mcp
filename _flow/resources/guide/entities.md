@@ -285,7 +285,9 @@ uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
 are booleans. Entity permission lists authorize your domain role names; they
 need not be named USER, MANAGER or ADMIN. The SQL
 connection `app` is configured separately (see the multi-page recipe). Both
-queries remain private, parameterized and bounded. The demo switch defaults off.
+queries remain private, parameterized and bounded. Quote the physical SQL
+identifiers as shown: the model creates uppercase names, while PostgreSQL folds
+unquoted names to lowercase. The demo switch defaults off.
 
 <!-- example: actor-config -->
 ```yaml
@@ -302,7 +304,7 @@ config:
         readOnly: true
         expose: false
         maxRows: 1
-        sql: 'SELECT USER_ID AS "user", ROLE AS "role" FROM APP_USER WHERE USER_ID=:user AND ACTIVE=TRUE'
+        sql: 'SELECT "USER_ID" AS "user", "ROLE" AS "role" FROM "APP_USER" WHERE "USER_ID"=:user AND "ACTIVE"=TRUE'
         parameters: [{name: user, type: string}]
         columns: [{name: user, type: string, nullable: false}, {name: role, type: string, nullable: false}]
       demoAccount:
@@ -310,7 +312,7 @@ config:
         readOnly: true
         expose: false
         maxRows: 1
-        sql: 'SELECT USER_ID AS "user" FROM APP_USER WHERE USER_ID=:user AND ACTIVE=TRUE AND DEMO=TRUE'
+        sql: 'SELECT "USER_ID" AS "user" FROM "APP_USER" WHERE "USER_ID"=:user AND "ACTIVE"=TRUE AND "DEMO"=TRUE'
         parameters: [{name: user, type: string}]
         columns: [{name: user, type: string, nullable: false}]
 ```

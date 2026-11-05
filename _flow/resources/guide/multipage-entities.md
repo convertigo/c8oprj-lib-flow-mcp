@@ -131,7 +131,9 @@ Never convert them with `Number` or `parseInt`.
 
 Add the actor configuration, `app.actor` block and `DemoLogin` Flow from
 `flow://guide/entities`. Merge (do not replace) this connection
-and these technical queries into the same `_flow/engine.yaml` configuration:
+and these technical queries into the same `_flow/engine.yaml` configuration.
+Merge the `sql.queries` entries with the actor queries; do not replace them.
+Preserve the quoted physical identifiers for HSQLDB and PostgreSQL:
 
 <!-- example: booking-config -->
 ```yaml
@@ -152,7 +154,7 @@ config:
         connection: app
         operation: update
         expose: false
-        sql: 'UPDATE ROOM SET REVISION=REVISION WHERE ID=:room'
+        sql: 'UPDATE "ROOM" SET "REVISION"="REVISION" WHERE "ID"=:room'
         parameters: [{name: room, type: int64}]
     queries:
       overlap:
@@ -160,7 +162,7 @@ config:
         readOnly: true
         expose: false
         maxRows: 1
-        sql: 'SELECT COUNT(*) AS "total" FROM RESERVATION WHERE ROOM=:room AND STATUS=''OPEN'' AND STARTS<:ends AND ENDS>:starts AND (:id IS NULL OR ID<>:id)'
+        sql: 'SELECT COUNT(*) AS "total" FROM "RESERVATION" WHERE "ROOM"=:room AND "STATUS"=''OPEN'' AND "STARTS"<:ends AND "ENDS">:starts AND (:id IS NULL OR "ID"<>:id)'
         parameters: [{name: room, type: int64}, {name: starts, type: date}, {name: ends, type: date}, {name: id, type: int64, nullable: true, default: null}]
         columns: [{name: total, type: int64, nullable: false}]
       startsToday:
@@ -168,7 +170,7 @@ config:
         readOnly: true
         expose: false
         maxRows: 1
-        sql: 'SELECT COUNT(*) AS "total" FROM RESERVATION WHERE STARTS=:day AND STATUS=''OPEN'''
+        sql: 'SELECT COUNT(*) AS "total" FROM "RESERVATION" WHERE "STARTS"=:day AND "STATUS"=''OPEN'''
         parameters: [{name: day, type: date}]
         columns: [{name: total, type: int64, nullable: false}]
 ```
