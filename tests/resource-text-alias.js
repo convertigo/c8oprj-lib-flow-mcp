@@ -30,4 +30,4 @@ var startResult = mcp.toolResponse(request('text'), {source:'resources/read', te
 assert(JSON.stringify(startResult).length + 200 < 16000,
  'Start must fit the Vibe 4000-token/16000-character envelope budget, including harness overhead');
 assert(startResult.content[0].text === start, 'Start is complete and readable');
-print('resource-text-alias OK');
+print('resource-text-alias OK (start '+start.length+' characters; envelope budget '+(JSON.stringify(startResult).length+200)+'/16000)');

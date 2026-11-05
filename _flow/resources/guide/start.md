@@ -21,53 +21,38 @@ Start here: the default Flow authoring route, the source contract, the project l
 | MCP JSONL tracing | `flow://guide/tracing` |
 | Ordered tags and named project configurations | `flow://guide/tags` |
 
-The data route takes precedence: any persisted business data with roles uses
-entities by default, including when the application also needs sign-in, a CSV
-export, a scheduled job or an audit journal. These are independent additions,
-not reasons to replace the entity model with direct SQL. Use
-`flow://guide/multipage-roles` only when there is no persisted business data or
-the user explicitly requests direct SQL. Generated CRUD is reserved for an
-explicit request for generated CRUD.
+Persisted business data with roles defaults to entities, also with demo login,
+CSV, jobs or audit: these are independent additions. Direct SQL and generated
+CRUD require an explicit request. With no persisted business data, use
+`flow://guide/multipage-roles`.
 
-Read each guide once per task. Use `resources/read`, or
-`flow-resource-get({uri,format:"text"})` for `flow://guide/`, `flow://lib/`
-and `flow://skills/` URIs without a project. This returns plain Markdown.
-In Vibe `run_typescript`, print the returned string with
-`console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`;
-returning it or JSON-stringifying it escapes newlines. If the client truncates,
-read its saved output instead of fetching the guide again. Old calls without
-`format` keep the structured result: the document field is `text` (directly
-on the unwrapped result in Vibe, under `structuredContent` in an MCP envelope).
+Read each guide once. Use `resources/read`, or
+`flow-resource-get({uri,format:"text"})` for guide/library/skill URIs without a
+project. In Vibe `run_typescript`, print the returned Markdown with
+`console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`.
+Returning or JSON-stringifying it escapes newlines. If truncated, read the saved
+output instead of fetching again. Structured mode keeps the document in `text`
+(under `structuredContent` in an MCP envelope).
 
-If `tools/list` advertises `report-create`, use that relayed tool for at most one
-concise product friction per turn: a missing capability or a workaround also counts, even when
-no tool failed. Give the expected behavior, observed behavior and a minimal
-reproduction without secrets or personal data. The server's existing feedback
-consent applies. If the tool is absent or refuses reporting, mention the friction
-in the final answer; do not enable reporting, write an agent-local file or call
-another endpoint to bypass consent.
+If advertised, use relayed `report-create` for at most one product friction per
+turn, including a missing capability or workaround. Give expected/observed
+behavior and a minimal reproduction without secrets or personal data. Honor
+server feedback consent. If absent or refused, mention it in the final answer;
+never enable reporting, write an agent-local file or use another endpoint to
+bypass consent.
 
 ## Authentication and add-ons
 
-Choose the data route above first. Authentication, exports, jobs and auditing
-can be added to either route; needing one of them does not select direct SQL.
+These additions are independent of the data route:
 
-- Authentication: `flow://guide/entities` describes the session
-  and actor-provider contract for entities, with real account providers or an
-  explicitly requested demonstration session. Client-supplied roles never
-  establish an identity.
-- Demonstration sign-in: `flow://guide/multipage-entities`. A Flow
-  that opens a session without a password runs only when
-  `String(config.demo.login) === "true"`. Bootstrap declares this as the
-  global symbol `<project>.demo.login`, false by default; enable it only on a
-  demo server or in the Studio. A demo sign-in does not require direct SQL.
-- CSV export: `flow://guide/multipage-entities`. Reuse the same
-  server-side permissions and filters as the entity read.
-- Scheduled work: `flow://guide/multipage-entities`. A private,
-  bounded service Flow has an explicit server-side contract and does not rely
-  on a browser session.
-- Audit: `flow://guide/multipage-entities`. Keep the authorized mutation
-  and its permitted audit fields in the same transaction; never log secrets.
+- Session and actor provider: `flow://guide/entities`, Authentication section.
+- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities`, matching sections.
+
+A password-free demo login requires `String(config.demo.login) === "true"`;
+bootstrap declares `<project>.demo.login` false by default. Enable it only for a
+demo, never production. Identity and roles come from the server. CSV reuses read
+permissions/filters; jobs are private and bounded, without a browser session;
+mutation and allowlisted audit share a transaction. Never journal secrets.
 
 ## Source contract in five rules
 
@@ -119,17 +104,15 @@ Generated output (`_private/svelte`, `DisplayObjects/mobile`) is never edited.
 
 ## Default backend loop
 
-1. For a new Flow, write compact FlowScript with `code-set` first. Do not
-   browse the catalog or copy application Flows first; let `code-set` and
-   `code-run` diagnostics name blocks and properties. Read at most two
-   samples when syntax is unclear.
+1. Draft compact FlowScript with `code-set` before catalog browsing or copying
+   Flows. Let `code-set` / `code-run` diagnostics name blocks and properties;
+   read at most two samples if syntax is unclear.
 2. If the requested `project`, `qname` or `block` is not accessible through
    Flow MCP, stop and report that blocker. Never fall back to another project
    or to legacy MCP discovery.
-3. Patch with `code-patch`, run with `code-run`, then `code-promote` once
-   diagnostics and behavior are clean. `unsaved:true` or `workingCopy:true`
-   in a `code-run` response means the Flow is still a draft: promote it
-   before stopping. `code-status` shows dirty state, `code-discard` cancels.
+3. `code-patch`, `code-run`, then `code-promote` when clean. `unsaved:true` or
+   `workingCopy:true` means promote before stopping. `code-status` shows
+   drafts; `code-discard` cancels them.
 4. Stop after a successful run plus promotion unless deployed HTTP validation
    was requested. Do not call `flow-test` when `code-run` already proved it.
 5. Use `flow-search` only after the first draft, when a block or pattern is
@@ -159,8 +142,7 @@ encode a block in `qname`.
   `=Origin` or `*` on an application with a session cookie: any site could
   call it in the name of a signed-in user. List the origins (`#`) when a
   separate front end needs them.
-- For sign-in and the independent CSV, job and audit additions, use
-  `flow://guide/start`; keep the chosen data route.
+- For sign-in, CSV, jobs and audit, see Authentication and add-ons above.
 - Keep a Flow `private` unless a frontend or an external client calls it:
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
@@ -219,14 +201,14 @@ encode a block in `qname`.
 
 ## Tool hygiene
 
-After every tool call, check `result.error` in the structured result and read its `message` before retrying; ordinary clients receive `isError:true`, while Vibe receives the same readable error with `isError:false`. Relayed tools keep the legacy MCP response.
+After each tool, read `result.error` and its `message` before retrying.
+Ordinary clients flag `isError:true`; Vibe returns that error with
+`isError:false`. Relayed tools retain the legacy response.
 
 - After reading a tool contract once, pass `doc:false,hints:false`.
-- Flow libraries are not published on the marketplace yet: every Flow
-  library you can use is already loaded in this workspace. Find them with
-  `flow-catalog` and `project-list`, and their guides with
-  `flow://lib/<library>/<guide>`; do not search or import the marketplace for
-  Flow capabilities.
+- Flow libraries are already loaded in this workspace, not on the marketplace.
+  Find them with `flow-catalog` / `project-list` and their guides under
+  `flow://lib/<library>/<guide>`; never import marketplace Flow capabilities.
 - Discovery tools are paginated (`limit`, `cursor`). `flow-catalog`,
   `flow-resource-search` and `flow-search` may return `partial:true` with a
   `nextCursor`; a partial result never proves that nothing else matches.
@@ -234,11 +216,9 @@ After every tool call, check `result.error` in the structured result and read it
   when a complete assessment is requested.
 - Mutation tools and `flow-block-get` answer compactly; use `code-get` or
   `authoring-tree` for focused inspection.
-- The contract of a block (inputs, outputs, errors, examples) comes from
-  `flow-block-get({ project, name })` (its `longDescription` included) or
-  `authoring-palette`, never from library sources or other folders: no
-  `grep`, `sed` or `cat` in library or workspace folders. A diagnostic on a
-  block call gives that call in `contract`.
+- Read block contracts with `flow-block-get({project,name})` (longDescription
+  included) or `authoring-palette`. Never grep/sed/cat library or workspace
+  sources. A call diagnostic includes its `contract`.
 - Do not run shell commands (`git status`, `sed`, `cat`, HTTP scripts) to
   confirm a generated Flow. Trust given `project`/`qname`; MCP results are the
   source of truth.
@@ -261,18 +241,16 @@ After every tool call, check `result.error` in the structured result and read it
 
 ## Frontend entry
 
-Choose the task guide from the table above before coding. Business apps with
-persisted business data and roles need the `lib_flow_entity` project reference
-and both entity guides, including with demonstration sign-in, CSV or jobs.
-For Svelte, use `code-get` / `code-set` on `sourceFile`, then
+Choose the task guide from the table above before coding. For Svelte, use `code-get` / `code-set` on `sourceFile`, then
 `authoring-tree`, `authoring-palette` and `authoring-mutate` as needed. Run the
 viewer through `frontend-svelte-action`. Pages live under
 `_flow/frontbuilder/svelte/model/<App>/src/routes`; never edit generated Svelte.
 
 ## Non-secret project switches
 
-Use `flow-project-symbol-set({project:"App",key:"App.demo.login",value:true})` for a non-secret project switch.
-Keys are confined to `<project>.*`, values to booleans or finite numbers; credentials and strings are refused.
-The symbol manager applies the setting immediately, including to warm Flow runtimes. No Studio configuration edit or
-admin session is needed. The manager persists symbols through its normal API; `effective:true` confirms memory,
-not a separate guarantee of disk persistence. Restore a switch by setting its previous boolean/number value.
+Use `flow-project-symbol-set({project:"App",key:"App.demo.login",value:true})`
+for non-secret switches. Keys stay under `<project>.*`; only booleans or finite
+numbers are accepted, never credentials or strings. The manager applies them
+immediately, including to warm runtimes, without an admin session/config edit.
+`effective:true` proves memory, not separately disk persistence. Restore the
+previous boolean/number value to undo.
