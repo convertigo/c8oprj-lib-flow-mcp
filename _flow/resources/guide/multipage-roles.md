@@ -249,5 +249,5 @@ it answers `status:"running"`, call it again with its `runId` alone. Do not
 walk these paths yourself with Playwright. After each MCP tool, read
 `result.error`, its code and its message before retrying. `FLOW_INPUT_REQUIRED`
 and `FLOW_INPUT_TYPE_INVALID` point to an input contract;
-`FLOW_CODE_UNSAVED_WORKING_COPY` asks to resume from the given revision. Keep
+`unsaved:true` in a `code-run` answer asks to resume from its `revision`. Keep
 tests and sources in Git, without runtime data or secrets.

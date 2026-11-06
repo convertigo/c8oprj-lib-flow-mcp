@@ -15,7 +15,9 @@ function response(name, value, args) { return mcp.toolResponse({id:1,params:{nam
 var refused = response('code-set',{ok:false,draft:true,revision:'checked',code:code,fixes:fixes,error:{code:'UNKNOWN_BLOCK',message:'Unknown block'}});
 assert(refused.code === code && refused.fixes.length === 30 && refused.error.code === 'UNKNOWN_BLOCK','A refusal must not hide corrections applied to its draft');
 var run = response('code-run',{ok:true,draft:true,qname:'Project.Sample',revision:'exact-draft',result:{value:1}});
-var unsaved = run.warnings.filter(function(warning){return warning.code==='FLOW_CODE_UNSAVED_WORKING_COPY';})[0];
+assert(run.unsaved === true && run.revision === 'exact-draft' && run.qname === 'Project.Sample' && /code-promote/.test(run.next),'A compact draft run must identify the exact revision to resume');
+var fullRun = response('code-run',{ok:true,draft:true,qname:'Project.Sample',revision:'exact-draft',result:{value:1}},{detail:'full'});
+var unsaved = fullRun.warnings.filter(function(warning){return warning.code==='FLOW_CODE_UNSAVED_WORKING_COPY';})[0];
 assert(unsaved && unsaved.revision === 'exact-draft' && unsaved.qname === 'Project.Sample' && unsaved.hint.indexOf('exact-draft') >= 0,'Unsaved warning must identify the exact revision to resume');
 assert(!response('code-set',{ok:true,revision:'normal',warnings:[]}).fixes,'No fabricated correction for an unchanged source');
 print('code-safe-corrections OK ('+checks+' checks)');
