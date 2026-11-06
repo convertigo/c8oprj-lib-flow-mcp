@@ -31,9 +31,9 @@ function flow(body) {
 }
 try {
 	// A refusal reads in the text alone: the line of the file, the code, the construction and the fix.
-	var regex = tool(2, "code-set", { name: "Tickets", code: flow('  local.code = String(input.code)\n  result.valid = /^T-[0-9]+$/.test(local.code)') });
+	var regex = tool(2, "code-set", { name: "Tickets", code: flow('  local.code = String(input.code)\n  result.valid = /^T-[0-9]+$/.test(local.code) && local.code.length < 12') });
 	assert(regex.value.error && regex.text.indexOf("line 8") !== -1 && regex.text.indexOf("FLOWSCRIPT_EXPRESSION_UNSUPPORTED") !== -1 &&
-		regex.text.indexOf("Fix: Test the text with the text.match block") !== -1, "The text names the refusal: " + regex.text);
+		regex.text.indexOf("Fix: Write the text.match block") !== -1, "The text names the refusal: " + regex.text);
 	var diagnostic = regex.value.error.diagnostics[0];
 	assert(diagnostic.line === 8 && diagnostic.expression && diagnostic.expression.indexOf("/^T-[0-9]+$/") !== -1, "The diagnostic keeps its construction: " + JSON.stringify(diagnostic));
 	var block = tool(3, "code-set", { block: "tickets.check", code: 'const _meta = {\n  "sourceVersion": 2,\n  "properties": { "code": { "kind": "value", "type": "string" } },\n' +
