@@ -22,6 +22,12 @@ const _meta = {
       "default": false,
       "description": "Also configure the experimental Svelte frontbuilder. For persisted business data with roles, include lib_flow_entity in references and follow flow://guide/multipage-entities; authentication, CSV and jobs do not select direct SQL.",
     },
+    "devStart": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": true,
+      "description": "With ui:true, start Svelte dev preparation in the background after saving. Set false to skip this startup.",
+    },
     "references": {
       "kind": "literal",
       "type": "array",
@@ -809,7 +815,10 @@ const _meta = {
 		}
 	}
 
-	function startDev(ctx, project) {
+	function startDev(ctx, project, ui, devStart) {
+		if (ui !== true || devStart === false) {
+			return false;
+		}
 		try {
 			var started = ctx.contextActionSource({
 				projectDir: String(project.getDirPath()),
@@ -831,6 +840,7 @@ const _meta = {
 			var name = projectName(prop(props, "project") || prop(props, "name"));
 			var templateUrl = String(prop(props, "templateUrl") || "").trim();
 			var ui = boolValue(prop(props, "ui"), false);
+			var devStart = boolValue(prop(props, "devStart"), true);
 			var references = projectNames(prop(props, "references"));
 			var force = boolValue(prop(props, "force"), false);
 			var dryRun = boolValue(prop(props, "dryRun"), false);
@@ -956,7 +966,7 @@ const _meta = {
 					model.revision + " (frontbuilderModelRevision)." : "");
 			refreshStudio(engine, project, ui ? model.path : "");
 			if (ui) {
-				result.devStarting = startDev(ctx, project);
+				result.devStarting = startDev(ctx, project, ui, devStart);
 			}
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
