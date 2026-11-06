@@ -85,28 +85,107 @@ const _meta = {
 		return end > 0 && end < 200 ? text.substring(0, end + 1) : text.length > 200 ? text.substring(0, 199) + "…" : text;
 	}
 
-	// tools-more without arguments: {} lists the tools outside the default list, {name} returns one complete descriptor.
-	// With arguments, mcp.parseRequest has already turned the call into the tools/call of that tool.
+	// tools-more without arguments: {} lists the tools outside the default list, {name} returns one complete descriptor,
+	// a list of names several. With arguments, mcp.parseRequest has already turned the call into the tools/call of that tool.
+	var TOOLS_MORE_FORMS = "tools-more({}) lists the tools; tools-more({name:\"flow-cache-info\"}) returns its input schema; " +
+		"tools-more({name:\"flow-cache-info\", arguments:{}}) runs it.";
+
+	// The closest tool names: shared words first, then the edit distance.
+	function closestTools(name, candidates) {
+		function distance(a, b) {
+			var row = [];
+			for (var j = 0; j <= b.length; j++) row[j] = j;
+			for (var i = 1; i <= a.length; i++) {
+				var previous = row[0];
+				row[0] = i;
+				for (var k = 1; k <= b.length; k++) {
+					var kept = row[k];
+					row[k] = Math.min(row[k] + 1, row[k - 1] + 1, previous + (a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1));
+					previous = kept;
+				}
+			}
+			return row[b.length];
+		}
+		var words = name.split("-");
+		return candidates.map(function (candidate) {
+			var shared = candidate.split("-").filter(function (word) { return words.indexOf(word) !== -1; }).length;
+			return { name: candidate, shared: shared, distance: distance(name, candidate) };
+		}).filter(function (entry) {
+			return entry.shared > 0 || entry.distance <= 3;
+		}).sort(function (a, b) {
+			return a.distance <= 3 !== b.distance <= 3 ? (a.distance <= 3 ? -1 : 1) : b.shared - a.shared || a.distance - b.distance;
+		}).slice(0, 5).map(function (entry) { return entry.name; });
+	}
+
+	// An unknown name: the closest tools and the exact form, or why a relayed tool is not offered here.
+	function unknownTool(ctx, mcp, name, more) {
+		if (mcp.legacyRelayName(name)) {
+			var relayed = mcp.legacyRelayTool(name) && mcp.legacyRelayTools(ctx).some(function (tool) { return tool.name === name; });
+			if (relayed) {
+				return { listed: true };
+			}
+			return { error: { code: "UNKNOWN_TOOL",
+				message: name + " is not offered to this client: it is a tool of the Convertigo MCP relay, which is off or does not offer it on this server.",
+				hint: name === "browser-verify" || name === "subagent-run"
+					? "Prove the page with the browser tools of your host (Playwright) on the openUrl of dev.open or dev.sync: execute the acceptance.calls plan of openBuilt, one screenshot for a visual check."
+					: "Use the tools of your list; tools-more({}) lists the others.",
+				details: { relayed: true } } };
+		}
+		var closest = closestTools(name, more.map(function (tool) { return tool.name; }).concat(mcp.coreToolNames()));
+		return { error: { code: "UNKNOWN_TOOL", message: "Unknown Flow MCP tool: " + name + ".",
+			hint: (closest.length ? "Closest: tools-more({name:\"" + closest[0] + "\"})" + (closest.length > 1 ? ", or " + closest.slice(1).join(", ") : "") + ". " : "") +
+				TOOLS_MORE_FORMS,
+			details: { closest: closest } } };
+	}
+
 	function toolsMore(ctx, request) {
 		var args = request.params && request.params.arguments || {};
+		var mcp = ctx.lib("mcp");
 		var more = ctx.callBlock("mcp.tools.available", { profile: "more", out: "local.moreTools" }, { trace: false }) || [];
-		var name = typeof args.name === "string" ? args.name.trim() : "";
-		if (args.arguments !== undefined && args.arguments !== null) {
-			throw { code: "INVALID_ARGUMENT", message: "tools-more arguments must be a JSON object of the arguments of " + (name || "the tool") + ".",
-				hint: "tools-more({name:\"flow-cache-info\", arguments:{}})" };
+		var asked = Array.isArray(args.name) ? args.name : args.name === undefined || args.name === null ? [] : [args.name];
+		var names = asked.map(mcp.toolsMoreName).filter(function (name) { return name; });
+		var inner = args.arguments;
+		if (inner !== undefined && inner !== null) {
+			var empty = typeof inner === "object" && !Array.isArray(inner) && !Object.keys(inner).length;
+			if (!names.length && !empty) {
+				throw { code: "INVALID_ARGUMENT", message: "tools-more needs the name of the tool next to its arguments.", hint: TOOLS_MORE_FORMS };
+			}
+			if (names.length > 1) {
+				throw { code: "INVALID_ARGUMENT", message: "tools-more runs one tool at a time: give one name with its arguments.", hint: TOOLS_MORE_FORMS };
+			}
+			if (names.length) {
+				throw { code: "INVALID_ARGUMENT", message: "tools-more arguments must be a JSON object of the arguments of " + names[0] + ".",
+					hint: "tools-more({name:\"" + names[0] + "\", arguments:{...}})" };
+			}
 		}
-		if (!name) {
+		if (!names.length) {
 			return { ok: true, tools: more.map(function (tool) { return { name: tool.name, description: firstSentence(tool.description) }; }),
 				next: "tools-more({name}) for the input schema of one, tools-more({name, arguments}) to run it." };
 		}
-		var found = more.filter(function (tool) { return tool.name === name; })[0];
-		if (!found) {
-			if (ctx.lib("mcp").coreTool(name)) {
-				return { ok: true, name: name, listed: true, next: "Call " + name + " directly: it is in the tools list." };
+		var tools = [], listed = [], unknown = [], refusal = null;
+		names.forEach(function (name) {
+			var found = more.filter(function (tool) { return tool.name === name; })[0];
+			if (found) {
+				tools.push(found);
+				return;
 			}
-			throw { code: "UNKNOWN_TOOL", message: "Unknown Flow MCP tool: " + name + ".", hint: "tools-more({}) lists the tools it runs." };
+			var other = mcp.coreTool(name) ? { listed: true } : unknownTool(ctx, mcp, name, more);
+			if (other.listed) {
+				listed.push(name);
+			} else {
+				refusal = refusal || other.error;
+				unknown.push({ name: name, message: other.error.message, hint: other.error.hint });
+			}
+		});
+		if (names.length === 1) {
+			if (refusal) throw refusal;
+			return listed.length
+				? { ok: true, name: names[0], listed: true, next: "Call " + names[0] + " directly: it is in the tools list." }
+				: { ok: true, tool: tools[0], next: "tools-more({name:\"" + names[0] + "\", arguments:{...}}) runs it." };
 		}
-		return { ok: true, tool: found, next: "tools-more({name:\"" + name + "\", arguments:{...}}) runs it." };
+		if (!tools.length && !listed.length) throw refusal;
+		return { ok: true, tools: tools, listed: listed, unknown: unknown,
+			next: "Call the listed tools directly; tools-more({name, arguments}) runs one of the others." };
 	}
 
 	function toolMap(ctx) {
