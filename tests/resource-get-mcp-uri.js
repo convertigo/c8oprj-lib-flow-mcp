@@ -112,6 +112,9 @@ var textMissing = run({uri:"flow://guide/missing", format:"text"}, false).respon
 assert(textMissing.isError && textMissing.structuredContent.error.code === "UNKNOWN_RESOURCE", "Readable missing guide is still an error");
 // flow://guide/sql is the guide of the SQL library when it is the only one with that name (alias, with a note).
 var guideAliasFor = mcp.guideAliasFor;
+var flowscriptAlias = mcp.guideAlias('flow://guide/flowscript', [], ['start', 'authoring']);
+assert(flowscriptAlias.uri === 'flow://guide/authoring',
+	'backend guide shorthand leads directly to the authoring guide: ' + JSON.stringify(flowscriptAlias));
 mcp.guideAliasFor = function (ctx, uri) {
 	return mcp.guideAlias(uri, [{ uri: "flow://lib/lib_flow_sql/sql", project: "lib_flow_sql" }], ["start", "frontend-svelte"]);
 };

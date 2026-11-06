@@ -4022,6 +4022,7 @@
 		var wanted = "", library = "";
 		if ((match = /^flow:\/\/guide\/([A-Za-z0-9_.-]+)$/.exec(text))) {
 			wanted = match[1].toLowerCase();
+			if (wanted === "flowscript" && coreNames.indexOf("authoring") !== -1) return { uri: "flow://guide/authoring" };
 			candidates = guides.filter(function (guide) { return base(guide) === wanted; });
 			if (!candidates.length) {
 				var owned = guides.filter(function (guide) { return short(guide.project) === wanted || String(guide.project).toLowerCase() === wanted; });
