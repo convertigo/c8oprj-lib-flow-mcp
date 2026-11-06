@@ -510,6 +510,26 @@
 		return lines;
 	}
 
+	// A result with ok:false and no error object (a frontend action, for instance) still has a code for text clients.
+	function failedCode(value) {
+		var code = typeof value.code === "string" ? value.code : "";
+		return /^[A-Z][A-Z0-9_]{2,}$/.test(code) ? code : "TOOL_FAILED";
+	}
+
+	// The first failed step of details.steps, with the error line of its output.
+	function failedStepLine(value) {
+		var steps = value.details && Array.isArray(value.details.steps) ? value.details.steps : [];
+		var step = steps.filter(function (each) { return each && each.ok === false; })[0];
+		if (!step) return "";
+		var lines = String(step.stderr || "") + "\n" + String(step.stdout || "");
+		lines = lines.split("\n").map(function (line) { return line.trim(); }).filter(function (line) { return !!line; });
+		var cause = lines.filter(function (line) { return /^[A-Za-z.]*Error:/.test(line); }).pop()
+			|| lines.filter(function (line) { return /\berror\b/i.test(line); }).pop() || lines.pop() || "";
+		if (cause.length > 400) cause = cause.substring(0, 399) + "…";
+		return " Step " + String(step.action || "?") + " failed" + (step.exitCode !== undefined && step.exitCode !== null ? " (exit " + step.exitCode + ")" : "") +
+			(cause ? ": " + cause.replace(/\.$/, "") + "." : ".");
+	}
+
 	function valueKeys(value) {
 		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
 			return value[key] !== undefined;
@@ -524,6 +544,10 @@
 		if (value.error) {
 			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
 				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
+		}
+		if (value.ok === false) {
+			return "Error [" + failedCode(value) + "]: " + String(value.message || value.title || "The tool reported a failure").replace(/\.$/, "") + "." +
+				failedStepLine(value) + " See structuredContent.";
 		}
 		var parts = [];
 		if (value.ok === true) {
