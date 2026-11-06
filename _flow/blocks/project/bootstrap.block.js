@@ -259,7 +259,7 @@ const _meta = {
 	}
 
 	function currentModelPath(source) {
-		var match = String(source || "").match(/^\s*modelPath:\s*(.*?)\s*$/m);
+		var match = String(source || "").match(/^\s*"?modelPath"?\s*:\s*"?(.*?)"?\s*,?\s*$/m);
 		return match ? match[1] : "";
 	}
 
@@ -664,26 +664,40 @@ const _meta = {
 			report.source = source;
 			return report;
 		}
-		if (/[\r\t]/.test(source) || /^(?:---|\.\.\.|%)/m.test(source)) {
-			return report;
+		var merged;
+		if (/^\s*\{/.test(source)) {
+			// a JSON (flow-style) document is written back as JSON, with its indent: the existing keys keep their order,
+			// the missing ones end their object
+			if (/^\s*#/m.test(source)) {
+				return report;
+			}
+			var indent = (source.match(/\n([ \t]+)\S/) || [null, "  "])[1];
+			merged = JSON.stringify(deepMerge(current, missing), null, indent) + (/\n\s*$/.test(source) ? "\n" : "");
+			if (/\r\n/.test(source)) {
+				merged = merged.replace(/\n/g, "\r\n");
+			}
+		} else {
+			if (/[\r\t]/.test(source) || /^(?:---|\.\.\.|%)/m.test(source)) {
+				return report;
+			}
+			var lines = source.split("\n");
+			var finalNewline = lines.length > 1 && lines[lines.length - 1] === "";
+			if (finalNewline) {
+				lines.pop();
+			}
+			var edits = [];
+			try {
+				insertMissing(lines, 0, lines.length, 0, missing, edits);
+			} catch (_flowStyle) {
+				return report;
+			}
+			edits.map(function (edit, index) { edit.index = index; return edit; })
+				.sort(function (left, right) { return right.start - left.start || right.index - left.index; })
+				.forEach(function (edit) {
+					Array.prototype.splice.apply(lines, [edit.start, edit.end - edit.start].concat(edit.lines));
+				});
+			merged = lines.join("\n") + "\n";
 		}
-		var lines = source.split("\n");
-		var finalNewline = lines.length > 1 && lines[lines.length - 1] === "";
-		if (finalNewline) {
-			lines.pop();
-		}
-		var edits = [];
-		try {
-			insertMissing(lines, 0, lines.length, 0, missing, edits);
-		} catch (_flowStyle) {
-			return report;
-		}
-		edits.map(function (edit, index) { edit.index = index; return edit; })
-			.sort(function (left, right) { return right.start - left.start || right.index - left.index; })
-			.forEach(function (edit) {
-				Array.prototype.splice.apply(lines, [edit.start, edit.end - edit.start].concat(edit.lines));
-			});
-		var merged = lines.join("\n") + "\n";
 		// proof: every value already there is unchanged, and only the missing keys were added
 		if (JSON.stringify(canonical(parseYaml(merged))) === JSON.stringify(canonical(deepMerge(current, missing)))) {
 			report.source = merged;
@@ -706,7 +720,7 @@ const _meta = {
 		}
 		flowEngine.setEngineQName(ENGINE_QNAME);
 		var source = String(flowEngine.getEngineSource() || "");
-		var hasFrontend = source.indexOf("frontbuilder:") !== -1;
+		var hasFrontend = /\bfrontbuilder"?\s*:/.test(source);
 		var sourceModelPath = currentModelPath(source);
 		var sourceModelExists = projectFileExists(project, sourceModelPath);
 		var wanted = engineSource(String(project.getName()), ui, resourceRoot, modelPath);

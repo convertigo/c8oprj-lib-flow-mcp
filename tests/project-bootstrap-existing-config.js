@@ -10,7 +10,9 @@ function read(file) { return String(FileUtils.readFileToString(file, "UTF-8")); 
 
 var source = read(new java.io.File(root, "_flow/blocks/project/bootstrap.block.js"));
 var block = eval(source.substring(source.indexOf("(function"))
-	.replace("run: function (ctx, node) {", "_ensure: ensureFlowEngine, run: function (ctx, node) {"));
+	.replace("run: function (ctx, node) {", "_ensure: ensureFlowEngine, _svelteModel: ensureSvelteModel, run: function (ctx, node) {"));
+var starterSource = read(new java.io.File(root, "_flow/lib/project-starter.js"));
+var starter = eval(starterSource.substring(starterSource.indexOf("(function")));
 
 var yamlMapper = new Packages.com.fasterxml.jackson.databind.ObjectMapper(new Packages.com.fasterxml.jackson.dataformat.yaml.YAMLFactory());
 var jsonMapper = new Packages.com.fasterxml.jackson.databind.ObjectMapper();
@@ -125,6 +127,102 @@ try {
 	assert(after.config.demo.login === "${Books.demo.login=false}" && after.config.frontbuilder.svelte.target === "svelte5",
 		"the missing config is added: " + project.flowEngine.source);
 	assert(project.flowEngine.source.indexOf("bindings: {}\n") !== -1, "bindings stay");
+
+	// 5. the engine.yaml of a backend written by flow-resource-patch is JSON (the backend of the L2F bench, anonymized):
+	// it was kept unchanged with CONFIG_NOT_MERGED and no modelPath. It is merged, written back as JSON with its indent,
+	// the existing keys in their order and the missing ones at the end of their object, and the Page model is created.
+	var jsonYaml = [
+		'{',
+		'  "version": 1,',
+		'  "engineQName": "lib_flow_engine.Engine",',
+		'  "bindings": {},',
+		'  "config": {',
+		'    "sql": {',
+		'      "connections": {',
+		'        "books": {',
+		'          "url": "jdbc:hsqldb:file:.//_flow/resources/sql/books/database/catalog",',
+		'          "user": "SA",',
+		'          "password": "${Books.db.password.secret=}",',
+		'          "dialect": "hsqldb",',
+		'          "driverClass": "org.hsqldb.jdbc.JDBCDriver",',
+		'          "nativeRead": true,',
+		'          "nativeWrite": true',
+		'        }',
+		'      },',
+		'      "initializers": {',
+		'        "books": {',
+		'          "connection": "books",',
+		'          "schemaFile": "_flow/resources/sql/books/schema.json"',
+		'        }',
+		'      },',
+		'      "queries": {',
+		'        "bookById": {',
+		'          "connection": "books",',
+		'          "readOnly": true,',
+		'          "maxRows": 200,',
+		'          "sql": "SELECT ID AS \\"id\\", SHELF AS \\"shelf\\", TITLE AS \\"title\\" FROM BOOK WHERE ID = :id",',
+		'          "parameters": [',
+		'            {',
+		'              "name": "id",',
+		'              "type": "int64",',
+		'              "nullable": false',
+		'            }',
+		'          ],',
+		'          "columns": [',
+		'            {',
+		'              "name": "id",',
+		'              "type": "int64",',
+		'              "nullable": false',
+		'            },',
+		'            {',
+		'              "name": "title",',
+		'              "type": "string",',
+		'              "nullable": false',
+		'            }',
+		'          ]',
+		'        }',
+		'      }',
+		'    }',
+		'  }',
+		'}',
+		''
+	].join("\n");
+	var modelFile = new java.io.File(tmp, "_flow/frontbuilder/svelte/model/Books/src/routes/+page.flow.svelte");
+	FileUtils.deleteQuietly(modelFile);
+	project = projectWith(jsonYaml);
+	before = JSON.parse(jsonYaml);
+	var page = block._svelteModel({ lib: function () { return starter; } }, project, "Books");
+	flow = ensure(project, true);
+	assert(flow.merge && flow.merge.source !== null, "a JSON engine.yaml is merged, not CONFIG_NOT_MERGED: " + JSON.stringify(flow.merge));
+	var text = project.flowEngine.source;
+	after = JSON.parse(text);
+	assert(JSON.stringify(after.config.sql) === JSON.stringify(before.config.sql), "config.sql is identical in value and order: " + text);
+	assert(after.config.sql.connections.books.password === "${Books.db.password.secret=}", "the secret symbol is kept");
+	assert(after.config.frontbuilder && after.config.frontbuilder.svelte.modelPath === page.path, "modelPath is set: " + text);
+	assert(after.config.demo.login === "${Books.demo.login=false}" && after.configVisibility.frontbuilder === "private",
+		"demo.login and the visibility are added");
+	assert(flow.merge.added.join(",") === "config.demo,config.frontbuilder,configVisibility" && flow.merge.kept.length === 0,
+		"the bootstrap reports what it added: " + JSON.stringify(flow.merge));
+	assert(Object.keys(after).join(",") === "version,engineQName,bindings,config,configVisibility" &&
+		Object.keys(after.config).join(",") === "sql,demo,frontbuilder", "the existing keys keep their order, the new ones end their object");
+	assert(text === JSON.stringify(after, null, 2) + "\n" && text.indexOf(jsonYaml.substring(0, jsonYaml.indexOf('    "sql"'))) === 0,
+		"the text stays JSON with a 2-space indent");
+	assert(flow.written === true && flow.configuredSvelte === true, "the merged source is written");
+	assert(page.exists && modelFile.isFile(), "the Page model exists, as on a new project");
+	again = ensure(project, true);
+	assert(project.flowEngine.source === text && again.written === false, "a second bootstrap changes nothing");
+
+	// 6. in JSON too, a value the bootstrap would set differently is kept, with a warning
+	var otherJson = JSON.stringify((function (doc) {
+		doc.config.frontbuilder = { svelte: { modelPath: "_flow/frontbuilder/svelte/model/Other/src/routes/+page.flow.svelte" } };
+		return doc;
+	})(JSON.parse(jsonYaml)), null, 2) + "\n";
+	project = projectWith(otherJson);
+	flow = ensure(project, true);
+	after = JSON.parse(project.flowEngine.source);
+	assert(after.config.frontbuilder.svelte.modelPath === "_flow/frontbuilder/svelte/model/Other/src/routes/+page.flow.svelte" &&
+		after.config.frontbuilder.svelte.target === "svelte5", "the existing modelPath is kept, the missing keys added: " + project.flowEngine.source);
+	assert(flow.merge.kept.join(",") === "config.frontbuilder.svelte.modelPath", "the kept value is reported");
 } finally {
 	FileUtils.deleteDirectory(tmp);
 }
