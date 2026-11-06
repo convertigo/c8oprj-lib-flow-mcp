@@ -455,5 +455,15 @@
   "family": "multipage-entities",
   "old": "may have HTTP 200 with a Flow error: show `Status`, not only a result field.",
   "new": "return HTTP 200 with an `error` envelope: show `Status`, not only a result field."
+ },
+ {
+  "family": "authoring",
+  "old": "It requires a target Flow, not just a project.",
+  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` (400) before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message, status: 400 }`."
+ },
+ {
+  "family": "authoring",
+  "old": "for each item. A block nested there can use `$$id` for an explicit name.",
+  "new": "for each item. A block nested there can use `$$id` for an explicit name.\n- For physical line numbers, split before skipping blanks:\n  `local.lines = text.split({ text: input.csv, separator: \"\\\\r?\\\\n\", regex: true, trim: false, removeEmpty: false })`.\n  Iterate `local.lines` with `while` and a zero-based `local.index`; report\n  `local.index + 1` as top-level `throw.line`, and filter only after numbering.\n  `text.split` and `text.lines` otherwise drop empty items by default, shifting\n  later line numbers; `list.map` and `forEach` do not expose an index."
  }
 ]

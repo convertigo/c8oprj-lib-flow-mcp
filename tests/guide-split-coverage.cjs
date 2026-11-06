@@ -16,6 +16,14 @@ for (const rewrite of rewrites.filter(item => item.currentOnly)) {
 }
 const { stale, guides, LIMIT } = require(path.join(root, 'tools/guide-sizes.cjs'));
 
+const authoringData = fs.readFileSync(path.join(guideDir, 'authoring-data.md'), 'utf8');
+assert.match(authoringData, /physical line numbers/i, 'authoring data explains physical line numbering');
+assert.match(authoringData, /text\.split\(\{[^\n]*removeEmpty: false[^\n]*\}\)/,
+  'the split example retains blank lines before numbering');
+assert.match(authoringData, /local\.index \+ 1/, 'the guide uses the original zero-based index');
+assert.match(authoringData, /top-level `throw\.line`/, 'the physical line is a top-level error field');
+assert.match(authoringData, /filter only after numbering/i, 'filtering cannot discard the original line index');
+
 const families = {
   'frontend-svelte': { entryMax: 8000, subs: ['sources', 'layout', 'data', 'forms', 'datatable', 'actions', 'themes', 'components', 'proof'].map(s => 'frontend-svelte-' + s) },
   start: { entryMax: 6000, subs: ['start-rules'] },
