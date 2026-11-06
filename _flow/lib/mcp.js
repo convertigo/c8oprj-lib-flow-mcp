@@ -3745,6 +3745,14 @@
 		if (/(?:^|\.)dev\.(?:open|sync|start)$/.test(action) && value.ok === true && value.openUrl && !value.browserProof) {
 			value.browserProof = "Prove the page on openUrl with " + HOST_BROWSER_TOOLS;
 		}
+		if (/(?:^|\.)dev\.(?:open|sync)$/.test(action) && value.ok === true && value.openUrl && !value.handoff) {
+			var policy = value.dev && value.dev.idlePolicy || value.details && value.details.idlePolicy || {};
+			var idleMs = Number(policy.noViewerTimeoutMs);
+			if (!isFinite(idleMs) || idleMs <= 0) idleMs = 2 * 60 * 1000;
+			value.handoff = "Put the page URL first in the final answer. Prefer the openBuilt URL after a build; " +
+				"this dev URL works only while its server runs (stops after " + (idleMs / 60000) +
+				" min without a viewer).";
+		}
 		return value;
 	}
 
@@ -3775,7 +3783,7 @@
 				keep("setupKind", value);
 				if (devOut.setupKind === undefined && details && hasContent(details.setupKind)) keep("setupKind", details);
 			} else if (devAction[1] === "sync") {
-				["openUrl", "generated", "refresh", "dependenciesChanged", "browserProof"].forEach(function (key) { keep(key, value); });
+				["openUrl", "generated", "refresh", "dependenciesChanged", "browserProof", "handoff"].forEach(function (key) { keep(key, value); });
 				if (value.smoke && typeof value.smoke === "object") {
 					devOut.smoke = {};
 					["ok", "complete", "routes"].forEach(function (key) {
@@ -3786,7 +3794,7 @@
 					});
 				}
 			} else {
-				["openUrl", "browser", "browserControlReady", "next", "browserProof"].forEach(function (key) { keep(key, value); });
+				["openUrl", "browser", "browserControlReady", "next", "browserProof", "handoff"].forEach(function (key) { keep(key, value); });
 			}
 			["warnings", "diagnostics", "normalizations", "argumentWarning", "operatorNote"].forEach(function (key) {
 				if (hasContent(value[key])) devOut[key] = value[key];

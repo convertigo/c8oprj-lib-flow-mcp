@@ -70,7 +70,10 @@ cases.forEach(function (item) {
 	var compact = answer(item.action, item.raw);
 	var full = answer(item.action, item.raw, "full");
 	var expected = copy(item.expected);
-	if (item.action === "dev.sync" || item.action === "dev.open") expected.browserProof = full.browserProof;
+	if (item.action === "dev.sync" || item.action === "dev.open") {
+		expected.browserProof = full.browserProof;
+		expected.handoff = full.handoff;
+	}
 	var before = JSON.stringify(full).length;
 	var after = JSON.stringify(compact).length;
 	assert(after < before, item.action + " size did not decrease: " + after + " >= " + before);
@@ -94,5 +97,13 @@ cases.forEach(function (item) {
 	same(warningAnswer.details.warnings, warned.details.warnings, item.action + " detail warnings");
 	same(warningAnswer.details.diagnostics, warned.details.diagnostics, item.action + " detail diagnostics");
 	print(item.action + ": " + before + " -> " + after);
+});
+// A dev viewer is a temporary proof URL. The handoff guidance must survive compaction.
+["dev.sync", "dev.open"].forEach(function (action) {
+	var item = cases.filter(function (candidate) { return candidate.action === action; })[0];
+	var compact = answer(action, item.raw);
+	assert(typeof compact.handoff === "string" && /openBuilt/.test(compact.handoff) &&
+		/first URL|page URL/i.test(compact.handoff) && /2 min/.test(compact.handoff),
+		"The dev response must explain the durable page handoff and viewer lifetime: " + JSON.stringify(compact));
 });
 print("dev-compact-responses OK (" + checks + " checks)");

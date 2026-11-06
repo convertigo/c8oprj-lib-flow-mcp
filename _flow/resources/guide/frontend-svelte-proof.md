@@ -12,7 +12,10 @@ coverage and polish. It may not stack downstream business steps in one
 scrolling Page.
 
 Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`
-gives it with `detail:"full"`). Prefer roles, visible text,
+gives it with `detail:"full"`). For handoff, put the page URL first in your
+final answer: prefer the `openBuilt` URL after a build. A `dev.sync` or
+`dev.open` URL works only while the dev server runs; it stops 2 min after the
+last viewer leaves by default (15 min if no viewer ever connects). Prefer roles, visible text,
 images and documented `data-*` attributes; `$$id`s are not DOM ids. On
 failure, allow one focused browser diagnostic instead of an exploratory test
 campaign. Do not infer that a network-backed component works from its

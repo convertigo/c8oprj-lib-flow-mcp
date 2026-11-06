@@ -102,7 +102,7 @@ Read only the sub-guide of the current task, once; each one is short enough to b
 | `flow://guide/frontend-svelte-actions` (6.8 KB) | for events and actions: chains, `If`, reentrancy, `OnMount`, `OnAfterNavigate`, session Layout, timers, clocks |
 | `flow://guide/frontend-svelte-themes` (3.7 KB) | for colors, palettes, light and dark mode, fonts and icons |
 | `flow://guide/frontend-svelte-components` (3.8 KB) | for a reusable component, its props and events, or a library component |
-| `flow://guide/frontend-svelte-proof` (3.0 KB) | before handing over: POC acceptance, browser proof, verifier, visual checklist |
+| `flow://guide/frontend-svelte-proof` (3.2 KB) | before handing over: POC acceptance, browser proof, verifier, visual checklist |
 | `flow://guide/frontend-svelte-routing` (5.3 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |
 
 ## Known Limits

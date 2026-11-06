@@ -133,5 +133,10 @@
   "family": "frontend-svelte",
   "old": "sequence, as in NGX, wherever a `CallSequence` ran it on the page;",
   "new": "sequence, as in NGX, wherever a `CallSequence` ran it on the page;\n  `<CallSequence $$id=\"load\" requestable=\".Sequence\">` calls it, with its inputs in\n  `<Variables>` and the follow-up actions after it in the same `Actions`\n  (`sequence=\"Sequence\"` is accepted with a `FRONTEND_PROPERTY_ALIAS` warning);"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`\ngives it with `detail:\"full\"`).",
+  "new": "Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`\ngives it with `detail:\"full\"`). For handoff, put the page URL first in your\nfinal answer: prefer the `openBuilt` URL after a build. A `dev.sync` or\n`dev.open` URL works only while the dev server runs; it stops 2 min after the\nlast viewer leaves by default (15 min if no viewer ever connects)."
  }
 ]
