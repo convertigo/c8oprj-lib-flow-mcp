@@ -376,7 +376,7 @@ const _meta = {
 				if (target === "authoring.tree" && result && result.error && result.error.code === "AUTHORING_TREE_FOCUS_NOT_FOUND") {
 					var unfocused = null;
 					try {
-						unfocused = ctx.callBlock(target, Object.assign({}, args, { focusPath: "", rootPath: "", path: "",
+						unfocused = ctx.callBlock("authoring.tree", Object.assign({}, args, { focusPath: "", rootPath: "", path: "",
 							property: undefined, detail: "compact", maxDepth: 8 }), { trace: false });
 					} catch (ignored) {
 					}
