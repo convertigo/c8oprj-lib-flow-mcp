@@ -43,5 +43,8 @@ tools.forEach(function(tool) {
 add('flow-resource-get','missing-resource',call('tools/call',{
   name:'flow-resource-get',arguments:{uri:'flow://guide/does-not-exist',format:'text'}}));
 add('code-get','missing-qname',call('tools/call',{name:'code-get',arguments:{projectDir:projectDir}}));
-print('OUTPUT_CONTRACT:'+JSON.stringify({tools:tools,cases:cases}));
+// A tool-specific success schema, with the error alternative every declared schema gets, guards the guard below; the
+// generic schema (any object) must not be declared by any tool.
+var sampleOutputSchema = mcp.toolOutputSchema({type:'object',properties:{ok:{type:'boolean'},result:{type:'object'}},required:['ok']});
+print('OUTPUT_CONTRACT:'+JSON.stringify({tools:tools,cases:cases,sampleOutputSchema:sampleOutputSchema,genericOutputSchema:mcp.toolOutputSchema()}));
 java.lang.System.exit(0);

@@ -216,8 +216,8 @@ Ordinary clients flag `isError:true`; Vibe returns that error with
   `nextCursor`; a partial result never proves that nothing else matches.
 - `flow-app-progress` defaults to the POC goal; use `mode:"hardening"` only
   when a complete assessment is requested.
-- Mutation tools and `flow-block-get` answer compactly; use `code-get` or
-  `authoring-tree` for focused inspection.
+- A tool a guide names but the list lacks runs through
+  `tools-more({name, arguments})`; `tools-more({})` lists them.
 - Read block contracts with `flow-block-get({project,name})` (longDescription
   included) or `authoring-palette`. Never grep/sed/cat library or workspace
   sources. A call diagnostic includes its `contract`.
