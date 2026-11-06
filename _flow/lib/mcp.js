@@ -765,6 +765,46 @@
 		return top.filter(function (path) { return path; }).slice(0, limit || 3);
 	}
 
+	// Natural forms of focusPath seen in the light bench of 06/11 (it4): the project name, "frontends" or "frontend", a
+	// page or layout source file. Each one reads as the node it names in the unfocused tree (tree); any other unknown
+	// path keeps AUTHORING_TREE_FOCUS_NOT_FOUND with its nearest paths. Returns { path, note } or null.
+	function authoringFocusAlias(args, wanted, tree) {
+		wanted = String(wanted || "").trim().replace(/\\/g, "/");
+		var project = String(args && args.project || "");
+		var bare = wanted.replace(/^[^:\/]+::/, "");
+		var paths = [];
+		(function walk(node) {
+			(node && node.children || []).forEach(function (child) {
+				if (child && child.path) paths.push(String(child.path));
+				walk(child);
+			});
+		})(tree);
+		paths.sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1); });
+		function note(path, what) {
+			return { path: path, note: "focusPath \"" + wanted + "\" read as " + (path ? "\"" + path + "\"" : "the root of the tree") +
+				" (" + what + "). Pass that path next time." };
+		}
+		if (!wanted) return null;
+		if (project && (bare === "" || bare === project)) return note("", "the project");
+		if (/^frontends?$/i.test(bare)) {
+			var root = paths.filter(function (path) { return path === "frontends" || path.indexOf("frontends.") === 0; })[0];
+			return root ? note(root, "the frontend root") : null;
+		}
+		var source = /(?:^|\/)(src\/routes\/(?:.*\/)?\+(?:page|layout)[^\/]*\.svelte)$/.exec(bare);
+		if (source) {
+			var base = function (name) {
+				return String(name).replace(/[^A-Za-z0-9_]/g, "_").replace(/_+/g, "_").replace(/_(?:flow_)?svelte$/, "");
+			};
+			var token = base(source[1]);
+			var page = paths.filter(function (path) {
+				var last = base(path.split(".").pop());
+				return last === token || last.slice(-token.length - 1) === "_" + token;
+			})[0];
+			return page ? note(page, "the node of that source file") : null;
+		}
+		return null;
+	}
+
 	// AUTHORING_TREE_FOCUS_NOT_FOUND says the expected form and proposes the nearest existing paths (tree: the
 	// unfocused tree of the same request), so the caller retries without reading the whole tree.
 	function authoringFocusNotFound(args, value, tree) {
@@ -6014,6 +6054,7 @@
 		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,
+		authoringFocusAlias: authoringFocusAlias,
 		authoringFocusNotFound: authoringFocusNotFound,
 		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,
