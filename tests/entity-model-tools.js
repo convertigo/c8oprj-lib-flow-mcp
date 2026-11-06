@@ -37,13 +37,27 @@ try {
  // The model format: the entity library returns it for an empty model, and the tool contracts hold the same keys and example.
  assert(first.model===null&&first.format&&first.example&&first.example.version===2,"Empty model returns format and example: "+JSON.stringify(first));
  var format=first.format,exampleText=JSON.stringify(first.example);
+ // tools/list publishes, unchanged, the constant whose example entity-model-example-contract.js ties to the guide, the skills and the library.
+ var constant=/var ENTITY_MODEL_FORMAT = ([\s\S]*?);\n/.exec(String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/blocks/mcp/tools/available.block.js"),"UTF-8")));
+ assert(constant,"The model contract is one constant of tools/available.block.js");
+ var published=eval(constant[1]);
  ["check","set"].forEach(function(op){
   var descriptor=described["flow-entity-model-"+op],contract=descriptor.inputSchema.properties.model.description;
+  assert(contract===published,op+" publishes the model contract constant unchanged: "+contract);
   assert(contract.indexOf("Example: "+exampleText)>=0,op+" model contract holds the example: "+contract);
   format.types.concat(format.model,format.entity,format.field,format.relation,format.auto,Object.keys(format.traits)).forEach(function(key){assert(contract.indexOf(key)>=0,op+" model contract names "+key);});
   Object.keys(format.traits).forEach(function(trait){format.traits[trait].forEach(function(parameter){assert(contract.indexOf(parameter)>=0,op+" model contract names the "+trait+" parameter "+parameter);});});
   assert(/model property gives the format and an example/.test(descriptor.description),op+" points to the model format");
  });
+ // The format documentation: int64 is an example of a relation type, and a project trait and a source are described.
+ var guideText=String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/resources/guide/entities.md"),"UTF-8")).replace(/\s+/g," ");
+ ["check","set"].forEach(function(op){
+  var contract=described["flow-entity-model-"+op].inputSchema.properties.model.description;
+  assert(/target identity, for example int64[^.]*string/.test(contract),op+" model contract gives int64 as an example of a relation type");
+  assert(/Project trait: \{parameters [^;]*rules [^;]*ui\}; a "\$name"/.test(contract),op+" model contract describes a project trait");
+  assert(/Source: \{provider: block\} on a read-only entity/.test(contract),op+" model contract describes a source");
+ });
+ assert(/`int64` for the default identity[^.]*`string`/.test(guideText)&&/\*\*Project traits:\*\* [^-]*`parameters`[^-]*`rules`/.test(guideText)&&/\*\*Source:\*\* `"source": \{"provider"/.test(guideText),"The entities guide documents the relation type, project traits and source");
  var bogus=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{},bogusSection:{}}});
  assert(bogus&&bogus.valid===false&&bogus.diagnostics.some(function(d){return d.path==="bogusSection"&&/Accepted here: version, modelVersion, entities[^.]*\. Correct form: /.test(d.message);}),"Invented section refused: "+JSON.stringify(bogus));
  var relation=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{Pret:{fields:{materiel:{type:"relation"}}}}}});

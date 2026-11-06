@@ -301,8 +301,8 @@ const _meta = {
 
 	// The model property of flow-entity-model-check/-set: the format lib_flow_entity checks (entity-format.js),
 	// with the example an empty flow-entity-model-get returns. tests/entity-model-tools.js keeps them aligned.
-	var ENTITY_MODEL_FORMAT = "Complete entity model as JSON data, never code. Format version 2: check and set refuse any other key, " +
-		"naming its full path, the accepted values and the correct form, every problem at once. " +
+	var ENTITY_MODEL_FORMAT = "Complete entity model as JSON data, never code. Format version 2: check and set refuse any other key " +
+		"and any reference to a missing entity or field, naming its full path, the accepted values and the correct form, every problem at once. " +
 		"Model: version (2, required), modelVersion (positive integer, raised when the schema changes), entities {Name: entity}, " +
 		"traits {Name: project trait}, demo {dataFile}, imports {alias: project}. " +
 		"Entity: fields {name: field}, identity, label, display {title, subtitle}, traits, " +
@@ -313,10 +313,15 @@ const _meta = {
 		"Field: type, label, nullable (default false), required, maxLength, precision, scale, values (enum), default, " +
 		"auto (create, update, currentUser, currentRole), readOnly, computed, notFuture, visibleTo (role list), secret, table, column, relation, where. " +
 		"Types: string, text, enum, int64, decimal, boolean, date, timestamp; no array or json type: store serialized JSON in a text field. " +
-		"Relation: not a type; the field has the type of the target identity (int64) and relation {entity, labelField, where}. " +
+		"Relation: not a type; the field has the type of the target identity, for example int64 for the default identity (an imported identity may be a string), " +
+		"and relation {entity, labelField, where}. " +
 		"Traits: Révisé, Horodaté, Activable, Immuable, Journalisé {fields: [...]}, " +
 		"Possédé {owner: field, unrestricted: [roles]} (needs Révisé; adds the owner field, filled with the session user unless an unrestricted role sets it), " +
 		"Échéance {reference: [date fields], delay: {months}, timeZone}. " +
+		"Project trait: {parameters {name: default}, fields {name: field}, rules [{kind, ...}] (kinds: active, owner, deadline, revision, immutable, audit), ui}; " +
+		"a \"$name\" field name or value takes the parameter, and an entity lists the trait as \"Name\" or {\"Name\": {parameter: value}}. " +
+		"Source: {provider: block} on a read-only entity (readOnly: true): the block, such as app.directory, lists the rows " +
+		"(it receives ids, search, offset, limit and returns {users, hasMore}); provider is its only key and the entity is never written. " +
 		"Example: {\"version\":2,\"modelVersion\":1,\"entities\":{\"Team\":{\"identity\":[\"id\"],\"display\":{\"title\":\"name\"},\"fields\":{\"name\":{\"type\":\"string\",\"maxLength\":80}}}," +
 		"\"Task\":{\"identity\":[\"id\"],\"traits\":[\"Révisé\",{\"Possédé\":{\"owner\":\"requester\",\"unrestricted\":[\"MANAGER\"]}}],\"display\":{\"title\":\"title\"}," +
 		"\"fields\":{\"title\":{\"type\":\"string\",\"maxLength\":120},\"status\":{\"type\":\"enum\",\"values\":[\"OPEN\",\"DONE\"],\"default\":\"OPEN\"}," +
