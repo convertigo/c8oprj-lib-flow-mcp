@@ -138,7 +138,8 @@ An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED`
 before the Flow runs. When the API needs its own error code, keep the
 input optional and validate it in the Flow with `throw { code, message }`.
 On the requester (.json, SDK, frontbuilder), an application error answers with
-200 and the `error` envelope; do not set `status`.
+200 and the `error` envelope; do not set `status` by habit, only when a client
+outside the SDK requires one (standard REST codes: URL mapper operations).
 
 Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
 maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The

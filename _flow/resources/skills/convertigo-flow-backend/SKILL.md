@@ -182,7 +182,8 @@ for Svelte actions. Business rules stay in Flows.
   a block that may fail with `try` (`$$try`, `$$catch`, error path), never
   with a Rhino block.
   On the requester (.json, SDK, frontbuilder), an application error answers with
-  200 and the `error` envelope; do not set `status`.
+  200 and the `error` envelope; do not set `status` by habit, only when a client
+  outside the SDK requires one (standard REST codes: URL mapper operations).
 - Declare or infer useful output schemas; do not leave downstream contracts at
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before

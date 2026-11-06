@@ -2,7 +2,7 @@
  {
   "family": "authoring",
   "old": "It requires a target Flow, not just a project.",
-  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status`."
+  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status` by habit, only when a client\noutside the SDK requires one (standard REST codes: URL mapper operations)."
  },
  {
   "family": "entities",
@@ -395,7 +395,7 @@
   "file": "authoring.md",
   "currentOnly": true,
   "old": "| `flow://guide/authoring-data` (7.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (7.1 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "new": "| `flow://guide/authoring-data` (7.7 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "crud",
