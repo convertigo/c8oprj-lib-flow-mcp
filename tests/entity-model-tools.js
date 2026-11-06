@@ -37,8 +37,13 @@ try {
  // The model format: the entity library returns it for an empty model, and the tool contracts hold the same keys and example.
  assert(first.model===null&&first.format&&first.example&&first.example.version===2,"Empty model returns format and example: "+JSON.stringify(first));
  var format=first.format,exampleText=JSON.stringify(first.example);
+ // tools/list publishes, unchanged, the constant whose example entity-model-example-contract.js ties to the guide, the skills and the library.
+ var constant=/var ENTITY_MODEL_FORMAT = ([\s\S]*?);\n/.exec(String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/blocks/mcp/tools/available.block.js"),"UTF-8")));
+ assert(constant,"The model contract is one constant of tools/available.block.js");
+ var published=eval(constant[1]);
  ["check","set"].forEach(function(op){
   var descriptor=described["flow-entity-model-"+op],contract=descriptor.inputSchema.properties.model.description;
+  assert(contract===published,op+" publishes the model contract constant unchanged: "+contract);
   assert(contract.indexOf("Example: "+exampleText)>=0,op+" model contract holds the example: "+contract);
   format.types.concat(format.model,format.entity,format.field,format.relation,format.auto,Object.keys(format.traits)).forEach(function(key){assert(contract.indexOf(key)>=0,op+" model contract names "+key);});
   Object.keys(format.traits).forEach(function(trait){format.traits[trait].forEach(function(parameter){assert(contract.indexOf(parameter)>=0,op+" model contract names the "+trait+" parameter "+parameter);});});
