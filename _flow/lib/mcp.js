@@ -4205,9 +4205,13 @@
 				out[key] = value[key];
 			}
 		});
-			if (value.draft === true || value.workingCopy === true) {
+			// A missing working copy is not an unsaved one.
+			if ((value.draft === true || value.workingCopy === true) && !(value.error && value.error.code === "FLOW_CODE_DRAFT_MISSING")) {
 				out.workingCopy = true;
 				out.unsaved = true;
+			}
+			if (value.note && /promote$/.test(name)) {
+				out.note = value.note;
 			}
 		// Corrections are an audit trail, never a lossy preview. Keep the full
 		// source and every before/after even in the default compact response.
@@ -4277,6 +4281,8 @@
 		out.responseDetail = "summary";
 		if (value.ok === false && value.proposedPatch && value.proposedPatch.edits && value.proposedPatch.edits.length) {
 			out.next = value.proposedPatch.next;
+		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_MISSING" && out.error.hint) {
+			out.next = out.error.hint;
 		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && out.error.details && out.error.details.copySlip === true) {
 			// The engine recognized a mistyped copy of the current revision: nothing changed, no review is needed.
 			out.next = /promote$/.test(name)

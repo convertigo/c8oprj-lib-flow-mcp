@@ -37,6 +37,30 @@ const _meta = {
 		return Object.assign({}, write, { source: flow.source, code: flow.code });
 	}
 
+	// Without a working copy, the Flow was promoted already, or a project-save wrote its draft to disk before any
+	// promotion (a Flow file that no Flow declares): its saved source is promoted as is. A Flow never written refuses,
+	// with the code-set call to make first.
+	function promoteSaved(ctx, args, missing) {
+		var saved = null;
+		try {
+			saved = ctx.flowGet(missing.name, args);
+		} catch (_unknownFlow) {
+			saved = null;
+		}
+		if (!saved || typeof saved.code !== "string" || !saved.revision) {
+			var project = String(args.project || "");
+			missing.error.hint = "No Flow named " + missing.name + " exists yet: write it with code-set({" +
+				(project ? "project:\"" + project + "\", " : "") + "name:\"" + missing.name + "\", code}), run it with code-run, then promote it.";
+			return missing;
+		}
+		var write = ctx.flowCodePromote(Object.assign({}, args, { code: saved.code, revision: String(saved.revision) }));
+		if (write.ok === true) {
+			write.note = "No working copy of " + missing.name + ": its saved source (revision " + String(saved.revision) +
+				") was promoted as is. Nothing else was changed.";
+		}
+		return write;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -47,6 +71,10 @@ const _meta = {
 				mcp.assertProjectSaveAllowed(args);
 				mcp.assertFlowNameFree(args);
 				var write = ctx.flowCodePromote(args);
+				if (write.ok === false && write.error && write.error.code === "FLOW_CODE_DRAFT_MISSING" &&
+						(args.code === undefined || args.code === null)) {
+					write = promoteSaved(ctx, args, write);
+				}
 				if (write.ok === true) {
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
 				}
