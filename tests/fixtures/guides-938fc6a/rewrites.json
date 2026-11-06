@@ -128,5 +128,10 @@
   "family": "frontend-svelte",
   "old": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` (`path`, not `field`) |",
   "new": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path` |"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "sequence, as in NGX, wherever a `CallSequence` ran it on the page;",
+  "new": "sequence, as in NGX, wherever a `CallSequence` ran it on the page;\n  `<CallSequence $$id=\"load\" requestable=\".Sequence\">` calls it, with its inputs in\n  `<Variables>` and the follow-up actions after it in the same `Actions`\n  (`sequence=\"Sequence\"` is accepted with a `FRONTEND_PROPERTY_ALIAS` warning);"
  }
 ]

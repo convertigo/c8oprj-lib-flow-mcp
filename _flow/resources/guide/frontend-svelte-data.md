@@ -26,6 +26,9 @@ Sources:
 
 - `@.Sequence.path` (or `@.Sequence#marker.path`): the last result of that
   sequence, as in NGX, wherever a `CallSequence` ran it on the page;
+  `<CallSequence $$id="load" requestable=".Sequence">` calls it, with its inputs in
+  `<Variables>` and the follow-up actions after it in the same `Actions`
+  (`sequence="Sequence"` is accepted with a `FRONTEND_PROPERTY_ALIAS` warning);
 - `@Project.Sequence.path`: the result of a sequence of another project, named
   as its `CallSequence` names it (`requestable="lib_OAuth.GetOAuthCredentials"`
   is read by `@lib_OAuth.GetOAuthCredentials.GoogleClientID`); `@.Sequence`
