@@ -3755,6 +3755,53 @@
 		var action = String(args.actionId || args.action || args.id || "");
 		value = withHostBrowserTools(action, value);
 		var details = value && value.details;
+		var devAction = /(?:^|\.)dev\.(ensure|start|sync|open)$/.exec(action);
+		if (devAction && value && typeof value === "object" && value.ok === true && !value.error && !fullResponse(request)) {
+			var hasContent = function (item) {
+				return item !== undefined && item !== null && item !== "" &&
+					!(Array.isArray(item) && item.length === 0) &&
+					!(typeof item === "object" && !Array.isArray(item) && Object.keys(item).length === 0);
+			};
+			// A nested failure is still a diagnostic response, even if the outer action says ok.
+			if ((details && hasContent(details.error)) || (value.smoke && value.smoke.ok === false)) return value;
+			var devOut = { ok: true };
+			var keep = function (key, source) {
+				if (source && source[key] !== undefined) devOut[key] = source[key];
+			};
+			if (devAction[1] === "ensure" || devAction[1] === "start") {
+				keep("pending", value);
+				keep("status", value);
+				if (devOut.status === undefined) keep("status", details);
+				keep("setupKind", value);
+				if (devOut.setupKind === undefined && details && hasContent(details.setupKind)) keep("setupKind", details);
+			} else if (devAction[1] === "sync") {
+				["openUrl", "generated", "refresh", "dependenciesChanged", "browserProof"].forEach(function (key) { keep(key, value); });
+				if (value.smoke && typeof value.smoke === "object") {
+					devOut.smoke = {};
+					["ok", "complete", "routes"].forEach(function (key) {
+						if (value.smoke[key] !== undefined) devOut.smoke[key] = value.smoke[key];
+					});
+					["warnings", "diagnostics"].forEach(function (key) {
+						if (hasContent(value.smoke[key])) devOut.smoke[key] = value.smoke[key];
+					});
+				}
+			} else {
+				["openUrl", "browser", "browserControlReady", "next", "browserProof"].forEach(function (key) { keep(key, value); });
+			}
+			["warnings", "diagnostics", "normalizations", "argumentWarning", "operatorNote"].forEach(function (key) {
+				if (hasContent(value[key])) devOut[key] = value[key];
+			});
+			["details", "dev"].forEach(function (key) {
+				var nested = value[key];
+				if (!nested || typeof nested !== "object") return;
+				["warnings", "diagnostics"].forEach(function (field) {
+					if (!hasContent(nested[field])) return;
+					if (!devOut[key]) devOut[key] = {};
+					devOut[key][field] = nested[field];
+				});
+			});
+			return devOut;
+		}
 		var build = /(?:^|\.)build$/.test(action) || !!(details && details.action === "build");
 		if (!build || !value || typeof value !== "object" || value.error || value.ok !== true || fullResponse(request)) {
 			return value;
