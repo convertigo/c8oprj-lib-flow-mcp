@@ -2,7 +2,7 @@ const _meta = {
   "sourceVersion": 2,
   "version": 1,
   "private": true,
-  "description": "Validates and atomically writes an interpreted entity model with mandatory revision control. Scaffolds missing project-local EntityGateway and app.entityAccess without overwriting them; reads require authentication by default (publicRead explicitly opens entities), writes stay denied until the application policy opens them. Creates no generated CRUD code. The runtime ensures additive schema on first entity use, without an ADMIN initialization facade; follow flow://guide/multipage-entities for role-based applications.",
+  "description": "Validates and atomically writes an interpreted entity model with mandatory revision control. Scaffolds missing project-local EntityGateway and app.entityAccess without overwriting them; reads require authentication by default (publicRead explicitly opens entities), writes stay denied until the application policy opens them. Creates no generated CRUD code. The runtime ensures additive schema on first entity use, without an ADMIN initialization facade; follow flow://guide/multipage-entities for role-based applications. The model property gives the format and an example.",
   "icon": "mdi:database-cog",
   "properties": {
     "request": {

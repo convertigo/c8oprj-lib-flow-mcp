@@ -458,6 +458,38 @@ manager contracts for the exact identity type, directory adapter and allowed
 roles. Never store a password, reset token or authentication secret in the
 business model, frontend source, journal or tool output.
 
+## Model format
+
+`"version": 2` is required. `flow-entity-model-check` and `flow-entity-model-set`
+refuse an unknown section, entity or field property, type, trait or trait
+parameter, naming its full path (`entities.Task.fields.team.type`), the
+accepted values and the correct form, every problem at once. The `model` property of both tools
+lists every accepted key; `flow-entity-model-get` on an empty model returns the
+same `format` and this `example`:
+
+<!-- example: model-format -->
+```json
+{"version":2,"modelVersion":1,"entities":{"Team":{"identity":["id"],"display":{"title":"name"},"fields":{"name":{"type":"string","maxLength":80}}},"Task":{"identity":["id"],"traits":["Révisé",{"Possédé":{"owner":"requester","unrestricted":["MANAGER"]}}],"display":{"title":"title"},"fields":{"title":{"type":"string","maxLength":120},"status":{"type":"enum","values":["OPEN","DONE"],"default":"OPEN"},"team":{"type":"int64","relation":{"entity":"Team","labelField":"name"}},"due":{"type":"date","nullable":true}}}}}
+```
+
+- **Types:** `string`, `text`, `enum` (with `values`), `int64`, `decimal`,
+  `boolean`, `date`, `timestamp`. There is no array or JSON type: store
+  serialized JSON in a `text` field, or declare a related entity. A field
+  without `default` is required unless `nullable: true`.
+- **Identity:** `"identity": ["id"]`, the default, without an `id` field, is an
+  int64 auto-incremented by the database. Never send it on create; read it in
+  `row.key.id`.
+- **Relation:** not a type. The field has the type of the target identity
+  (`int64`) and `relation: {entity, labelField}`; `where` filters its options.
+- **Traits:** `Possédé: {owner, unrestricted}` names the owner field, which the
+  trait adds and fills with the session user, and the roles that see every row;
+  it needs `Révisé`. `Journalisé` takes `{fields: [...]}`; `Révisé`, `Horodaté`,
+  `Activable` and `Immuable` take no parameter.
+- **Outputs:** with a literal entity name, `entity.list`, `entity.read`,
+  `entity.describe` and `entity.options` declare the fields of that entity, so
+  pickers and binding diagnostics offer them. `labels.<relation>` is optional:
+  it is omitted when the related entity is refused.
+
 ## Reusable widgets and named snippets
 
 Find `EntityTable` and `EntityForm` with `authoring-palette` under the qualified
