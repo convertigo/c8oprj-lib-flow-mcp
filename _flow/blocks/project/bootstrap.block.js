@@ -332,6 +332,16 @@ const _meta = {
 		return null;
 	}
 
+	// Libraries whose blocks call blocks of another library declare it in _flow/dependencies.json
+	// (lib_flow_sql uses data.* of lib_flow_crud_data): bootstrap references them too.
+	function requiredReferences(projectDir) {
+		var file = new java.io.File(String(projectDir), "_flow/dependencies.json"), out = [];
+		if (!file.isFile()) return out;
+		var doc = JSON.parse(String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8")));
+		var projects = doc && doc.projects && typeof doc.projects === "object" ? doc.projects : {};
+		Object.keys(projects).forEach(function (n) { if (n !== "lib_flow_engine") out.push(n); });
+		return out;
+	}
 	function resolveProject(engine, name, anchorProject) {
 		var firstError = null;
 		try {
@@ -671,17 +681,29 @@ const _meta = {
 				result.frontbuilderModelRevision = model.revision;
 				result.createdSvelteModel = model.created;
 			}
-			result.projectReferences = references.map(function (referenceName) {
+			var allReferences = references.slice(), addedReferences = [];
+			for (var r = 0; r < allReferences.length; r++) {
+				var referenceName = allReferences[r];
 				if (referenceName === name) {
 					throw new Error("A project cannot reference itself: " + name);
 				}
-				if (resolveProject(engine, referenceName, project) == null) {
+				var referenced = resolveProject(engine, referenceName, project);
+				if (referenced == null) {
 					throw new Error("Unable to resolve referenced Convertigo project: " + referenceName +
 						". Checked workspace roots: " + lastWorkspaceRoots.join(", "));
 				}
 				engine.theApp.referencedProjectManager.getReferenceFromProject(project, referenceName);
-				return referenceName;
-			});
+				requiredReferences(referenced.getDirPath()).forEach(function (required) {
+					if (required !== name && allReferences.indexOf(required) < 0) {
+						allReferences.push(required);
+						addedReferences.push({ project: required, requiredBy: referenceName });
+					}
+				});
+			}
+			result.projectReferences = allReferences;
+			if (addedReferences.length) {
+				result.addedReferences = addedReferences;
+			}
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());
