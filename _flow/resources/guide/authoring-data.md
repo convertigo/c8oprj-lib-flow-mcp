@@ -128,6 +128,9 @@ synchronized to the generated Convertigo variables, persisted on promotion,
 and retained on reload. An omitted property preserves its native value; an
 explicit false/zero resets it. `flow-sync-inputs({project,name})` also accepts
 `qname` instead of name. It requires a target Flow, not just a project.
+An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED`
+(400) before the Flow runs. When the API needs its own error code, keep the
+input optional and validate it in the Flow with `throw { code, message, status: 400 }`.
 
 Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
 maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The

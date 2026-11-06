@@ -72,6 +72,10 @@ guideFiles.forEach(function (file, index) {
   assertTrue(response.result.contents[0].mimeType === "text/markdown", uri + " must be text/markdown");
 });
 var skill = call(40, "resources/read", { uri: "flow://skills/convertigo-flow-mcp/SKILL" });
+var inputGuide = call(39, "resources/read", { uri: "flow://guide/authoring-data" });
+assertTrue(/FLOW_INPUT_REQUIRED/.test(inputGuide.result.contents[0].text) &&
+  /throw \{ code, message, status: 400 \}/.test(inputGuide.result.contents[0].text),
+  "authoring data guide must explain application-owned input errors");
 assertTrue(skill.result.contents[0].text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md"),
   "Skills must be returned whole by resources/read");
 var unknown = call(41, "resources/read", { uri: "flow://guide/does-not-exist" });
