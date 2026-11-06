@@ -3650,12 +3650,41 @@
 					name: target.project + " " + match[1],
 					description: (title ? title[1] : target.project + " guide") + " (guide of the workspace library " + target.project + ")",
 					mimeType: "text/markdown",
+					size: Number(files[i].length()),
 					project: target.project,
 					file: String(files[i].getCanonicalPath())
 				});
 			}
 		});
 		return guides;
+	}
+
+	// "53.3 KB": decimal kilobytes of the resource bytes, one decimal, as shown in each guide description.
+	function guideSizeLabel(bytes) {
+		var tenths = Math.max(1, Math.round(Number(bytes) / 100));
+		return Math.floor(tenths / 10) + "." + (tenths % 10) + " KB";
+	}
+
+	// resources/list: every listed resource with a known byte size ends its description with that size, computed from
+	// the content, so a reader can prefer a short guide or a focused sub-guide.
+	function withGuideSizes(items) {
+		var list = items && typeof items.length === "number" ? items : [];
+		var result = [];
+		for (var i = 0; i < list.length; i++) {
+			var item = list[i];
+			var size = item && item.size !== undefined && item.size !== null && item.size !== "" ? Number(item.size) : NaN;
+			if (!item || !(size >= 0)) {
+				result.push(item);
+				continue;
+			}
+			var copy = {};
+			Object.keys(item).forEach(function (key) { copy[key] = item[key]; });
+			copy.size = size;
+			copy.description = String(item.description || item.name || item.uri || "").replace(/\s+\(\d+\.\d KB\)$/, "") +
+				" (" + guideSizeLabel(size) + ")";
+			result.push(copy);
+		}
+		return result;
 	}
 
 	function libraryGuideText(uri) {
@@ -3820,7 +3849,7 @@
 			out.push({ severity: "warning", code: "ENTITY_LIST_PAGE_UNCHECKED", block: "entity.list", path: target,
 				line: text.substring(0, match.index).split("\n").length,
 				message: "entity.list returns one page (limit 25 by default, 200 at most): " + target + ".rows is not the whole list when " + target + ".hasMore is true.",
-				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. See flow://guide/entities, Lists: filters and pages." });
+				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. See flow://guide/entities-model, Lists: filters and pages." });
 		}
 		return out;
 	}
@@ -4863,7 +4892,7 @@
 			return { error: subagentRelayError("SUBAGENT_SCOPE_REQUIRED", "A Flow constructor needs inputs.project and inputs.scope backend or frontend: " +
 				"the one project it builds in and the side of it that it owns.",
 				"subagent-run({profile:\"constructor\", task, inputs:{project:\"<project>\", scope:\"backend\", contracts, notes}, waitSec:5}), " +
-				"then the same with scope frontend; see the Parallel Build of flow://guide/fullstack-paperboard.",
+				"then the same with scope frontend; see the Parallel Build of flow://guide/fullstack-paperboard-parallel.",
 				{ project: project, scope: scope, scopes: FLOW_CONSTRUCTOR_SCOPES.slice(0) }) };
 		}
 		if (isServerProject(ctx, project)) {
@@ -5576,6 +5605,8 @@
 		jsonRpcError: jsonRpcError,
 		libraryGuides: libraryGuides,
 		libraryGuideText: libraryGuideText,
+		guideSizeLabel: guideSizeLabel,
+		withGuideSizes: withGuideSizes,
 		legacyRelayTool: legacyRelayTool,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,

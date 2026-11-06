@@ -1,3 +1,4 @@
+function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
 // A page that calls a Flow using entity.list is offered the exact fields of the entity: the Flow output schema
 // (flow-output-schema, the effective schema the Studio gives a CallSequence of that Flow) is derived from the
 // model, and the frontbuilder picker and binding diagnostics read it. Relation labels stay optional.
@@ -46,7 +47,7 @@ try {
 	FileUtils.writeStringToFile(new File(target, "c8oProject.yaml"), "convertigo: 8.5.0.m006\n↓EntityPicker [core.Project]:\n  version: 1.0\n  ↓entities [references.ProjectSchemaReference]:\n    projectName: lib_flow_entity\n", "UTF-8");
 	FileUtils.writeStringToFile(new File(target, "_flow/engine.yaml"), definition, "UTF-8");
 	// The published example model of the entities guide.
-	var guide = String(FileUtils.readFileToString(new File(projectDir, "_flow/resources/guide/entities.md"), "UTF-8"));
+	var guide = guideFamily(projectDir, "entities");
 	var example = /<!-- example: model-format -->\s*```json\n([\s\S]*?)```/.exec(guide);
 	assert(example, "The entities guide publishes its model example");
 	var saved = tool("flow-entity-model-set", {projectDir: targetDir, model: JSON.parse(example[1]), expectedRevision: "missing"});

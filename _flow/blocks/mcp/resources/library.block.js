@@ -5,11 +5,12 @@ const _meta = {
   runtime: "rhino",
   uses: ["mcp"],
   icon: "mdi:book-open-variant",
-  description: "Lists or reads the guides shipped by workspace libraries (_flow/resources/guide/*.md), as flow://lib/<project>/<guide>.",
+  description: "Lists or reads the guides shipped by workspace libraries (_flow/resources/guide/*.md), as flow://lib/<project>/<guide>; sizes appends each listed resource size in KB to its description.",
   summary: "library guides {{operation}}",
   properties: {
     request: { kind: "expression", type: "object", default: "input.request" },
     operation: { kind: "text", type: "string" },
+    items: { kind: "expression", type: "array" },
     out: { kind: "path", mode: "write", default: "local.response" },
   },
 }
@@ -22,8 +23,11 @@ const _meta = {
       var value;
       if (String(props.operation || "") === "list") {
         value = mcp.libraryGuides().map(function (guide) {
-          return { uri: guide.uri, name: guide.name, description: guide.description, mimeType: guide.mimeType };
+          return { uri: guide.uri, name: guide.name, description: guide.description, mimeType: guide.mimeType, size: guide.size };
         });
+      } else if (String(props.operation || "") === "sizes") {
+        var items = typeof props.items === "string" ? ctx.expr(props.items) : props.items;
+        value = mcp.withGuideSizes(items);
       } else {
         var request = mcp.requestValue(ctx, props.request);
         var uri = String(request && request.params && request.params.uri || "");

@@ -4,7 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-const guide = name => read('_flow/resources/guide/' + name + '.md');
+// A guide and its sub-guides (<name>-*.md; start-rules for start), entry first, size annotations removed.
+const guide = name => fs.readdirSync(path.join(root, '_flow/resources/guide'))
+  .filter(file => file.startsWith(name + '-') && file.endsWith('.md')).sort()
+  .reduce((text, file) => text + '\n\n' + read('_flow/resources/guide/' + file), read('_flow/resources/guide/' + name + '.md'))
+  .replace(/ \(\d+\.\d KB\)/g, '');
 const skill = name => read('_flow/resources/skills/convertigo-flow-' + name + '/SKILL.md');
 const start = guide('start');
 const router = skill('mcp');

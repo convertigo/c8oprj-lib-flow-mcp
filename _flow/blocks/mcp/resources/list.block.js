@@ -85,6 +85,11 @@ function mcp_resources_list({ input, config, result }) {
                     key: "mimeType",
                     value: current.mimeType,
                   })
+                  json.field({
+                    $$id: "size",
+                    key: "size",
+                    value: current.size,
+                  })
                 },
               })
             },
@@ -120,6 +125,13 @@ function mcp_resources_list({ input, config, result }) {
     $$nodes: function () {
       json.push({ path: "local.resources", value: current })
     },
+  })
+  local.resources = mcp.resources.library({
+    $$id: "guideSizes",
+    $$comment: "Each guide description ends with its size in KB, computed from its bytes, so a reader can choose the shorter guide.",
+    operation: "sizes",
+    items: local.resources,
+    out: "local.resources",
   })
   local.payload = json.object({
     $$id: "payload",

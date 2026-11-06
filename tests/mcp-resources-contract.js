@@ -44,10 +44,20 @@ guideFiles.forEach(function (file) {
   });
   assertTrue(/^# \S/.test(lines[0]), file + " must start with an H1");
   assertTrue(resource.name === lines[0].substring(2).trim(), file + " name must be its H1: " + resource.name);
+  // The description is the line under the H1, then the guide size in KB computed from its bytes.
+  var bytes = Number(new java.io.File(guideDir, file).length());
+  var tenths = Math.max(1, Math.round(bytes / 100));
+  var sizeLabel = Math.floor(tenths / 10) + "." + (tenths % 10) + " KB";
   var description = String(resource.description || "");
-  assertTrue(description === lines[1].trim(), file + " description must be the line under the H1: " + description);
-  assertTrue(description.length >= 40 && /\.$/.test(description) && description.charAt(0) !== "-",
-    file + " needs a one-line summary sentence under its H1, got: " + description);
+  assertTrue(resource.size === bytes, file + " resources/list size must be its byte length " + bytes + ": " + resource.size);
+  assertTrue(description === lines[1].trim() + " (" + sizeLabel + ")",
+    file + " description must be the line under the H1 then (" + sizeLabel + "): " + description);
+  var summary = lines[1].trim();
+  assertTrue(summary.length >= 40 && /\.$/.test(summary) && summary.charAt(0) !== "-",
+    file + " needs a one-line summary sentence under its H1, got: " + summary);
+  // Under 16 000 characters Claude Code, Codex and Vibe show a guide whole instead of saving it to a file.
+  var characters = readText("_flow/resources/guide/" + file).length;
+  assertTrue(characters < 16000, file + " has " + characters + " characters, not under 16 000: split it into sub-guides");
 });
 
 // resources/read: guides and skills are served whole, never truncated.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
@@ -20,8 +20,15 @@ const entity = ["lib_flow_entity", "c8oprj-lib-flow-entity"]
 const blankLayout = '<script module>export const _flow = {sourceVersion: 2};</script><FlowComponent $$id="root"><Structure><PageContent $$id="content" /></Structure></FlowComponent>';
 const blankPage = '<script module>export const _flow = {sourceVersion: 2};</script><FlowComponent $$id="home"><Structure><Text $$id="homeText" text="Home" /></Structure></FlowComponent>';
 
+// A guide and its sub-guides (<guide>-*.md), entry first: split guides keep their examples in the family.
+async function family(guide: string) {
+  const subs = (await readdir(guides)).filter(file => file.startsWith(guide + "-") && file.endsWith(".md")).sort();
+  const texts = await Promise.all([guide + ".md", ...subs].map(file => readFile(resolve(guides, file), "utf8")));
+  return texts.join("\n\n");
+}
+
 async function example(guide: string, id: string) {
-  const text = await readFile(resolve(guides, guide + ".md"), "utf8");
+  const text = await family(guide);
   const examples = Array.from(text.matchAll(/```svelte\n([\s\S]*?)```/g), match => match[1]);
   const source = examples.find(source => source.includes(`<FlowComponent $$id="${id}"`));
   assert.ok(source, `${guide} must show the complete ${id} example`);
@@ -167,7 +174,7 @@ async function entityGuideFixture(t: test.TestContext, plan: typeof entityExampl
 
 test("all Svelte fences in both entity guides have an explicit compilation proof", async () => {
   for (const guide of ["entities", "multipage-entities"]) {
-    const text = await readFile(resolve(guides, guide + ".md"), "utf8");
+    const text = await family(guide);
     const fences = Array.from(text.matchAll(/```svelte\n([\s\S]*?)```/g), match => match[1]);
     const ids = fences.map(source => source.match(/<FlowComponent\b[^>]*\$\$id="([^"]+)"/)?.[1]);
     assert.ok(ids.every(Boolean), `${guide}: each fence must remain a complete Flow component`);

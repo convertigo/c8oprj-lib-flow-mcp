@@ -1,0 +1,538 @@
+# Flow Authoring Cycle
+
+Backend FlowScript: the source dialect with verified examples, then the write, run, promote and schema loop.
+
+## A complete Flow
+
+```javascript
+const _flow = { sourceVersion: 2, inputs: { name: { type: "string", description: "Person name.", default: "Ada" } } }
+
+function Greeting({ input, config, result }) {
+  local.name = text.trim({ text: input.name })
+  if (local.name == "") {
+    throw { code: "NAME_REQUIRED", message: "name is required", status: 400 }
+  }
+  result.message = `Hello ${local.name}`
+}
+```
+
+## Dialect rules
+
+- **Block calls** take exactly one object of named properties:
+  `block.name({ key: value })`. A catalog name is a block before a JS method:
+  `text.trim({...})` is a block, `local.word.trim()` stays JavaScript.
+- **One statement per line.** Never join two Flow statements with `;` on one
+  line.
+- **Captures are assignments:** `local.x = block({...})` or
+  `result.x = block({...})`. `const x = block({...})` is accepted and stored
+  as `local.x`, but the writer emits `local.x = …`, so write that form.
+  A plain value assignment such as `result.message = "Hello"` is stored as a
+  `set` node and stays an assignment when formatted.
+- **`$$out`** is the explicit capture metadata, only for destinations an
+  assignment cannot express. An assignment and a disagreeing `$$out` give
+  `FLOW_SOURCE_OUTPUT_CONFLICT`; chained or bodied assignments give
+  `FLOWSCRIPT_UNSUPPORTED_ASSIGNMENT`.
+- **Engine attributes use exactly two `$`:** `$$id` (the node Name, shown
+  read-only in Studio and changed only by Rename), `$$comment` (Comment),
+  `$$disabled: true` (Is active = false: the node and its subtree are skipped
+  by execution and analysis; omit it when enabled), `$$out` (Output), and the
+  slots `$$then`, `$$else`, `$$nodes`, `$$fields` (any declared slot is
+  `$$<slot>`). Unknown `$$` names are errors. Plain names such as `id`,
+  `disabled`, `out` or `comment` are business properties; `$$$name` spells a
+  business property whose name starts with `$$`.
+- **Headers** `const _flow = {...}` hold static literals only (no expressions,
+  spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
+  `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (optional, 2 is the
+  only value), `inputs`, `outputs`, `config` (an object), `tests`.
+- **Language statements** stay script: assignments, `if (...) { ... } else { ... }`,
+  `return { answer: input.value }`, bare `return`, and
+  `throw { code: "INVALID", message: "Invalid input", status: 400 }`.
+  Catalog blocks stay calls, including captures `local.rows = sql.query({ ... })`.
+  Loops keep their block calls in phase 1; natural loops are a later phase.
+- **Error or answer:** `throw` what must interrupt the caller (missing rights,
+  resource or parameter, failed dependency), with a `status` when one fits:
+  the Flow answers its error alone and a frontend action fails and stops its
+  chain. Return a normal result for an outcome the caller handles (wrong
+  password, nothing found): `result.ok = false` with its reason, never a
+  result made of an `error` object alone. To go on after a block that may
+  fail (an email, a call to another Flow or service), wrap it in `try`:
+  `try({ error: "local.failure", $$try: function () { ... }, $$catch: function () { ... } })`;
+  catch reads `local.failure.code` / `.message` / `.status`.
+- **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
+  those characters), on a property of kind expression too (`day:
+  "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
+  as `where: "current.active"` is refused with the expression to write,
+  `where: current.active`), an expression is a value with its type
+  (`input.name`, `left + 1`, `!local.entity`, `local.items[0]`,
+  `local.rows[local.rows.length - 1]`, `local.byId[input.id]`,
+  `current["media:thumbnail"]`, null-safe), a template literal composes text
+  (`` `Hello ${input.name}` ``), an object literal is a value (`select: {
+  title: current.title }`). Strings take the escapes of JavaScript (`"\r\n"`,
+  `"\t"`, `"\uFEFF"`, `"\u{1F600}"`, `"\\"`), in values and in expressions;
+  a regular expression literal is refused: test a pattern with `text.match({
+  text, pattern: "^[0-9]+$" })` and read `.matched`. A local never takes the
+  name of a scope (`input`, `config`, `local`, `result`, `request`,
+  `current`, `parent`, `trace`). Studio shows the same: a text, an
+  expression, or a text with `${…}` parts. `===`
+  and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
+  loose. Methods chain as in JavaScript, on a path, a call or a parenthesis
+  (`input.q.trim().toLowerCase().includes(local.term)`,
+  `local.items.slice(0, 5).join(", ")`, `String(local.n).padStart(3, "0")`),
+  from a fixed list: text `trim`, `toLowerCase`, `toUpperCase`, `includes`,
+  `startsWith`, `endsWith`, `indexOf`, `lastIndexOf`, `slice`, `substring`,
+  `split`, `replace`, `replaceAll` (text patterns), `padStart`, `padEnd`,
+  `charAt`, `concat`, `repeat`; lists `includes`, `indexOf`, `slice`, `join`,
+  `concat`, `at`, `length`; numbers `toFixed`. Numbers also have `%` and the
+  functions `round(x, digits)`, `floor`, `ceil`, `abs`, `min`, `max`, written
+  `Math.floor(...)` too: `local.pages = Math.ceil(input.total / input.size)`.
+  Anything else is a block (`list.filter`, `list.map`, `list.sort`...).
+- **Dates** use the `date.*` blocks, in a Flow and in Svelte actions alike
+  (same contract on the server and in the browser): `date.today`,
+  `date.now({ format: "iso" })`, `date.add` (years, months, days, hours,
+  minutes; month ends adjusted as `LocalDate.plusMonths`: 2025-12-31 + 2
+  months + 15 days = 2026-03-15), `date.format` (pattern, locale, timeZone),
+  `date.parse`, `date.isValid` (strict: 2026-02-30 is invalid), `date.diff`,
+  `date.compare`. Store dates as ISO text. The server reads
+  `config.date.timeZone` (default UTC) and `config.date.locale`; pass the
+  same public settings to a page for an identical display. Never write a
+  Rhino block for date arithmetic.
+- **Declared inputs arrive converted** whatever the caller (HTTP text, MCP,
+  Flow call): `string` takes numbers and booleans as text and objects as
+  JSON; `integer` truncates (`"3.9"` → 3); `number` parses text; `boolean`
+  takes `true`/`false`/`1`/`0` in any case; `array` takes a JSON array text
+  or wraps one value (`"a"` → `["a"]`); `object` takes a JSON object text;
+  `any` is left as sent. An absent input takes its `default`; for a non-text
+  input `""` and `null` count as absent unless `nullable: true`; a
+  `required: true` input must be given. A value that does not convert is a
+  400 `FLOW_INPUT_TYPE_INVALID`. Blocks get the same conversion with
+  `ctx.convert(value, schema)`.
+- **An `array` input is a list** in the Flow (`input.ids.length`,
+  `input.ids.join(",")`, `list.*` blocks); its Convertigo variable is
+  multi-valued, so an HTTP caller repeats the parameter or sends a JSON array
+  text. A comma-separated text is one item (`"1,2"` → `["1,2"]`): to accept
+  one, declare a `string` input and split it. A text method on a list
+  (`input.ids.split(",")`) stops the run with `INVALID_EXPRESSION`, and a
+  method on an absent input gives nothing without error: mark a list the Flow
+  needs `required: true`.
+- **Business `id`, `disabled`, `out` are free** for project block properties;
+  core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
+
+## Slots, loops and typed collections
+
+For row processing, filter/project before the loop, capture `current` before a
+nested loop, and append to a typed array with `json.push`; avoid copying the
+growing array. Metadata and external reads belong outside the cell loop whenever
+they are independent of the cell. Keep business block calls visible in FlowScript.
+The detailed examples and reproducible benchmark are in
+`flow://lib/lib_flow_engine/runtime-performance`.
+
+`code-run` skips per-node trace capture by default rather than capturing snapshots
+that its compact response discards. Use `includeTrace:true` or
+`includeFullTrace:true` when inspecting values. For profiling use
+`profile:"envelope"` (phases) or `profile:true` (inclusive node/block time and,
+where the JVM supports it, `allocatedBytes`). Measure throughput without tracing
+or profiling. Automatic checks do not build a whole legacy project's XSD to
+discover one output; use `flow-requestable-schema` explicitly if needed.
+
+```javascript
+json.array({
+  path: "local.rows",
+  itemType: { "type": "object", "properties": { "label": { "type": "string" }, "size": { "type": "number" } } },
+})
+forEach({
+  items: input.items,
+  $$nodes: function () {
+    json.push({ path: "local.rows", value: { label: current.label, size: current.field } })
+  },
+})
+if (local.rows.length == 0) {
+  result.status = "empty"
+} else {
+  if (local.rows.length == 1) {
+    result.status = "single"
+  } else {
+    result.status = "many"
+  }
+}
+result.rows = local.rows
+```
+
+A slot (`$$then`, `$$else`, `$$nodes`, `$$try`, `$$catch`) takes a function
+body. The method form `$$then() { ... }` and an arrow function with a block
+body `$$then: () => { ... }` are the same slot; an arrow with an expression
+body, an async function or a function under a name the block does not declare
+as a slot is refused, and the refusal names the slots of the block.
+
+Keep **two** dollar signs on engine attributes and slots (`$$id`, `$$nodes`).
+When building text with JavaScript, use `split(oldText).join(newText)` or a
+replacement callback: a replacement string interprets `$$` as one dollar.
+Close both the slot body and the argument object: `$$nodes() { ... } })`.
+The diagnostic supplies an exact edit for a mistaken prefix or an unambiguous
+missing argument brace; source is never silently rewritten.
+
+`Array.isArray(value)` and `typeof value` are expressions. A block in an
+assignment's comparison/arithmetic or `&&`, `||`, `??`, `?:` is evaluated once,
+left to right, only in the branch that needs it. For example:
+`local.overdue = local.open && date.compare({left: current.dueDate, right: local.today}) < 0`.
+Inside a `list.map` projection, use a named per-item block for multi-step work;
+do not move work on `current` before the iterator. Block calls under arbitrary
+JavaScript methods still require explicit intermediates in the same branch.
+
+`throw.code` is a **literal public code**, for example `"INVALID_INPUT"`.
+Keep dynamic data in `message` or `details`. Its proposed edit contains
+`"CHOOSE_ERROR_CODE"` and `requiresChoice:true`: replace that placeholder with
+the intended public contract before applying it.
+
+Collections are created typed, then mutated explicitly: `json.array({ path,
+itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
+`json.put({ path, key, value })`. Destinations are static `local.`/`result.`
+names; a value that does not match the declared type is refused with
+`VALUE_TYPE_MISMATCH`. Create them with `path:` (not with an assignment).
+
+## Lists, maps and config
+
+```javascript
+local.rows = list.map({ items: input.items, select: { label: current.label } })
+result.rows = local.rows
+local.rates = json.object({
+  $$fields: function () {
+    json.field({ key: "EUR", value: 1 })
+    json.field({ key: "USD", value: 1.1 })
+  },
+})
+local.codes = object.keys({ source: local.rates })
+local.usd = object.get({ source: local.rates, key: "USD" })
+result.codes = local.codes
+result.usd = local.usd
+```
+
+- Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
+  `select` takes an expression, object literal or named block call evaluated
+  for each item. A block nested there can use `$$id` for an explicit name.
+- `object.firstEntry({ source })` returns one `{ key, value }`.
+- For repeated external work, model one item and iterate: store rows in
+  `config.*` or a small data block and call one per-item FlowScript block.
+- Temporary configuration for a subtree:
+
+```javascript
+config.use({
+  overrides: { http: { timeout: 30000 } },
+  $$then: function () {
+    result.timeout = config.http.timeout
+  },
+})
+```
+
+Root keys (or one `overrides` object) are config branches, deep-merged only
+while `$$then` runs.
+
+Configuration is inherited and merged value by value (objects merge, any other
+value replaces), weakest first:
+
+1. `_flow.config` of the Flow;
+2. the `config` of `_flow/engine.yaml` of lib_flow_engine, then of each
+   referenced Flow project, in the order of the project references (a
+   referenced project comes after its own references; the last one wins);
+3. the project `_flow/engine.yaml`: `default`, then the named configurations of
+   the Flow's tags, the last tag winning (`flow://guide/tags`);
+4. the project the HTTP request targets, when it is another project: its own
+   values win, so a library takes the settings of each application using it;
+5. the call config.
+
+A library ships every setting with a working default under its own prefix
+(`email.smtp.*`, `oauth.*`, `sql.*`); a project overrides only the values it
+needs, in its own `config`, without symbols unless the value depends on the
+server. When two references declare the same branch, `configParents` picks one:
+
+```yaml
+configParents:
+  email.smtp: lib_flow_engine
+config:
+  email:
+    smtp:
+      port: 2525
+```
+
+Put structural constants (API roots, timeouts) in project or Flow `config.*`;
+reuse inherited or project config instead of duplicating it in `_flow.config`.
+
+Emails: `email.send({ to, subject, html })` uses the SMTP server of the platform
+(`config.email.smtp`, inherited from lib_flow_engine and set by the symbols
+`lib_flow_engine.smtp.*`). Render the HTML with `template.freemarker({ file:
+"_flow/resources/emails/welcome.ftlh", locale: input.lang, values: { ... } })`:
+a `.ftlh` template escapes the values for HTML, `welcome_fr.ftlh` is picked for
+the `fr` locale. A FreeMarker template is a resource file of the project (or a
+plain string in the Expert `template` property); its `${...}` belong to
+FreeMarker, so never write it as a JavaScript template literal.
+
+Secrets never appear in a configuration: reference a Convertigo global symbol
+ending with `.secret`, always with a default, so that the project declares it
+(empty or a dummy value):
+
+```yaml
+configs:
+  production:
+    sql:
+      connections:
+        orders:
+          url: "jdbc:postgresql://db:5432/orders"
+          user: "${orders.db.user=orders_reader}"
+          password: "${orders.db.password.secret=}"
+```
+
+The server replaces `${name}` / `${name=default}` for the running Flow only;
+the value is stored encrypted and set by an administrator in the Global
+symbols page. The effective configuration shown in the Studio, the traces and
+the schemas keep the reference. A symbol without default that is not declared
+becomes empty and marks the project.
+
+## Protected authoring
+
+An application may register what it prepared (a data source, an adopted
+schema) through two platform blocks, never through Java internals:
+
+```javascript
+local.preview = config.mutate({
+  project: "sampleApp",
+  configuration: "dataLab",
+  path: "data.sources.orders",
+  op: "set",
+  value: { provider: "sql", connection: "labPg", table: "orders", readOnly: true },
+  dryRun: true,
+})
+// confirm with revision: local.preview.previousRevision, persist: "draft" or "save"
+```
+
+`schema.adopt({ qname, node?, schema, dryRun, revision, persist })` replaces
+`_flow.outputs` of a Flow (without `node`) or adopts the schema of one node;
+pass the complete schema, a proposal is never adopted implicitly.
+
+Both run for an administrator over HTTP (POST with the session XSRF token) or
+an authenticated MCP call only, whatever the accessibility of the Flows on the
+way; anyone else gets `AUTHORING_FORBIDDEN`, dry runs included. A dry run
+returns `before`, `after` and `previousRevision`; a change in between answers
+a revision conflict. `persist: "draft"` keeps the working copy the Save of the
+project publishes; `"save"` writes that one file and is refused over its
+unsaved changes. Secret keys only take a reference to a `.secret` global
+symbol, whose default may be a test or development value:
+`"${<project>.<usage>.<name>.secret=<default>}"`.
+
+## Accessibility
+
+```javascript
+const _flow = { accessibility: "private" }
+
+function Internal({ input, config, result }) {
+  result.ok = true
+}
+```
+
+`private` Flows run only for Flow→Flow calls, the MCP and administrators;
+`hidden` Flows are callable over HTTP but not listed; `public` Flows are
+listed. Without `accessibility`, the Flow property applies. Keep internal,
+exploration, authoring, test and qualification Flows private; make `public`
+or `hidden` only what a frontend or an external client calls, and validate
+its inputs there.
+
+Where it applies: on a server, `.json`, `.xml` and the other
+`/projects/<project>/.<ext>?__sequence=` URLs answer an anonymous or
+non-administrator call to a `private` Flow as an unknown requestable; a recent
+Studio does the same, an older one still ran it for an anonymous call (Studio
+mode). Prove the refusal with a session that is not an administrator, and do
+not add guards to the Flow for it. A URL Mapper
+operation (`/api/...`) publishes its target whatever its accessibility, and
+`requestable.call`, the scheduler and the MCP run `private` Flows by design.
+
+For JSON HTTP APIs: `local.response = http.get({ url: config.api.url })`,
+then read `local.response.body`; parse `local.response.text` only when the
+body is not native JSON.
+
+## Loop
+
+1. If the given `project`, `qname` or `block` is not accessible, stop and
+   report it; never fall back to another project.
+2. Write the Flow with `code-set`, patch with `code-patch`, run with
+   `code-run`, then `code-promote` once diagnostics and behavior are clean.
+   `unsaved:true` / `workingCopy:true` in `code-run` means: promote before
+   stopping. `code-status` gives dirty/revision state, `code-discard` cancels,
+   `code-analyze` returns scopes (`input`, `local`, `current`, `result`) and
+   data-flow diagnostics for the working copy.
+3. Do not pass `saveProject`, `refresh`, `draft` or `dry` unless low-level
+   debugging was requested.
+4. `flow-list` only for maintenance. `flow-search` only after a first draft
+   when a block, sample or pattern is unclear; `flow-catalog` (typed
+   signatures) or `flow-block-get` (one block) only when diagnostics are not
+   enough. `flow-block-get` is the contract of a block (properties, outputs,
+   `longDescription` with its errors and examples): read it there, never in
+   the library sources.
+5. `flow-test` validates saved Flows only; use `includeTrace:true` while
+   debugging and avoid `includeFlow`, `includeFullResult`, `includeFullTrace`.
+6. After `code-run` proves the result and `code-promote` succeeds, stop. No
+   shell confirmation (`git`, `sed`, `cat`, HTTP scripts).
+
+## Source ownership and formatting
+
+`code-set` and `code-patch` keep and compile your exact text. Diagnostics use
+its line numbers. An equivalent spelling is understood; a guessed block name,
+key or positional call is refused with a `proposedPatch`: line, before, after,
+and exact `oldText`/`newText` edits for `code-patch`. Review it; no suggestion
+is ever applied automatically, including when an old client sends `autoCorrect`.
+
+Only `code-promote` and Studio tree edits format. Promotion checks the tree
+before and after formatting and saves nothing if the program changes. Its
+answer includes `linted`, `changedLines` and the text-hash `revision`. An
+unchanged text keeps its revision; continue with it without another `code-get`.
+The formatter is idempotent, with code width 120.
+
+Names are implicit: the assignment destination (`answer`), the instruction
+(`if`, `throw`, `return`) or the local block name (`trim`). Repetitions use
+`if2`, `if3`, skipping explicit names. Names remain assigned during editing;
+a new node takes the next free counter even when inserted above an old one.
+Reload recalculates them in source order. Node tools accept these names for
+the current revision; identify a diagnostic by its source line.
+
+Use a JavaScript label for an explicit name: `cleanName: local.name =
+text.trim({ text: input.name })`, or `checkName: if (...) { ... }`. Studio
+Rename writes the label; renaming back to the implicit name removes it.
+Duplicate explicit names are errors. Existing `$$id` is still read and is
+formatted as a label, or omitted when redundant. A block nested in a property
+keeps `$$id` when an explicit name is needed there.
+
+A comment attached to the next instruction is its Comment (`$$comment`),
+written one `//` line per text line, without reflow. A blank line separates a
+standalone `comment` node; a comment at the end of a body is also standalone.
+These nodes are visible in the tree, have no properties, and are removed
+when execution is prepared. At most one authored blank line is kept before
+its node, including after a Studio property edit.
+
+Natural syntax cannot carry every block attribute: a disabled statement, a
+`set` with additional properties, or a conflicting `$$out` keeps its generic
+call form. `set({ ... })` remains valid for every existing source.
+A property edit that restores a block default can omit that property.
+
+## Maintenance edits
+
+Start with `code-rg`. Each extract carries its target, line range and
+revision: when the match is unique, apply the smallest `code-patch` directly.
+Otherwise read only that range with `code-get({ qname, revision, startLine,
+endLine })`; read the whole source only for ambiguous or broad changes. To
+skip a node without deleting it, patch `$$disabled: true` into its call and
+remove the line to restore it.
+
+## Output schemas
+
+- `flow-output-schema({ project, qname })` combines the explicit contract,
+  static analysis of `result.*` writes and optional learned samples; add
+  `detail:"full"` to compare declared/static/learned/effective sources and
+  warnings. Ordinary `code-run` does not learn the Flow result.
+- `_flow.outputs` is optional. After a verified run, `action:"adopt"` with
+  `source:"static"|"learned"` writes it, `action:"remove"` deletes it,
+  `action:"reset"` deletes stale learned samples only.
+- `flow-node-output-schema({ project, qname, nodeId, detail:"full" })`
+  inspects one producer (HTTP, exec, parser); pass the JSON Pointer `path`
+  from `flow-search` as `nodePointer` when `nodeId` is ambiguous. Use
+  `action:"adopt"` to keep a verified schema, `action:"remove"` to resume
+  inference.
+- Learned fields no longer produced, or `unknown` items from old samples, are
+  stale. Prefer `flow-node-output-schema action:"remove"` for one producer;
+  `flow-schema-reset({ project, flowName })` only for broader stale learned
+  schemas.
+
+## Blocks and mocks
+
+- If a readable draft needs a missing domain block, let `UNKNOWN_BLOCK`
+  confirm it, then `flow-block-mock({ project, name, properties, outputs })`
+  with the call arguments as typed properties. The mock is `mock:true` with a
+  TODO; implement it before calling the parent Flow done, and audit with
+  `flow-block-mock-list`.
+- Treat `FLOW_BLOCK_PROPERTY_UNKNOWN`,
+  `FLOWSCRIPT_PROJECT_BLOCK_PROPERTY_UNKNOWN` and `FLOW_BLOCK_OUTPUT_UNKNOWN`
+  as contract feedback: patch the project block `_meta` with native types.
+- Rhino blocks are for missing low-level primitives only; read
+  `flow://guide/rhino-block-api` first. Never hide HTTP or requestable calls
+  in Rhino, and never write a block only to enumerate object keys.
+- For pure logic shared with Flow Svelte, read `flow://guide/portable-blocks`.
+- Other project resources (`_flow/engine.yaml`, `_flow/types`, editors,
+  libraries, fragments): `flow-resource-search`, `flow-resource-get`, then
+  `flow-resource-patch` with `baseHash` and a unified `patch` (several hunks
+  at once) or the whole new text as `content` (see
+  `flow://guide/search-and-edit`).
+- Java sources of the project (`libs/src/**/*.java`, compiled by the server
+  into the project class path): the same tools. Create one with a patch from
+  `--- /dev/null` (`@@ -0,0 +1,N @@`); its `package` matches its folder.
+  Use Java for batched hotspots called once from Rhino, not per row or cell.
+- Jars the project needs (`libs/jars.yaml`, same tools): never commit them;
+  declare Maven coordinates or http(s) URLs, each with its quoted `sha256`.
+  The server downloads and checks them, the exported `.car` carries them.
+
+```yaml
+repositories:                 # optional, Maven Central by default
+  - https://repo.maven.apache.org/maven2
+jars:
+  - maven: io.github.openfeign.querydsl:querydsl-sql:7.7   # no transitive dependency: list each jar
+    sha256: "<64 hex>"
+  - url: https://download.example.com/driver-1.2.jar
+    sha256: "<64 hex>"
+```
+
+  Credentials of a private repository are global symbols in its URL
+  (`https://${repo.user}:${repo.password.secret}@host/path`). A
+  non-redistributable driver stays in a private library project that carries
+  its jar in `libs/`.
+
+## Samples
+
+For reusable examples, create a private executable Flow named `sample_*`.
+Comments explain subtle syntax, for example
+`// Only call Flow blocks with one object containing named parameters.`
+Rhino sample blocks start with
+`// Use Rhino 1.9.0 features: https://mozilla.github.io/rhino/compat/engines.html`.
+
+## Native inputs and backend primitives
+
+`_flow.authenticatedContextRequired` is a native boolean. Input `visibility`
+(-1 masks all, 0 visible, or bitmask 1/2/4/8) and `isFileUpload:true` are
+synchronized to the generated Convertigo variables, persisted on promotion,
+and retained on reload. An omitted property preserves its native value; an
+explicit false/zero resets it. `flow-sync-inputs({project,name})` also accepts
+`qname` instead of name. It requires a target Flow, not just a project.
+
+Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
+maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The
+result contains typed `rows`, `rowCount`, `columns`, `rowSchema`, `byteLength`.
+It supports BOM/quotes/multiline cells and refuses overflow or invalid cells
+without a partial result. It reads data; writes remain explicit transactions.
+
+Use `flow.poll({until:local.job.body.status == "finished",intervalMs:1000,
+timeoutMs:30000,maxAttempts:30,$$nodes:function(){...}})` to wait for an async
+job: one attempt, then the condition, then a sleeping interval. Bound the
+child HTTP timeout too. `flow.wait({delayMs:250})` yields without a busy loop
+and has a hard 60-second cap. Exhausted polling raises `POLL_TIMEOUT` (504).
+`project.cacheRemove({key:"table_id_cache"})` invalidates the exact key in the
+current project's native application cache (including legacy caches),
+returning `{key,removed}`; it does not clear runtime descriptor caches.
+
+Contracts, limits, error codes and complete examples:
+`flow://lib/lib_flow_engine/backend-io`. Never add a Rhino CSV parser, sleep
+or project-cache bridge in an application.
+
+## Native Convertigo properties
+
+Authoring properties are validated before any native bean changes. Booleans take
+`true` or `false`; integer properties reject non-numbers and out-of-range values;
+enums accept their constant or a unique display label, case aside. Spaces around
+a scalar spelling are removed only when unambiguous. Never rely on a fallback
+to zero, false or the first enum constant.
+
+`code-check` reports invalid `_flow.inputs` and `_flow.accessibility` values at
+their source line. Equivalent native scalar spellings are understood without
+rewriting the source. Native operations
+return `normalizations` with property, before and after; inspect them.
+
+For inputs, use a supported JSON `type`, boolean `required`/`isFileUpload`, a
+`visibility` of -1 or a mask from 0 to 15, and a text `description`. Typed defaults
+must be convertible by the declared Flow input contract. Business request input
+conversion is distinct from native authoring property validation.
+
+`flow-project-metadata` edits only `version` (one line, at most 64 characters)
+and `description` (at most 4000). It does not edit timeouts or CORS.

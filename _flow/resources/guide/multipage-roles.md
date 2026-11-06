@@ -162,7 +162,7 @@ of this `OnAfterNavigate`: navigate in the successful sign-in/sign-out chain
 or guard the protected page separately, otherwise each navigation may send
 the user back to login. A group shell in `(app)/+layout.flow.svelte` applies
 only to `(app)` pages; keep the login page outside the group if it needs no
-shell. `flow://guide/frontend-svelte` also gives the DataTable server paging
+shell. `flow://guide/frontend-svelte-datatable` also gives the DataTable server paging
 chain (`OnChange`, `@event.value.offset`, then `CallSequence`).
 
 Do not take an HTTP 200 of the route as proof

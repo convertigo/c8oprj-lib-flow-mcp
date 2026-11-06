@@ -75,7 +75,7 @@ server (rights, perimeters, state rules), never only in the page.
   `convertigo-flow`, never from the Legacy server named `convertigo`.
 - Full-stack work: use both specialists and read
   `flow://guide/fullstack-paperboard` once. For several Flows and pages,
-  follow its Parallel Build: you set the contract (data model, each Flow
+  follow its Parallel Build (`flow://guide/fullstack-paperboard-parallel`): you set the contract (data model, each Flow
   with its inputs, outputs and a demo-shaped body, `docs/generated/PROGRESS.md`),
   then a backend and a frontend specialist build at the same time, each
   owning its files, and you integrate and prove. Run them as your own
@@ -116,7 +116,8 @@ server (rights, perimeters, state rules), never only in the page.
   `console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`.
   Do not return/JSON.stringify the string: that escapes its newlines. In Codex
   code mode, emit the MCP text blocks with `text(block.text)`.
-  If a client truncates, read its saved output; do not fetch the guide again.
+  Guides stay under 16 000 characters; read the sub-guide a guide names for the topic at
+  hand, and do not fetch the same guide again.
   Existing calls without `format` retain a structured result whose document
   field is `text`: `result.text` when unwrapped (Vibe), or
   `result.structuredContent.text` for an MCP envelope. Reuse that result.
@@ -213,7 +214,7 @@ wait stays in it for the rest of the task.
   default `waitSec`.
 - One visual check of the current page (layout, a rendered image, a label)
   is one relayed `browser-verify` call with its `checks`. For a Svelte
-  frontend, include the visual checklist of `flow://guide/frontend-svelte`
+  frontend, include the visual checklist of `flow://guide/frontend-svelte-proof`
   (POC Acceptance) in the `checks`.
 - When your tool list has no `subagent-run` or `browser-verify` (an agent
   host whose own model sees images, such as Claude), give the multi-step proof
@@ -370,7 +371,7 @@ EntityGateway by default; targetProject is optional, only for another applicatio
 Use describe capabilities for custom commands (Toolbar context.permissions.create),
 ordinary select/saved/deleted events for editing and refresh, and ownershipFilter
 only as an extra display filter, never a substitute for server scope. The form
-uses create/update, never upsert. See flow://guide/entities, One access policy.
+uses create/update, never upsert. See flow://guide/entities-policy, One access policy.
 
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 
