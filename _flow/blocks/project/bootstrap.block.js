@@ -495,11 +495,198 @@ const _meta = {
 		return project;
 	}
 
-	function ensureFlowEngine(project, ui, resourceRoot, modelPath) {
+	// An existing _flow/engine.yaml is never rewritten: the bootstrap adds the keys it needs that are missing, at the end
+	// of their mapping, and keeps every value already there (config.sql, connections, another frontend path...).
+
+	function isMapping(value) {
+		return value !== null && typeof value === "object" && !Array.isArray(value);
+	}
+
+	function yamlScalar(value) {
+		if (value === null || value === undefined) {
+			return "null";
+		}
+		if (typeof value !== "string") {
+			return JSON.stringify(value);
+		}
+		return /^[A-Za-z_\/][\w.\/+-]*$/.test(value) && !/^(?:true|false|null|yes|no|on|off|y|n)$/i.test(value)
+			? value : JSON.stringify(value);
+	}
+
+	function yamlLines(key, value, indent) {
+		var pad = new Array(indent + 1).join(" ");
+		if (!isMapping(value)) {
+			return [pad + key + ": " + yamlScalar(value)];
+		}
+		var keys = Object.keys(value);
+		return keys.length ? keys.reduce(function (lines, child) {
+			return lines.concat(yamlLines(child, value[child], indent + 2));
+		}, [pad + key + ":"]) : [pad + key + ": {}"];
+	}
+
+	var YAML_KEY = /^("(?:[^"\\]|\\.)*"|'[^']*'|[^\s#'"\-][^:#]*?|-[^\s:#][^:#]*?)\s*:(?=\s|$)/;
+
+	function contentLine(line) {
+		return line.trim() !== "" && !/^\s*#/.test(line);
+	}
+
+	function indentOf(line) {
+		return line.match(/^ */)[0].length;
+	}
+
+	// the keys of the block mapping held by lines[from, to)
+	function mappingEntries(lines, from, to) {
+		var indent = -1;
+		var entries = {};
+		for (var i = from; i < to; i++) {
+			if (!contentLine(lines[i])) {
+				continue;
+			}
+			if (indent < 0) {
+				indent = indentOf(lines[i]);
+			}
+			var match = indentOf(lines[i]) === indent ? lines[i].substring(indent).match(YAML_KEY) : null;
+			if (match) {
+				entries[match[1].replace(/^(["'])(.*)\1$/, "$2")] = i;
+			}
+		}
+		return { indent: indent, entries: entries };
+	}
+
+	// the line after the value of the key at line start (compact sequences sit at the key's own indent)
+	function blockEnd(lines, start, indent, to) {
+		var last = start + 1;
+		for (var i = start + 1; i < to; i++) {
+			if (!contentLine(lines[i])) {
+				continue;
+			}
+			var lineIndent = indentOf(lines[i]);
+			if (lineIndent < indent || lineIndent === indent && !/^-(?:\s|$)/.test(lines[i].substring(indent))) {
+				break;
+			}
+			last = i + 1;
+		}
+		return last;
+	}
+
+	function missingConfig(current, target, path, report) {
+		var missing = {};
+		Object.keys(target).forEach(function (key) {
+			var keyPath = path.concat(key).join(".");
+			if (!Object.prototype.hasOwnProperty.call(current, key)) {
+				missing[key] = target[key];
+				report.added.push(keyPath);
+			} else if (isMapping(current[key]) && isMapping(target[key])) {
+				var nested = missingConfig(current[key], target[key], path.concat(key), report);
+				if (Object.keys(nested).length) {
+					missing[key] = nested;
+				}
+			} else if (JSON.stringify(current[key]) !== JSON.stringify(target[key])) {
+				report.kept.push(keyPath);
+			}
+		});
+		return missing;
+	}
+
+	function insertMissing(lines, from, to, indent, missing, edits) {
+		var scan = mappingEntries(lines, from, to);
+		if (scan.indent >= 0) {
+			indent = scan.indent;
+		}
+		var appended = [];
+		Object.keys(missing).forEach(function (key) {
+			var at = scan.entries[key];
+			if (at === undefined) {
+				appended = appended.concat(yamlLines(key, missing[key], indent));
+				return;
+			}
+			var rest = lines[at].substring(indent).replace(YAML_KEY, "").replace(/\s+#.*$/, "").trim();
+			if (rest === "{}") {
+				edits.push({ start: at, end: at + 1, lines: yamlLines(key, missing[key], indent) });
+			} else if (rest === "") {
+				insertMissing(lines, at + 1, blockEnd(lines, at, indent, to), indent + 2, missing[key], edits);
+			} else {
+				throw new Error("flow-style mapping " + key);
+			}
+		});
+		if (appended.length) {
+			var last = from;
+			for (var i = from; i < to; i++) {
+				if (contentLine(lines[i])) {
+					last = i + 1;
+				}
+			}
+			edits.push({ start: last, end: last, lines: appended });
+		}
+	}
+
+	function canonical(value) {
+		if (Array.isArray(value)) {
+			return value.map(canonical);
+		}
+		if (!isMapping(value)) {
+			return value;
+		}
+		var out = {};
+		Object.keys(value).sort().forEach(function (key) { out[key] = canonical(value[key]); });
+		return out;
+	}
+
+	function deepMerge(current, missing) {
+		var out = JSON.parse(JSON.stringify(current));
+		Object.keys(missing).forEach(function (key) {
+			out[key] = Object.prototype.hasOwnProperty.call(out, key) && isMapping(out[key]) && isMapping(missing[key])
+				? deepMerge(out[key], missing[key]) : missing[key];
+		});
+		return out;
+	}
+
+	// { source, added, kept } or { source: null, ... } when the text cannot be edited without touching what it holds
+	function mergeEngineSource(parseYaml, source, wanted) {
+		var report = { source: null, added: [], kept: [] };
+		var current = parseYaml(source);
+		var target = parseYaml(wanted);
+		if (!isMapping(current) || !isMapping(target)) {
+			return report;
+		}
+		var missing = missingConfig(current, target, [], report);
+		if (!report.added.length) {
+			report.source = source;
+			return report;
+		}
+		if (/[\r\t]/.test(source) || /^(?:---|\.\.\.|%)/m.test(source)) {
+			return report;
+		}
+		var lines = source.split("\n");
+		var finalNewline = lines.length > 1 && lines[lines.length - 1] === "";
+		if (finalNewline) {
+			lines.pop();
+		}
+		var edits = [];
+		try {
+			insertMissing(lines, 0, lines.length, 0, missing, edits);
+		} catch (_flowStyle) {
+			return report;
+		}
+		edits.map(function (edit, index) { edit.index = index; return edit; })
+			.sort(function (left, right) { return right.start - left.start || right.index - left.index; })
+			.forEach(function (edit) {
+				Array.prototype.splice.apply(lines, [edit.start, edit.end - edit.start].concat(edit.lines));
+			});
+		var merged = lines.join("\n") + "\n";
+		// proof: every value already there is unchanged, and only the missing keys were added
+		if (JSON.stringify(canonical(parseYaml(merged))) === JSON.stringify(canonical(deepMerge(current, missing)))) {
+			report.source = merged;
+		}
+		return report;
+	}
+
+	function ensureFlowEngine(ctx, project, ui, resourceRoot, modelPath) {
 		var written = false;
 		var FlowEngine = Packages.com.twinsoft.convertigo.beans.flow.FlowEngine;
 		var flowEngine = project.getFlowEngine();
 		var created = false;
+		var merge = null;
 		if (flowEngine == null) {
 			flowEngine = new FlowEngine();
 			flowEngine.bNew = true;
@@ -512,16 +699,24 @@ const _meta = {
 		var hasFrontend = source.indexOf("frontbuilder:") !== -1;
 		var sourceModelPath = currentModelPath(source);
 		var sourceModelExists = projectFileExists(project, sourceModelPath);
-		if (created || source.trim() === "" || ui && (!hasFrontend || !sourceModelExists)) {
-			flowEngine.setEngineSource(engineSource(String(project.getName()), ui, resourceRoot, modelPath));
+		var wanted = engineSource(String(project.getName()), ui, resourceRoot, modelPath);
+		if (created || source.trim() === "") {
+			flowEngine.setEngineSource(wanted);
 			written = true;
+		} else if (ui && (!hasFrontend || !sourceModelExists)) {
+			merge = mergeEngineSource(function (text) { return ctx.parseYaml(text); }, source, wanted);
+			if (merge.source !== null && merge.source !== source) {
+				flowEngine.setEngineSource(merge.source);
+				written = true;
+			}
 		}
 		project.hasChanged = true;
 		return {
 			flowEngine: flowEngine,
 			created: created,
 			written: written,
-			configuredSvelte: ui
+			merge: merge,
+			configuredSvelte: ui && (merge === null || merge.source !== null)
 		};
 	}
 
@@ -650,9 +845,25 @@ const _meta = {
 			}
 			var resourceRoot = svelteResourceRoot();
 			var model = ui ? ensureSvelteModel(ctx, project, name) : { path: "", file: "", created: false, exists: false };
-			var flow = ensureFlowEngine(project, ui, resourceRoot, model.path);
+			var flow = ensureFlowEngine(ctx, project, ui, resourceRoot, model.path);
 			result.createdFlowEngine = flow.created;
-			if (flow.written) {
+			if (flow.merge) {
+				result.configAdded = flow.merge.source !== null ? flow.merge.added : [];
+				var configWarnings = [];
+				if (flow.merge.source === null) {
+					configWarnings.push({ code: "CONFIG_NOT_MERGED", message: "_flow/engine.yaml was kept unchanged: its layout could not take " +
+						flow.merge.added.join(", ") + " without touching the existing configuration. Add these keys to it yourself." });
+				}
+				if (flow.merge.kept.length) {
+					configWarnings.push({ code: "CONFIG_KEPT", message: "The existing configuration was kept for " + flow.merge.kept.join(", ") +
+						" (the bootstrap default differs)." });
+				}
+				if (configWarnings.length) {
+					result.warnings = (result.warnings || []).concat(configWarnings);
+				}
+			}
+			if (flow.written && (!flow.merge || flow.merge.added.indexOf("config.demo") !== -1 || flow.merge.added.indexOf("config.demo.login") !== -1 ||
+					flow.merge.added.indexOf("config") !== -1)) {
 				result.demoLogin = {
 					config: "demo.login",
 					symbol: name + ".demo.login",
