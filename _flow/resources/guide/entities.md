@@ -438,8 +438,10 @@ same `format` and this `example`:
   `Activable` and `Immuable` take no parameter.
 - **Outputs:** with a literal entity name, `entity.list`, `entity.read`,
   `entity.describe` and `entity.options` declare the fields of that entity, so
-  pickers and binding diagnostics offer them. `labels.<relation>` is optional:
-  it is omitted when the related entity is refused.
+  pickers and binding diagnostics offer them. `labels.<relation>` is the text
+  of the related label field, `—` when the related row is missing; it is
+  optional: it is omitted when the related entity is refused. With a dynamic
+  `field`, `entity.options` leaves the types of `value` and `label` open.
 
 ## Reusable widgets and named snippets
 
