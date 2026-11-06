@@ -75,6 +75,9 @@ const _meta = {
         "configuredSvelte": {
           "type": "boolean",
         },
+        "devStarting": {
+          "type": "boolean",
+        },
         "studioTarget": {
           "type": "object",
           "properties": {
@@ -806,6 +809,22 @@ const _meta = {
 		}
 	}
 
+	function startDev(ctx, project) {
+		try {
+			var started = ctx.contextActionSource({
+				projectDir: String(project.getDirPath()),
+				engineSource: String(project.getFlowEngine().getEngineSource()),
+				targetObject: { kind: "frontendBuilder", type: "svelte", project: String(project.getName()) },
+				action: { id: "frontbuilder.svelte.dev.start" },
+				wait: false,
+				origin: "bootstrap"
+			});
+			return !!(started && started.ok === true);
+		} catch (_devStartupError) {
+			return false;
+		}
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -936,6 +955,9 @@ const _meta = {
 				(ui && model.revision ? " The home Page " + model.path + " exists already: its first code-set passes revision " +
 					model.revision + " (frontbuilderModelRevision)." : "");
 			refreshStudio(engine, project, ui ? model.path : "");
+			if (ui) {
+				result.devStarting = startDev(ctx, project);
+			}
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
 		}
