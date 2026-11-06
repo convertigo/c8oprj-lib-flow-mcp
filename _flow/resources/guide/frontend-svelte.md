@@ -423,6 +423,7 @@ than `Text`, `Card` and classes:
 | Title of a Page alone | `Heading level="1"` (one `<h1>`; `Heading` is level 2 by default, `Text variant="title"` is a paragraph) |
 | Key figures | `GridLayout minColumnWidth="200px"` > `StatCard` `label`, `value`, `tone`, `hint`, `page` |
 | Records | `DataTable`: `caption`, `columns` (`format` date, number, badge with `labels` and `tones`; `template` "{first} {last}"; `emphasis`), `rowActions`, `pageSize`, `locale`, an `emptyText` |
+| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` (`path`, not `field`) |
 | A status | `StatusBadge` `value` and `options` `[{ value, label, tone }]` |
 | Nothing to show | `EmptyState` in the `Else` of a `ForEach` |
 | Form | `Form` > `FormSection` `title`, `columns` > fields; a `RowLayout justify="flex-end"` of buttons |
