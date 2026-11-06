@@ -765,6 +765,46 @@
 		return top.filter(function (path) { return path; }).slice(0, limit || 3);
 	}
 
+	// Natural forms of focusPath seen in the light bench of 06/11 (it4): the project name, "frontends" or "frontend", a
+	// page or layout source file. Each one reads as the node it names in the unfocused tree (tree); any other unknown
+	// path keeps AUTHORING_TREE_FOCUS_NOT_FOUND with its nearest paths. Returns { path, note } or null.
+	function authoringFocusAlias(args, wanted, tree) {
+		wanted = String(wanted || "").trim().replace(/\\/g, "/");
+		var project = String(args && args.project || "");
+		var bare = wanted.replace(/^[^:\/]+::/, "");
+		var paths = [];
+		(function walk(node) {
+			(node && node.children || []).forEach(function (child) {
+				if (child && child.path) paths.push(String(child.path));
+				walk(child);
+			});
+		})(tree);
+		paths.sort(function (a, b) { return a.length - b.length || (a < b ? -1 : 1); });
+		function note(path, what) {
+			return { path: path, note: "focusPath \"" + wanted + "\" read as " + (path ? "\"" + path + "\"" : "the root of the tree") +
+				" (" + what + "). Pass that path next time." };
+		}
+		if (!wanted) return null;
+		if (project && (bare === "" || bare === project)) return note("", "the project");
+		if (/^frontends?$/i.test(bare)) {
+			var root = paths.filter(function (path) { return path === "frontends" || path.indexOf("frontends.") === 0; })[0];
+			return root ? note(root, "the frontend root") : null;
+		}
+		var source = /(?:^|\/)(src\/routes\/(?:.*\/)?\+(?:page|layout)[^\/]*\.svelte)$/.exec(bare);
+		if (source) {
+			var base = function (name) {
+				return String(name).replace(/[^A-Za-z0-9_]/g, "_").replace(/_+/g, "_").replace(/_(?:flow_)?svelte$/, "");
+			};
+			var token = base(source[1]);
+			var page = paths.filter(function (path) {
+				var last = base(path.split(".").pop());
+				return last === token || last.slice(-token.length - 1) === "_" + token;
+			})[0];
+			return page ? note(page, "the node of that source file") : null;
+		}
+		return null;
+	}
+
 	// AUTHORING_TREE_FOCUS_NOT_FOUND says the expected form and proposes the nearest existing paths (tree: the
 	// unfocused tree of the same request), so the caller retries without reading the whole tree.
 	function authoringFocusNotFound(args, value, tree) {
@@ -3643,11 +3683,30 @@
 		return out;
 	}
 
+	// The browser plan names generic Playwright calls: the agent runs them with the browser tools of its host, whatever
+	// their prefix. In the light bench of 06/11 (it4), Codex looked for them among the convertigo-flow tools.
+	var HOST_BROWSER_TOOLS = "the browser tools of your host (its Playwright MCP server, whatever the tool-name prefix: " +
+		"browser_navigate {url}, browser_snapshot, browser_click {element, ref}, browser_type, browser_evaluate {function}), " +
+		"not through convertigo-flow, which has no browser tool.";
+
+	function withHostBrowserTools(action, value) {
+		if (!value || typeof value !== "object" || value.error) return value;
+		var plan = value.acceptance;
+		if (plan && typeof plan === "object" && Array.isArray(plan.calls) && plan.calls.length && !plan.runWith) {
+			plan.runWith = "Run these calls with " + HOST_BROWSER_TOOLS;
+		}
+		if (/(?:^|\.)dev\.(?:open|sync|start)$/.test(action) && value.ok === true && value.openUrl && !value.browserProof) {
+			value.browserProof = "Prove the page on openUrl with " + HOST_BROWSER_TOOLS;
+		}
+		return value;
+	}
+
 	// The build of frontend-svelte-action answers its status, URL, duration and the steps it ran. The browser plan
 	// (acceptance) is returned by openBuilt, or here with detail:"full", as the paths and the fingerprints.
 	function compactFrontendActionToolValue(request, value) {
 		var args = toolArguments(request);
 		var action = String(args.actionId || args.action || args.id || "");
+		value = withHostBrowserTools(action, value);
 		var details = value && value.details;
 		var build = /(?:^|\.)build$/.test(action) || !!(details && details.action === "build");
 		if (!build || !value || typeof value !== "object" || value.error || value.ok !== true || fullResponse(request)) {
@@ -3676,7 +3735,8 @@
 		}
 		if (value.acceptance) {
 			out.next = (out.next ? out.next + " " : "") +
-				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\").";
+				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\"); run it with " +
+				HOST_BROWSER_TOOLS;
 		}
 		return out;
 	}
@@ -3953,22 +4013,66 @@
 		MISSING_REQUIRED_PROPERTY: true
 	};
 
+	// Block names guessed in the light bench of 06/11 (it3, it4) and what they meant: that answer goes first in next. No
+	// name is substituted. A capitalized name (Heading, Text, Table) or frontbuilder.svelte.<x> is a Svelte page
+	// component or action, read with authoring-palette, not a backend block.
+	var GUESSED_BLOCKS = {
+		"sql.execute": { block: "sql.query", text: "sql.execute is not a block: sql.query runs a SELECT, sql.mutate an INSERT, UPDATE or DELETE." },
+		"sql.connection": { block: "sql.configCheck", text: "sql.connection is not a block: the connection is config.sql of engine.yaml, which every sql.* block uses; sql.configCheck checks it." },
+		"http.response": { block: "throw", text: "http.response is not a block: a Flow answers with return { ... }, an error status with throw { code, message, status }." }
+	};
+	var EXPRESSION_FUNCTIONS = { round: "round(value, digits)", floor: "floor(value)", ceil: "ceil(value)", abs: "abs(value)",
+		min: "min(a, b)", max: "max(a, b)" };
+	var FRONTEND_GUESSES = { Set: "SetValue", callSequence: "CallSequence" };
+
+	function guessedBlock(diagnostic, project) {
+		var name = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "")
+			.replace(/\.$/, "");
+		if (!name) return null;
+		if (GUESSED_BLOCKS[name]) return GUESSED_BLOCKS[name];
+		if (EXPRESSION_FUNCTIONS[name]) {
+			return { block: "", text: name + " is not a block but an expression function: write " + EXPRESSION_FUNCTIONS[name] +
+				" in an expression (local.total = " + EXPRESSION_FUNCTIONS[name].replace(/\(.*\)/, "(local.amount)") + ")." };
+		}
+		var push = /^((?:local|result)\.[\w.]+)\.push$/.exec(name);
+		if (push) {
+			return { block: "json.push", text: name + " is a JavaScript method, not a block: append with json.push({ path: \"" + push[1] +
+				"\", value }) to a list created by json.array({ path, itemType })." };
+		}
+		var frontend = /^frontbuilder\.svelte\.(\w+)$/.exec(name);
+		if (frontend || /^[A-Z][A-Za-z0-9]*$/.test(name)) {
+			var key = frontend ? frontend[1] : name;
+			var item = FRONTEND_GUESSES[key] || key.charAt(0).toUpperCase() + key.substring(1);
+			var lower = (diagnostic.candidates || []).some(function (candidate) { return candidate && candidate.block === name.toLowerCase(); });
+			return { block: lower ? name.toLowerCase() : "", text: (lower ? "Block names are lowercase: " + name.toLowerCase() +
+				" is the FlowScript block. " : "") + name + " is not a backend Flow block: in a Svelte page, " + item +
+				" is a component or action; read it with authoring-palette({ " + (project ? "project: \"" + project + "\", " : "") +
+				"query: \"" + item + "\" })." };
+		}
+		return null;
+	}
+
 	function withBlockContract(request, diagnostic) {
 		if (!diagnostic || typeof diagnostic !== "object" || diagnostic.contract) {
 			return diagnostic;
 		}
 		var code = String(diagnostic.code || "");
 		var block = "";
+		var project = String(toolArguments(request).project || "");
 		if (code === "UNKNOWN_BLOCK") {
+			var guess = guessedBlock(diagnostic, project);
+			if (guess && String(diagnostic.next || "").indexOf(guess.text) === -1) {
+				diagnostic.next = guess.text + (diagnostic.next ? " " + diagnostic.next : "");
+			}
+			if (guess && !guess.block) return diagnostic;
 			var decision = diagnostic.candidateDecision || {};
-			block = String(decision.bestBlock || diagnostic.candidates && diagnostic.candidates[0] && diagnostic.candidates[0].block || "");
+			block = String(guess && guess.block || decision.bestBlock || diagnostic.candidates && diagnostic.candidates[0] && diagnostic.candidates[0].block || "");
 		} else if (BLOCK_CONTRACT_DIAGNOSTICS[code] === true) {
 			block = String(diagnostic.block || "");
 		}
 		if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(block)) {
 			return diagnostic;
 		}
-		var project = String(toolArguments(request).project || "");
 		diagnostic.contract = "flow-block-get({ " + (project ? "project: \"" + project + "\", " : "") + "name: \"" + block + "\" })";
 		var sentence = "The contract of " + block + " (properties, outputs, errors, examples): " + diagnostic.contract +
 			"; never read library sources for it.";
@@ -6020,6 +6124,7 @@
 		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,
+		authoringFocusAlias: authoringFocusAlias,
 		authoringFocusNotFound: authoringFocusNotFound,
 		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,

@@ -1217,7 +1217,7 @@ const _meta = {
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
 					"Write one complete source pass with code-set; it validates before writing. The first write reorders attributes canonically ($$ attributes first); continue from the returned revision.",
 					"The starter contract intentionally omits uncommon blocks (omittedBlocks). For one of them, code-get again with contractBlocks:[\"<Tag>\"], not contractDetail:\"full\"; inspect the contextual palette only for a missing property.",
-					"For a browser proof after build, execute the bounded acceptance.calls plan of openBuilt unchanged and in order."
+					"For a browser proof after build, execute the bounded acceptance.calls plan of openBuilt unchanged and in order, with the browser tools of your host (Playwright), not through convertigo-flow."
 				]
 			};
 		} catch (e) {

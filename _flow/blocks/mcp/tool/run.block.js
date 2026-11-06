@@ -380,7 +380,22 @@ const _meta = {
 							property: undefined, detail: "compact", maxDepth: 8 }), { trace: false });
 					} catch (ignored) {
 					}
-					result = mcp.authoringFocusNotFound(args, result, unfocused);
+					// a natural form (project name, frontends, a page source file) reads as the node it names
+					var alias = mcp.authoringFocusAlias(args, result.focusPath || args.focusPath || args.rootPath || args.path, unfocused);
+					var aliased = null;
+					if (alias) {
+						try {
+							aliased = ctx.callBlock("authoring.tree", Object.assign({}, args, { focusPath: alias.path, rootPath: "", path: "" }), { trace: false });
+						} catch (ignored) {
+						}
+					}
+					if (aliased && typeof aliased === "object" && !aliased.error) {
+						aliased.warnings = (Array.isArray(aliased.warnings) ? aliased.warnings.slice() : []).concat([{
+							code: "FOCUS_PATH_NORMALIZED", message: alias.note }]);
+						result = aliased;
+					} else {
+						result = mcp.authoringFocusNotFound(args, result, unfocused);
+					}
 				}
 				if (target === "authoring.palette" || target === "authoring.tree") {
 					result = mcp.qualifyAuthoringResult(args, result);
