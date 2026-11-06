@@ -21,7 +21,8 @@ var own=tools.filter(function(t){return !/Relayed to the Convertigo MCP/.test(t.
 assert(own.length>=40,'Expected the real Flow catalog');
 own.forEach(function(t){
   if(t.name==='flow-resource-get') assert(t.outputSchema===undefined,'Text-only resources must not promise structured output');
-  else assert(t.outputSchema && t.outputSchema.type==='object' && t.outputSchema.properties.error.type==='object',t.name+' output schema rejects errors');
+  // Only a tool-specific success schema is declared, with its error alternative: the generic one said nothing.
+  else assert(t.outputSchema===undefined || (t.outputSchema.type==='object' && t.outputSchema.properties.error.type==='object'),t.name+' output schema rejects errors');
 });
 var authSource='const _flow={sourceVersion:2,inputs:{request:{type:"object"}}}\nfunction Auth({input,config,result}) {\n local.response=mcp.handle({request:input.request})\n return({value:local.response})\n}\n';
 var auth=JSON.parse(engine.run(JSON.stringify({flowSource:authSource,includeTrace:false,input:{request:{jsonrpc:'2.0',id:5,__flowMcpAuthenticationError:{code:'missing_token',message:'Bearer required'}}}})));

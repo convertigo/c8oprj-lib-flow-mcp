@@ -79,6 +79,36 @@ const _meta = {
 		return "";
 	}
 
+	function firstSentence(text) {
+		text = String(text || "");
+		var end = text.search(/\.(\s|$)/);
+		return end > 0 && end < 200 ? text.substring(0, end + 1) : text.length > 200 ? text.substring(0, 199) + "…" : text;
+	}
+
+	// tools-more without arguments: {} lists the tools outside the default list, {name} returns one complete descriptor.
+	// With arguments, mcp.parseRequest has already turned the call into the tools/call of that tool.
+	function toolsMore(ctx, request) {
+		var args = request.params && request.params.arguments || {};
+		var more = ctx.callBlock("mcp.tools.available", { profile: "more", out: "local.moreTools" }, { trace: false }) || [];
+		var name = typeof args.name === "string" ? args.name.trim() : "";
+		if (args.arguments !== undefined && args.arguments !== null) {
+			throw { code: "INVALID_ARGUMENT", message: "tools-more arguments must be a JSON object of the arguments of " + (name || "the tool") + ".",
+				hint: "tools-more({name:\"flow-cache-info\", arguments:{}})" };
+		}
+		if (!name) {
+			return { ok: true, tools: more.map(function (tool) { return { name: tool.name, description: firstSentence(tool.description) }; }),
+				next: "tools-more({name}) for the input schema of one, tools-more({name, arguments}) to run it." };
+		}
+		var found = more.filter(function (tool) { return tool.name === name; })[0];
+		if (!found) {
+			if (ctx.lib("mcp").coreTool(name)) {
+				return { ok: true, name: name, listed: true, next: "Call " + name + " directly: it is in the tools list." };
+			}
+			throw { code: "UNKNOWN_TOOL", message: "Unknown Flow MCP tool: " + name + ".", hint: "tools-more({}) lists the tools it runs." };
+		}
+		return { ok: true, tool: found, next: "tools-more({name:\"" + name + "\", arguments:{...}}) runs it." };
+	}
+
 	function toolMap(ctx) {
 		var map = {};
 		var blockIds = typeof ctx.blockNames === "function"
@@ -176,6 +206,12 @@ const _meta = {
 				var scopeRefusal = mcp.subagentScopeRefusal(ctx, request);
 				if (scopeRefusal) {
 					response = mcp.toolError(request, scopeRefusal, ctx);
+					ctx.write(out, response);
+					return response;
+				}
+				if (name === "tools-more") {
+					response = mcp.toolResponse(request, toolsMore(ctx, request), ctx);
+					response = withExperience(ctx, mcp, request, response);
 					ctx.write(out, response);
 					return response;
 				}

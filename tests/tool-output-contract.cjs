@@ -13,6 +13,8 @@ const ajv = new Ajv({strict:false, allErrors:true});
 const tools = new Map(data.tools.map(tool => [tool.name, tool]));
 const validators = new Map(data.tools.filter(tool => tool.outputSchema).map(tool => [tool.name, ajv.compile(tool.outputSchema)]));
 assert(tools.size >= 40, 'Expected the real public catalog');
+const generic = JSON.stringify(data.genericOutputSchema);
+for (const tool of data.tools) assert(!tool.outputSchema || JSON.stringify(tool.outputSchema) !== generic, tool.name + ' declares the generic outputSchema');
 function check(name, result) {
   assert(Array.isArray(result.content), 'Missing MCP content');
   if (result.isError === true) {
@@ -34,7 +36,8 @@ for (const entry of data.cases) {
   catch (error) { throw new Error(entry.label + ': ' + error.message, {cause:error}); }
 }
 // Guard the guard: missing/invalid structure and a disguised error must all fail.
-const name = validators.keys().next().value;
+const name = validators.keys().next().value || 'sample-specific-schema';
+if (!validators.has(name)) validators.set(name, ajv.compile(data.sampleOutputSchema));
 for (const bad of [{content:[]}, {content:[],structuredContent:[]},
   {content:[],structuredContent:{operatorNote:42}}, {content:[],structuredContent:{ok:false}}]) {
   assert.throws(() => check(name,bad));

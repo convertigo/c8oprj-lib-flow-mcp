@@ -14,6 +14,17 @@ const _meta = {
       "default": "local.tools",
       "description": "Scope path receiving the tool descriptors.",
     },
+    "profile": {
+      "kind": "literal",
+      "type": "string",
+      "enum": [
+        "",
+        "core",
+        "all",
+        "more",
+      ],
+      "description": "core: the default list with tools-more; all: every public tool; more: only the tools outside core, complete. Empty: core for an HTTP client unless its X-Convertigo-Mcp-Tools header is all, all without an HTTP request.",
+    },
   },
   "outputs": {
     "out": {
@@ -682,9 +693,62 @@ const _meta = {
 		};
 	}
 
+	// The entry of the tools outside the default list, for a client that only calls listed tools.
+	var TOOLS_MORE = {
+		name: "tools-more",
+		description: "The tools outside this list: entity models and CRUD, FullSync, tags, scheduler, project metadata, symbols, " +
+			"references and removal, object and resource deletion or patch, output schemas, input sync, caches, Svelte tree, actions and assets. " +
+			"{} lists them; {name} returns the input schema of one; {name, arguments} runs it exactly as a direct call, with the same answer.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				name: { type: "string", description: "Tool name from the list of tools-more." },
+				arguments: { type: "object", additionalProperties: true, description: "Arguments of that tool, as its input schema describes them." }
+			},
+			additionalProperties: true
+		}
+	};
+
+	// A property described by the same phrase in several tools keeps it in the first one only. A longer description is a
+	// format contract (the entity model): each tool keeps it, a client may load one tool schema without the others.
+	var REPEATED_DESCRIPTION_MAX = 300;
+
+	function withoutRepeatedDescriptions(tools) {
+		var seen = {};
+		tools.forEach(function (tool) {
+			var properties = tool && tool.inputSchema && tool.inputSchema.properties;
+			if (!properties || typeof properties !== "object") {
+				return;
+			}
+			Object.keys(properties).forEach(function (key) {
+				var property = properties[key];
+				if (!property || typeof property !== "object" || typeof property.description !== "string" ||
+						property.description.length > REPEATED_DESCRIPTION_MAX) {
+					return;
+				}
+				var id = key + "\u0000" + property.description;
+				if (!seen[id]) {
+					seen[id] = true;
+					return;
+				}
+				var copy = {};
+				Object.keys(property).forEach(function (field) {
+					if (field !== "description") copy[field] = property[field];
+				});
+				properties[key] = copy;
+			});
+		});
+		return tools;
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
+			var mcp = ctx.lib("mcp");
+			var profile = String(props.profile || "").trim().toLowerCase() === "more" ? "more" : mcp.toolProfile(ctx, props.profile);
+			function listed(name) {
+				return profile === "all" || (profile === "core" ? mcp.coreTool(name) : !mcp.coreTool(name));
+			}
 			var names;
 			var byName;
 			var contractFor;
@@ -713,42 +777,54 @@ const _meta = {
 				contractFor = function (name) { return byName[name] || null; };
 			}
 			var tools = [];
+			var own = {};
 			names.forEach(function (name) {
 				var publicName = toolName(name);
 				if (!publicName || PUBLIC_TOOLS[publicName] !== true) {
 					return;
 				}
+				own[publicName] = true;
+				if (!listed(publicName)) {
+					return;
+				}
 				var block = contractFor(name);
 				var descriptor = block ? descriptorFor(block, byName, contractFor) : null;
 				if (descriptor) {
-					// outputSchema promises structuredContent on every successful call. Resource
-					// reads also support text-only results, with one copy of the document for both
-					// direct and programmatic clients, so they cannot advertise that promise.
-					if (descriptor.name !== "flow-resource-get") {
-						descriptor.outputSchema = ctx.lib("mcp").toolOutputSchema(descriptor.outputSchema);
+					// outputSchema promises structuredContent on every successful call. It is declared only
+					// with a tool-specific success schema: the generic one (any object, or an error) told a
+					// client nothing and was repeated in every descriptor. Resource reads also support
+					// text-only results, so they never advertise that promise.
+					if (descriptor.outputSchema && descriptor.name !== "flow-resource-get") {
+						descriptor.outputSchema = mcp.toolOutputSchema(descriptor.outputSchema);
+					} else {
+						delete descriptor.outputSchema;
 					}
 					tools.push(descriptor);
 				}
 			});
-			var own = {};
-			tools.forEach(function (tool) {
-				own[tool.name] = true;
-			});
-			ctx.lib("mcp").legacyRelayTools(ctx).forEach(function (tool) {
-				if (!own[tool.name]) {
-					tools.push(tool);
-				}
-			});
+			// The relayed tools belong to the Convertigo MCP and its own visibility rules: listed as before.
+			if (profile !== "more") {
+				mcp.legacyRelayTools(ctx).forEach(function (tool) {
+					if (!own[tool.name]) {
+						tools.push(tool);
+					}
+				});
+			}
 			var serverTools = byName["mcp.tools.server"] ? ctx.callBlock("mcp.tools.server", { mode: "list" }, { trace: false }) : [];
 			serverTools.forEach(function (tool) {
-				if (!own[tool.name] && !tools.some(function (entry) { return entry.name === tool.name; })) {
-					tool.outputSchema = ctx.lib("mcp").toolOutputSchema();
+				if (!own[tool.name] && listed(tool.name) && !tools.some(function (entry) { return entry.name === tool.name; })) {
 					tools.push(tool);
 				}
 			});
+			if (profile === "core") {
+				tools.push(JSON.parse(JSON.stringify(TOOLS_MORE)));
+			}
 			tools.sort(function (a, b) {
 				return a.name.localeCompare(b.name);
 			});
+			if (profile !== "more") {
+				withoutRepeatedDescriptions(tools);
+			}
 			ctx.write(props.out || "local.tools", tools);
 			return tools;
 		}

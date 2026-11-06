@@ -4609,6 +4609,75 @@
 		return value;
 	}
 
+	// The tools listed by default (tools/list of an HTTP client without X-Convertigo-Mcp-Tools: all): the ones the
+	// agents used in the benchmark runs, the ones their answers send them to (palette apply, draft discard, mocks after
+	// UNKNOWN_BLOCK), the server fallbacks for save and execution, and tools-more. Every other tool stays callable by its
+	// name, and through tools-more for a client that only calls listed tools.
+	var CORE_TOOLS = {};
+	["authoring-mutate", "authoring-palette", "authoring-tree",
+		"code-check", "code-discard", "code-get", "code-patch", "code-promote", "code-rg", "code-run", "code-set",
+		"flow-app-progress", "flow-block-get", "flow-block-mock", "flow-block-mock-list", "flow-catalog", "flow-list",
+		"flow-project-bootstrap", "flow-requestable-list", "flow-resource-get", "flow-resource-search", "flow-search", "flow-test",
+		"frontend-svelte-action", "frontend-svelte-mutate",
+		"project-save", "requestable-execute", "tools-more"].forEach(function (name) {
+		CORE_TOOLS[name] = true;
+	});
+	var TOOL_PROFILE_HEADER = "X-Convertigo-Mcp-Tools";
+
+	// "all" or "core". An explicit profile wins; an HTTP client gets core unless its X-Convertigo-Mcp-Tools header says
+	// all; a call without an HTTP request (the server's own, offline harnesses) keeps the complete catalog.
+	function toolProfile(ctx, explicit) {
+		explicit = String(explicit || "").trim().toLowerCase();
+		if (explicit === "all" || explicit === "core") {
+			return explicit;
+		}
+		var http = stableServletRequest(ctx);
+		if (!http) {
+			return "all";
+		}
+		var asked = "";
+		try {
+			asked = String(http.getHeader(TOOL_PROFILE_HEADER) || "").trim().toLowerCase();
+		} catch (e) {
+		}
+		return asked === "all" ? "all" : "core";
+	}
+
+	function coreTool(name) {
+		return CORE_TOOLS[String(name || "")] === true;
+	}
+
+	// tools-more({name, arguments}) runs that tool as its own tools/call: the request is rewritten before the token
+	// guard, the trace and the routing, so that every check of a direct call applies to it unchanged.
+	function unwrapToolsMore(item) {
+		if (!item || typeof item !== "object" || item.method !== "tools/call" || !item.params || item.params.name !== "tools-more") {
+			return item;
+		}
+		var args = item.params.arguments;
+		if (!args || typeof args !== "object" || typeof args.name !== "string" || !args.name.trim() || args.name.trim() === "tools-more") {
+			return item;
+		}
+		var inner = args.arguments;
+		if (typeof inner === "string") {
+			try { inner = JSON.parse(inner); } catch (notJson) { return item; }
+		}
+		if (inner === undefined || inner === null) {
+			return item;
+		}
+		if (typeof inner !== "object" || Array.isArray(inner)) {
+			return item;
+		}
+		var params = {};
+		Object.keys(item.params).forEach(function (key) {
+			if (key !== "name" && key !== "arguments") params[key] = item.params[key];
+		});
+		params.name = args.name.trim();
+		params.arguments = inner;
+		item.params = params;
+		item.__flowMcpVia = "tools-more";
+		return item;
+	}
+
 	function parseRequest(value, ctx) {
 		value = value || {};
 		if (typeof value === "string") {
@@ -4621,6 +4690,7 @@
 		var started = Number(System.currentTimeMillis());
 		if (Object.prototype.toString.call(value) === "[object Array]") {
 			value.forEach(function (item, index) {
+				unwrapToolsMore(item);
 				if (item && typeof item === "object") {
 					item.__flowMcpTraceStart = Number(System.currentTimeMillis());
 				}
@@ -4632,6 +4702,7 @@
 				});
 			});
 		} else {
+			unwrapToolsMore(value);
 			if (value && typeof value === "object") {
 				value.__flowMcpTraceStart = started;
 			}
@@ -5430,8 +5501,8 @@
 			return null;
 		}
 		var params = request.params && typeof request.params === "object" ? request.params : {};
-		return stableEntry("tools/list", [caller, code, relay, String(params.cursor || ""), String(params.limit || "")]
-			.concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS["tools/list"]);
+		return stableEntry("tools/list", [caller, code, relay, String(params.cursor || ""), String(params.limit || ""),
+			"profile=" + toolProfile(ctx)].concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS["tools/list"]);
 	}
 
 	// The file of a guide or skill: flow://guide/<name> and flow://skills/<skill>/SKILL in this project
@@ -5583,6 +5654,8 @@
 		_subagentCallSide: subagentCallSide,
 		acceptNotification: acceptNotification,
 		parseRequest: parseRequest,
+		toolProfile: toolProfile,
+		coreTool: coreTool,
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
