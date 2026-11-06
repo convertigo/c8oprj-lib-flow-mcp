@@ -373,6 +373,15 @@ const _meta = {
 				if (target === "authoring.palette") {
 					result = externalPaletteItems(ctx, mcp, args, result);
 				}
+				if (target === "authoring.tree" && result && result.error && result.error.code === "AUTHORING_TREE_FOCUS_NOT_FOUND") {
+					var unfocused = null;
+					try {
+						unfocused = ctx.callBlock(target, Object.assign({}, args, { focusPath: "", rootPath: "", path: "",
+							property: undefined, detail: "compact", maxDepth: 8 }), { trace: false });
+					} catch (ignored) {
+					}
+					result = mcp.authoringFocusNotFound(args, result, unfocused);
+				}
 				if (target === "authoring.palette" || target === "authoring.tree") {
 					result = mcp.qualifyAuthoringResult(args, result);
 				}

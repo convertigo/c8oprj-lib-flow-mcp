@@ -655,7 +655,29 @@
 		};
 	}
 
+	// A tree focusPath is the unqualified path; the qualified Project::path (parentPath) is accepted too, and a
+	// configuration path (config.*, configs.*, engine.*) is on the backend surface.
+	function normalizeAuthoringFocusPath(name, args) {
+		["focusPath", "rootPath", "path"].forEach(function (key) {
+			var focus = typeof args[key] === "string" ? splitAuthoringParentPath(args[key]) : null;
+			if (!focus || !focus.project) return;
+			if (args.project && String(args.project) !== focus.project) {
+				throw new Error(name + " " + key + " project " + focus.project + " conflicts with project " + args.project + ".");
+			}
+			args.project = focus.project;
+			args[key] = focus.path;
+		});
+		var path = String(args.focusPath || args.rootPath || args.path || "");
+		if (name === "authoring-tree" && !args.surface && /^(?:config|configs|engine)(?:\.|$)/.test(path)) {
+			args.surface = "backend";
+		}
+		return args;
+	}
+
 	function normalizeAuthoringParentPath(name, args) {
+		if (name === "authoring-tree" || name === "frontend-svelte-tree") {
+			return normalizeAuthoringFocusPath(name, args);
+		}
 		if (["authoring-palette", "authoring-mutate", "frontend-svelte-palette", "frontend-svelte-mutate"].indexOf(name) === -1) {
 			return args;
 		}
@@ -691,6 +713,47 @@
 	function qualifyAuthoringPath(args, path) {
 		path = String(path || "");
 		return args && args.project ? String(args.project) + "::" + path : path;
+	}
+
+	// The existing paths nearest to an unknown focusPath: shared leading segments first, then the last segment.
+	function nearestAuthoringPaths(wanted, tree, limit) {
+		var segments = String(wanted || "").split("."), last = segments[segments.length - 1].toLowerCase();
+		var scored = [];
+		(function walk(node) {
+			(node && node.children || []).forEach(function (child) {
+				var path = String(child && child.path || "");
+				if (path) {
+					var parts = path.split("."), common = 0;
+					while (common < parts.length && common < segments.length && parts[common] === segments[common]) common++;
+					var tail = parts[parts.length - 1].toLowerCase();
+					var prefix = 0;
+					while (prefix < tail.length && prefix < last.length && tail[prefix] === last[prefix]) prefix++;
+					var score = common * 4 + (tail === last ? 6 : last && (tail.indexOf(last) !== -1 || last.indexOf(tail) !== -1 ||
+						prefix >= Math.min(4, last.length)) ? 3 : 0);
+					if (score > 0) scored.push({ path: path, score: score });
+				}
+				walk(child);
+			});
+		})(tree);
+		scored.sort(function (a, b) { return b.score - a.score || a.path.length - b.path.length || (a.path < b.path ? -1 : 1); });
+		var top = scored.map(function (item) { return item.path; });
+		if (!top.length) top = (tree && tree.children || []).map(function (child) { return String(child.path || ""); });
+		return top.filter(function (path) { return path; }).slice(0, limit || 3);
+	}
+
+	// AUTHORING_TREE_FOCUS_NOT_FOUND says the expected form and proposes the nearest existing paths (tree: the
+	// unfocused tree of the same request), so the caller retries without reading the whole tree.
+	function authoringFocusNotFound(args, value, tree) {
+		var error = value && value.error;
+		if (!error || error.code !== "AUTHORING_TREE_FOCUS_NOT_FOUND") return value;
+		var wanted = String(value.focusPath || args.focusPath || args.rootPath || args.path || "");
+		var nearest = nearestAuthoringPaths(wanted, tree, 3).map(function (path) { return qualifyAuthoringPath(args, path); });
+		value.nearestPaths = nearest;
+		error.hint = "focusPath is a path returned by this tree, unqualified (for example frontends.svelte.routes.<page-id>) or " +
+			"qualified as Project::<path> (its parentPath). Configuration (config.*) is on surface:\"backend\"." +
+			(nearest.length ? " Nearest existing paths: " + nearest.join(", ") + "." : "");
+		if (nearest.length) value.next = "Retry with focusPath:\"" + nearest[0] + "\", or another nearest path.";
+		return value;
 	}
 
 	function qualifyAuthoringResult(args, value) {
@@ -5855,6 +5918,7 @@
 		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,
+		authoringFocusNotFound: authoringFocusNotFound,
 		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,
