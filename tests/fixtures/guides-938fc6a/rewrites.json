@@ -1,5 +1,10 @@
 [
  {
+  "family": "authoring",
+  "old": "It requires a target Flow, not just a project.",
+  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` (400) before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message, status: 400 }`."
+ },
+ {
   "family": "entities",
   "old": "actor block (**Authentication** below); without it, nobody gets the MANAGER scope.",
   "new": "actor block (**Authentication** in `flow://guide/entities-auth`); without it, nobody gets the MANAGER scope."
