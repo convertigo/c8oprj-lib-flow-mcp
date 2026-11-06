@@ -3926,8 +3926,14 @@
 				if (owned.length === 1) candidates = owned;
 			}
 			if (!candidates.length) {
-				var family = familyEntry(coreNames.map(function (name) { return String(name).toLowerCase(); })
-					.filter(function (name) { return name.indexOf(wanted + "-") === 0; }));
+				var lowerNames = coreNames.map(function (name) { return String(name).toLowerCase(); });
+				var family = familyEntry(lowerNames.filter(function (name) { return name.indexOf(wanted + "-") === 0; }));
+				// Else the one family whose names hold every word of the wanted name: svelte, svelte-frontend.
+				var words = wanted.split(/[-_]+/).filter(Boolean);
+				family = family || familyEntry(lowerNames.filter(function (name) {
+					var own = name.split("-");
+					return words.length > 0 && words.every(function (word) { return own.indexOf(word) !== -1; });
+				}));
 				if (family) return { uri: "flow://guide/" + family };
 			}
 		} else if ((match = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text))) {
