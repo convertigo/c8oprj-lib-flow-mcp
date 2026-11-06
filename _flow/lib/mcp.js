@@ -4040,6 +4040,7 @@
 		if (error.details) {
 			if (error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && error.details.receivedRevision !== undefined && error.details.currentRevision !== undefined) {
 				out.details = {property:"revision",receivedRevision:String(error.details.receivedRevision),currentRevision:String(error.details.currentRevision)};
+				if (error.details.copySlip === true) out.details.copySlip = true;
 				return out;
 			}
 			var report = compactFlowCodeDiagnosticReport(request, error.details);
@@ -4172,6 +4173,11 @@
 		out.responseDetail = "summary";
 		if (value.ok === false && value.proposedPatch && value.proposedPatch.edits && value.proposedPatch.edits.length) {
 			out.next = value.proposedPatch.next;
+		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && out.error.details && out.error.details.copySlip === true) {
+			// The engine recognized a mistyped copy of the current revision: nothing changed, no review is needed.
+			out.next = /promote$/.test(name)
+				? "Promote again without revision to promote this working copy, or copy revision " + out.error.details.currentRevision + " exactly."
+				: "Retry with revision " + out.error.details.currentRevision + " copied exactly.";
 		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && out.error.details && out.error.details.currentRevision) {
 			out.next = "Review the working copy with code-get at revision " + out.error.details.currentRevision +
 				", then promote exactly the checked revision. A transcription error in revision needs no source patch.";

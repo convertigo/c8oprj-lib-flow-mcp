@@ -60,4 +60,15 @@ assert(schema.properties.argumentWarning.type === 'string' && schema.anyOf[0].pr
   var unwritten = response(name, { ok: false, written: false, revision: 'rev-old', error: { code: 'FLOW_CODE_DRAFT_REVISION_MISMATCH', message: 'Stale' } }, { revision: 'rev-old', code: 'x' });
   assert(unwritten.content[0].text.indexOf('kept as the working copy') < 0, name + ' claims a working copy for a refusal that wrote nothing');
 });
+// A mistyped revision (copySlip from the engine) needs no code-get: the next step promotes again without revision.
+var slipped = response('code-promote', { ok: false, name: 'Orders', draft: true, revision: 'rev-current',
+  error: { code: 'FLOW_CODE_DRAFT_REVISION_MISMATCH', message: 'Supplied revision rev-curernt is a mistyped copy of the current revision rev-current',
+    hint: 'Promote again without revision to promote this working copy, or copy this revision exactly: rev-current.',
+    details: { property: 'revision', receivedRevision: 'rev-curernt', currentRevision: 'rev-current', name: 'Orders', copySlip: true } } }, { name: 'Orders', revision: 'rev-curernt' });
+assert(slipped.structuredContent.error.details.copySlip === true, 'copySlip lost: ' + JSON.stringify(slipped.structuredContent.error));
+assert(/without revision/.test(slipped.structuredContent.next) && !/code-get/.test(slipped.structuredContent.next), 'A copy slip still sends to code-get: ' + slipped.structuredContent.next);
+var stale = response('code-promote', { ok: false, name: 'Orders', draft: true, revision: 'r1',
+  error: { code: 'FLOW_CODE_DRAFT_REVISION_MISMATCH', message: 'Supplied revision r0 is not the current working copy revision r1',
+    details: { property: 'revision', receivedRevision: 'r0', currentRevision: 'r1', name: 'Orders' } } }, { name: 'Orders', revision: 'r0' });
+assert(/code-get/.test(stale.structuredContent.next) && !/without revision/.test(stale.structuredContent.next), 'An unrelated revision must still be reviewed: ' + stale.structuredContent.next);
 print('tool-notices OK (' + checks + ' checks)');
