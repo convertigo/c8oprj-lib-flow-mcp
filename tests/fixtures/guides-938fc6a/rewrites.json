@@ -138,5 +138,10 @@
   "family": "frontend-svelte",
   "old": "Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`\ngives it with `detail:\"full\"`).",
   "new": "Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`\ngives it with `detail:\"full\"`). For handoff, put the page URL first in your\nfinal answer: prefer the `openBuilt` URL after a build. A `dev.sync` or\n`dev.open` URL works only while the dev server runs; it stops 2 min after the\nlast viewer leaves by default (15 min if no viewer ever connects)."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "5. For a freshly bootstrapped UI project, `dev.ensure` right after bootstrap\n   lets npm initialize while you author; Vite and the Studio viewer open when\n   setup completes. Call `dev.sync` once after the final repair pass; use\n   `dev.open` only to reveal an already running viewer.",
+  "new": "5. A fresh UI bootstrap starts dev preparation while you author; pass\n   `devStart:false` to opt out and skip the early `dev.ensure`. By default,\n   Vite starts after setup without opening a viewer. Call `dev.sync` once\n   after the final repair pass; use `dev.open` to reveal the running viewer."
  }
 ]

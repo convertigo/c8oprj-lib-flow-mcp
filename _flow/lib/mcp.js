@@ -3714,7 +3714,7 @@
 		}
 		var out = { ok: value.ok };
 		if (value.project) out.project = value.project;
-		["dryRun", "imported", "created", "existing", "configuredSvelte", "saved", "wouldImport", "wouldCreate", "wouldCustomize"].forEach(function (key) {
+		["dryRun", "imported", "created", "existing", "configuredSvelte", "saved", "devStarting", "wouldImport", "wouldCreate", "wouldCustomize"].forEach(function (key) {
 			if (value[key] === true) out[key] = true;
 		});
 		if (value.corsOrigin) out.corsOrigin = value.corsOrigin;

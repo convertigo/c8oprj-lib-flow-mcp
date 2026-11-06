@@ -22,6 +22,12 @@ const _meta = {
       "default": false,
       "description": "Also configure the experimental Svelte frontbuilder. For persisted business data with roles, include lib_flow_entity in references and follow flow://guide/multipage-entities; authentication, CSV and jobs do not select direct SQL.",
     },
+    "devStart": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": true,
+      "description": "With ui:true, start Svelte dev preparation in the background after saving. Set false to skip this startup.",
+    },
     "references": {
       "kind": "literal",
       "type": "array",
@@ -73,6 +79,9 @@ const _meta = {
           "type": "boolean",
         },
         "configuredSvelte": {
+          "type": "boolean",
+        },
+        "devStarting": {
           "type": "boolean",
         },
         "studioTarget": {
@@ -806,12 +815,32 @@ const _meta = {
 		}
 	}
 
+	function startDev(ctx, project, ui, devStart) {
+		if (ui !== true || devStart === false) {
+			return false;
+		}
+		try {
+			var started = ctx.contextActionSource({
+				projectDir: String(project.getDirPath()),
+				engineSource: String(project.getFlowEngine().getEngineSource()),
+				targetObject: { kind: "frontendBuilder", type: "svelte", project: String(project.getName()) },
+				action: { id: "frontbuilder.svelte.dev.start" },
+				wait: false,
+				origin: "bootstrap"
+			});
+			return !!(started && started.ok === true);
+		} catch (_devStartupError) {
+			return false;
+		}
+	}
+
 	return {
 		run: function (ctx, node) {
 			var props = ctx.props(node);
 			var name = projectName(prop(props, "project") || prop(props, "name"));
 			var templateUrl = String(prop(props, "templateUrl") || "").trim();
 			var ui = boolValue(prop(props, "ui"), false);
+			var devStart = boolValue(prop(props, "devStart"), true);
 			var references = projectNames(prop(props, "references"));
 			var force = boolValue(prop(props, "force"), false);
 			var dryRun = boolValue(prop(props, "dryRun"), false);
@@ -936,6 +965,9 @@ const _meta = {
 				(ui && model.revision ? " The home Page " + model.path + " exists already: its first code-set passes revision " +
 					model.revision + " (frontbuilderModelRevision)." : "");
 			refreshStudio(engine, project, ui ? model.path : "");
+			if (ui) {
+				result.devStarting = startDev(ctx, project, ui, devStart);
+			}
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
 		}
