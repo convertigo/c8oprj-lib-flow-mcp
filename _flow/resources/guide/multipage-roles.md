@@ -1,8 +1,9 @@
-# Flow Multi-Page Roles: Direct SQL Alternative
+# Flow Multi-Page Roles: Explicit SQL or No Persisted Data
 
 Alternative recipe for an explicit direct-SQL application, or an application without persisted business data.
 
-Any persisted business data with roles uses `lib_flow_entity` by default:
+"Simplest" or "minimal" is not an explicit request for direct SQL.
+For persisted business data with roles, entities are the simplest compliant option:
 read `flow://guide/entities` then `flow://guide/multipage-entities` instead.
 Use this guide only when there is no persisted business data or the user
 explicitly requests direct SQL. Sign-in, CSV export, a scheduled job and audit

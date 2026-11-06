@@ -2,6 +2,8 @@
 
 Build a role-based booking application with session authentication, per-user entities, ordinary widget events, CSV export, a scheduled check and atomic auditing.
 
+For the simplest compliant start with persisted business data and roles, use **Short path** in `flow://guide/entities`, then follow this recipe.
+
 ## Quick path: contract first, details below
 
 1. Bootstrap with `flow-project-bootstrap` and direct references to

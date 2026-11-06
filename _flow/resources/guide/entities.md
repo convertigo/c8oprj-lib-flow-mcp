@@ -2,6 +2,52 @@
 
 Declare business data once, expose your own HTTP contract with entity blocks, and add schema-driven widgets when useful.
 
+## Short path: model, policy, public Flow
+
+For persisted business data with roles, start with this small model, identical
+to the example in the `flow-entity-model-set` contract:
+
+<!-- example: model-format -->
+```json
+{"version":2,"modelVersion":1,"entities":{"Team":{"identity":["id"],"display":{"title":"name"},"fields":{"name":{"type":"string","maxLength":80}}},"Task":{"identity":["id"],"traits":["Révisé",{"Possédé":{"owner":"requester","unrestricted":["MANAGER"]}}],"display":{"title":"title"},"fields":{"title":{"type":"string","maxLength":120},"status":{"type":"enum","values":["OPEN","DONE"],"default":"OPEN"},"team":{"type":"int64","relation":{"entity":"Team","labelField":"name"}},"due":{"type":"date","nullable":true}}}}}
+```
+
+In the scaffolded `app.entityAccess`, replace only the function body with
+these five lines (signed-in reads; writes stay closed):
+
+<!-- example: short-access-policy -->
+```javascript
+if (!input.request.user || input.request.write) {
+  throw { code: "ENTITY_FORBIDDEN", message: "Signed-in reads only", status: 403 }
+}
+local.ownTasks = input.request.entity === "Task" && !input.request.roles.includes("MANAGER")
+return { scope: local.ownTasks ? { requester: input.request.user } : {} }
+```
+
+`ListTasks` is an ordinary public Flow; `checkAccess: true` applies the policy:
+
+<!-- example: short-list-tasks -->
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "public" }
+
+function ListTasks({ input, config, result }) {
+  local.page = entity.list({ entity: "Task", checkAccess: true, options: { offset: input.offset || 0 } })
+  return local.page
+}
+```
+
+MANAGER sees all tasks; other signed-in users see only their own. Team stays
+readable for relation labels. The response keeps `hasMore` and `nextOffset`;
+pass `nextOffset` as `offset` to fetch another page.
+
+To use this path, reference `lib_flow_entity`, `lib_flow_sql` and `lib_flow_crud_data`,
+configure one SQL connection, then check/set the model with the revision from
+`flow-entity-model-get`. Set `config.entities.actorProvider` to your server-session
+actor block (**Authentication** below); without it, nobody gets the MANAGER scope.
+The schema is ensured on first authorized use. No hand-written schema, migration
+or CRUD generation is needed. The remaining sections explain HTTP adaptation,
+write permissions and setup; `flow://guide/multipage-entities` orders the full recipe.
+
 ## Your own HTTP contract over entities
 
 No widget or generated CRUD is required. Name public Flows as your application
@@ -466,12 +512,7 @@ parameter, and a reference to a missing entity or field, naming its full path
 (`entities.Task.fields.team.type`), the accepted values and the correct form,
 every problem at once. The `model` property of both tools
 lists every accepted key; `flow-entity-model-get` on an empty model returns the
-same `format` and this `example`:
-
-<!-- example: model-format -->
-```json
-{"version":2,"modelVersion":1,"entities":{"Team":{"identity":["id"],"display":{"title":"name"},"fields":{"name":{"type":"string","maxLength":80}}},"Task":{"identity":["id"],"traits":["Révisé",{"Possédé":{"owner":"requester","unrestricted":["MANAGER"]}}],"display":{"title":"title"},"fields":{"title":{"type":"string","maxLength":120},"status":{"type":"enum","values":["OPEN","DONE"],"default":"OPEN"},"team":{"type":"int64","relation":{"entity":"Team","labelField":"name"}},"due":{"type":"date","nullable":true}}}}}
-```
+same `format` and the exact `example` shown in **Short path** above.
 
 - **Types:** `string`, `text`, `enum` (with `values`), `int64`, `decimal`,
   `boolean`, `date`, `timestamp`. There is no array or JSON type: store

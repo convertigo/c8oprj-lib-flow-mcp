@@ -4,6 +4,10 @@ Start here: the default Flow authoring route, the source contract, the project l
 
 ## Which guide next
 
+For persisted business data with roles, entities are the simplest compliant option: a short model and a few lines of access policy
+replace hand-written SQL schemas, migrations and access checks. "Simplest" or "minimal" is not an explicit SQL request.
+Direct SQL and generated CRUD require one.
+
 | Task | Read |
 | --- | --- |
 | Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` |
@@ -21,10 +25,6 @@ Start here: the default Flow authoring route, the source contract, the project l
 | MCP JSONL tracing | `flow://guide/tracing` |
 | Ordered tags and named project configurations | `flow://guide/tags` |
 
-Persisted business data with roles defaults to entities, also with demo login,
-CSV, jobs or audit: these are independent additions. Direct SQL and generated
-CRUD require an explicit request. With no persisted business data, use
-`flow://guide/multipage-roles`.
 An imposed HTTP contract (Flow names, error codes/statuses, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
 
