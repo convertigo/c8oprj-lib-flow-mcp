@@ -56,7 +56,7 @@ same session: `requestable.call` returns their result.
 ```javascript
 local.session = requestable.call({ requestable: ".desk_session" })
 if (!local.session.permissions.tickets.update) {
-  throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
+  throw { code: "FORBIDDEN", message: "Role denied" }
 }
 local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
 ```
@@ -127,7 +127,7 @@ const _flow = {
 function ticket_resolve({ input, config, result }) {
   local.session = requestable.call({ requestable: ".desk_session" })
   if (local.session.role !== "agent" && local.session.role !== "manager") {
-    throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
+    throw { code: "FORBIDDEN", message: "Role denied" }
   }
   local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
   local.done = sql.transaction({
@@ -168,7 +168,7 @@ rule, write a business Flow whose filter comes from the server:
 function my_tickets({ input, config, result }) {
   local.session = requestable.call({ requestable: ".desk_session" })
   if (!local.session.permissions.tickets.list) {
-    throw { code: "FORBIDDEN", message: "Role denied", status: 403 }
+    throw { code: "FORBIDDEN", message: "Role denied" }
   }
   local.mine = sql.query({ query: "my_tickets_rows", parameters: { user: local.session.user } })
   result.rows = local.mine.rows

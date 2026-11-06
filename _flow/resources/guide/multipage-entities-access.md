@@ -75,19 +75,19 @@ function block({ input, config, result }) {
     if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
       return {}
     }
-    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+    throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
   local.roles = input.request.roles || []
   local.manager = local.roles.includes("MANAGER") || local.roles.includes("ADMIN")
   if (!local.manager && !local.roles.includes("USER")) {
-    throw { code: "FORBIDDEN", message: "Booking role required", status: 403 }
+    throw { code: "FORBIDDEN", message: "Booking role required" }
   }
   if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !local.manager)) {
-    throw { code: "FORBIDDEN", message: "Directory or audit unavailable", status: 403 }
+    throw { code: "FORBIDDEN", message: "Directory or audit unavailable" }
   }
   if (input.request.write && ((input.request.entity === "Room" && !local.manager) || (input.request.operation ===
     "delete" && !local.manager))) {
-    throw { code: "FORBIDDEN", message: "Manager action required", status: 403 }
+    throw { code: "FORBIDDEN", message: "Manager action required" }
   }
   if (input.request.entity === "Reservation" && !local.manager) {
     return { scope: { owner: input.request.user } }
@@ -128,11 +128,11 @@ function BookingRule({ input, config, result }) {
     local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
   }
   if (local.values.starts >= local.values.ends) {
-    throw { code: "BOOKING_DATES_INVALID", message: "End must follow start", status: 422 }
+    throw { code: "BOOKING_DATES_INVALID", message: "End must follow start" }
   }
   local.lock = sql.write({ statement: "lockRoom", parameters: { room: local.values.room } })
   if (local.lock.affectedRows !== 1) {
-    throw { code: "ROOM_NOT_FOUND", message: "Choose an existing room", status: 422 }
+    throw { code: "ROOM_NOT_FOUND", message: "Choose an existing room" }
   }
   if (local.values.status === "OPEN") {
     local.overlap = sql.query({
@@ -146,7 +146,7 @@ function BookingRule({ input, config, result }) {
       limit: 1,
     })
     if (local.overlap.rows[0].total !== "0") {
-      throw { code: "BOOKING_OVERLAP", message: "This room is already booked", status: 422 }
+      throw { code: "BOOKING_OVERLAP", message: "This room is already booked" }
     }
   }
   return { ok: true }

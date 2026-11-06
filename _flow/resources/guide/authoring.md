@@ -30,7 +30,7 @@ const _flow = { sourceVersion: 2, inputs: { name: { type: "string", description:
 function Greeting({ input, config, result }) {
   local.name = text.trim({ text: input.name })
   if (local.name == "") {
-    throw { code: "NAME_REQUIRED", message: "name is required", status: 400 }
+    throw { code: "NAME_REQUIRED", message: "name is required" }
   }
   result.message = `Hello ${local.name}`
 }
@@ -66,18 +66,18 @@ function Greeting({ input, config, result }) {
   only value), `inputs`, `outputs`, `config` (an object), `tests`.
 - **Language statements** stay script: assignments, `if (...) { ... } else { ... }`,
   `return { answer: input.value }`, bare `return`, and
-  `throw { code: "INVALID", message: "Invalid input", status: 400 }`.
+  `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `local.rows = sql.query({ ... })`.
   Loops keep their block calls in phase 1; natural loops are a later phase.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
-  resource or parameter, failed dependency), with a `status` when one fits:
+  resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its
   chain. Return a normal result for an outcome the caller handles (wrong
   password, nothing found): `result.ok = false` with its reason, never a
   result made of an `error` object alone. To go on after a block that may
   fail (an email, a call to another Flow or service), wrap it in `try`:
   `try({ error: "local.failure", $$try: function () { ... }, $$catch: function () { ... } })`;
-  catch reads `local.failure.code` / `.message` / `.status`.
+  catch reads `local.failure.code` / `.message`.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), on a property of kind expression too (`day:
   "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
@@ -252,6 +252,6 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/authoring-data` (7.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
+| `flow://guide/authoring-data` (7.1 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
 | `flow://guide/authoring-source` (5.7 KB) | editing existing or protected sources, formatting, accessibility |
 | `flow://guide/authoring-blocks` (3.9 KB) | a missing block or a mock, samples, native Convertigo sequence properties |

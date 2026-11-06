@@ -20,8 +20,8 @@ named implicitly, or explicitly by a JavaScript label. Outside the subset, write
   forEach callback, a bare `return` in the body goes on with the next item
   (`return` with a value there would leave the whole Flow: code-set refuses it);
 - `try {} catch {}`: `try({ error: "local.failure", $$try() {...},
-  $$catch() {...} })`, the error (`code`, `message`, `status`) at that path;
-- `throw new Error()`: `throw({ code, message, status, details })`;
+  $$catch() {...} })`, the error (`code`, `message`) at that path;
+- `throw new Error()`: `throw({ code, message, details })`;
 - a block call under a method or inside a per-item projection: use an explicit
   intermediate in that same branch/iterator or a named per-item block;
 - a nested function: a helper function at top level.
@@ -54,7 +54,7 @@ analysis, pickers and pages read it. A run can return the trace of its nodes.
 
 **A throw fails the caller by design.** `throw` stops the tree and the Flow
 answers that error instead of a result. A calling Flow's `requestable.call`
-(default `onError: "raise"`) fails with the same code, message and status,
+(default `onError: "raise"`) fails with the same code and message,
 stopping that Flow unless a `try` catches it; a page action fails and stops
 its chain. Throw what must interrupt; return `ok: false` for what the caller
 handles. Otherwise the value of `requestable.call` is the result of the called
@@ -62,7 +62,7 @@ Flow as it is, without envelope (`result.items` gives `{ items }`); only
 `requestable-execute` shows the HTTP answer under its own `payload`, beside `attr`.
 
 **Source remains yours until promotion.** Write natural assignments, `if`,
-`return` and `throw { code, message, status }`; catalog blocks take one object
+`return` and `throw { code, message }`; catalog blocks take one object
 of named properties. `code-set` and `code-patch` compile your exact text. Guessed
 names, keys and positional calls produce a suggested patch with line, before
 and after. Review and send the edits with their revision; they are never
@@ -112,7 +112,7 @@ for Svelte actions. Business rules stay in Flows.
   `flow://guide/multipage-entities`, declare the model once and use `entity.*`.
   A demonstration sign-in, CSV export, scheduled job or audit journal is an
   independent addition, not a reason to rewrite CRUD or ownership in SQL.
-  Imposed HTTP names, error codes/statuses and JSON keys also keep entities: see Your own HTTP contract over entities in `flow://guide/entities`.
+  Imposed HTTP names, error codes and JSON keys also keep entities: see Your own HTTP contract over entities in `flow://guide/entities`.
   `flow://guide/multipage-roles` is only for no persisted business data or a
   user's explicit request for direct SQL. Generated CRUD (`flow-crud-upsert`,
   `flow://guide/crud`) likewise requires an explicit request.
@@ -177,10 +177,12 @@ for Svelte actions. Business rules stay in Flows.
   server refuses a private Flow over HTTP to anyone but an administrator; the
   Studio runs it anyway (Studio mode), so an anonymous call answering in the
   Studio is not a defect to guard against in the Flow.
-- `throw({ code, message, status })` what must interrupt the caller; return
+- `throw({ code, message })` what must interrupt the caller; return
   a normal result (`ok: false` and a reason) for an outcome it handles. Catch
   a block that may fail with `try` (`$$try`, `$$catch`, error path), never
   with a Rhino block.
+  On the requester (.json, SDK, frontbuilder), an application error answers with
+  200 and the `error` envelope; do not set `status`.
 - Declare or infer useful output schemas; do not leave downstream contracts at
   `unknown` when the result shape is known or can be learned from a proof run.
 - Validate with `code-check`, `code-run`, schema tools and focused tests before

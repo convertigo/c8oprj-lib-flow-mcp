@@ -64,7 +64,7 @@ Runtime helpers available in `run(ctx,node)`:
   declare `out`, `id`, `comment` or `disabled` to mean engine metadata.
 - `ctx.callBlock(name, props, options)`: calls another Flow block. Prefer
   FlowScript composition when possible.
-- `ctx.throwFlow({ code, message, status, details, hint }, node)`: raises a
+- `ctx.throwFlow({ code, message, details, hint }, node)`: raises a
   structured Flow error.
 - `ctx.lib("name")`: loads a helper library declared in `_meta.uses`.
 - `ctx.canContinue()`: false once the execution is cancelled (Studio cancel,

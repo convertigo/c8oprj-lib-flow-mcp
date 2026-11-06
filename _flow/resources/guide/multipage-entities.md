@@ -209,7 +209,7 @@ const _flow = { sourceVersion: 2, accessibility: "hidden" }
 
 function demo_reset({ input, config, result }) {
   if (String(config.demo.login) !== "true") {
-    throw { code: "DEMO_RESET_DISABLED", message: "Demo reset is disabled", status: 403 }
+    throw { code: "DEMO_RESET_DISABLED", message: "Demo reset is disabled" }
   }
   result.reset = entity.demoReset({})
 }
@@ -227,5 +227,5 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |
+| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |
 | `flow://guide/multipage-entities-pages` (11.5 KB) | pages, CSV export, scheduled jobs, audit, final proof |

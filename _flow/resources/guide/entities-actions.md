@@ -43,7 +43,7 @@ function Emprunter({ input, config, result }) {
     $$nodes: function () {
       local.livre = entity.read({ entity: "Livre", checkAccess: true, key: input.livre })
       if (!local.livre.values.disponible) {
-        throw { code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté", status: 409 }
+        throw { code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté" }
       }
       local.pret = entity.save({
         entity: "Pret",
@@ -75,7 +75,7 @@ function Rendre({ input, config, result }) {
     $$nodes: function () {
       local.pret = entity.read({ entity: "Pret", checkAccess: true, key: input.pret })
       if (local.pret.values.rendu) {
-        throw { code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu", status: 409 }
+        throw { code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu" }
       }
       local.livre = entity.read({ entity: "Livre", checkAccess: true, key: { id: local.pret.values.livre } })
       local.closed = entity.save({
@@ -132,7 +132,7 @@ not a simultaneous-thread stress test.
 
 Entity data operations support **HSQLDB and PostgreSQL only**. MariaDB is not
 qualified for Entity CRUD; the SQL initializer's MariaDB support is separate.
-Other dialects return `ENTITY_DIALECT_UNQUALIFIED` / 400 before data bootstrap.
+Other dialects return `ENTITY_DIALECT_UNQUALIFIED` before data bootstrap.
 
 `describe` is metadata-only: no DDL, hooks or mutation. Its explicit public keys
 are name, label, identity, traits (names only), fields, display, ui, permissions
@@ -158,7 +158,7 @@ for its owner; without a session, an explicit owner is preserved. No ACL is adde
 Controlled calls still use the application policy, scope and ownership rules.
 
 Application failures contain no SQL object/constraint names or DDL plan.
-`ENTITY_SCHEMA_MISSING` / 403 invites the administrator to fix the database.
+`ENTITY_SCHEMA_MISSING` invites the administrator to fix the database.
 The structural plan stays in the server author-diagnostic log. An authenticated
 MCP author can run `entity.initialize({dryRun:true})` through `code-run` in a
 private project Flow to inspect the full additive plan; no ADMIN application

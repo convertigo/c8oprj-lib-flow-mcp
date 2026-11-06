@@ -18,7 +18,7 @@ these five lines (signed-in reads; writes stay closed):
 <!-- example: short-access-policy -->
 ```javascript
 if (!input.request.user || input.request.write) {
-  throw { code: "ENTITY_FORBIDDEN", message: "Signed-in reads only", status: 403 }
+  throw { code: "ENTITY_FORBIDDEN", message: "Signed-in reads only" }
 }
 local.ownTasks = input.request.entity === "Task" && !input.request.roles.includes("MANAGER")
 return { scope: local.ownTasks ? { requester: input.request.user } : {} }
@@ -69,12 +69,12 @@ const _flow = { sourceVersion: 2, accessibility: "hidden" }
 function SaveReservation({ input, config, result }) {
   local.user = session.authenticatedUser({})
   if (!local.user) {
-    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+    throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
   local.roomId = text.match({ text: input.room || "", pattern: "^[0-9]+$" })
   if (typeof input.title !== "string" || !input.title.trim() || typeof input.room !== "string" ||
     !local.roomId.matched || !input.starts || !input.ends) {
-    throw { code: "VALIDATION_FAILED", message: "Title, room and dates required", status: 400 }
+    throw { code: "VALIDATION_FAILED", message: "Title, room and dates required" }
   }
   try({
     error: "local.failure",
@@ -89,28 +89,28 @@ function SaveReservation({ input, config, result }) {
     },
     $$catch: function () {
       if (local.failure.code === "ENTITY_UNAUTHENTICATED" || local.failure.code === "UNAUTHENTICATED") {
-        throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+        throw { code: "UNAUTHENTICATED", message: "Sign in first" }
       }
       if (local.failure.code === "ENTITY_SCHEMA_MISSING") {
-        throw { code: "ENTITY_SCHEMA_MISSING", message: local.failure.message, status: 403 }
+        throw { code: "ENTITY_SCHEMA_MISSING", message: local.failure.message }
       }
       if (local.failure.code === "ENTITY_VALIDATION") {
-        throw { code: "VALIDATION_FAILED", message: local.failure.message, status: 400 }
+        throw { code: "VALIDATION_FAILED", message: local.failure.message }
       }
       if (local.failure.code === "ENTITY_NOT_FOUND" || local.failure.code === "ENTITY_FORBIDDEN" ||
         local.failure.code === "ENTITY_SCOPE_VIOLATION" || local.failure.code === "FORBIDDEN") {
-        throw { code: "FORBIDDEN", message: "Reservation unavailable", status: 403 }
+        throw { code: "FORBIDDEN", message: "Reservation unavailable" }
       }
       if (local.failure.code === "ENTITY_CONFLICT") {
-        throw { code: "REVISION_CONFLICT", message: "Reload before saving", status: 409 }
+        throw { code: "REVISION_CONFLICT", message: "Reload before saving" }
       }
       if (local.failure.code === "BOOKING_WINDOW_CONFLICT") {
-        throw { code: "BOOKING_WINDOW_CONFLICT", message: local.failure.message, status: 409 }
+        throw { code: "BOOKING_WINDOW_CONFLICT", message: local.failure.message }
       }
       if (local.failure.code === "BOOKING_OVERLAP") {
-        throw { code: "ROOM_ALREADY_BOOKED", message: local.failure.message, status: 409 }
+        throw { code: "ROOM_ALREADY_BOOKED", message: local.failure.message }
       }
-      throw { code: "BOOKING_FAILED", message: "Booking service unavailable", status: 500 }
+      throw { code: "BOOKING_FAILED", message: "Booking service unavailable" }
     },
   })
   return {
@@ -141,7 +141,7 @@ const _flow = { sourceVersion: 2, accessibility: "hidden" }
 function MyReservations({ input, config, result }) {
   local.user = session.authenticatedUser({})
   if (!local.user) {
-    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+    throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
   local.page = entity.list({
     entity: "Reservation",
@@ -161,9 +161,9 @@ function MyReservations({ input, config, result }) {
 }
 ```
 
-For an imposed business 409, set `Reservation.hooks.beforeSave` to
+For an imposed business error code, set `Reservation.hooks.beforeSave` to
 `HttpBookingRule`. It adds the application's date-order refusal and reuses the
-detailed recipe's locked overlap check. Its code/status reach the Flow unchanged:
+detailed recipe's locked overlap check. Its code reaches the Flow unchanged:
 
 <!-- example: http-booking-rule -->
 ```javascript
@@ -176,7 +176,7 @@ function HttpBookingRule({ input, config, result }) {
     local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
   }
   if (local.values.starts >= local.values.ends) {
-    throw { code: "BOOKING_WINDOW_CONFLICT", message: "End must follow start", status: 409 }
+    throw { code: "BOOKING_WINDOW_CONFLICT", message: "End must follow start" }
   }
   flow.call({ flow: "BookingRule", input: input })
 }
@@ -184,19 +184,19 @@ function HttpBookingRule({ input, config, result }) {
 
 | Native error | Application example | Where to adapt |
 |---|---|---|
-| ENTITY_UNAUTHENTICATED / 401 | UNAUTHENTICATED / 401 | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
-| ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION / 403 | FORBIDDEN / 403 | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |
-| ENTITY_NOT_FOUND / 404 (also outside Possédé) | FORBIDDEN / 403 | Convert in catch, uniformly for absent and hidden rows; keep 404 if required instead. |
-| ENTITY_SCHEMA_MISSING / 403 | ENTITY_SCHEMA_MISSING / 403 | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
-| ENTITY_VALIDATION / 422 | VALIDATION_FAILED / 400 | Validate inputs before save; convert remaining model validation in catch. |
-| ENTITY_CONFLICT / 409 | REVISION_CONFLICT / 409 | Convert in catch; reload, do not blindly retry. |
-| Your hook's code/status | BOOKING_WINDOW_CONFLICT / 409 | Throw in the hook; preserve that literal code/status in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED / 409. |
+| ENTITY_UNAUTHENTICATED | UNAUTHENTICATED | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
+| ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION | FORBIDDEN | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |
+| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |
+| ENTITY_SCHEMA_MISSING | ENTITY_SCHEMA_MISSING | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
+| ENTITY_VALIDATION | VALIDATION_FAILED | Validate inputs before save; convert remaining model validation in catch. |
+| ENTITY_CONFLICT | REVISION_CONFLICT | Convert in catch; reload, do not blindly retry. |
+| Your hook's code | BOOKING_WINDOW_CONFLICT | Throw in the hook; preserve that literal code in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED. |
 
 A throw code is literal text: add one catch branch per expected business code,
-not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED / 500
+not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED
 at this public boundary, without exposing internal errors; never report success.
-A thrown error interrupts the Flow: HTTP status is its `status`, JSON contains
-`error.code`, `error.message`, `error.status`, and no success result. Use
+A thrown error interrupts the Flow: the requester answers with HTTP 200 and
+the JSON envelope contains `error.code` and `error.message`, with no success result. Use
 `return { ... }` for exact success keys, not `{error:...}` as a successful result.
 For demo login and `me`, use the project actor in **Authentication** of `flow://guide/entities-auth` and
 **Demo login** in `flow://guide/multipage-entities-access`; the switch stays off by
@@ -215,8 +215,8 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
+| `flow://guide/entities-policy` (6.2 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
 | `flow://guide/entities-model` (8.1 KB) | writing the model, list filters and pages, schema initialization, demo reset |
-| `flow://guide/entities-auth` (5.5 KB) | sign-in, session, actor provider |
+| `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
 | `flow://guide/entities-widgets` (4.7 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |

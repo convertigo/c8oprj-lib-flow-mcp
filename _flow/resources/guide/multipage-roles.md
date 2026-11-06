@@ -61,7 +61,7 @@ text, hence `String(...)`:
 
 ```javascript
 if (String(config.demo.login) !== "true") {
-  throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 }
+  throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled" }
 }
 ```
 
@@ -94,18 +94,18 @@ Declare the facades that pages call with `_flow.accessibility:"hidden"` and
 forbid HTTP; `private` is for internal calls. Without a signed-in user,
 `authenticatedContextRequired` refuses the call before the Flow runs, with
 HTTP 200 and the engine error `{ code: "-1", message: "Authentication
-required" }`: a `CallSequence` fails on it as on any error, but a client that
-tests the status, or wants the code of the application, needs the Flow to check
-the user itself and `throw({ code, message, status: 401 })`. Write these names in lowercase in
+required" }`: a `CallSequence` fails on it as on any error. If a client needs
+an application-specific code, the Flow must check
+the user itself and `throw({ code, message })`. Write these names in lowercase in
 FlowScript. Keep the initializations and the scheduled job private. A server, and
 a recent Studio, refuse them over HTTP to anyone but an administrator (an
 older Studio still ran them for an anonymous call): prove a refusal with a
 session that is not an administrator.
 
 For each read or write, call `CurrentUser` again. The server chooses `ownerId`
-and the rights. When the called Flow throws (401 for an anonymous user, 403
-for a role refused), `requestable.call` fails with that code, message and
-status, and the calling Flow stops there: no extra check is needed. Catch it
+and the rights. When the called Flow throws (UNAUTHENTICATED for an anonymous
+user, FORBIDDEN for a refused role), `requestable.call` fails with that code and
+message, and the calling Flow stops there: no extra check is needed. Catch it
 with `try` to answer differently, or set `onError: "return"` to receive
 `{ error }` as the value instead. In a named read, join the mandatory perimeter to the optional
 filter, for example
