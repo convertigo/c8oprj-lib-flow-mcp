@@ -107,6 +107,37 @@ assert(unknown.isError === true && unknown.structuredContent.error.code === "UNK
 var badArguments = call(14, "tools-more", { name: "flow-cache-info", arguments: "{not json" });
 assert(badArguments.isError === true && badArguments.structuredContent.error.code === "INVALID_ARGUMENT", "arguments must be an object");
 
+// 6b. The natural forms (benchmark runs of 06/11): a name with _ or a host prefix, a list of names, {arguments:{}} without
+// a name; an unknown name gives the closest tools and the exact form; a relayed tool absent here says how to prove instead.
+var underscored = call(15, "tools-more", { name: "flow_cache_info" });
+assert(!underscored.isError && underscored.structuredContent.tool && underscored.structuredContent.tool.name === "flow-cache-info",
+	"tools-more accepts a name written with _: " + JSON.stringify(underscored).substring(0, 600));
+var prefixed = call(16, "tools-more", { name: "mcp__convertigo-flow__flow-cache-info" });
+assert(!prefixed.isError && prefixed.structuredContent.tool.name === "flow-cache-info", "tools-more accepts a host-prefixed name");
+var several = call(17, "tools-more", { name: ["flow-cache-info", "flow_entity_model_set", "code-run", "no-such-tool"] });
+assert(!several.isError && names(several.structuredContent.tools).join() === "flow-cache-info,flow-entity-model-set" &&
+	several.structuredContent.listed.join() === "code-run" && several.structuredContent.unknown[0].name === "no-such-tool",
+	"tools-more accepts a list of names: " + JSON.stringify(several).substring(0, 800));
+var emptyArguments = call(18, "tools-more", { arguments: {} });
+assert(!emptyArguments.isError && emptyArguments.structuredContent.tools.length === listed.structuredContent.tools.length,
+	"tools-more({arguments:{}}) lists the tools: " + JSON.stringify(emptyArguments).substring(0, 600));
+var namelessArguments = call(19, "tools-more", { arguments: { project: "App" } });
+assert(namelessArguments.isError === true && /name/.test(namelessArguments.structuredContent.error.message) &&
+	/tools-more\(\{name:"[a-z-]+", arguments:/.test(namelessArguments.structuredContent.error.hint),
+	"arguments without a name ask for the name with the exact form: " + JSON.stringify(namelessArguments).substring(0, 600));
+var close = call(60, "tools-more", { name: "flow-cache-infos" });
+assert(close.isError === true && close.structuredContent.error.code === "UNKNOWN_TOOL" &&
+	close.structuredContent.error.details.closest[0] === "flow-cache-info" &&
+	/tools-more\(\{name:"flow-cache-info"\}\)/.test(close.structuredContent.error.hint),
+	"an unknown name gives the closest tools and the exact form: " + JSON.stringify(close).substring(0, 800));
+var browser = call(61, "tools-more", { name: "browser-verify" });
+assert(browser.isError === true && browser.structuredContent.error.code === "UNKNOWN_TOOL" &&
+	/not offered/.test(browser.structuredContent.error.message) && /Playwright/.test(browser.structuredContent.error.hint),
+	"a relayed tool absent here says how to prove the page instead: " + JSON.stringify(browser).substring(0, 800));
+var underscoredRun = mcp.parseRequest({ jsonrpc: "2.0", id: 62, method: "tools/call",
+	params: { name: "tools-more", arguments: { name: "flow_cache_info", arguments: {} } } }, {});
+assert(underscoredRun.params.name === "flow-cache-info", "tools-more runs a tool named with _: " + JSON.stringify(underscoredRun));
+
 // 7. A tool outside core stays callable by its name, and tools-more runs it with the same answer.
 function comparable(result) {
 	var structured = result.structuredContent || {};

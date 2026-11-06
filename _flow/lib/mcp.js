@@ -4971,6 +4971,19 @@
 		return CORE_TOOLS[String(name || "")] === true;
 	}
 
+	function coreToolNames() {
+		return Object.keys(CORE_TOOLS);
+	}
+
+	// The name a client gives tools-more, in its natural forms: flow_cache_info, or the host-prefixed
+	// mcp__convertigo-flow__flow-cache-info, is flow-cache-info.
+	function toolsMoreName(value) {
+		var name = typeof value === "string" ? value.trim() : "";
+		var prefixed = name.lastIndexOf("__");
+		if (prefixed !== -1) name = name.substring(prefixed + 2);
+		return name.replace(/_/g, "-").toLowerCase();
+	}
+
 	// tools-more({name, arguments}) runs that tool as its own tools/call: the request is rewritten before the token
 	// guard, the trace and the routing, so that every check of a direct call applies to it unchanged.
 	function unwrapToolsMore(item) {
@@ -4978,7 +4991,8 @@
 			return item;
 		}
 		var args = item.params.arguments;
-		if (!args || typeof args !== "object" || typeof args.name !== "string" || !args.name.trim() || args.name.trim() === "tools-more") {
+		var name = args && typeof args === "object" ? toolsMoreName(args.name) : "";
+		if (!name || name === "tools-more") {
 			return item;
 		}
 		var inner = args.arguments;
@@ -4995,7 +5009,7 @@
 		Object.keys(item.params).forEach(function (key) {
 			if (key !== "name" && key !== "arguments") params[key] = item.params[key];
 		});
-		params.name = args.name.trim();
+		params.name = name;
 		params.arguments = inner;
 		item.params = params;
 		item.__flowMcpVia = "tools-more";
@@ -5098,6 +5112,11 @@
 
 	function legacyRelayTool(name) {
 		return legacyRelayEnabled() && LEGACY_RELAY_TOOLS[String(name || "")] === true;
+	}
+
+	// A tool of the Convertigo MCP that this endpoint relays when the relay is on and lib_ConvertigoMCP offers it.
+	function legacyRelayName(name) {
+		return LEGACY_RELAY_TOOLS[String(name || "")] === true;
 	}
 
 	function legacyEndpoint(ctx) {
@@ -5976,6 +5995,7 @@
 		guideSizeLabel: guideSizeLabel,
 		withGuideSizes: withGuideSizes,
 		legacyRelayTool: legacyRelayTool,
+		legacyRelayName: legacyRelayName,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,
 		subagentScopeRefusal: subagentScopeRefusal,
@@ -5984,6 +6004,8 @@
 		parseRequest: parseRequest,
 		toolProfile: toolProfile,
 		coreTool: coreTool,
+		coreToolNames: coreToolNames,
+		toolsMoreName: toolsMoreName,
 		requestValue: requestValue,
 		toolArguments: toolArguments,
 		prepareToolArguments: prepareToolArguments,
