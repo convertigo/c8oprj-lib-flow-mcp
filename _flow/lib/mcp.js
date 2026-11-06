@@ -4420,7 +4420,7 @@
 			} else if (name === "flow-code-check" || name === "code-check") {
 				out.next = "Check passed.";
 		} else if (value.promoted) {
-			out.next = "Working copy saved to the official Flow. Stop if code-run already proved the result.";
+			out.next = "Working copy saved to the official Flow. Report completion only if code-run matched the expected result and requested error cases; otherwise continue editing.";
 		} else if (value.dry) {
 			out.next = name.indexOf("flow-block-code-") === 0
 				? "Low-level validation passed. Call code-set normally to register the block, then run a Flow that uses it."
@@ -4472,7 +4472,7 @@
 			}
 		}
 		if (value.promoted && !out.fixes && !out.autoCorrected && !out.proposedPatch) {
-			out.next = "Saved. Stop if code-run already proved the result.";
+			out.next = "Saved. Report completion only if code-run matched the expected result and requested error cases; otherwise continue editing.";
 		}
 	}
 

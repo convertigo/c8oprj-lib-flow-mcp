@@ -71,4 +71,9 @@ var stale = response('code-promote', { ok: false, name: 'Orders', draft: true, r
   error: { code: 'FLOW_CODE_DRAFT_REVISION_MISMATCH', message: 'Supplied revision r0 is not the current working copy revision r1',
     details: { property: 'revision', receivedRevision: 'r0', currentRevision: 'r1', name: 'Orders' } } }, { name: 'Orders', revision: 'r0' });
 assert(/code-get/.test(stale.structuredContent.next) && !/without revision/.test(stale.structuredContent.next), 'An unrelated revision must still be reviewed: ' + stale.structuredContent.next);
+// A saved draft can still be functionally wrong. The promotion response must not tell the agent to stop
+// merely because one code-run returned successfully (the L3 CSV run returned empty statistics).
+var promoted = response('code-promote', { ok: true, qname: 'App.csv_stats', promoted: true, revision: 'saved' }).structuredContent;
+assert(!/\bStop\b/.test(promoted.next) && /expected result/.test(promoted.next) && /error cases/.test(promoted.next),
+  'promotion must ask for behavioral verification before completion: ' + promoted.next);
 print('tool-notices OK (' + checks + ' checks)');
