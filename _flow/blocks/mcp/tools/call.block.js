@@ -155,21 +155,37 @@ const _meta = {
 		var result = response && response.result;
 		return !!(response && response.error || result && (result.isError === true || result.structuredContent && result.structuredContent.error));
 	}
+	function unknownResourceHint(mcp, ctx, request) {
+		var near = mcp.guideAliasFor(ctx, mcpResourceUri(request)).suggestions || [];
+		return (near.length ? "Did you mean " + near.join(", ") + "? " : "") +
+			"flow://guide/start lists the guides (flow://guide/<name>); library guides are flow://lib/<library>/<guide>. A project resource needs project and path.";
+	}
 	function mcpResourceThroughTool(ctx, mcp, request, response) {
 		var uri = mcpResourceUri(request);
 		if (!uri || response && !failed(response)) {
 			return null;
 		}
-		var read = ctx.callBlock("mcp.resources.read", {
-			request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
-				uri: uri, project: request.params.arguments && request.params.arguments.project,
-				projectDir: request.params.arguments && request.params.arguments.projectDir
-			} },
-			out: "local.mcpResourceRead"
-		}, { trace: false });
-		var contents = read && read.result && read.result.contents;
-		if (!contents || !contents.length) {
-			return null;
+		function readContents(target) {
+			var read = ctx.callBlock("mcp.resources.read", {
+				request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
+					uri: target, project: request.params.arguments && request.params.arguments.project,
+					projectDir: request.params.arguments && request.params.arguments.projectDir
+				} },
+				out: "local.mcpResourceRead"
+			}, { trace: false });
+			var found = read && read.result && read.result.contents;
+			return found && found.length ? found : null;
+		}
+		var contents = readContents(uri), note = null;
+		if (!contents) {
+			// flow://guide/sql names the guide of a library (flow://lib/lib_flow_sql/sql) when only one matches.
+			var alias = mcp.guideAliasFor(ctx, uri);
+			contents = alias.uri && alias.uri !== uri ? readContents(alias.uri) : null;
+			if (!contents) {
+				return null;
+			}
+			note = uri + " is read as " + alias.uri + "; use that URI next time.";
+			uri = alias.uri;
 		}
 		var texts = [];
 		for (var i = 0; i < contents.length; i++) {
@@ -183,6 +199,7 @@ const _meta = {
 				uri: uri,
 				mimeType: String(contents[0].mimeType || "text/markdown"),
 				source: "resources/read",
+				note: note || undefined,
 				text: text
 			}
 		}));
@@ -244,7 +261,8 @@ const _meta = {
 					response = mcpResourceThroughTool(ctx, mcp, request, null) || mcp.toolError(request, {
 						code: "UNKNOWN_RESOURCE",
 						message: "Unknown Flow MCP resource: " + mcpResourceUri(request) + ".",
-						hint: "flow://guide/start lists the guides (flow://guide/<name>); library guides are flow://lib/<library>/<guide>. A project resource needs project and path."
+						hint: unknownResourceHint(mcp, ctx, request),
+						details: { didYouMean: mcp.guideAliasFor(ctx, mcpResourceUri(request)).suggestions || [] }
 					}, ctx);
 				} else {
 					response = block

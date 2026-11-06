@@ -2205,7 +2205,7 @@
 						});
 						// Guides are complete documents. Project previews also need their hash,
 						// truncation flag and notices, separate from the source text.
-						var prefix = structured.source === "resources/read" ? "" : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
+						var prefix = structured.source === "resources/read" ? (structured.note ? "Note: " + structured.note + "\n\n" : "") : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
 						response.result.content = [{ type: "text", text: prefix + resourceText }];
 						delete response.result.structuredContent;
 					} else {
@@ -3723,6 +3723,61 @@
 	function libraryGuideText(uri) {
 		var found = libraryGuides().filter(function (guide) { return guide.uri === String(uri || ""); })[0];
 		return found ? String(new Packages.java.lang.String(Files.readAllBytes(new File(found.file).toPath()), StandardCharsets.UTF_8)) : null;
+	}
+
+	// An unknown guide URI (flow://guide/<name>, flow://lib/<library>/<name>): the one guide it names without ambiguity,
+	// else the nearest guide URIs. guides are library guides ({uri, project}); coreNames are the flow://guide/<name> names.
+	function guideAlias(uri, guides, coreNames) {
+		var text = String(uri || ""), match, candidates = [];
+		guides = guides || [];
+		coreNames = coreNames || [];
+		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
+		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
+		var wanted = "", library = "";
+		if ((match = /^flow:\/\/guide\/([A-Za-z0-9_.-]+)$/.exec(text))) {
+			wanted = match[1].toLowerCase();
+			candidates = guides.filter(function (guide) { return base(guide) === wanted; });
+			if (!candidates.length) {
+				var owned = guides.filter(function (guide) { return short(guide.project) === wanted || String(guide.project).toLowerCase() === wanted; });
+				if (owned.length === 1) candidates = owned;
+			}
+		} else if ((match = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text))) {
+			library = match[1];
+			wanted = match[2].toLowerCase();
+			var inLibrary = guides.filter(function (guide) { return guide.project === library; });
+			candidates = inLibrary.length === 1 ? inLibrary : guides.filter(function (guide) { return base(guide) === wanted; });
+			if (!candidates.length && coreNames.indexOf(wanted) !== -1) return { uri: "flow://guide/" + wanted };
+		}
+		if (candidates.length === 1) return { uri: candidates[0].uri };
+		var all = coreNames.map(function (name) { return "flow://guide/" + name; }).concat(guides.map(function (guide) { return guide.uri; }));
+		var key = short(library) + " " + wanted;
+		var near = all.filter(function (each) {
+			var name = each.replace(/^.*\//, "").toLowerCase();
+			return candidates.some(function (guide) { return guide.uri === each; }) || (wanted && (name.indexOf(wanted) !== -1 || wanted.indexOf(name) !== -1)) ||
+				(library && each.indexOf("flow://lib/" + library + "/") === 0) || key.split(/[^a-z0-9]+/).some(function (word) {
+					return word.length > 2 && each.toLowerCase().indexOf(word) !== -1;
+				});
+		});
+		return { suggestions: near.slice(0, 5) };
+	}
+
+	function guideAliasFor(ctx, uri) {
+		var names = [], guides = [];
+		try {
+			var root = knownProjectDir(ctx);
+			var dir = root ? new File(new File(String(root)), "_flow/resources/guide") : null;
+			var files = dir && dir.isDirectory() ? dir.listFiles() : null;
+			for (var i = 0; files && i < files.length; i++) {
+				var match = /^([A-Za-z0-9_.-]+)\.md$/.exec(String(files[i].getName()));
+				if (match) names.push(match[1]);
+			}
+		} catch (e) {
+		}
+		try {
+			guides = libraryGuides();
+		} catch (e) {
+		}
+		return guideAlias(uri, guides, names);
 	}
 
 	function withWorkspaceProviders(request, diagnostic, exactOnly) {
@@ -5781,6 +5836,8 @@
 		jsonRpcError: jsonRpcError,
 		libraryGuides: libraryGuides,
 		libraryGuideText: libraryGuideText,
+		guideAlias: guideAlias,
+		guideAliasFor: guideAliasFor,
 		legacyRelayTool: legacyRelayTool,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,

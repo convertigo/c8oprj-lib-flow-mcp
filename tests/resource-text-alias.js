@@ -30,4 +30,18 @@ var startResult = mcp.toolResponse(request('text'), {source:'resources/read', te
 assert(JSON.stringify(startResult).length + 200 < 16000,
  'Start must fit the Vibe 4000-token/16000-character envelope budget, including harness overhead');
 assert(startResult.content[0].text === start, 'Start is complete and readable');
+// An unknown guide URI resolves to the one library guide it names, else lists the nearest guide URIs.
+var libGuides = [{uri:'flow://lib/lib_flow_sql/sql', project:'lib_flow_sql'}, {uri:'flow://lib/lib_flow_crud_data/csv', project:'lib_flow_crud_data'},
+ {uri:'flow://lib/lib_flow_frontbuilder_svelte/frontend-actions', project:'lib_flow_frontbuilder_svelte'},
+ {uri:'flow://lib/lib_flow_frontbuilder_svelte/frontend-design', project:'lib_flow_frontbuilder_svelte'}];
+var core = ['start', 'authoring', 'crud', 'frontend-svelte'];
+assert(typeof mcp.guideAlias === 'function', 'Unknown guide URIs have an alias resolver');
+assert(mcp.guideAlias('flow://guide/sql', libGuides, core).uri === 'flow://lib/lib_flow_sql/sql', 'flow://guide/sql is the SQL library guide');
+assert(mcp.guideAlias('flow://lib/lib_flow_sql/guide', libGuides, core).uri === 'flow://lib/lib_flow_sql/sql', 'The only guide of a library answers its unknown guide name');
+assert(mcp.guideAlias('flow://guide/csv', libGuides, core).uri === 'flow://lib/lib_flow_crud_data/csv', 'Other library guides resolve the same way');
+assert(mcp.guideAlias('flow://guide/crud_data', libGuides, core).uri === 'flow://lib/lib_flow_crud_data/csv', 'A library short name with one guide resolves');
+var ambiguous = mcp.guideAlias('flow://guide/frontbuilder_svelte', libGuides, core);
+assert(!ambiguous.uri && ambiguous.suggestions.indexOf('flow://lib/lib_flow_frontbuilder_svelte/frontend-design') !== -1, 'Ambiguous names list their guides');
+var lost = mcp.guideAlias('flow://guide/frontend', libGuides, core);
+assert(!lost.uri && lost.suggestions.indexOf('flow://guide/frontend-svelte') !== -1 && lost.suggestions.length <= 5, 'Unknown names suggest the nearest URIs: ' + JSON.stringify(lost));
 print('resource-text-alias OK (start '+start.length+' characters; envelope budget '+(JSON.stringify(startResult).length+200)+'/16000)');

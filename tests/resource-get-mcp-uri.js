@@ -39,8 +39,9 @@ function run(args, projectOwns, projectError) {
 					: mcp.toolError(props.request, { code: "UNKNOWN_RESOURCE", message: "Unknown Flow resource uri: " + args.uri }, ctx);
 			}
 			if (blockId === "mcp.resources.read") {
-				assert(props.request.method === "resources/read" && props.request.params.uri === args.uri && props.request.id === 17, "resources/read of the same uri");
-				return /^flow:\/\/guide\/missing/.test(args.uri)
+				assert(props.request.method === "resources/read" && (props.request.params.uri === args.uri ||
+					args.uri === "flow://guide/sql" && props.request.params.uri === "flow://lib/lib_flow_sql/sql") && props.request.id === 17, "resources/read of the same uri");
+				return /^flow:\/\/guide\/(missing|sql$)/.test(props.request.params.uri)
 					? mcp.jsonRpcError(props.request.id, -32000, "Unknown Flow MCP resource: " + args.uri, { code: "FLOW_MCP_RESOURCE_ERROR" })
 					: mcp.jsonRpcResult(props.request.id, { contents: [{ uri: args.uri, mimeType: "text/markdown", text: GUIDE }] });
 			}
@@ -109,4 +110,20 @@ var badFormat = run({uri:"flow://guide/start", format:"other"}, false);
 assert(badFormat.calls.length === 0 && badFormat.response.result.structuredContent.error.code === "INVALID_ARGUMENT", "Unknown formats fail before reading");
 var textMissing = run({uri:"flow://guide/missing", format:"text"}, false).response.result;
 assert(textMissing.isError && textMissing.structuredContent.error.code === "UNKNOWN_RESOURCE", "Readable missing guide is still an error");
+// flow://guide/sql is the guide of the SQL library when it is the only one with that name (alias, with a note).
+var guideAliasFor = mcp.guideAliasFor;
+mcp.guideAliasFor = function (ctx, uri) {
+	return mcp.guideAlias(uri, [{ uri: "flow://lib/lib_flow_sql/sql", project: "lib_flow_sql" }], ["start", "frontend-svelte"]);
+};
+var aliased = run({ uri: "flow://guide/sql" }, false);
+assert(aliased.calls.join(",") === "mcp.resources.read,mcp.resources.read" && aliased.response.result.structuredContent.text === GUIDE &&
+	aliased.response.result.structuredContent.uri === "flow://lib/lib_flow_sql/sql" && /flow:\/\/lib\/lib_flow_sql\/sql/.test(aliased.response.result.structuredContent.note),
+	"flow://guide/sql reads the SQL library guide and says so: " + JSON.stringify(aliased.response));
+var aliasedText = run({ uri: "flow://guide/sql", format: "text" }, false).response.result;
+assert(!aliasedText.isError && /^Note: flow:\/\/guide\/sql is read as flow:\/\/lib\/lib_flow_sql\/sql/.test(aliasedText.content[0].text) &&
+	aliasedText.content[0].text.slice(-GUIDE.length) === GUIDE, "Readable alias keeps the guide after one note line");
+var near = run({ uri: "flow://guide/missing-frontend" }, false).response.result.structuredContent.error;
+assert(near.code === "UNKNOWN_RESOURCE" && /Did you mean flow:\/\/guide\/frontend-svelte/.test(near.hint) &&
+	near.details.didYouMean.indexOf("flow://guide/frontend-svelte") !== -1, "An unknown guide lists the nearest URIs: " + JSON.stringify(near));
+mcp.guideAliasFor = guideAliasFor;
 print("resource-get-mcp-uri OK (" + count + " checks)");
