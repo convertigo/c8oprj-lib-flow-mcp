@@ -158,7 +158,8 @@ source, including a structured literal for intentionally static content.
     - browser smoke in the live dev viewer for the requested visible workflow:
       a multi-step workflow (sign-in, several pages, a form) through one
       relayed `subagent-run` with `profile:"verifier"` and the viewer
-      `openUrl`, one visual check through `browser-verify`;
+      `openUrl`, one visual check through `browser-verify` when listed,
+      otherwise one screenshot through the Playwright of your host;
     - production build only for deployment or an explicit production check.
       An application handed to users (acceptance criteria, links in e-mails,
       a URL to share) is a deployment: its definition of done runs

@@ -16,7 +16,7 @@ Direct SQL and generated CRUD require one.
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (3.9 KB) |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
 | Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.4 KB), then `flow://guide/multipage-entities` (11.7 KB) |
-| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.2 KB) |
+| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (7.5 KB) |
 | Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (5.3 KB) |
@@ -24,7 +24,7 @@ Direct SQL and generated CRUD require one.
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
 | Ordered tags and named project configurations | `flow://guide/tags` (4.4 KB) |
-| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (10.6 KB) |
+| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (10.8 KB) |
 
 An imposed HTTP contract (Flow names, error codes/statuses, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.

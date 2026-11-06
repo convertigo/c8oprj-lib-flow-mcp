@@ -216,10 +216,11 @@ wait stays in it for the rest of the task.
   is one relayed `browser-verify` call with its `checks`. For a Svelte
   frontend, include the visual checklist of `flow://guide/frontend-svelte-proof`
   (POC Acceptance) in the `checks`.
-- When your tool list has no `subagent-run` or `browser-verify` (an agent
-  host whose own model sees images, such as Claude), give the multi-step proof
-  to a sub-agent of your own host with the same `url`, `paths`, `checks` and
-  `hints`, and ask it for the same short report; check one page yourself
+- When your tool list has no `subagent-run` or `browser-verify` (the relay
+  does not offer them; `tools-more` does not either), prove with the browser
+  tools of your host (Playwright) on the same `url`: a sub-agent of your own
+  host for the multi-step proof, with the same `paths`, `checks` and `hints`,
+  and ask it for the same short report; check one page yourself
   with a screenshot. The rule is the same: no long click sequence in your own
   context.
 - Use Playwright yourself only for one quick evaluation of DOM state or

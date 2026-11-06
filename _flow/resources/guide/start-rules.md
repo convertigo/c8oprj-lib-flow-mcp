@@ -132,7 +132,10 @@ Ordinary clients flag `isError:true`; Vibe returns that error with
 - `flow-app-progress` defaults to the POC goal; use `mode:"hardening"` only
   when a complete assessment is requested.
 - A tool a guide names but the list lacks runs through
-  `tools-more({name, arguments})`; `tools-more({})` lists them.
+  `tools-more({name:"flow-resource-patch", arguments:{...}})`; `tools-more({})`
+  lists them, `tools-more({name})` gives one input schema. `browser-verify`
+  and `subagent-run` are not among them: without them in your list, prove
+  pages with the browser tools of your host (Playwright).
 - Read block contracts with `flow-block-get({project,name})` (longDescription
   included) or `authoring-palette`. Never grep/sed/cat library or workspace
   sources. A call diagnostic includes its `contract`.

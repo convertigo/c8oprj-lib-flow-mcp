@@ -34,11 +34,15 @@ subagent-run({ profile:"verifier",
 -> status:"running", runId -> subagent-run({ runId }) until the report
 ```
 
-Use `browser-verify` with `checks` for one visual check of the current page,
-and a Playwright evaluation only for one DOM or timing measure.
+When your tool list offers it, use `browser-verify` with `checks` for one
+visual check of the current page, otherwise one screenshot through the
+Playwright of your host, and a Playwright evaluation only for one DOM or
+timing measure.
 
-Before handing a frontend over, have the verifier or `browser-verify` apply the
-visual checklist, passed as `checks` (light and dark, 1366px and 390px wide):
+Before handing a frontend over, when your tool list offers it, have the
+verifier or `browser-verify` apply the visual checklist, passed as `checks`,
+otherwise one screenshot through the Playwright of your host per case (light
+and dark, 1366px and 390px wide):
 
 - an `AppShell` (or a `Header`) carries the navigation, its current page
   highlighted, and the user and logout;
