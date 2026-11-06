@@ -3544,7 +3544,7 @@
 			if (value[key] === true) out[key] = true;
 		});
 		if (value.corsOrigin) out.corsOrigin = value.corsOrigin;
-		["wouldReference", "projectReferences", "warnings"].forEach(function (key) {
+		["wouldReference", "projectReferences", "configAdded", "warnings"].forEach(function (key) {
 			if (value[key] && value[key].length) out[key] = value[key];
 		});
 		// the initial Page of a UI project (frontend-svelte guide); a backend project has none
