@@ -238,6 +238,10 @@ editing `publicRead`; uncomment and adapt the role example to scope rows per rol
 const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
 
 function block({ input, config, result }) {
+  // The request of the operation is an object: anything else is refused.
+  if (!input.request || typeof input.request !== "object") {
+    throw { code: "ENTITY_FORBIDDEN", message: "Invalid access request.", status: 403 }
+  }
   // Entities readable without sign-in: for example ["Room"], or ["*"].
   local.publicRead = []
   if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
