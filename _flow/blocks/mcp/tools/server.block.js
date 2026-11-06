@@ -22,7 +22,7 @@ const _meta = {
     return [
       descriptor("project-save", "Save a loaded project's checked sources and declarations on the server.", { project: project }, ["project"]),
       descriptor("requestable-execute", "Execute a requestable internally on the server. Returns its result; application errors remain tool errors.", {
-        project: project, requestable: { type: "string", description: "Qualified requestable or .Flow relative to project." }, input: { type: "object", additionalProperties: true }
+        project: project, requestable: { type: "string", description: "Project.Flow, Project.Connector.Transaction, or a Flow name relative to project." }, input: { type: "object", additionalProperties: true }
       }, ["requestable"]),
       descriptor("scheduler-list", "List server scheduled sequence jobs, optionally filtered by project.", { project: project }),
       descriptor("scheduler-apply", "Preview or upsert a project-owned private sequence job and its Quartz cron schedule. dryRun defaults to true. Names are scoped to the project; no deletion.", {
@@ -55,11 +55,22 @@ const _meta = {
       return { ok: true, project: projectName, saved: true };
     }
     if (name === "requestable-execute") {
-      var requestable = String(args.requestable || "").trim();
+      var requestable = String(args.requestable || "").trim(), note = "";
+      // A bare Flow name is unique once the project is given: read it there and say so.
+      if (projectName && /^[A-Za-z_][A-Za-z0-9_]*$/.test(requestable)) {
+        note = "requestable \"" + requestable + "\" was read as \"" + projectName + "." + requestable + "\" (project " + projectName + ").";
+        requestable = "." + requestable;
+      }
       if (/^\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?$/.test(requestable)) { target(engine, projectName); requestable = projectName + requestable; }
-      if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,2}$/.test(requestable)) fail("REQUESTABLE_REQUIRED", "Use Project.Flow or Project.Connector.Transaction.");
+      if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,2}$/.test(requestable)) {
+        var bare = /^\.?([A-Za-z_][A-Za-z0-9_]*)$/.exec(requestable);
+        fail("REQUESTABLE_REQUIRED", "Use Project.Flow or Project.Connector.Transaction" +
+          (bare ? ": requestable \"<project>." + bare[1] + "\", or project with requestable \"" + bare[1] + "\"." : "."));
+      }
       target(engine, requestable.split(".")[0]);
-      return { ok: true, result: ctx.callBlock("requestable.call", { requestable: requestable, input: args.input || {} }, { trace: false }) };
+      var out = { ok: true, result: ctx.callBlock("requestable.call", { requestable: requestable, input: args.input || {} }, { trace: false }) };
+      if (note) out.note = note;
+      return out;
     }
     var manager = engine.theApp.schedulerManager;
     if (!manager) fail("SCHEDULER_UNAVAILABLE", "The server scheduler is unavailable.");

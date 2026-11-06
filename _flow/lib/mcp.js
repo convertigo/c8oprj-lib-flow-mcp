@@ -510,6 +510,26 @@
 		return lines;
 	}
 
+	// A result with ok:false and no error object (a frontend action, for instance) still has a code for text clients.
+	function failedCode(value) {
+		var code = typeof value.code === "string" ? value.code : "";
+		return /^[A-Z][A-Z0-9_]{2,}$/.test(code) ? code : "TOOL_FAILED";
+	}
+
+	// The first failed step of details.steps, with the error line of its output.
+	function failedStepLine(value) {
+		var steps = value.details && Array.isArray(value.details.steps) ? value.details.steps : [];
+		var step = steps.filter(function (each) { return each && each.ok === false; })[0];
+		if (!step) return "";
+		var lines = String(step.stderr || "") + "\n" + String(step.stdout || "");
+		lines = lines.split("\n").map(function (line) { return line.trim(); }).filter(function (line) { return !!line; });
+		var cause = lines.filter(function (line) { return /^[A-Za-z.]*Error:/.test(line); }).pop()
+			|| lines.filter(function (line) { return /\berror\b/i.test(line); }).pop() || lines.pop() || "";
+		if (cause.length > 400) cause = cause.substring(0, 399) + "…";
+		return " Step " + String(step.action || "?") + " failed" + (step.exitCode !== undefined && step.exitCode !== null ? " (exit " + step.exitCode + ")" : "") +
+			(cause ? ": " + cause.replace(/\.$/, "") + "." : ".");
+	}
+
 	function valueKeys(value) {
 		return value && typeof value === "object" ? Object.keys(value).filter(function (key) {
 			return value[key] !== undefined;
@@ -524,6 +544,10 @@
 		if (value.error) {
 			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
 				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
+		}
+		if (value.ok === false) {
+			return "Error [" + failedCode(value) + "]: " + String(value.message || value.title || "The tool reported a failure").replace(/\.$/, "") + "." +
+				failedStepLine(value) + " See structuredContent.";
 		}
 		var parts = [];
 		if (value.ok === true) {
@@ -655,7 +679,29 @@
 		};
 	}
 
+	// A tree focusPath is the unqualified path; the qualified Project::path (parentPath) is accepted too, and a
+	// configuration path (config.*, configs.*, engine.*) is on the backend surface.
+	function normalizeAuthoringFocusPath(name, args) {
+		["focusPath", "rootPath", "path"].forEach(function (key) {
+			var focus = typeof args[key] === "string" ? splitAuthoringParentPath(args[key]) : null;
+			if (!focus || !focus.project) return;
+			if (args.project && String(args.project) !== focus.project) {
+				throw new Error(name + " " + key + " project " + focus.project + " conflicts with project " + args.project + ".");
+			}
+			args.project = focus.project;
+			args[key] = focus.path;
+		});
+		var path = String(args.focusPath || args.rootPath || args.path || "");
+		if (name === "authoring-tree" && !args.surface && /^(?:config|configs|engine)(?:\.|$)/.test(path)) {
+			args.surface = "backend";
+		}
+		return args;
+	}
+
 	function normalizeAuthoringParentPath(name, args) {
+		if (name === "authoring-tree" || name === "frontend-svelte-tree") {
+			return normalizeAuthoringFocusPath(name, args);
+		}
 		if (["authoring-palette", "authoring-mutate", "frontend-svelte-palette", "frontend-svelte-mutate"].indexOf(name) === -1) {
 			return args;
 		}
@@ -691,6 +737,47 @@
 	function qualifyAuthoringPath(args, path) {
 		path = String(path || "");
 		return args && args.project ? String(args.project) + "::" + path : path;
+	}
+
+	// The existing paths nearest to an unknown focusPath: shared leading segments first, then the last segment.
+	function nearestAuthoringPaths(wanted, tree, limit) {
+		var segments = String(wanted || "").split("."), last = segments[segments.length - 1].toLowerCase();
+		var scored = [];
+		(function walk(node) {
+			(node && node.children || []).forEach(function (child) {
+				var path = String(child && child.path || "");
+				if (path) {
+					var parts = path.split("."), common = 0;
+					while (common < parts.length && common < segments.length && parts[common] === segments[common]) common++;
+					var tail = parts[parts.length - 1].toLowerCase();
+					var prefix = 0;
+					while (prefix < tail.length && prefix < last.length && tail[prefix] === last[prefix]) prefix++;
+					var score = common * 4 + (tail === last ? 6 : last && (tail.indexOf(last) !== -1 || last.indexOf(tail) !== -1 ||
+						prefix >= Math.min(4, last.length)) ? 3 : 0);
+					if (score > 0) scored.push({ path: path, score: score });
+				}
+				walk(child);
+			});
+		})(tree);
+		scored.sort(function (a, b) { return b.score - a.score || a.path.length - b.path.length || (a.path < b.path ? -1 : 1); });
+		var top = scored.map(function (item) { return item.path; });
+		if (!top.length) top = (tree && tree.children || []).map(function (child) { return String(child.path || ""); });
+		return top.filter(function (path) { return path; }).slice(0, limit || 3);
+	}
+
+	// AUTHORING_TREE_FOCUS_NOT_FOUND says the expected form and proposes the nearest existing paths (tree: the
+	// unfocused tree of the same request), so the caller retries without reading the whole tree.
+	function authoringFocusNotFound(args, value, tree) {
+		var error = value && value.error;
+		if (!error || error.code !== "AUTHORING_TREE_FOCUS_NOT_FOUND") return value;
+		var wanted = String(value.focusPath || args.focusPath || args.rootPath || args.path || "");
+		var nearest = nearestAuthoringPaths(wanted, tree, 3).map(function (path) { return qualifyAuthoringPath(args, path); });
+		value.nearestPaths = nearest;
+		error.hint = "focusPath is a path returned by this tree, unqualified (for example frontends.svelte.routes.<page-id>) or " +
+			"qualified as Project::<path> (its parentPath). Configuration (config.*) is on surface:\"backend\"." +
+			(nearest.length ? " Nearest existing paths: " + nearest.join(", ") + "." : "");
+		if (nearest.length) value.next = "Retry with focusPath:\"" + nearest[0] + "\", or another nearest path.";
+		return value;
 	}
 
 	function qualifyAuthoringResult(args, value) {
@@ -2205,7 +2292,7 @@
 						});
 						// Guides are complete documents. Project previews also need their hash,
 						// truncation flag and notices, separate from the source text.
-						var prefix = structured.source === "resources/read" ? "" : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
+						var prefix = structured.source === "resources/read" ? (structured.note ? "Note: " + structured.note + "\n\n" : "") : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
 						response.result.content = [{ type: "text", text: prefix + resourceText }];
 						delete response.result.structuredContent;
 					} else {
@@ -3723,6 +3810,61 @@
 	function libraryGuideText(uri) {
 		var found = libraryGuides().filter(function (guide) { return guide.uri === String(uri || ""); })[0];
 		return found ? String(new Packages.java.lang.String(Files.readAllBytes(new File(found.file).toPath()), StandardCharsets.UTF_8)) : null;
+	}
+
+	// An unknown guide URI (flow://guide/<name>, flow://lib/<library>/<name>): the one guide it names without ambiguity,
+	// else the nearest guide URIs. guides are library guides ({uri, project}); coreNames are the flow://guide/<name> names.
+	function guideAlias(uri, guides, coreNames) {
+		var text = String(uri || ""), match, candidates = [];
+		guides = guides || [];
+		coreNames = coreNames || [];
+		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
+		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
+		var wanted = "", library = "";
+		if ((match = /^flow:\/\/guide\/([A-Za-z0-9_.-]+)$/.exec(text))) {
+			wanted = match[1].toLowerCase();
+			candidates = guides.filter(function (guide) { return base(guide) === wanted; });
+			if (!candidates.length) {
+				var owned = guides.filter(function (guide) { return short(guide.project) === wanted || String(guide.project).toLowerCase() === wanted; });
+				if (owned.length === 1) candidates = owned;
+			}
+		} else if ((match = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text))) {
+			library = match[1];
+			wanted = match[2].toLowerCase();
+			var inLibrary = guides.filter(function (guide) { return guide.project === library; });
+			candidates = inLibrary.length === 1 ? inLibrary : guides.filter(function (guide) { return base(guide) === wanted; });
+			if (!candidates.length && coreNames.indexOf(wanted) !== -1) return { uri: "flow://guide/" + wanted };
+		}
+		if (candidates.length === 1) return { uri: candidates[0].uri };
+		var all = coreNames.map(function (name) { return "flow://guide/" + name; }).concat(guides.map(function (guide) { return guide.uri; }));
+		var key = short(library) + " " + wanted;
+		var near = all.filter(function (each) {
+			var name = each.replace(/^.*\//, "").toLowerCase();
+			return candidates.some(function (guide) { return guide.uri === each; }) || (wanted && (name.indexOf(wanted) !== -1 || wanted.indexOf(name) !== -1)) ||
+				(library && each.indexOf("flow://lib/" + library + "/") === 0) || key.split(/[^a-z0-9]+/).some(function (word) {
+					return word.length > 2 && each.toLowerCase().indexOf(word) !== -1;
+				});
+		});
+		return { suggestions: near.slice(0, 5) };
+	}
+
+	function guideAliasFor(ctx, uri) {
+		var names = [], guides = [];
+		try {
+			var root = knownProjectDir(ctx);
+			var dir = root ? new File(new File(String(root)), "_flow/resources/guide") : null;
+			var files = dir && dir.isDirectory() ? dir.listFiles() : null;
+			for (var i = 0; files && i < files.length; i++) {
+				var match = /^([A-Za-z0-9_.-]+)\.md$/.exec(String(files[i].getName()));
+				if (match) names.push(match[1]);
+			}
+		} catch (e) {
+		}
+		try {
+			guides = libraryGuides();
+		} catch (e) {
+		}
+		return guideAlias(uri, guides, names);
 	}
 
 	function withWorkspaceProviders(request, diagnostic, exactOnly) {
@@ -5781,6 +5923,8 @@
 		jsonRpcError: jsonRpcError,
 		libraryGuides: libraryGuides,
 		libraryGuideText: libraryGuideText,
+		guideAlias: guideAlias,
+		guideAliasFor: guideAliasFor,
 		legacyRelayTool: legacyRelayTool,
 		legacyRelayTools: legacyRelayTools,
 		legacyRelayCall: legacyRelayCall,
@@ -5798,6 +5942,7 @@
 		_frontendPublicBaseUrl: frontendPublicBaseUrl,
 		qualifyAuthoringPath: qualifyAuthoringPath,
 		qualifyAuthoringResult: qualifyAuthoringResult,
+		authoringFocusNotFound: authoringFocusNotFound,
 		phaseBudget: phaseBudget,
 		withNamedFlowSource: withNamedFlowSource,
 		searchWorkspace: searchWorkspace,
