@@ -41,6 +41,11 @@ const _meta = {
       "default": "starter",
       "description": "Authoring contract detail for a full source get: starter (default) or full.",
     },
+    "contractBlocks": {
+      "kind": "literal",
+      "type": "array",
+      "description": "Only the contracts of these blocks, in full: tags or portable ids, as a list or comma-separated (for a block omitted from the starter).",
+    },
     "codepatch": {
       "kind": "text",
       "type": "string",
@@ -1058,6 +1063,57 @@ const _meta = {
 		});
 	}
 
+	// contractBlocks as a list of tags or portable ids: an array, or a comma/space separated text ("DataTable, <Form>")
+	function contractBlockNames(value) {
+		var names = Array.isArray(value) ? value : value === undefined || value === null ? [] : String(value).split(/[\s,]+/);
+		var out = [];
+		names.forEach(function (name) {
+			name = String(name || "").replace(/^<|\/?>$/g, "").trim();
+			if (name && out.indexOf(name) === -1 && out.length < 20) out.push(name);
+		});
+		return out;
+	}
+
+	function starterBlock(item) {
+		var starter = {
+			tag: String(item.tag || item.insert && item.insert.tag || ""),
+			properties: compactProperties(item.properties),
+			slots: sourceSlots(item.slots)
+		};
+		// the handlers of the events the block raises, in its Events slot (OnClick, OnSelectionChange...)
+		if (Array.isArray(item.events) && item.events.length) starter.events = item.events.slice();
+		return starter;
+	}
+
+	// Only the blocks asked for, in full: a few omitted blocks without re-reading the whole full contract.
+	function selectedBlocksContract(contract, wanted) {
+		var lower = wanted.map(function (name) { return name.toLowerCase(); }), found = {};
+		var blocks = standardStarterItems(contract.items, true).filter(function (item) {
+			var tag = String(item.tag || item.insert && item.insert.tag || "").toLowerCase();
+			if (lower.indexOf(tag) === -1) return false;
+			found[tag] = true;
+			return true;
+		}).map(starterBlock);
+		var portableBlocks = [], seen = {};
+		(contract.items || []).forEach(function (item) {
+			var id = String(item.id || ""), tag = String(item.tag || item.insert && item.insert.tag || "");
+			if (id.indexOf("flow.block.") !== 0 || !tag || seen[id]) return;
+			var shortId = id.substring("flow.block.".length);
+			var key = lower.indexOf(tag.toLowerCase()) !== -1 ? tag.toLowerCase() : lower.indexOf(shortId.toLowerCase()) !== -1 ? shortId.toLowerCase() : "";
+			if (!key) return;
+			seen[id] = true;
+			found[key] = true;
+			portableBlocks.push({ id: shortId, tag: tag, description: String(item.description || ""), properties: compactProperties(item.properties) });
+		});
+		return {
+			version: 2,
+			detail: "blocks",
+			blocks: blocks,
+			portableBlocks: portableBlocks,
+			missingBlocks: wanted.filter(function (name) { return !found[name.toLowerCase()]; })
+		};
+	}
+
 	function starterContract(ctx, props) {
 		try {
 			var contract = ctx.authoringContractSource({
@@ -1065,6 +1121,8 @@ const _meta = {
 				surface: "frontend",
 				builder: "svelte"
 			});
+			var wantedBlocks = contractBlockNames(props.contractBlocks);
+			if (wantedBlocks.length) return selectedBlocksContract(contract, wantedBlocks);
 			var contractDetail = String(props.contractDetail || "starter").toLowerCase() === "full"
 				? "full"
 				: "starter";
@@ -1074,15 +1132,7 @@ const _meta = {
 				: standardStarterItems(contract.items, false);
 			var blocks = [];
 			selectedStandardItems.forEach(function (item) {
-				var tag = String(item.tag || item.insert && item.insert.tag || "");
-				var starter = {
-					tag: tag,
-					properties: compactProperties(item.properties),
-					slots: sourceSlots(item.slots)
-				};
-				// the handlers of the events the block raises, in its Events slot (OnClick, OnSelectionChange...)
-				if (Array.isArray(item.events) && item.events.length) starter.events = item.events.slice();
-				blocks.push(starter);
+				blocks.push(starterBlock(item));
 			});
 			var portableBlocks = [];
 			var seenPortable = {};
@@ -1110,6 +1160,9 @@ const _meta = {
 				blockCount: blocks.length,
 				availableBlockCount: allStandardItems.length,
 				omittedBlockCount: Math.max(0, allStandardItems.length - blocks.length),
+				omittedBlocks: allStandardItems.slice(blocks.length).map(function (item) {
+					return String(item.tag || item.insert && item.insert.tag || "");
+				}),
 				header: "<script module>\n  export const _flow = { sourceVersion: 2 };\n</script>",
 				root: {
 					tag: "FlowComponent",
@@ -1163,7 +1216,7 @@ const _meta = {
 					"A portable action target is optional: omit it and bind the result as @actionId, or set it to an existing local.name. Never invent a bare result target.",
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
 					"Write one complete source pass with code-set; it validates before writing. The first write reorders attributes canonically ($$ attributes first); continue from the returned revision.",
-					"The starter contract intentionally omits uncommon blocks. Inspect the contextual palette only for a missing block or property.",
+					"The starter contract intentionally omits uncommon blocks (omittedBlocks). For one of them, code-get again with contractBlocks:[\"<Tag>\"], not contractDetail:\"full\"; inspect the contextual palette only for a missing property.",
 					"For a browser proof after build, execute the bounded acceptance.calls plan of openBuilt unchanged and in order."
 				]
 			};
