@@ -23,6 +23,14 @@ refuses("UNKNOWN_PROJECT", function () { tools.execute(ctx, engine, "project-sav
 var result = tools.execute(ctx, engine, "requestable-execute", { project: "orders", requestable: ".Hello", input: { name: "Ada" } });
 assert(result.result.answer === 42 && calls[0].args.requestable === "orders.Hello" && calls[0].args.input.name === "Ada", "Execution uses the standard requestable boundary");
 refuses("REQUESTABLE_REQUIRED", function () { tools.execute(ctx, engine, "requestable-execute", { requestable: "../orders" }); });
+// A bare Flow name is read in the given project, and the answer says how it was read.
+var bare = tools.execute(ctx, engine, "requestable-execute", { project: "orders", requestable: "catalog_list" });
+assert(bare.result.answer === 42 && calls[1].args.requestable === "orders.catalog_list", "Bare Flow name resolves in the given project");
+assert(/orders\.catalog_list/.test(String(bare.note || "")), "The answer notes the qualified name it used");
+var bareError = null;
+try { tools.execute(ctx, engine, "requestable-execute", { requestable: "catalog_list" }); } catch (error) { bareError = error; }
+assert(bareError && bareError.code === "REQUESTABLE_REQUIRED" && /<project>\.catalog_list/.test(String(bareError.message) + " " + String(bareError.hint || "")),
+  "Without a project, the refusal gives the exact qualified form");
 var plan = { project: "orders", sequence: "Job", name: "daily", cron: "0 0 9 * * ?" };
 assert(tools.execute(ctx, engine, "scheduler-apply", plan).dryRun && persisted === 0 && model.getJobs().isEmpty(), "Preview has no side effects");
 refuses("SCHEDULER_PRIVATE_REQUIRED", function () { tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { sequence: "Public" })); });
