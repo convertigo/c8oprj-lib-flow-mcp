@@ -3953,22 +3953,66 @@
 		MISSING_REQUIRED_PROPERTY: true
 	};
 
+	// Block names guessed in the light bench of 06/11 (it3, it4) and what they meant: that answer goes first in next. No
+	// name is substituted. A capitalized name (Heading, Text, Table) or frontbuilder.svelte.<x> is a Svelte page
+	// component or action, read with authoring-palette, not a backend block.
+	var GUESSED_BLOCKS = {
+		"sql.execute": { block: "sql.query", text: "sql.execute is not a block: sql.query runs a SELECT, sql.mutate an INSERT, UPDATE or DELETE." },
+		"sql.connection": { block: "sql.configCheck", text: "sql.connection is not a block: the connection is config.sql of engine.yaml, which every sql.* block uses; sql.configCheck checks it." },
+		"http.response": { block: "throw", text: "http.response is not a block: a Flow answers with return { ... }, an error status with throw { code, message, status }." }
+	};
+	var EXPRESSION_FUNCTIONS = { round: "round(value, digits)", floor: "floor(value)", ceil: "ceil(value)", abs: "abs(value)",
+		min: "min(a, b)", max: "max(a, b)" };
+	var FRONTEND_GUESSES = { Set: "SetValue", callSequence: "CallSequence" };
+
+	function guessedBlock(diagnostic, project) {
+		var name = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "")
+			.replace(/\.$/, "");
+		if (!name) return null;
+		if (GUESSED_BLOCKS[name]) return GUESSED_BLOCKS[name];
+		if (EXPRESSION_FUNCTIONS[name]) {
+			return { block: "", text: name + " is not a block but an expression function: write " + EXPRESSION_FUNCTIONS[name] +
+				" in an expression (local.total = " + EXPRESSION_FUNCTIONS[name].replace(/\(.*\)/, "(local.amount)") + ")." };
+		}
+		var push = /^((?:local|result)\.[\w.]+)\.push$/.exec(name);
+		if (push) {
+			return { block: "json.push", text: name + " is a JavaScript method, not a block: append with json.push({ path: \"" + push[1] +
+				"\", value }) to a list created by json.array({ path, itemType })." };
+		}
+		var frontend = /^frontbuilder\.svelte\.(\w+)$/.exec(name);
+		if (frontend || /^[A-Z][A-Za-z0-9]*$/.test(name)) {
+			var key = frontend ? frontend[1] : name;
+			var item = FRONTEND_GUESSES[key] || key.charAt(0).toUpperCase() + key.substring(1);
+			var lower = (diagnostic.candidates || []).some(function (candidate) { return candidate && candidate.block === name.toLowerCase(); });
+			return { block: lower ? name.toLowerCase() : "", text: (lower ? "Block names are lowercase: " + name.toLowerCase() +
+				" is the FlowScript block. " : "") + name + " is not a backend Flow block: in a Svelte page, " + item +
+				" is a component or action; read it with authoring-palette({ " + (project ? "project: \"" + project + "\", " : "") +
+				"query: \"" + item + "\" })." };
+		}
+		return null;
+	}
+
 	function withBlockContract(request, diagnostic) {
 		if (!diagnostic || typeof diagnostic !== "object" || diagnostic.contract) {
 			return diagnostic;
 		}
 		var code = String(diagnostic.code || "");
 		var block = "";
+		var project = String(toolArguments(request).project || "");
 		if (code === "UNKNOWN_BLOCK") {
+			var guess = guessedBlock(diagnostic, project);
+			if (guess && String(diagnostic.next || "").indexOf(guess.text) === -1) {
+				diagnostic.next = guess.text + (diagnostic.next ? " " + diagnostic.next : "");
+			}
+			if (guess && !guess.block) return diagnostic;
 			var decision = diagnostic.candidateDecision || {};
-			block = String(decision.bestBlock || diagnostic.candidates && diagnostic.candidates[0] && diagnostic.candidates[0].block || "");
+			block = String(guess && guess.block || decision.bestBlock || diagnostic.candidates && diagnostic.candidates[0] && diagnostic.candidates[0].block || "");
 		} else if (BLOCK_CONTRACT_DIAGNOSTICS[code] === true) {
 			block = String(diagnostic.block || "");
 		}
 		if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(block)) {
 			return diagnostic;
 		}
-		var project = String(toolArguments(request).project || "");
 		diagnostic.contract = "flow-block-get({ " + (project ? "project: \"" + project + "\", " : "") + "name: \"" + block + "\" })";
 		var sentence = "The contract of " + block + " (properties, outputs, errors, examples): " + diagnostic.contract +
 			"; never read library sources for it.";
