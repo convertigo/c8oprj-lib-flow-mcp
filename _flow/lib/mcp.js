@@ -3643,11 +3643,30 @@
 		return out;
 	}
 
+	// The browser plan names generic Playwright calls: the agent runs them with the browser tools of its host, whatever
+	// their prefix. In the light bench of 06/11 (it4), Codex looked for them among the convertigo-flow tools.
+	var HOST_BROWSER_TOOLS = "the browser tools of your host (its Playwright MCP server, whatever the tool-name prefix: " +
+		"browser_navigate {url}, browser_snapshot, browser_click {element, ref}, browser_type, browser_evaluate {function}), " +
+		"not through convertigo-flow, which has no browser tool.";
+
+	function withHostBrowserTools(action, value) {
+		if (!value || typeof value !== "object" || value.error) return value;
+		var plan = value.acceptance;
+		if (plan && typeof plan === "object" && Array.isArray(plan.calls) && plan.calls.length && !plan.runWith) {
+			plan.runWith = "Run these calls with " + HOST_BROWSER_TOOLS;
+		}
+		if (/(?:^|\.)dev\.(?:open|sync|start)$/.test(action) && value.ok === true && value.openUrl && !value.browserProof) {
+			value.browserProof = "Prove the page on openUrl with " + HOST_BROWSER_TOOLS;
+		}
+		return value;
+	}
+
 	// The build of frontend-svelte-action answers its status, URL, duration and the steps it ran. The browser plan
 	// (acceptance) is returned by openBuilt, or here with detail:"full", as the paths and the fingerprints.
 	function compactFrontendActionToolValue(request, value) {
 		var args = toolArguments(request);
 		var action = String(args.actionId || args.action || args.id || "");
+		value = withHostBrowserTools(action, value);
 		var details = value && value.details;
 		var build = /(?:^|\.)build$/.test(action) || !!(details && details.action === "build");
 		if (!build || !value || typeof value !== "object" || value.error || value.ok !== true || fullResponse(request)) {
@@ -3676,7 +3695,8 @@
 		}
 		if (value.acceptance) {
 			out.next = (out.next ? out.next + " " : "") +
-				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\").";
+				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\"); run it with " +
+				HOST_BROWSER_TOOLS;
 		}
 		return out;
 	}
