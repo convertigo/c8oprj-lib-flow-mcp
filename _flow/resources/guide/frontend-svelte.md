@@ -262,6 +262,7 @@ a pending preparation, never an unchanged active viewer.
    and `sourceFile`; it validates before the atomic write. Write target Pages
    before the Pages that navigate to them (`FRONTEND_NAVIGATE_PAGE_UNKNOWN`
    otherwise). A new Page has no revision; existing Pages use theirs.
+   The home Page `flow-project-bootstrap(ui:true)` created exists: pass its `frontbuilderModelRevision`.
 3. For later changes, `code-rg({ project, kind:"source", pattern })`: a unique
    match carries the `sourceFile` and `revision` for the smallest
    `code-patch`. Use a bounded `code-get` range only when context is missing.

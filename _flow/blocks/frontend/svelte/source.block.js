@@ -1274,10 +1274,12 @@ const _meta = {
 		var exists = sourceStore(ctx, props).exists(path.file);
 		var supplied = props.revision !== undefined && props.revision !== null && String(props.revision) !== "";
 		if (exists && !supplied) {
+			// flow-project-bootstrap(ui:true) creates the home Page: its first code-set already needs the revision
 			throw sourceWriteError(
 				"FRONTEND_SOURCE_REVISION_REQUIRED",
-				"Flow Svelte source already exists; code-set requires its current revision.",
-				"Call code-get, then retry with the returned revision."
+				"Flow Svelte source " + path.relative + " already exists (flow-project-bootstrap creates the home Page); code-set requires its current revision.",
+				"Call code-get({ sourceFile: \"" + path.relative + "\" }), then call code-set again with the same code and revision set to the revision code-get returned " +
+				"(flow-project-bootstrap returns it as frontbuilderModelRevision for the home Page it created)."
 			);
 		}
 		if (!exists && supplied) {

@@ -241,8 +241,21 @@ const _meta = {
 			path: relative,
 			file: String(file.getAbsolutePath()),
 			created: created,
-			exists: file.isFile()
+			exists: file.isFile(),
+			// The revision code-get returns for this Page: its first code-set passes it (the Page exists already)
+			revision: file.isFile() ? sha256Hex(String(Packages.org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"))) : null
 		};
+	}
+
+	function sha256Hex(text) {
+		var digest = Packages.java.security.MessageDigest.getInstance("SHA-256")
+			.digest(new Packages.java.lang.String(String(text || "")).getBytes("UTF-8"));
+		var out = "";
+		for (var i = 0; i < digest.length; i++) {
+			var value = digest[i] < 0 ? digest[i] + 256 : digest[i];
+			out += (value < 16 ? "0" : "") + value.toString(16);
+		}
+		return out;
 	}
 
 	function currentModelPath(source) {
@@ -655,6 +668,7 @@ const _meta = {
 				result.frontbuilderResourceRoot = resourceRoot;
 				result.frontbuilderModelPath = model.path;
 				result.frontbuilderModelFile = model.file;
+				result.frontbuilderModelRevision = model.revision;
 				result.createdSvelteModel = model.created;
 			}
 			result.projectReferences = references.map(function (referenceName) {
@@ -671,7 +685,9 @@ const _meta = {
 			engine.theApp.databaseObjectsManager.exportProject(project);
 			result.saved = true;
 			result.projectDir = String(project.getDirPath());
-			result.next = "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again.";
+			result.next = "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again." +
+				(ui && model.revision ? " The home Page " + model.path + " exists already: its first code-set passes revision " +
+					model.revision + " (frontbuilderModelRevision)." : "");
 			refreshStudio(engine, project, ui ? model.path : "");
 			ctx.write(prop(props, "out") || "local.projectBootstrap", result);
 			return result;
