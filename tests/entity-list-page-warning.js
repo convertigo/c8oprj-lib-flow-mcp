@@ -1,3 +1,4 @@
+function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
 // entity.list returns one page: code-set, code-patch and code-check warn when a Flow keeps its rows
 // without an offset and never reads hasMore, nextOffset or total. Real engine results through the MCP response.
 // FLOW_MCP_EXPECT_BASELINE=true runs it against an older MCP root: every regression check fails, every contract check passes.
@@ -45,7 +46,7 @@ try {
  var refused=respond('code-set',{projectDir:String(temp),name:'Broken',code:'x'},{ok:false,error:{code:'FLOWSCRIPT_PARSE_FAILED',message:'x'}});
  check(warning(refused).length===0,'a refused source is not linted',false);
  // The guide teaches the same contract the warning names.
- var guide=read(root+'/_flow/resources/guide/entities.md');
+ var guide=guideFamily(root,'entities');
  check(/## Lists: filters and pages/.test(guide)&&/ENTITY_LIST_PAGE_UNCHECKED/.test(guide)&&/ENTITY_LIST_INCOMPLETE/.test(guide)&&/local\.page\.hasMore/.test(guide)&&/nextOffset/.test(guide),'guide documents pages and both warnings');
  check(/\{field: value\}/.test(guide)&&/relations\s+included/.test(guide),'guide documents the short filter form on relations');
  check(/return \{ scope: \{ requesterId: input\.request\.user \} \}/.test(guide)&&/actorProvider/.test(guide)&&/ENTITY_RELATION_LABELS_OMITTED/.test(guide),'guide shows the role scope, the actor provider and omitted relation labels');

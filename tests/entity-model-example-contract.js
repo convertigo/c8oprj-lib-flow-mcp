@@ -16,7 +16,11 @@ assert.ok(fromContract, 'The model contract ends with its example');
 const example = fromContract[1];
 JSON.parse(example);
 
-const guide = /<!-- example: model-format -->\s*```json\n([\s\S]*?)\n```/.exec(read('_flow/resources/guide/entities.md'));
+const guideFamily = name => require('fs').readdirSync(require('path').join(root, '_flow/resources/guide'))
+  .filter(file => file.startsWith(name + '-') && file.endsWith('.md')).sort()
+  .reduce((text, file) => text + '\n\n' + read('_flow/resources/guide/' + file), read('_flow/resources/guide/' + name + '.md'))
+  .replace(/ \(\d+\.\d KB\)/g, '');
+const guide = /<!-- example: model-format -->\s*```json\n([\s\S]*?)\n```/.exec(guideFamily('entities'));
 assert.ok(guide && guide[1] === example, 'The entities guide holds the same example');
 for (const name of ['convertigo-flow-backend', 'convertigo-flow-mcp']) {
   const skill = read('_flow/resources/skills/' + name + '/SKILL.md');

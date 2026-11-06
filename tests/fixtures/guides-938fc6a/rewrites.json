@@ -1,0 +1,107 @@
+[
+ {
+  "family": "entities",
+  "old": "actor block (**Authentication** below); without it, nobody gets the MANAGER scope.",
+  "new": "actor block (**Authentication** in `flow://guide/entities-auth`); without it, nobody gets the MANAGER scope."
+ },
+ {
+  "family": "entities",
+  "old": "use the project actor in **Authentication** below and",
+  "new": "use the project actor in **Authentication** of `flow://guide/entities-auth` and"
+ },
+ {
+  "family": "entities",
+  "old": "actor block (**Authentication** below); without it, `roles.includes(...)` is false",
+  "new": "actor block (**Authentication** in `flow://guide/entities-auth`); without it, `roles.includes(...)` is false"
+ },
+ {
+  "family": "entities",
+  "old": "same `format` and the exact `example` shown in **Short path** above.",
+  "new": "same `format` and the exact `example` shown in **Short path** of `flow://guide/entities`."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "`CurrentUser` (`me`) and `Logout` below.",
+  "new": "`CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Edit scaffolded `app.entityAccess` with the policy below:",
+  "new": "Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`:"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Add the private BookingRule hook below.",
+  "new": "Add the private BookingRule hook of `flow://guide/multipage-entities-access`."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "wire select to the form and saved/deleted to refresh, as below.",
+  "new": "wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "The actor provider above supplies server roles.",
+  "new": "The actor provider of `flow://guide/multipage-entities` supplies server roles."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "`Journalisé` allowlists only the model fields shown above.",
+  "new": "`Journalisé` allowlists only the model fields shown in `flow://guide/multipage-entities`."
+ },
+ {
+  "family": "crud",
+  "old": "write the audit row in the same transaction (below).",
+  "new": "write the audit row in the same transaction (`flow://guide/crud-business`)."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Shared layout and page outlet; see the tested session Layout below. |",
+  "new": "Shared layout and page outlet; see the tested session Layout in `flow://guide/frontend-svelte-actions`. |"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Load `layout.session` with the root Layout's `OnAfterNavigate` example below.",
+  "new": "Load `layout.session` with the root Layout's `OnAfterNavigate` example of `flow://guide/frontend-svelte-actions`."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Client action parameters accept the pure expressions described above; use a source, a",
+  "new": "Client action parameters accept the pure expressions described in `flow://guide/frontend-svelte-sources`; use a source, a"
+ },
+ {
+  "family": "start",
+  "old": "Returning or JSON-stringifying it escapes newlines. If truncated, read the saved output instead of fetching again.",
+  "new": "Returning or JSON-stringifying it escapes newlines. Each guide is short enough to be read whole; its size follows its name."
+ },
+ {
+  "family": "entities",
+  "old": "**Demo login** in `flow://guide/multipage-entities`;",
+  "new": "**Demo login** in `flow://guide/multipage-entities-access`;"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "See Backend preview boundary in `flow://guide/entities`.",
+  "new": "See Backend preview boundary in `flow://guide/entities-actions`."
+ },
+ {
+  "family": "start",
+  "old": "- Session and actor provider: `flow://guide/entities`, Authentication section.",
+  "new": "- Session and actor provider: `flow://guide/entities-auth`, Authentication section."
+ },
+ {
+  "family": "start",
+  "old": "- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities`, matching sections.",
+  "new": "- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities-access` and `flow://guide/multipage-entities-pages`, matching sections."
+ },
+ {
+  "family": "entities",
+  "old": "see **One access policy** below.",
+  "new": "see **One access policy** in `flow://guide/entities-policy`."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "`flow://guide/frontend-svelte`) instead of duplicating markup and action",
+  "new": "`flow://guide/frontend-svelte-components`) instead of duplicating markup and action"
+ }
+]

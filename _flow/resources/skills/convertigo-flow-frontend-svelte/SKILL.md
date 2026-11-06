@@ -64,7 +64,8 @@ invisible to all of them; a refusal says what to write instead.
 
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.
 - Read `flow://guide/frontend-svelte` once from the server named exactly
-  `convertigo-flow`, never from the Legacy server named `convertigo`. Read the
+  `convertigo-flow`, never from the Legacy server named `convertigo`; it is a
+  short entry guide that names the one sub-guide to read for each topic. Read the
   routing or FullSync guide only when the application requires it.
 - For any persisted business data with roles, use the entity route: add the
   `lib_flow_entity` project reference and read `flow://guide/entities` plus
@@ -216,7 +217,7 @@ invisible to all of them; a refusal says what to write instead.
   the multi-step proof, in the foreground and waited for before your turn
   ends, and one screenshot of your own for a visual check.
 - Before handing a frontend over, pass the visual checklist of
-  `flow://guide/frontend-svelte` (POC Acceptance) as `checks` to the verifier
+  `flow://guide/frontend-svelte-proof` (POC Acceptance) as `checks` to the verifier
   or `browser-verify`, in light and dark, at 1366px and 390px: frame and
   current page, page headers, tables for records, badges for statuses, no
   stray status text, toasts for success, grouped forms, no horizontal
@@ -239,6 +240,6 @@ remaining visual defects.
 Before finalizing a changed source, consult the relevant official Svelte syntax
 section when uncertain, validate it with Flow's installed Svelte compiler, and
 exercise its visible behavior. This workflow adapts the MIT-licensed official
-Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte` for the
+Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte-sources` for the
 source and bundled permission notices. Read its tested layout examples before
 inventing widget properties or variants.

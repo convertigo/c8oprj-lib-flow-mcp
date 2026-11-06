@@ -1,6 +1,6 @@
 # Multi-Page Business Application by Entities
 
-Build a role-based booking application with session authentication, per-user entities, ordinary widget events, CSV export, a scheduled check and atomic auditing.
+Role-based multi-page application by entities: quick path and declarations; access rules and pages, exports, jobs and proof in sub-guides.
 
 For the simplest compliant start with persisted business data and roles, use **Short path** in `flow://guide/entities`, then follow this recipe.
 
@@ -17,16 +17,16 @@ For the simplest compliant start with persisted business data and roles, use **S
    Keep IDs/revisions as text and dates as ISO; no duplicate business schema.
 4. Install the private `app.actor` from the entities guide. It reads only the
    authenticated server session and the server directory; never client roles.
-5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` below.
+5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`.
    Prepare only neutral demo accounts; leave the demo switch off by default.
    Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker.
-6. Edit scaffolded `app.entityAccess` with the policy below: USER sees their
+6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their
    rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly
    opens selected entities. Writes stay closed until this application decision.
 7. Declare the typed entity demo seed below and call the public `demo_reset`
    before sign-in. No ADMIN cookie or separate initialization Flow is needed.
    Its guard belongs to the application; the library imposes none.
-8. Add the private BookingRule hook below. It locks the room, checks overlap
+8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap
    across all owners, and throws on refusal; data and audit roll back together.
    For an imposed 409, use HttpBookingRule from the entities guide instead.
 9. Expose only the named Flows your HTTP contract needs: guard the session,
@@ -34,7 +34,7 @@ For the simplest compliant start with persisted business data and roles, use **S
    translate known errors, then return exact keys. For example, convert hidden-row 404 uniformly to 403.
 10. Add EntityTable/EntityForm without targetProject: they use this application
     EntityGateway. Put New in its Toolbar, guarded by context.permissions.create;
-    wire select to the form and saved/deleted to refresh, as below.
+    wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`.
 11. Add CSV through the same authorized entity list, Journalisé with an
     allowlist, and a private scheduled worker as independent additions.
     No fabricated browser actor for jobs; keep their switch off by default.
@@ -221,378 +221,11 @@ Replay returns the same demo rows, including the neutral directory. Other
 application databases are not involved. It bypasses entity permissions and hooks
 intentionally; use `entity.save` for ordinary authorized business writes.
 
-## Demo login
+## Sub-guides
 
-`DemoLogin` from `flow://guide/entities` checks
-`String(config.demo.login) === "true"` **before** looking up the chosen active
-demo account and calling `session.authenticate`. The symbol
-`<project>.demo.login` defaults false in the delivered project. Enable it only
-for the demonstration; show the picker only when `CurrentUser.demoLoginEnabled`
-is true. Never add a role input. A demo identity is not a real password check.
+The rest of this guide is in focused sub-guides; read one only when the task needs it, once.
 
-Keep the MCP bearer (source author) distinct from application cookie sessions.
-After `demo_reset`, sign in through the application; never infer this identity
-from `code-run` or its author token. Public `entity.*` calls use `checkAccess:true` and the unique application policy.
-Trusted private calls require no session or model ACL. Their first use ensures the additive
-schema once per JVM/connection/model fingerprint; no initialization screen or
-ADMIN cookie is needed. Explicit `entity.initialize({})` is available for
-maintenance or a read-only `dryRun` / `verifyOnly`, without a session.
-
-## Me and logout
-
-The public `CurrentUser` is the `me` endpoint: anonymous is a normal result;
-an inactive account is refused by the server provider. A revoked role stops
-authorizing entity operations as soon as the server table changes.
-
-<!-- example: current-user -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
-
-function CurrentUser({ input, config, result }) {
-  local.user = session.authenticatedUser({})
-  local.demoLoginEnabled = String(config.demo.login) === "true"
-  if (!local.user) {
-    return { authenticated: false, user: null, demoLoginEnabled: local.demoLoginEnabled }
-  }
-  local.actor = app.actor({})
-  return {
-    authenticated: true,
-    demoLoginEnabled: local.demoLoginEnabled,
-    user: { id: local.actor.user, firstName: local.actor.user, role: local.actor.roles[0] },
-  }
-}
-```
-
-<!-- example: logout -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
-
-function Logout({ input, config, result }) {
-  session.authenticate({ user: "" })
-  return { authenticated: false, user: null }
-}
-```
-
-## Application access, one editable block
-
-Model-set has created `EntityGateway` and the default private
-`app.entityAccess` without overwriting existing code. Replace **only the policy**
-with this application decision. The actor provider above supplies server roles.
-No gateway slot or config key is needed; no model ACL opens additional rights.
-`Audit`/`APP_USER` retain optional deny-only ACLs as a second restriction.
-
-<!-- example: booking-access-policy -->
-```javascript
-const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
-
-function block({ input, config, result }) {
-  // Explicit public catalog reads only; leave empty for authenticated reads.
-  local.publicRead = []
-  if (!input.request.user) {
-    if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
-      return {}
-    }
-    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
-  }
-  local.roles = input.request.roles || []
-  local.manager = local.roles.includes("MANAGER") || local.roles.includes("ADMIN")
-  if (!local.manager && !local.roles.includes("USER")) {
-    throw { code: "FORBIDDEN", message: "Booking role required", status: 403 }
-  }
-  if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !local.manager)) {
-    throw { code: "FORBIDDEN", message: "Directory or audit unavailable", status: 403 }
-  }
-  if (input.request.write && ((input.request.entity === "Room" && !local.manager) || (input.request.operation ===
-    "delete" && !local.manager))) {
-    throw { code: "FORBIDDEN", message: "Manager action required", status: 403 }
-  }
-  if (input.request.entity === "Reservation" && !local.manager) {
-    return { scope: { owner: input.request.user } }
-  }
-  return {}
-}
-```
-
-`publicRead` is the single explicit opt-in for anonymous reads. Carefully choose
-public entities, including their fields and relations. Server scope is also
-applied to labels, options and counts. `Possédé` remains a reusable checked
-ownership trait; private hooks may read across owners deliberately.
-`initialize` and `demoReset` are not gateway operations and are not protected by
-this policy. Their public calling Flow supplies its own guard as below.
-
-## 2. Apply the rule in an ordinary hook
-
-A booking occupies `[starts, ends)`: adjoining dates are allowed; an empty or
-reversed interval is refused. `beforeSave` receives `input.mutation`
-(`creating`, `key`, `patch`, `revision`) and the trusted `input.actor`.
-For an update, merge the patch with the permitted existing row. Use the hook
-below, not two independent frontend writes. The private named overlap query
-checks **all owners** without exposing their rows to the caller. The no-op
-room update locks that resource until the same `entity.save` transaction ends,
-so competing saves of this room check after the preceding commit. No role is
-invented, no new transaction primitive is needed, and rejection rolls back the
-mutation and its journal. Keep all reservation writes on this hook; do not
-expose the technical SQL statements as HTTP facades.
-
-<!-- example: booking-rule -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "private", authenticatedContextRequired: true }
-
-function BookingRule({ input, config, result }) {
-  local.values = input.mutation.patch
-  if (!input.mutation.creating) {
-    local.previous = entity.read({ entity: "Reservation", key: input.mutation.key })
-    local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
-  }
-  if (local.values.starts >= local.values.ends) {
-    throw { code: "BOOKING_DATES_INVALID", message: "End must follow start", status: 422 }
-  }
-  local.lock = sql.write({ statement: "lockRoom", parameters: { room: local.values.room } })
-  if (local.lock.affectedRows !== 1) {
-    throw { code: "ROOM_NOT_FOUND", message: "Choose an existing room", status: 422 }
-  }
-  if (local.values.status === "OPEN") {
-    local.overlap = sql.query({
-      query: "overlap",
-      parameters: {
-        room: local.values.room,
-        starts: local.values.starts,
-        ends: local.values.ends,
-        id: input.mutation.creating ? null : input.mutation.key.id,
-      },
-      limit: 1,
-    })
-    if (local.overlap.rows[0].total !== "0") {
-      throw { code: "BOOKING_OVERLAP", message: "This room is already booked", status: 422 }
-    }
-  }
-  return { ok: true }
-}
-```
-
-This is a small SQL locking convention for this rule, not a second CRUD layer.
-When editing the example, qualify the DBMS's transaction isolation and retry
-its deadlock/serialization errors as whole operations. A successful sequential
-rejection test alone does not prove every concurrent schedule.
-
-## 3. Build pages with ordinary events
-
-Use `BookingApp` below as the target project name (adapt it to your project).
-Create home/sign-in, `mine`, `manage` and `journal` pages **before** links. The
-root Layout refreshes `CurrentUser` after navigation. Show management and journal
-links only for MANAGER/ADMIN, and guard their pages before mounting tables.
-The server model enforces the perimeter even if a user navigates directly.
-Use `Status actionId="loginCall"` for transport/Flow errors. In a login button,
-chain `CallSequence requestable=".DemoLogin"` (account only), then `Navigate`;
-do not pass a role. For logout, pass `__disableAutologin=true` so the SDK cannot
-replay sign-in. Navigate only in the successful login/logout action chain.
-
-<!-- example: session-layout -->
-```svelte
-<script module>export const _flow = { sourceVersion: 2 };</script>
-<FlowComponent $$id="sessionLayout">
-  <Variables><State $$id="session" type="object" value={{ authenticated: false, user: null }} /></Variables>
-  <Events><OnAfterNavigate $$id="refreshSession"><Actions>
-    <CallSequence $$id="loadSession" requestable=".CurrentUser" $$out="layout.session" />
-  </Actions></OnAfterNavigate></Events>
-  <Structure>
-    <AppShell $$id="shell" title="Bookings" userName={layout.session.user?.firstName ?? ""}>
-      <Navigation><LinkButton $$id="mine" label="My bookings" page="mine" /></Navigation>
-      <Tools><Button $$id="logout" label="Sign out" variant="ghost"><Events><OnClick $$id="signout"><Actions>
-        <CallSequence $$id="logoutCall" requestable=".Logout"><Variables><Variable name="__disableAutologin" value={true} /></Variables></CallSequence>
-        <Navigate $$id="goHome" page="home" />
-      </Actions></OnClick></Events></Button></Tools>
-      <Children><PageContent $$id="content" /></Children>
-    </AppShell>
-  </Structure>
-</FlowComponent>
-```
-
-For the guarded `mine` page, use this editing chain. Omit `targetProject`: both
-widgets call this application's public `EntityGateway`, never a library Flow.
-Only cross-project screens set `targetProject` to the other application.
-`describe` returns effective capabilities: put New inside the table Toolbar
-and test `context.permissions.create`; EntityForm hides denied save/delete
-actions and sends `create` for a new row, `update` for an existing key.
-MANAGER uses the same widgets: `app.entityAccess` decides the server perimeter.
-
-The optional table `ownershipFilter="mine"` narrows an authorized result; it is
-not the policy's typed `scope` and cannot grant access. Leave it unset for the
-nominal path. A 401 invites sign-in, 403 reports a forbidden action, and 400
-shows field validation when supplied. Native model validation can also return
-422. A 409 shows the existing Reload command before retrying the stale row.
-The widgets clear old rows while reloading after a permission/session change.
-
-<!-- example: booking-editor -->
-```svelte
-<script module>export const _flow = { sourceVersion: 2, page: { id: "mine" } };</script>
-<FlowComponent $$id="bookingEditor">
-  <Variables>
-    <State $$id="session" type="object" value={{ authenticated: false, user: null }} />
-    <State $$id="row" type="object" value={null} />
-    <State $$id="editing" type="boolean" value={false} />
-    <State $$id="refresh" type="number" value={0} />
-  </Variables>
-  <Events><OnMount $$id="checkSession"><Actions>
-    <CallSequence $$id="me" requestable=".CurrentUser" $$out="page.session" />
-  </Actions></OnMount></Events>
-  <Structure>
-    <PageHeader $$id="heading" title="My bookings" />
-    <Status $$id="sessionStatus" actionId="me" />
-    <If $$id="authenticated" test={page.session.authenticated}><Then>
-      <EntityTable $$id="bookings" entity="Reservation" refreshKey="@page.refresh">
-        <Toolbar><If $$id="mayCreate" test={context.permissions.create}><Then>
-          <Button $$id="create" label="New booking"><Events><OnClick $$id="new"><Actions>
-            <SetValue $$id="clear" target="page.row" value={null} />
-            <SetValue $$id="open" target="page.editing" value={true} />
-          </Actions></OnClick></Events></Button>
-        </Then></If></Toolbar>
-        <Events><OnSelect $$id="select"><Actions>
-          <SetValue $$id="keep" target="page.row" value="@event.value" />
-          <SetValue $$id="edit" target="page.editing" value={true} />
-        </Actions></OnSelect></Events>
-      </EntityTable>
-      <If $$id="editor" test={page.editing}><Then>
-        <EntityForm $$id="form" entity="Reservation" row="@page.row">
-          <Events>
-            <OnSaved $$id="saved"><Actions>
-              <SetValue $$id="closeSaved" target="page.editing" value={false} />
-              <SetValue $$id="clearSaved" target="page.row" value={null} />
-              <UpdateNumber $$id="refreshSaved" target="page.refresh" operation="increment" step={1} />
-            </Actions></OnSaved>
-            <OnDeleted $$id="deleted"><Actions>
-              <SetValue $$id="closeDeleted" target="page.editing" value={false} />
-              <SetValue $$id="clearDeleted" target="page.row" value={null} />
-              <UpdateNumber $$id="refreshDeleted" target="page.refresh" operation="increment" step={1} />
-            </Actions></OnDeleted>
-            <OnCancel $$id="cancel"><Actions>
-              <SetValue $$id="closeCancel" target="page.editing" value={false} />
-              <SetValue $$id="clearCancel" target="page.row" value={null} />
-            </Actions></OnCancel>
-          </Events>
-        </EntityForm>
-      </Then></If>
-    </Then><Else><Text $$id="loginRequired" text="Sign in to see your bookings." /></Else></If>
-  </Structure>
-</FlowComponent>
-```
-
-Add `EntityTable entity="Audit"` to the manager-guarded journal page. For a
-custom cell, preserve the generic lexical snippet arguments described in
-`flow://guide/entities`; do not copy widget internals or add browser scripts.
-
-## Export CSV
-
-The export reuses `entity.list` with `checkAccess:true`, so forged users and roles cannot widen its
-perimeter. This minimal export has no client filter and is explicitly complete
-up to 200 rows: if more exist, refuse rather than silently export one page.
-When adding screen filters, validate and pass the **same** filters here. For
-larger exports use a bounded paging loop, not a client-side CSV encoder.
-
-<!-- example: export-bookings -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden", authenticatedContextRequired: true }
-
-function ExportBookings({ input, config, result }) {
-  local.page = entity.list({ entity: "Reservation", checkAccess: true, options: { limit: 200, orderBy: "id" } })
-  if (local.page.hasMore) {
-    throw { code: "EXPORT_LIMIT", message: "Narrow the export below 201 rows", status: 413 }
-  }
-  local.rows = list.map({
-    items: local.page.rows,
-    select: {
-      id: current.key.id,
-      title: current.values.title,
-      starts: current.values.starts,
-      ends: current.values.ends,
-    },
-  })
-  result.file = data.csv({
-    rows: local.rows,
-    columns: [
-      { field: "id", type: "int64" },
-      { field: "title" },
-      { field: "starts", type: "date" },
-      { field: "ends", type: "date" },
-    ],
-    filename: "bookings.csv",
-    separator: ";",
-    bom: true,
-    maxRows: 200,
-    maxBytes: 1048576,
-  })
-}
-```
-
-Use ordinary `CallSequence` then `FileDownload` with `@page.export.file`; read
-the `data.csv` and frontend file-download contracts from the palette. The CSV
-has UTF-8 BOM, French dates and formula protection. A `.bin` facade can instead
-end with `file.respond`. Neither a download button nor a hidden link grants
-permission.
-
-## Scheduled jobs
-
-Start with a **read-only daily check**: a private Flow counts bookings starting
-today, with a server date, no browser session and no notification side effect.
-It is naturally replayable; do not claim that a message was sent. The job is off
-by default through `<project>.jobs.enabled`. No session is forged for the job.
-The private named query has only the aggregate necessary for this service.
-
-<!-- example: daily-bookings -->
-```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
-
-function DailyBookings({ input, config, result }) {
-  if (String(config.jobs.enabled) !== "true") {
-    return { enabled: false, count: "0" }
-  }
-  local.day = date.today({ timeZone: "Europe/Paris" })
-  local.page = sql.query({ query: "startsToday", parameters: { day: local.day }, limit: 1 })
-  return { enabled: true, day: local.day, count: local.page.rows[0].total }
-}
-```
-
-Inspect `scheduler-list`, then use the advertised relayed `scheduler-apply` to
-schedule the exact private `<project>.DailyBookings` requestable with a
-project-specific job name, Europe/Paris and a daily trigger. Read that tool's
-contract; scheduler availability is deployment-specific. Run it once and replay
-it before enabling the schedule. For real sending, add an idempotent outbox and
-`email.send` with a capture server first; do not send external effects in a JDBC
-transaction.
-
-## Audit
-
-`Journalisé` allowlists only the model fields shown above. The library writes
-actor, operation, key, server date and those values **in the mutation's SQL
-transaction**. Failure of the hook or journal aborts the write; no password,
-token or account secret belongs in this model or journal. The read-only Audit
-entity shares the table and checks MANAGER/ADMIN read permissions. Review
-retention separately; a journal after a committed mutation is not equivalent.
-
-## 4. Prove and deliver
-
-Test anonymous, two USER sessions and a manager in distinct cookie jars; check
-own/foreign reads and writes, client role forgery, revoked roles, two overlapping
-bookings by different users, adjoining dates, partial updates, stale revision,
-CSV perimeter/formulas/dates/limits, job off/on/replay, journal contents and
-rollback, and logout with the old cookie. A page guard complements server checks.
-Use `frontend-svelte-action` dev.open, then one relayed verifier for the roles;
-a successful build or HTTP 200 alone is not interaction proof. Sign-in errors
-may have HTTP 200 with a Flow error: show `Status`, not only a result field.
-
-Keep sources in Git and runtime data out. Run `flow-block-mock-list`, build with
-`frontend-svelte-action` build, try the published URL, and run
-`flow-app-progress` hardening. Keep CORS same-origin, symbols for credentials,
-demo login/jobs off by default, application-protected initialization and documented production
-identity/database choices. Entity example tests execute every backend/config
-fence above; `frontend-guide-examples` compiles the exact layout and editor.
-
-
-Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support
-is not Entity qualification. `initialize`/`demoReset` remain exported blocks
-without guards (`private:false`), called from a Flow protected by the application.
-Trusted ownership prefers a live session, otherwise preserves an explicit owner.
-`describe` is metadata-only and bounded; unreadable relation targets are omitted.
-Public errors omit SQL names and DDL. Author diagnostics and the additive preview
-stay in the server log and authenticated MCP `code-run` of `entity.initialize`
-with `dryRun:true`. See Backend preview boundary in `flow://guide/entities`.
+| Sub-guide (size) | Read it |
+| --- | --- |
+| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |
+| `flow://guide/multipage-entities-pages` (11.5 KB) | pages, CSV export, scheduled jobs, audit, final proof |

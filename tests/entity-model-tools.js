@@ -1,3 +1,4 @@
+function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
 // Run under the same Rhino/JVM classpath as mcp-resources-contract.js.
 var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";
@@ -50,7 +51,7 @@ try {
   assert(/model property gives the format and an example/.test(descriptor.description),op+" points to the model format");
  });
  // The format documentation: int64 is an example of a relation type, and a project trait and a source are described.
- var guideText=String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/resources/guide/entities.md"),"UTF-8")).replace(/\s+/g," ");
+ var guideText=guideFamily(projectDir,"entities").replace(/\s+/g," ");
  ["check","set"].forEach(function(op){
   var contract=described["flow-entity-model-"+op].inputSchema.properties.model.description;
   assert(/target identity, for example int64[^.]*string/.test(contract),op+" model contract gives int64 as an example of a relation type");

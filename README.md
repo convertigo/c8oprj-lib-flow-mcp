@@ -429,6 +429,14 @@ with its one-line summary; `resources/read` returns every resource whole:
 - `flow://guide/tracing`
 - `flow://guide/crud`
 
+Every guide stays under 16 000 characters, the size every agent client shows whole: a longer one is an entry guide plus sub-guides named
+`<guide>-<topic>` (for example `flow://guide/frontend-svelte-forms`), listed
+in the entry guide with the topic they cover. Each `resources/list`
+description ends with the guide size in KB, computed from its bytes; guide
+tables write it after the URI, kept current by `node tools/guide-sizes.cjs --write`
+and checked by `tests/guide-split-coverage.cjs`, which also proves that the
+split guides kept every section and paragraph of MCP `a008320`.
+
 The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 `flow://skills/convertigo-flow-backend/SKILL` and
 `flow://skills/convertigo-flow-frontend-svelte/SKILL` are not listed but are

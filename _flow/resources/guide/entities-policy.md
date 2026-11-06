@@ -1,0 +1,102 @@
+# Flow Entities: Access Policy
+
+One access policy, local to the application: roles, scopes, public reads and write rules over entities.
+
+Sub-guide of `flow://guide/entities`: read that guide first.
+
+## One access policy, local to the application
+
+`flow-entity-model-set` creates a public `EntityGateway` and a private
+`app.entityAccess` **only if missing**. Its response lists created/preserved
+sources and the policy decisions still required. Neither is regenerated on
+model edits. There is no shared library gateway, project selector, gateway
+configuration flag or migration fallback. The widgets call this local gateway directly; omitting `targetProject` uses
+the application serving the frontend.
+
+`app.entityAccess` receives `input.request = {entity, operation, write, key,
+payload, user, roles?}`. `user` is exclusively the authenticated server session;
+`roles`, when requested, comes exclusively from the configured actor provider.
+Client `user`, `roles`, `write`, `scope`, `project` and `checkAccess` have no
+control over authorization. Normal termination allows; throw
+`{code,message,status}` denies. Return `{scope:{field:value}}` to add **typed
+stored-field equalities**. No predicate language: client filters/search are
+ANDed with scope, also for count, options, relation validation and labels.
+Creation imposes scope values over forged input. Updates, including hook writes,
+must remain in scope or their transaction (audit included) rolls back.
+
+The generated policy is the explicit default. Open anonymous reads simply by
+editing `publicRead`; uncomment and adapt the role example to scope rows per role
+(this also opens the matching writes):
+
+<!-- example: default-access-policy -->
+```javascript
+const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+
+function block({ input, config, result }) {
+  // The request of the operation is an object: anything else is refused.
+  if (!input.request || typeof input.request !== "object") {
+    throw { code: "ENTITY_FORBIDDEN", message: "Invalid access request.", status: 403 }
+  }
+  // Entities readable without sign-in: for example ["Room"], or ["*"].
+  local.publicRead = []
+  if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
+    return {}
+  }
+  if (!input.request.user) {
+    throw { code: "ENTITY_UNAUTHENTICATED", message: "Sign in to read entities.", status: 401 }
+  }
+  // Rows per role, for reads and writes: ADMIN every ticket, SUPPORT the tickets assigned
+  // to it, anyone else the tickets they requested (creation imposes requesterId).
+  // input.request.roles needs config.entities.actorProvider (flow://guide/entities).
+  // Uncommented, it also opens delete and field rewrites (SUPPORT may rewrite requesterId, a requester choose assigneeId): restrict by input.request.operation or a model ACL.
+  // if (input.request.entity === "Ticket") {
+  //   if (input.request.roles.includes("ADMIN")) {
+  //     return {}
+  //   }
+  //   if (input.request.roles.includes("SUPPORT")) {
+  //     return { scope: { assigneeId: input.request.user } }
+  //   }
+  //   return { scope: { requesterId: input.request.user } }
+  // }
+  if (input.request.write) {
+    throw { code: "ENTITY_FORBIDDEN", message: "Writes are disabled by the application policy.", status: 403 }
+  }
+  return {}
+}
+```
+
+`input.request.roles` exists only when `config.entities.actorProvider` names your
+actor block (**Authentication** in `flow://guide/entities-auth`); without it, `roles.includes(...)` is false
+and everyone gets the narrowest scope. Scope fields can be relations, as above.
+A relation's labels, options and validation read its target through this same
+policy: keep a referenced directory readable when signed in (hide its other fields
+with `visibleTo`). If the policy, a model ACL or a slot refuses the target (401 or
+403; a 404 still fails the read), labels are omitted with the run warning
+`ENTITY_RELATION_LABELS_OMITTED`; options and validation return `ENTITY_FORBIDDEN`
+"Relation non autorisée." naming only `details.field`. A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused. A create also sets it when a default, an auto rule, the policy scope or the Possédé owner fills it.
+
+Without that block, the same default applies: nonempty
+`getAuthenticatedUser()` for reads, all writes refused. A cookie alone is not
+authentication. There is **no model ACL by default**. A declared `permissions`
+ACL adds refusals after the policy; `["ADMIN"]` cannot open a policy-denied write.
+`visibleTo` and `Possédé` access restrictions apply only on controlled calls.
+
+The closed read operations are `list`, `read`, `count`, `options`, `describe`;
+writes are `create`, `update`, `delete`. `save` is classified by its supplied
+identity (update requires an existing row; never upsert), never by client
+`write`. Unknown operations, `initialize` and `demoReset` return
+`ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
+A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
+`describe.permissions` evaluates create/update/delete, including an additional
+authorization slot, without hooks or mutation;
+policies and slots must be safe to evaluate for a capability, with an empty
+key/payload. Neither may recursively call a controlled entity operation.
+
+The gateway delegates to `entity.applyGateway({entity,operation,payload})`.
+An optional `$$authorize` slot runs after the policy and can only deny or add
+scope equalities. Its `current.request` is the server request; return
+`{scope:{...}}` for extra equalities. Replacing a previous equality is refused.
+The scaffold has **no slot**, so it never authorizes twice. Direct public
+facades use `checkAccess:true` instead; it is a source option, never copied
+from HTTP input. Trusted defaults (`false`) remain for private application
+composition and jobs. Do not expose an unguarded trusted primitive publicly.

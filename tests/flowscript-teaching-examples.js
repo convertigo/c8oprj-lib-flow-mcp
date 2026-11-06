@@ -1,3 +1,4 @@
+function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
 // Extract all runnable FlowScript fences from guides, skills and block longDescription.
 // JavaScript fences containing a Rhino/browser implementation are not FlowScript.
 var engineRoot = new java.io.File(arguments[0]).getCanonicalFile();
@@ -21,7 +22,7 @@ try {
  var created=api('blockCodeSet',{name:'crm.customerLabel',code:customExample});
  assert(created.ok,'custom-block guide must compile: '+JSON.stringify(created));
  // Register the ordinary project actor taught before its callers, rather than accepting an unknown block.
- var entityText=read(new java.io.File(mcpRoot,'_flow/resources/guide/entities.md'));
+ var entityText=guideFamily(mcpRoot,'entities');
  var actorExample=/<!-- example: actor-block -->\s*```javascript\n([\s\S]*?)```/.exec(entityText);
  assert(actorExample,'Entity guide must teach its actor block');
  var actorCreated=api('blockCodeSet',{name:'app.actor',code:actorExample[1]});
