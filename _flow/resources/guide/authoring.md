@@ -16,8 +16,9 @@ A condition, a value or an expression property is a small JavaScript subset; any
   `oneOf`, `overlaps`, `Array.isArray`.
 - **Methods:** text `trim`, `toLowerCase`, `includes`, `split`, `replace`/`replaceAll` (text patterns), `slice`,
   `padStart`...; lists `includes`, `indexOf`, `slice`, `join`, `at`, `length`; numbers `toFixed`.
-- **Refused, with the block to write instead:** a regular expression literal (`text.match({ text, pattern:
-  "^[0-9]+$" })`, then `.matched`), a JavaScript `while`, `for` or `do` loop (the `while` and `forEach` blocks,
+- **Regex:** `text.match({ text, pattern: "^[0-9]+$", flags: "i" })` (then `.matched`, `.groups`),
+  `text.replace({ ..., regex: true })` (`$1` in the replacement), `text.split({ ..., regex: true })`.
+- **Refused, with the block to write instead:** a regular expression literal `/x/` (the regex blocks above), a JavaScript `while`, `for` or `do` loop (the `while` and `forEach` blocks,
   below), `Math.random` (`crypto.random`), `Date.now` (`date.now`), `JSON.*` and `Object.*` (`json.*`, `object.*`),
   `push` on a list (`json.push`).
 
@@ -88,8 +89,15 @@ function Greeting({ input, config, result }) {
   (`` `Hello ${input.name}` ``), an object literal is a value (`select: {
   title: current.title }`). Strings take the escapes of JavaScript (`"\r\n"`,
   `"\t"`, `"\uFEFF"`, `"\u{1F600}"`, `"\\"`), in values and in expressions;
-  a regular expression literal is refused: test a pattern with `text.match({
-  text, pattern: "^[0-9]+$" })` and read `.matched`. A local never takes the
+  a regular expression is a block, not an expression: `text.match({ text,
+  pattern: "^[0-9]+$", flags: "i" })` (read `.matched`, `.groups`),
+  `text.replace({ text, search: "-+", replacement: " ", regex: true })`,
+  `text.split({ text, separator: "\\s*,\\s*", regex: true })`; a literal
+  `/x/` assigned alone (`local.ok = /x/.test(s)`, `s.match(/x/)`,
+  `s.replace(/x/g, y)`, `s.split(/x/)`) is rewritten to them, elsewhere it is
+  refused at its line. A pattern runs under a budget (`TEXT_PATTERN_TIMEOUT`)
+  and stays a literal text in a public Flow (`dynamicPattern: true` otherwise).
+  A local never takes the
   name of a scope (`input`, `config`, `local`, `result`, `request`,
   `current`, `parent`, `trace`). Studio shows the same: a text, an
   expression, or a text with `${…}` parts. `===`

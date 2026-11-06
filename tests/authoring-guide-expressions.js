@@ -20,6 +20,11 @@ Object.keys(utils.expressionFunctions({})).filter(function (name) {
 	assert(head.indexOf(part) !== -1, "the reminder names " + part);
 });
 
+// The regex blocks: a regular expression is a block, with regex: true on replace and split
+["**Regex:**", "`text.match({ text, pattern:", "`text.replace({ ..., regex: true })`", "`text.split({ ..., regex: true })`"].forEach(function (part) {
+	assert(head.indexOf(part) !== -1, "the reminder names the regex blocks: " + part);
+});
+
 // The while block, its default limit and how to raise it
 ["`while({ condition:", "maxIterations", "1000 when omitted", "WHILE_ITERATION_LIMIT", "timeoutMs", "FLOWSCRIPT_LOOP_UNSUPPORTED"].forEach(function (part) {
 	assert(guide.indexOf(part) !== -1, "the guide describes the while block: " + part);
