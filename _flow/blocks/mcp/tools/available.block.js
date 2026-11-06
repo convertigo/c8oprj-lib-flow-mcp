@@ -466,6 +466,11 @@ const _meta = {
 					enum: ["starter", "full"],
 					description: "Canonical frontend source only: starter (default) returns the common authoring vocabulary; full returns every standard block descriptor for explicit diagnostics."
 				};
+				schema.properties.contractBlocks = {
+					type: "array",
+					items: { type: "string" },
+					description: "Canonical frontend source only: the full contracts of these blocks only (tags such as DataTable, or portable ids), for a block the starter omits; cheaper than contractDetail full."
+				};
 					schema.properties.revision = {
 						type: "string",
 						description: "For a bounded canonical source read, optionally require this current revision."

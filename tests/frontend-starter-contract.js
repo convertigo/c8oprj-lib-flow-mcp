@@ -82,6 +82,28 @@ assertTrue(result.authoringContract.pages.length === 1 && result.authoringContra
 	result.authoringContract.pages[0].path === "/",
 	"The starter contract must name Pages like the frontbuilder: " + JSON.stringify(result.authoringContract.pages));
 
+// The starter names the blocks it omits, and contractBlocks returns only the blocks asked for, with their full
+// properties (seen: a 21 KB starter re-read, then a 65 KB full contract re-read, to find two missing blocks).
+assertTrue(JSON.stringify(result.authoringContract.omittedBlocks) === '["FuturePanel"]',
+	"The starter contract must name its omitted blocks: " + JSON.stringify(result.authoringContract.omittedBlocks));
+props.contractBlocks = "FuturePanel, <TextTrim>, Nope";
+var picked = block.run({
+	props: function () { return props; },
+	resourceGet: function () { return { content: source, hash: "revision", contentLength: source.length }; },
+	authoringContractSource: function () {
+		return { items: [
+			{ id: "svelte.text", tag: "Text", properties: { text: { type: "string", intents: ["literal", "source"] } }, slots: {} },
+			{ id: "svelte.futurePanel", tag: "FuturePanel", properties: { title: { type: "string", intents: ["literal"] } }, slots: { children: {} } },
+			{ id: "flow.block.text.trim", tag: "TextTrim", description: "Trim text", properties: { text: { type: "string", intents: ["literal", "source"] } } }
+		] };
+	},
+	write: function () {}
+}, {}).authoringContract;
+assertTrue(picked && picked.detail === "blocks" && picked.blocks.length === 1 && picked.blocks[0].tag === "FuturePanel" &&
+	picked.blocks[0].properties.title === "string:literal" && picked.portableBlocks.length === 1 &&
+	picked.portableBlocks[0].properties.text && JSON.stringify(picked.missingBlocks) === '["Nope"]' && picked.rules === undefined,
+	"contractBlocks must return only the blocks asked for, in full: " + JSON.stringify(picked));
+delete props.contractBlocks;
 props.contractDetail = "full";
 var fullResult = block.run({
 	props: function () { return props; },
