@@ -148,5 +148,10 @@
   "family": "frontend-svelte",
   "old": "5. For a freshly bootstrapped UI project, `dev.ensure` right after bootstrap\n   lets npm initialize while you author; Vite and the Studio viewer open when\n   setup completes. Call `dev.sync` once after the final repair pass; use\n   `dev.open` only to reveal an already running viewer.",
   "new": "5. The UI bootstrap prepares the dev server while you author (existing backend\n   included); keep it: the first `dev.ensure` then answers at once.\n   `devStart:false` remains available when you choose to refuse preparation,\n   such as for a backend-only check. Vite starts after setup without opening\n   a viewer. Call `dev.sync` once after the final repair pass; use `dev.open`\n   to reveal the running viewer."
+ },
+ {
+  "family": "authoring",
+  "old": "for each item. A block nested there can use `$$id` for an explicit name.",
+  "new": "for each item. A block nested there can use `$$id` for an explicit name.\n- For physical line numbers, split before skipping blanks:\n  `local.lines = text.split({ text: input.csv, separator: \"\\\\r?\\\\n\", regex: true, trim: false, removeEmpty: false })`.\n  Iterate `local.lines` with `while` and a zero-based `local.index`; report\n  `local.index + 1` as top-level `throw.line`, and filter only after numbering.\n  `text.split` and `text.lines` otherwise drop empty items by default, shifting\n  later line numbers; `list.map` and `forEach` do not expose an index."
  }
 ]

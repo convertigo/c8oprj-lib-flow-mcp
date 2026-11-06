@@ -24,6 +24,12 @@ result.usd = local.usd
 - Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
   `select` takes an expression, object literal or named block call evaluated
   for each item. A block nested there can use `$$id` for an explicit name.
+- For physical line numbers, split before skipping blanks:
+  `local.lines = text.split({ text: input.csv, separator: "\\r?\\n", regex: true, trim: false, removeEmpty: false })`.
+  Iterate `local.lines` with `while` and a zero-based `local.index`; report
+  `local.index + 1` as top-level `throw.line`, and filter only after numbering.
+  `text.split` and `text.lines` otherwise drop empty items by default, shifting
+  later line numbers; `list.map` and `forEach` do not expose an index.
 - `object.firstEntry({ source })` returns one `{ key, value }`.
 - For repeated external work, model one item and iterate: store rows in
   `config.*` or a small data block and call one per-item FlowScript block.
