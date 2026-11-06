@@ -42,6 +42,24 @@ assert(mcp.guideAlias('flow://guide/csv', libGuides, core).uri === 'flow://lib/l
 assert(mcp.guideAlias('flow://guide/crud_data', libGuides, core).uri === 'flow://lib/lib_flow_crud_data/csv', 'A library short name with one guide resolves');
 var ambiguous = mcp.guideAlias('flow://guide/frontbuilder_svelte', libGuides, core);
 assert(!ambiguous.uri && ambiguous.suggestions.indexOf('flow://lib/lib_flow_frontbuilder_svelte/frontend-design') !== -1, 'Ambiguous names list their guides');
-var lost = mcp.guideAlias('flow://guide/frontend', libGuides, core);
+var lost = mcp.guideAlias('flow://guide/missing-frontend', libGuides, core);
 assert(!lost.uri && lost.suggestions.indexOf('flow://guide/frontend-svelte') !== -1 && lost.suggestions.length <= 5, 'Unknown names suggest the nearest URIs: ' + JSON.stringify(lost));
+// A split guide family: the entry guide answers the generic names of its library and the short name of its family.
+var splitSql = ['sql', 'sql-crud', 'sql-hsqldb', 'sql-named', 'sql-sample', 'sql-schema'].map(function(name) { return {uri:'flow://lib/lib_flow_sql/' + name, project:'lib_flow_sql'}; });
+var splitGuides = splitSql.concat(libGuides.slice(1));
+var splitCore = ['start', 'start-rules', 'authoring', 'authoring-data', 'crud', 'crud-modes', 'frontend-svelte', 'frontend-svelte-routing', 'frontend-svelte-layout',
+ 'frontend-svelte-proof', 'multipage-entities', 'multipage-entities-pages', 'multipage-roles'];
+['guide', 'start', 'index', 'readme', 'README.md'].forEach(function(name) {
+ var entry = mcp.guideAlias('flow://lib/lib_flow_sql/' + name, splitGuides, splitCore);
+ assert(entry.uri === 'flow://lib/lib_flow_sql/sql', 'flow://lib/lib_flow_sql/' + name + ' is the entry guide of the split SQL guides: ' + JSON.stringify(entry));
+});
+assert(mcp.guideAlias('flow://guide/sql', splitGuides, splitCore).uri === 'flow://lib/lib_flow_sql/sql', 'flow://guide/sql stays the SQL entry guide once split');
+var frontend = mcp.guideAlias('flow://guide/frontend', splitGuides, splitCore);
+assert(frontend.uri === 'flow://guide/frontend-svelte', 'flow://guide/frontend is the entry of the frontend Svelte guide: ' + JSON.stringify(frontend));
+var noEntry = mcp.guideAlias('flow://lib/lib_flow_frontbuilder_svelte/guide', splitGuides, splitCore);
+assert(!noEntry.uri && noEntry.suggestions.indexOf('flow://lib/lib_flow_frontbuilder_svelte/frontend-design') !== -1, 'A library without an entry guide lists its guides: ' + JSON.stringify(noEntry));
+var twoFamilies = mcp.guideAlias('flow://guide/multipage', splitGuides, splitCore);
+assert(!twoFamilies.uri && twoFamilies.suggestions.indexOf('flow://guide/multipage-roles') !== -1, 'Two guide families under one name stay ambiguous: ' + JSON.stringify(twoFamilies));
+var otherWord = mcp.guideAlias('flow://lib/lib_flow_sql/overview-x', splitGuides, splitCore);
+assert(!otherWord.uri && otherWord.suggestions.indexOf('flow://lib/lib_flow_sql/sql') !== -1, 'Another unknown name of a split library lists its guides: ' + JSON.stringify(otherWord));
 print('resource-text-alias OK (start '+start.length+' characters; envelope budget '+(JSON.stringify(startResult).length+200)+'/16000)');

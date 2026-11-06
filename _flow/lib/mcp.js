@@ -3843,12 +3843,20 @@
 
 	// An unknown guide URI (flow://guide/<name>, flow://lib/<library>/<name>): the one guide it names without ambiguity,
 	// else the nearest guide URIs. guides are library guides ({uri, project}); coreNames are the flow://guide/<name> names.
+	// A split guide is a family: its entry guide <name> and sub-guides <name>-<topic>. The entry answers the generic names
+	// of its library (flow://lib/<library>/guide, start, index, readme) and its short name (flow://guide/frontend).
 	function guideAlias(uri, guides, coreNames) {
 		var text = String(uri || ""), match, candidates = [];
 		guides = guides || [];
 		coreNames = coreNames || [];
 		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
 		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
+		function familyEntry(names) {
+			var entries = names.filter(function (name) {
+				return names.every(function (other) { return other === name || other.indexOf(name + "-") === 0; });
+			});
+			return entries.length === 1 ? entries[0] : null;
+		}
 		var wanted = "", library = "";
 		if ((match = /^flow:\/\/guide\/([A-Za-z0-9_.-]+)$/.exec(text))) {
 			wanted = match[1].toLowerCase();
@@ -3857,11 +3865,20 @@
 				var owned = guides.filter(function (guide) { return short(guide.project) === wanted || String(guide.project).toLowerCase() === wanted; });
 				if (owned.length === 1) candidates = owned;
 			}
+			if (!candidates.length) {
+				var family = familyEntry(coreNames.map(function (name) { return String(name).toLowerCase(); })
+					.filter(function (name) { return name.indexOf(wanted + "-") === 0; }));
+				if (family) return { uri: "flow://guide/" + family };
+			}
 		} else if ((match = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text))) {
 			library = match[1];
 			wanted = match[2].toLowerCase();
 			var inLibrary = guides.filter(function (guide) { return guide.project === library; });
 			candidates = inLibrary.length === 1 ? inLibrary : guides.filter(function (guide) { return base(guide) === wanted; });
+			if (!candidates.length && inLibrary.length > 1 && ["guide", "start", "index", "readme"].indexOf(wanted.replace(/\.md$/, "")) !== -1) {
+				var entry = familyEntry(inLibrary.map(base));
+				candidates = inLibrary.filter(function (guide) { return base(guide) === entry; });
+			}
 			if (!candidates.length && coreNames.indexOf(wanted) !== -1) return { uri: "flow://guide/" + wanted };
 		}
 		if (candidates.length === 1) return { uri: candidates[0].uri };
@@ -3871,10 +3888,12 @@
 			var name = each.replace(/^.*\//, "").toLowerCase();
 			return candidates.some(function (guide) { return guide.uri === each; }) || (wanted && (name.indexOf(wanted) !== -1 || wanted.indexOf(name) !== -1)) ||
 				(library && each.indexOf("flow://lib/" + library + "/") === 0) || key.split(/[^a-z0-9]+/).some(function (word) {
-					return word.length > 2 && each.toLowerCase().indexOf(word) !== -1;
+					return word.length > 2 && each.toLowerCase().replace(/^flow:\/\/(guide|lib)\//, "").indexOf(word) !== -1;
 				});
 		});
-		return { suggestions: near.slice(0, 5) };
+		// The guides of the named library first, then the other near guides.
+		var own = library ? near.filter(function (each) { return each.indexOf("flow://lib/" + library + "/") === 0; }) : [];
+		return { suggestions: own.concat(near.filter(function (each) { return own.indexOf(each) === -1; })).slice(0, 5) };
 	}
 
 	function guideAliasFor(ctx, uri) {
