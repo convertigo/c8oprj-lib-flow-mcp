@@ -413,8 +413,9 @@ business model, frontend source, journal or tool output.
 
 `"version": 2` is required. `flow-entity-model-check` and `flow-entity-model-set`
 refuse an unknown section, entity or field property, type, trait or trait
-parameter, naming its full path (`entities.Task.fields.team.type`), the
-accepted values and the correct form, every problem at once. The `model` property of both tools
+parameter, and a reference to a missing entity or field, naming its full path
+(`entities.Task.fields.team.type`), the accepted values and the correct form,
+every problem at once. The `model` property of both tools
 lists every accepted key; `flow-entity-model-get` on an empty model returns the
 same `format` and this `example`:
 
@@ -430,12 +431,23 @@ same `format` and this `example`:
 - **Identity:** `"identity": ["id"]`, the default, without an `id` field, is an
   int64 auto-incremented by the database. Never send it on create; read it in
   `row.key.id`.
-- **Relation:** not a type. The field has the type of the target identity
-  (`int64`) and `relation: {entity, labelField}`; `where` filters its options.
+- **Relation:** not a type. The field has the type of the target identity,
+  `int64` for the default identity as in the example (an imported identity may
+  be a `string`), and `relation: {entity, labelField}`; `where` filters its options.
 - **Traits:** `Possédé: {owner, unrestricted}` names the owner field, which the
   trait adds and fills with the session user, and the roles that see every row;
   it needs `Révisé`. `Journalisé` takes `{fields: [...]}`; `Révisé`, `Horodaté`,
   `Activable` and `Immuable` take no parameter.
+- **Project traits:** `"traits": {"Tagged": {"parameters": {"tag": "tag"}, "fields": {"$tag": {"type": "string", "maxLength": 40}}}}`
+  at the model level. `parameters` gives each parameter its default, taken by a
+  `"$name"` field name or value; `fields` are declared as on an entity, `rules`
+  is a list of `{kind, ...}` (`active`, `owner`, `deadline`, `revision`,
+  `immutable`, `audit`) and `ui` holds display hints. An entity lists the trait
+  as `"Tagged"` or `{"Tagged": {"tag": "genre"}}`.
+- **Source:** `"source": {"provider": "app.directory"}` on a `"readOnly": true`
+  entity: the named block lists its rows; it receives `ids`, `search`, `offset`
+  and `limit` and returns `{users, hasMore}`. `provider` is the only key, and
+  the entity is never written.
 - **Outputs:** with a literal entity name, `entity.list`, `entity.read`,
   `entity.describe` and `entity.options` declare the fields of that entity, so
   pickers and binding diagnostics offer them. `labels.<relation>` is the text

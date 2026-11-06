@@ -44,6 +44,15 @@ try {
   Object.keys(format.traits).forEach(function(trait){format.traits[trait].forEach(function(parameter){assert(contract.indexOf(parameter)>=0,op+" model contract names the "+trait+" parameter "+parameter);});});
   assert(/model property gives the format and an example/.test(descriptor.description),op+" points to the model format");
  });
+ // The format documentation: int64 is an example of a relation type, and a project trait and a source are described.
+ var guideText=String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/resources/guide/entities.md"),"UTF-8")).replace(/\s+/g," ");
+ ["check","set"].forEach(function(op){
+  var contract=described["flow-entity-model-"+op].inputSchema.properties.model.description;
+  assert(/target identity, for example int64[^.]*string/.test(contract),op+" model contract gives int64 as an example of a relation type");
+  assert(/Project trait: \{parameters [^;]*rules [^;]*ui\}; a "\$name"/.test(contract),op+" model contract describes a project trait");
+  assert(/Source: \{provider: block\} on a read-only entity/.test(contract),op+" model contract describes a source");
+ });
+ assert(/`int64` for the default identity[^.]*`string`/.test(guideText)&&/\*\*Project traits:\*\* [^-]*`parameters`[^-]*`rules`/.test(guideText)&&/\*\*Source:\*\* `"source": \{"provider"/.test(guideText),"The entities guide documents the relation type, project traits and source");
  var bogus=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{},bogusSection:{}}});
  assert(bogus&&bogus.valid===false&&bogus.diagnostics.some(function(d){return d.path==="bogusSection"&&/Accepted here: version, modelVersion, entities[^.]*\. Correct form: /.test(d.message);}),"Invented section refused: "+JSON.stringify(bogus));
  var relation=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{Pret:{fields:{materiel:{type:"relation"}}}}}});
