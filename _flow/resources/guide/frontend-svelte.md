@@ -964,7 +964,8 @@ content. It may defer exhaustive history, offline restoration, responsive
 coverage and polish. It may not stack downstream business steps in one
 scrolling Page.
 
-Execute the build-provided safe Playwright plan. Prefer roles, visible text,
+Execute the safe Playwright plan of `openBuilt` (`acceptance.calls`; `build`
+gives it with `detail:"full"`). Prefer roles, visible text,
 images and documented `data-*` attributes; `$$id`s are not DOM ids. On
 failure, allow one focused browser diagnostic instead of an exploratory test
 campaign. Do not infer that a network-backed component works from its

@@ -1164,7 +1164,7 @@ const _meta = {
 					"Interval schedules refreshes but does not measure elapsed time; derive clocks and stopwatches from wall-clock timestamps.",
 					"Write one complete source pass with code-set; it validates before writing. The first write reorders attributes canonically ($$ attributes first); continue from the returned revision.",
 					"The starter contract intentionally omits uncommon blocks. Inspect the contextual palette only for a missing block or property.",
-					"After build, execute the returned bounded acceptance.calls plan unchanged and in order."
+					"For a browser proof after build, execute the bounded acceptance.calls plan of openBuilt unchanged and in order."
 				]
 			};
 		} catch (e) {

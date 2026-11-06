@@ -230,7 +230,7 @@ function Weather({ input, config, result }) {
 }
 ```
 
-`code-*` tools expose this as `inputDefinitions`, `inputVariables`, and
+`code-set` and `code-check` expose this as `inputDefinitions`, `inputVariables`, and
 `testCases`. Explicit `_flow.inputs` are synchronized to Convertigo request
 variables so Studio, SDK callers and generated test cases see the same contract.
 Without `_flow.inputs`, inputs are only inferred from `input.foo` reads and

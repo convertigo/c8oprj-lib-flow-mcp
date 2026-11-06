@@ -643,7 +643,7 @@ const _meta = {
 		} else if (name === "flow-node-output-schema") {
 			description = "Reads, adopts or removes the output schema for one Flow node. Use for HTTP/exec/parse learning diagnostics.";
 		} else if (name === "flow-project-bootstrap") {
-			description = "Imports or customizes the exact named project for Flow authoring; never substitute an ambient Studio selection. For persisted business data with roles, add lib_flow_entity and read flow://guide/entities then flow://guide/multipage-entities; sign-in, CSV and jobs are independent additions. Adds FlowEngine via DBO APIs and returns the authoritative studioTarget.";
+			description = "Imports or customizes the exact named project for Flow authoring; never substitute an ambient Studio selection. For persisted business data with roles, add lib_flow_entity and read flow://guide/entities then flow://guide/multipage-entities; sign-in, CSV and jobs are independent additions. Adds FlowEngine via DBO APIs and returns the studioTarget of a UI project.";
 		} else if (name === "flow-library-search") {
 			description = "Finds workspace Flow libraries and matching backend blocks or Svelte components without loading every provider.";
 		} else if (name === "flow-project-reference") {

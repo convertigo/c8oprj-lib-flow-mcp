@@ -1,0 +1,367 @@
+{
+ "source": "Tool answers of the light bench of 06/11 (runs j1106n_opus, f1106n_sonnet), project names anonymized; raw values before the MCP compaction (code-promote: registration rebuilt from its summary). before: the default answer size with lib_flow_mcp a008320 (FLOW_COMPACT_MEASURE=1).",
+ "cases": [
+  {
+   "tool": "code-run",
+   "label": "draft catalog_list",
+   "before": 950,
+   "arguments": {
+    "project": "Shop",
+    "name": "catalog_list"
+   },
+   "raw": {
+    "ok": true,
+    "result": {
+     "items": [
+      {
+       "code": "CARNET",
+       "label": "Carnet",
+       "priceCents": 350
+      },
+      {
+       "code": "STYLO",
+       "label": "Stylo",
+       "priceCents": 150
+      },
+      {
+       "code": "TASSE",
+       "label": "Tasse",
+       "priceCents": 800
+      }
+     ],
+     "count": 3
+    },
+    "qname": "Shop.catalog_list",
+    "name": "catalog_list",
+    "revision": "fdb0f6c3fa86df06a00f8de049a82d5d21e3a6a71585b97a1192d6ea5e203489",
+    "draft": true
+   }
+  },
+  {
+   "tool": "code-run",
+   "label": "draft catalog_quote",
+   "before": 961,
+   "arguments": {
+    "project": "Shop",
+    "name": "catalog_quote",
+    "input": {
+     "code": "CARNET",
+     "quantity": "3"
+    }
+   },
+   "raw": {
+    "ok": true,
+    "result": {
+     "code": "CARNET",
+     "quantity": 3,
+     "unitPriceCents": 350,
+     "totalCents": 1050
+    },
+    "qname": "Shop.catalog_quote",
+    "name": "catalog_quote",
+    "revision": "40dfccbd761aec7cb02b36e9835338915de661f4f846f88e3adbda0b51b64687",
+    "inputVariables": [
+     "code",
+     "quantity"
+    ],
+    "inputDefinitions": {
+     "code": {
+      "type": "string"
+     },
+     "quantity": {
+      "type": "string"
+     }
+    },
+    "draft": true
+   }
+  },
+  {
+   "tool": "code-promote",
+   "label": "fast save, no Studio",
+   "before": 1124,
+   "arguments": {
+    "project": "Shop",
+    "name": "catalog_list",
+    "revision": "fdb0f6c3fa86df06a00f8de049a82d5d21e3a6a71585b97a1192d6ea5e203489"
+   },
+   "raw": {
+    "ok": true,
+    "qname": "Shop.catalog_list",
+    "name": "catalog_list",
+    "format": "flowscript",
+    "promoted": true,
+    "revision": "de62184ec50670138439fa55c54e197f66db2891324c9f751d767bb89a236a56",
+    "draftCleared": true,
+    "linted": true,
+    "changedLines": 14,
+    "codeFile": "_flow/flows/catalog_list.flow.js",
+    "warnings": [],
+    "registration": {
+     "requested": true,
+     "registered": true,
+     "created": true,
+     "updated": false,
+     "saved": true,
+     "projectSaved": false,
+     "flowDeclarationSaved": true,
+     "saveMode": "fast",
+     "refreshed": false,
+     "schemaCacheCleared": true,
+     "sessionsReset": false,
+     "httpSessionTimeout": 1800,
+     "qname": "Shop.catalog_list",
+     "message": "Flow DBO created",
+     "studioRefresh": {
+      "status": "skipped",
+      "refreshed": false,
+      "refreshedQName": "",
+      "message": "Refresh skipped: Convertigo Studio required",
+      "qname": "Shop.catalog_list",
+      "studioMode": false,
+      "timestamp": 1778064141000
+     },
+     "flagsBeforeFastSaveClean": {
+      "flowHasChanged": false,
+      "flowBNew": true,
+      "flowSourceDirty": false,
+      "variableCount": 0,
+      "projectHasChanged": true
+     },
+     "flagsAfterFastSaveClean": {
+      "flowHasChanged": false,
+      "flowBNew": false,
+      "flowSourceDirty": false,
+      "variableCount": 0,
+      "projectHasChanged": false
+     },
+     "projectFlagLock": {
+      "acquired": true
+     }
+    }
+   }
+  },
+  {
+   "tool": "flow-project-bootstrap",
+   "label": "backend",
+   "before": 882,
+   "arguments": {
+    "project": "Shop"
+   },
+   "raw": {
+    "ok": true,
+    "project": "Shop",
+    "templateUrl": "",
+    "ui": false,
+    "force": false,
+    "dryRun": false,
+    "references": [],
+    "imported": false,
+    "created": true,
+    "existing": false,
+    "createdFlowEngine": true,
+    "configuredSvelte": false,
+    "saved": true,
+    "studioTarget": {
+     "project": "Shop",
+     "nodeId": "Shop",
+     "sourcePath": "",
+     "reveal": false
+    },
+    "corsOrigin": "",
+    "demoLogin": {
+     "config": "demo.login",
+     "symbol": "Shop.demo.login",
+     "value": false,
+     "note": "Off by default. A sign-in Flow without password (demo accounts) must refuse unless String(config.demo.login) === \"true\"; set the global symbol Shop.demo.login to true only on a demo server or the Studio. See flow://guide/start; authentication mode does not change the entity data route."
+    },
+    "engineQName": "lib_flow_engine.Engine",
+    "projectReferences": [],
+    "projectDir": ".",
+    "next": "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again."
+   }
+  },
+  {
+   "tool": "flow-project-bootstrap",
+   "label": "ui",
+   "before": 1263,
+   "arguments": {
+    "project": "Shop",
+    "ui": true
+   },
+   "raw": {
+    "ok": true,
+    "project": "Shop",
+    "templateUrl": "",
+    "ui": true,
+    "force": false,
+    "dryRun": false,
+    "references": [],
+    "imported": false,
+    "created": true,
+    "existing": false,
+    "createdFlowEngine": true,
+    "configuredSvelte": true,
+    "saved": true,
+    "studioTarget": {
+     "project": "Shop",
+     "nodeId": "Shop",
+     "sourcePath": "_flow/frontbuilder/svelte/model/Shop/src/routes/+page.flow.svelte",
+     "reveal": true
+    },
+    "corsOrigin": "",
+    "demoLogin": {
+     "config": "demo.login",
+     "symbol": "Shop.demo.login",
+     "value": false,
+     "note": "Off by default. A sign-in Flow without password (demo accounts) must refuse unless String(config.demo.login) === \"true\"; set the global symbol Shop.demo.login to true only on a demo server or the Studio. See flow://guide/start; authentication mode does not change the entity data route."
+    },
+    "engineQName": "lib_flow_engine.Engine",
+    "frontbuilderReference": true,
+    "frontbuilderResourceRoot": "_flow/frontbuilder/svelte",
+    "frontbuilderModelPath": "_flow/frontbuilder/svelte/model/Shop/src/routes/+page.flow.svelte",
+    "frontbuilderModelFile": "/workspace/projects/Shop/_flow/frontbuilder/svelte/model/Shop/src/routes/+page.flow.svelte",
+    "createdSvelteModel": true,
+    "projectReferences": [],
+    "projectDir": ".",
+    "next": "Project is ready. Continue with project configuration or code-set; do not call flow-project-bootstrap again."
+   }
+  },
+  {
+   "tool": "frontend-svelte-action",
+   "label": "build",
+   "before": 7134,
+   "arguments": {
+    "project": "Shop",
+    "actionId": "build"
+   },
+   "raw": {
+    "ok": true,
+    "title": "Svelte frontbuilder",
+    "message": "Svelte frontbuilder action completed: build.",
+    "refresh": true,
+    "details": {
+     "action": "build",
+     "projectRoot": "/workspace/projects/Shop",
+     "projectName": "Shop",
+     "resourceRoot": "/workspace/projects/lib_flow_frontbuilder_svelte/_flow/frontbuilder/svelte",
+     "modelPath": "/workspace/projects/Shop/_flow/frontbuilder/svelte/model/Shop/src/routes/+page.flow.svelte",
+     "effectiveModelPath": "/workspace/projects/Shop/_flow/frontbuilder/svelte/model/Shop/src/routes/+page.flow.svelte",
+     "sourcePath": "",
+     "draftCount": 0,
+     "sourceRoot": "_private/svelte",
+     "buildOutput": "DisplayObjects/mobile",
+     "steps": [
+      {
+       "action": "installBuilder",
+       "ok": true,
+       "exitCode": 0,
+       "skipped": true,
+       "durationMs": 2
+      },
+      {
+       "action": "generate",
+       "ok": true,
+       "exitCode": 0,
+       "skipped": false,
+       "durationMs": 650
+      },
+      {
+       "action": "installApp",
+       "ok": true,
+       "exitCode": 0,
+       "skipped": false,
+       "durationMs": 51022
+      },
+      {
+       "action": "build",
+       "ok": true,
+       "exitCode": 0,
+       "skipped": false,
+       "durationMs": 5611
+      },
+      {
+       "action": "publish",
+       "ok": true,
+       "exitCode": 0,
+       "skipped": false,
+       "durationMs": 0
+      }
+     ],
+     "durationMs": 57337,
+     "production": {
+      "version": 1,
+      "currentFingerprint": "ef4ac0b26d250581348e2c1c00b8a99d8527f9a8f395bd054e8f2230dccc53f2",
+      "builtFingerprint": "ef4ac0b26d250581348e2c1c00b8a99d8527f9a8f395bd054e8f2230dccc53f2",
+      "dirty": false,
+      "status": "current",
+      "reason": "",
+      "requestedAt": "",
+      "startedAt": "",
+      "completedAt": "2026-11-06T10:49:10.974Z",
+      "failure": "",
+      "durationMs": 57423
+     }
+    },
+    "openUrl": "http://localhost:28080/convertigo/projects/Shop/DisplayObjects/mobile/index.html",
+    "acceptance": {
+     "strategy": "safe-playwright-plan",
+     "path": "/convertigo/projects/Shop/DisplayObjects/mobile/index.html",
+     "calls": [
+      {
+       "tool": "browser_navigate",
+       "arguments": {
+        "url": "http://localhost:28080/convertigo/projects/Shop/DisplayObjects/mobile/index.html"
+       }
+      },
+      {
+       "tool": "browser_resize",
+       "arguments": {
+        "width": 1280,
+        "height": 720
+       }
+      },
+      {
+       "tool": "browser_evaluate",
+       "arguments": {
+        "function": "async () => {\n  const startedAt = Date.now();\n  const deadline = startedAt + 15000;\n  const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));\n  const visible = (element) => {\n    const rect = element.getBoundingClientRect();\n    const style = getComputedStyle(element);\n    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';\n  };\n  const pending = () => {\n    const text = document.body.innerText;\n    return /initializ|synchron|\\bsync(?:ing)?\\b|optimis|loading|chargement/i.test(text) || /\\b(?:active|change|changed|pending)\\s+\\d+\\/\\d+\\b/i.test(text);\n  };\n  let previousState = '';\n  let stableSince = startedAt;\n  let pendingText = true;\n  while (Date.now() < deadline) {\n    const state = [\n      document.readyState,\n      location.href,\n      document.querySelectorAll('*').length,\n      document.querySelectorAll('button').length,\n      document.images.length,\n      [...document.images].filter((image) => image.complete).length,\n      document.documentElement.scrollWidth,\n      document.documentElement.scrollHeight\n    ].join('|');\n    if (state !== previousState) {\n      previousState = state;\n      stableSince = Date.now();\n    }\n    pendingText = pending();\n    if (!pendingText && Date.now() - startedAt >= 750 && Date.now() - stableSince >= 500) break;\n    await sleep(200);\n  }\n  const buttons = [...document.querySelectorAll('button')].filter(visible);\n  const images = [...document.querySelectorAll('img')].filter(visible);\n  const waitedMs = Date.now() - startedAt;\n  return {\n    url: location.href,\n    title: document.title,\n    viewport: [innerWidth, innerHeight],\n    waitedMs,\n    timedOut: Date.now() >= deadline,\n    terminalReached: !pendingText,\n    visibleButtons: buttons.length,\n    buttonLabels: buttons.slice(0, 30).map((button) => (button.textContent || '').trim()),\n    visibleImages: images.length,\n    brokenImages: images.filter((image) => image.naturalWidth === 0).slice(0, 20).map((image) => ({ alt: image.alt, src: image.currentSrc || image.src })),\n    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,\n    pendingText,\n    bodyText: document.body.innerText.slice(0, 500)\n  };\n}"
+       }
+      },
+      {
+       "tool": "browser_resize",
+       "arguments": {
+        "width": 390,
+        "height": 844
+       }
+      },
+      {
+       "tool": "browser_evaluate",
+       "arguments": {
+        "function": "async () => {\n  const startedAt = Date.now();\n  const deadline = startedAt + 15000;\n  const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));\n  const visible = (element) => {\n    const rect = element.getBoundingClientRect();\n    const style = getComputedStyle(element);\n    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';\n  };\n  const pending = () => {\n    const text = document.body.innerText;\n    return /initializ|synchron|\\bsync(?:ing)?\\b|optimis|loading|chargement/i.test(text) || /\\b(?:active|change|changed|pending)\\s+\\d+\\/\\d+\\b/i.test(text);\n  };\n  let previousState = '';\n  let stableSince = startedAt;\n  let pendingText = true;\n  while (Date.now() < deadline) {\n    const state = [\n      document.readyState,\n      location.href,\n      document.querySelectorAll('*').length,\n      document.querySelectorAll('button').length,\n      document.images.length,\n      [...document.images].filter((image) => image.complete).length,\n      document.documentElement.scrollWidth,\n      document.documentElement.scrollHeight\n    ].join('|');\n    if (state !== previousState) {\n      previousState = state;\n      stableSince = Date.now();\n    }\n    pendingText = pending();\n    if (!pendingText && Date.now() - startedAt >= 750 && Date.now() - stableSince >= 500) break;\n    await sleep(200);\n  }\n  const buttons = [...document.querySelectorAll('button')].filter(visible);\n  const images = [...document.querySelectorAll('img')].filter(visible);\n  const waitedMs = Date.now() - startedAt;\n  return {\n    url: location.href,\n    title: document.title,\n    viewport: [innerWidth, innerHeight],\n    waitedMs,\n    timedOut: Date.now() >= deadline,\n    terminalReached: !pendingText,\n    visibleButtons: buttons.length,\n    buttonLabels: buttons.slice(0, 30).map((button) => (button.textContent || '').trim()),\n    visibleImages: images.length,\n    brokenImages: images.filter((image) => image.naturalWidth === 0).slice(0, 20).map((image) => ({ alt: image.alt, src: image.currentSrc || image.src })),\n    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,\n    pendingText,\n    bodyText: document.body.innerText.slice(0, 500)\n  };\n}"
+       }
+      },
+      {
+       "tool": "browser_console_messages",
+       "arguments": {
+        "level": "error",
+        "all": true
+       }
+      },
+      {
+       "tool": "browser_close",
+       "arguments": {}
+      }
+     ],
+     "checks": [
+      "expected visible content",
+      "broken images",
+      "pending startup state",
+      "console and page errors",
+      "desktop and mobile overflow"
+     ],
+     "selectorRule": "Flow ids are authoring identities, not guaranteed DOM ids. Prefer roles, visible text, images and rendered semantic selectors.",
+     "next": "Execute calls unchanged and in order. Add one focused interaction only when a required business workflow is not covered by these probes."
+    }
+   }
+  }
+ ]
+}

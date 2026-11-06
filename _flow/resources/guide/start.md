@@ -174,7 +174,7 @@ encode a block in `qname`.
   name, properties, outputs })`. A Flow using a mock is unfinished; check
   `flow-block-mock-list` before reporting completion.
 - For request inputs and reusable tests, declare `const _flow = { inputs:
-  {...}, tests: {...} }`; `code-*` tools report `inputDefinitions`,
+  {...}, tests: {...} }`; `code-set`/`code-check` report `inputDefinitions`,
   `inputVariables` and `testCases`, and inputs are synchronized to Convertigo
   request variables.
 

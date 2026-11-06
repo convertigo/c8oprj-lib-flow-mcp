@@ -3532,6 +3532,68 @@
 		};
 	}
 
+	// flow-project-bootstrap answers what changed and what to do next. The echo of the arguments, false flags, the engine
+	// and frontbuilder internals, absolute paths and the demo-login note (flow://guide/start) are in detail:"full".
+	function compactBootstrapToolValue(request, value) {
+		if (!value || typeof value !== "object" || value.error || value.ok === false || fullResponse(request)) {
+			return value;
+		}
+		var out = { ok: value.ok };
+		if (value.project) out.project = value.project;
+		["dryRun", "imported", "created", "existing", "configuredSvelte", "saved", "wouldImport", "wouldCreate", "wouldCustomize"].forEach(function (key) {
+			if (value[key] === true) out[key] = true;
+		});
+		if (value.corsOrigin) out.corsOrigin = value.corsOrigin;
+		["wouldReference", "projectReferences", "warnings"].forEach(function (key) {
+			if (value[key] && value[key].length) out[key] = value[key];
+		});
+		// the initial Page of a UI project (frontend-svelte guide); a backend project has none
+		if (value.studioTarget && value.studioTarget.sourcePath) out.studioTarget = value.studioTarget;
+		// the revision the first code-set of that Page passes
+		if (value.frontbuilderModelRevision) out.frontbuilderModelRevision = value.frontbuilderModelRevision;
+		if (value.demoLogin && value.demoLogin.symbol) out.demoLogin = { symbol: value.demoLogin.symbol, value: value.demoLogin.value };
+		if (value.next) out.next = value.next;
+		return out;
+	}
+
+	// The build of frontend-svelte-action answers its status, URL, duration and the steps it ran. The browser plan
+	// (acceptance) is returned by openBuilt, or here with detail:"full", as the paths and the fingerprints.
+	function compactFrontendActionToolValue(request, value) {
+		var args = toolArguments(request);
+		var action = String(args.actionId || args.action || args.id || "");
+		var details = value && value.details;
+		var build = /(?:^|\.)build$/.test(action) || !!(details && details.action === "build");
+		if (!build || !value || typeof value !== "object" || value.error || value.ok !== true || fullResponse(request)) {
+			return value;
+		}
+		var out = {};
+		["ok", "message", "status", "openUrl", "warnings", "diagnostics", "next", "normalizations", "argumentWarning", "operatorNote"].forEach(function (key) {
+			if (value[key] !== undefined && value[key] !== null && value[key] !== "" && !(Array.isArray(value[key]) && !value[key].length)) out[key] = value[key];
+		});
+		if (details && typeof details === "object") {
+			var compactDetails = { action: details.action };
+			if (details.durationMs !== undefined) compactDetails.durationMs = details.durationMs;
+			if (Array.isArray(details.steps)) {
+				compactDetails.steps = details.steps.filter(function (step) { return step && step.skipped !== true; }).map(function (step) {
+					var item = { action: step.action, durationMs: step.durationMs };
+					if (step.ok === false) item.ok = false;
+					return item;
+				});
+			}
+			if (details.production && details.production.status) {
+				compactDetails.production = { status: details.production.status };
+				if (details.production.dirty === true) compactDetails.production.dirty = true;
+				if (details.production.failure) compactDetails.production.failure = details.production.failure;
+			}
+			out.details = compactDetails;
+		}
+		if (value.acceptance) {
+			out.next = (out.next ? out.next + " " : "") +
+				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\").";
+		}
+		return out;
+	}
+
 	function compactDiagnosticCandidate(candidate) {
 		candidate = candidate || {};
 		var out = {};
@@ -3956,7 +4018,55 @@
 		} else {
 			out.next = "Saved. If code-run already proved the result, stop; otherwise use flow-test for one validation.";
 		}
+		if ((name === "code-promote" || name === "flow-code-promote") && value.ok !== false && !value.error && !fullResponse(request)) {
+			compactPromoteValue(value, out);
+		}
 		return out;
+	}
+
+	// A successful promotion answers its status, qname and revision: the registration stays when it failed or carries
+	// a note (session timeout, private Flow in the Studio), the formatting counters when the formatter changed lines.
+	// detail:"full" returns the summary of before (registration flags, inputs, files).
+	function compactPromoteValue(value, out) {
+		["name", "format", "draftCleared", "codeFile", "workingCodeFile", "officialCodeFile", "inputVariables", "inputDefinitions",
+			"responseDetail", "dboHasChanged", "dboBNew", "dboFlowSourceDirty", "dboVariableCount"].forEach(function (key) {
+			if (key !== "name" || out.qname) delete out[key];
+		});
+		if (!(Number(out.changedLines) > 0)) {
+			delete out.changedLines;
+			delete out.linted;
+		}
+		if (out.warnings && !out.warnings.length) delete out.warnings;
+		var registration = value.registration;
+		if (registration && typeof registration === "object") {
+			if (registrationFailed(registration)) {
+				out.registration = compactRegistration(registration);
+			} else {
+				var notes = {};
+				["sessionNote", "accessibilityNote"].forEach(function (key) {
+					if (registration[key]) notes[key] = registration[key];
+				});
+				if (Object.keys(notes).length) {
+					if (notes.sessionNote) {
+						notes.sessionsReset = registration.sessionsReset;
+						notes.httpSessionTimeout = registration.httpSessionTimeout;
+					}
+					out.registration = notes;
+				} else {
+					delete out.registration;
+				}
+			}
+		}
+		if (value.promoted && !out.fixes && !out.autoCorrected && !out.proposedPatch) {
+			out.next = "Saved. Stop if code-run already proved the result.";
+		}
+	}
+
+	function registrationFailed(registration) {
+		if (registration.requested === true && (registration.registered !== true || registration.saved === false)) return true;
+		if (registration.projectFlagLock && registration.projectFlagLock.acquired === false) return true;
+		var refresh = registration.studioRefresh;
+		return !!(refresh && /^(?:error|failed|failure)$/i.test(String(refresh.status || "")));
 	}
 
 	function argBool(value, fallback) {
@@ -4197,7 +4307,18 @@
 			}
 			schemaOut.schemaUpdatesHint = "Schema updates compacted by default. Pass includeSchemaUpdates=true only when full learned schemas are required.";
 		}
-			if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
+			if ((name === "flow-code-run" || name === "code-run") && value.ok !== false && !fullResponse(request)) {
+				// Compact by default: the result, the qname and the revision once, unsaved for a draft and a short next.
+				// The inputs echo, the name, and the unsaved warning (revision twice more) are in detail:"full".
+				var compactRun = mutableOut();
+				["name", "inputVariables", "inputDefinitions", "workingCopy", "draft", "responseDetail"].forEach(function (key) {
+					if (key !== "name" || compactRun.qname) delete compactRun[key];
+				});
+				if (value.draft === true) compactRun.unsaved = true;
+				compactRun.next = value.draft === true
+					? "UNSAVED DRAFT: if the result is right, call code-promote({project,qname,revision})."
+					: "Saved Flow passed. Stop unless another validation is asked.";
+			} else if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
 				var runOut = mutableOut();
 				if (value.draft === true) {
 					runOut.workingCopy = true;
@@ -4376,6 +4497,13 @@
 		return String(args.detail || args.mode || args.response || "").toLowerCase();
 	}
 
+	// detail:"full" (or "debug", includeFullResponse, fullResponse) returns every field of a compact-by-default answer.
+	function fullResponse(request) {
+		var args = toolArguments(request);
+		var detail = String(args.detail || args.response || "").toLowerCase();
+		return detail === "full" || detail === "debug" || argBool(args.includeFullResponse || args.fullResponse, false);
+	}
+
 	function wantsFullMutationResponse(request) {
 		var args = toolArguments(request);
 		var detail = responseDetail(request);
@@ -4518,6 +4646,12 @@
 		}
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
+		}
+		if (name === "flow-project-bootstrap") {
+			return compactBootstrapToolValue(request, value);
+		}
+		if (name === "frontend-svelte-action") {
+			return compactFrontendActionToolValue(request, value);
 		}
 		if ((name === "authoring-palette" || name === "frontend-svelte-palette") && value && typeof value === "object" &&
 				Object.prototype.toString.call(value.items) === "[object Array]" && responseDetail(request) !== "full") {

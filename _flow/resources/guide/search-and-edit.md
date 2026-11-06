@@ -59,8 +59,8 @@ libraries, fragments).
 4. For an executable Flow, `code-run` then `code-promote`; blocks and Flow
    Svelte sources are saved by `code-patch` itself. `code-promote` may omit
    `revision` to select and recheck the only current draft; an explicit stale
-   revision stays refused. `FLOW_CODE_UNSAVED_WORKING_COPY` gives the `qname`
-   and `revision` to resume.
+   revision stays refused. A `code-run` of a draft answers `unsaved:true` with
+   the `qname` and `revision` to resume.
 
 Backend writes keep the exact submitted text. Equivalent forms compile without
 rewriting. A guessed block name, key, positional call or lifted intermediate
