@@ -63,7 +63,8 @@ try {
 	// The proposal, in structuredContent and in the text
 	var refused = tool(2, "code-set", { name: "Report", code: intuitive });
 	var patch = refused.value.proposedPatch;
-	assert(refused.isError && patch && patch.edits.length === 11 && patch.revision === refused.value.revision && patch.threshold === 0.9,
+	// Math.pow and parseInt are expression functions of the engine: no edit for them
+	assert(refused.isError && patch && patch.edits.length === 9 && patch.revision === refused.value.revision && patch.threshold === 0.9,
 		"a refused code-set proposes one global patch: " + JSON.stringify(refused.value).substring(0, 1200));
 	assert(patch.edits.every(function (edit) {
 		return typeof edit.oldText === "string" && typeof edit.newText === "string" && typeof edit.line === "number" &&
@@ -71,13 +72,14 @@ try {
 	}), "each edit is { oldText, newText, line, confidence, reason, block }: " + JSON.stringify(patch.edits[0]));
 	assert(refused.text.indexOf("Proposed patch on revision " + patch.revision) !== -1 &&
 		refused.text.indexOf("line 7 (0.95): crypto.md5(local.payload) -> crypto.hash({ text: local.payload, algorithm: \"md5\" })") !== -1 &&
-		refused.text.indexOf("line 10 (0.7): parseInt(input.page) -> floor(Number(input.page)) — parseInt is not FlowScript") !== -1,
+		refused.text.indexOf("line 11 (0.75): text.replace(local.label, \"-\", \" \") -> text.replace({ text: local.label, search: \"-\", replacement: \" \" })") !== -1 &&
+		refused.text.indexOf("parseInt(input.page) ->") === -1 && refused.text.indexOf("Math.pow(input.a, 2) ->") === -1,
 		"the text lists the edits, with the reason of those below the threshold: " + refused.text);
 	assert(refused.value.next === patch.next && /code-patch edits with this revision/.test(patch.next), "next says how to apply it: " + refused.value.next);
 
 	// A compatibility flag never changes the authored source or applies a guess.
 	var auto = tool(3, "code-set", { name: "Report", code: intuitive, autoCorrect: true, revision: refused.value.revision });
-	assert(!auto.value.autoCorrected && auto.value.proposedPatch.edits.length===11,"all guesses remain proposals");
+	assert(!auto.value.autoCorrected && auto.value.proposedPatch.edits.length===9,"all guesses remain proposals");
 	var read=tool(30,"code-get",{name:"Report"});
 	assert(read.value.code===intuitive&&read.value.revision===refused.value.revision,"unchanged exact draft and revision");
 	assert(auto.text.indexOf("Auto-corrected")<0&&auto.text.indexOf("Proposed patch")>=0,"text describes suggestions only");

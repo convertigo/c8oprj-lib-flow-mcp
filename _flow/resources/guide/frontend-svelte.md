@@ -262,6 +262,7 @@ a pending preparation, never an unchanged active viewer.
    and `sourceFile`; it validates before the atomic write. Write target Pages
    before the Pages that navigate to them (`FRONTEND_NAVIGATE_PAGE_UNKNOWN`
    otherwise). A new Page has no revision; existing Pages use theirs.
+   The home Page `flow-project-bootstrap(ui:true)` created exists: pass its `frontbuilderModelRevision`.
 3. For later changes, `code-rg({ project, kind:"source", pattern })`: a unique
    match carries the `sourceFile` and `revision` for the smallest
    `code-patch`. Use a bounded `code-get` range only when context is missing.
@@ -419,6 +420,7 @@ than `Text`, `Card` and classes:
 | --- | --- |
 | Frame, in the root Layout | `AppShell`: `Navigation` (one `LinkButton page=` per Page, the current one highlighted), `Tools` (logout `Button variant="ghost" size="sm"`, `DisplayModeControl`), `Children` > `PageContent` |
 | Top of a Page | `PageHeader` `title`, `description`, `eyebrow`, its commands in `Tools` |
+| Title of a Page alone | `Heading level="1"` (one `<h1>`; `Heading` is level 2 by default, `Text variant="title"` is a paragraph) |
 | Key figures | `GridLayout minColumnWidth="200px"` > `StatCard` `label`, `value`, `tone`, `hint`, `page` |
 | Records | `DataTable`: `caption`, `columns` (`format` date, number, badge with `labels` and `tones`; `template` "{first} {last}"; `emphasis`), `rowActions`, `pageSize`, `locale`, an `emptyText` |
 | A status | `StatusBadge` `value` and `options` `[{ value, label, tone }]` |

@@ -2,6 +2,25 @@
 
 Backend FlowScript: the source dialect with verified examples, then the write, run, promote and schema loop.
 
+## Expressions in short
+
+A condition, a value or an expression property is a small JavaScript subset; anything else is a block.
+
+- **Values:** `input.*`, `config.*`, `local.*`, `result.*`, `current`, literals, `[a, b]`, `{ key: value }`,
+  template literals, `true`, `false`, `null`, `undefined`, `Infinity`, `NaN`, `Math.PI`, `Math.E`.
+- **Operators:** `+ - * / %`, `== != === !==`, `< <= > >=`, `&& || !`, `?:`, `??`, `typeof`, `value[key]`.
+- **Functions:** `round(x, digits)`, `floor`, `ceil`, `abs`, `min`, `max`, `parseInt(text, 10)`, `parseFloat`,
+  `isNaN`, `isFinite`, `Number(x)`, `String(x)`, `Number.isInteger`, `Number.isFinite`, `Number.isNaN`, the pure
+  `Math.*` functions (`sqrt`, `pow`, `trunc`, `sign`, `hypot`, `log`, `log2`, `log10`, `exp`, `sin`, `atan2`...),
+  `lower`, `upper`, `trim`, `contains`, `startsWith`, `endsWith`, `length`, `default(x, fallback)`, `json(x)`,
+  `oneOf`, `overlaps`, `Array.isArray`.
+- **Methods:** text `trim`, `toLowerCase`, `includes`, `split`, `replace`/`replaceAll` (text patterns), `slice`,
+  `padStart`...; lists `includes`, `indexOf`, `slice`, `join`, `at`, `length`; numbers `toFixed`.
+- **Refused, with the block to write instead:** a regular expression literal (`text.match({ text, pattern:
+  "^[0-9]+$" })`, then `.matched`), a JavaScript `while`, `for` or `do` loop (the `while` and `forEach` blocks,
+  below), `Math.random` (`crypto.random`), `Date.now` (`date.now`), `JSON.*` and `Object.*` (`json.*`, `object.*`),
+  `push` on a list (`json.push`).
+
 ## A complete Flow
 
 ```javascript
@@ -84,7 +103,8 @@ function Greeting({ input, config, result }) {
   `charAt`, `concat`, `repeat`; lists `includes`, `indexOf`, `slice`, `join`,
   `concat`, `at`, `length`; numbers `toFixed`. Numbers also have `%` and the
   functions `round(x, digits)`, `floor`, `ceil`, `abs`, `min`, `max`, written
-  `Math.floor(...)` too: `local.pages = Math.ceil(input.total / input.size)`.
+  `Math.floor(...)` too: `local.pages = Math.ceil(input.total / input.size)`,
+  and the other functions of "Expressions in short" (`parseInt(text, 10)`, `Math.sqrt(n)`...).
   Anything else is a block (`list.filter`, `list.map`, `list.sort`...).
 - **Dates** use the `date.*` blocks, in a Flow and in Svelte actions alike
   (same contract on the server and in the browser): `date.today`,
@@ -156,6 +176,12 @@ if (local.rows.length == 0) {
 }
 result.rows = local.rows
 ```
+
+A loop that is not over a list is the `while` block:
+`while({ condition: local.d * local.d <= local.n, maxIterations: 100000, $$nodes() { ... } })`.
+`maxIterations` is 1000 when omitted (1 to 1000000): a condition still true after it stops the run with
+`WHILE_ITERATION_LIMIT`, so set it to the largest count the input allows; `timeoutMs` is 60000 (at most 600000).
+A JavaScript `while`, `for` or `do` loop is refused at its line (`FLOWSCRIPT_LOOP_UNSUPPORTED`).
 
 A slot (`$$then`, `$$else`, `$$nodes`, `$$try`, `$$catch`) takes a function
 body. The method form `$$then() { ... }` and an arrow function with a block
