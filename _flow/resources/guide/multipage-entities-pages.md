@@ -125,7 +125,7 @@ const _flow = { sourceVersion: 2, accessibility: "hidden", authenticatedContextR
 function ExportBookings({ input, config, result }) {
   local.page = entity.list({ entity: "Reservation", checkAccess: true, options: { limit: 200, orderBy: "id" } })
   if (local.page.hasMore) {
-    throw { code: "EXPORT_LIMIT", message: "Narrow the export below 201 rows", status: 413 }
+    throw { code: "EXPORT_LIMIT", message: "Narrow the export below 201 rows" }
   }
   local.rows = list.map({
     items: local.page.rows,
@@ -207,7 +207,7 @@ CSV perimeter/formulas/dates/limits, job off/on/replay, journal contents and
 rollback, and logout with the old cookie. A page guard complements server checks.
 Use `frontend-svelte-action` dev.open, then one relayed verifier for the roles;
 a successful build or HTTP 200 alone is not interaction proof. Sign-in errors
-may have HTTP 200 with a Flow error: show `Status`, not only a result field.
+return HTTP 200 with an `error` envelope: show `Status`, not only a result field.
 
 Keep sources in Git and runtime data out. Run `flow-block-mock-list`, build with
 `frontend-svelte-action` build, try the published URL, and run

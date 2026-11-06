@@ -2,7 +2,7 @@
  {
   "family": "authoring",
   "old": "It requires a target Flow, not just a project.",
-  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` (400) before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message, status: 400 }`."
+  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status`."
  },
  {
   "family": "entities",
@@ -148,5 +148,312 @@
   "family": "frontend-svelte",
   "old": "5. For a freshly bootstrapped UI project, `dev.ensure` right after bootstrap\n   lets npm initialize while you author; Vite and the Studio viewer open when\n   setup completes. Call `dev.sync` once after the final repair pass; use\n   `dev.open` only to reveal an already running viewer.",
   "new": "5. The UI bootstrap prepares the dev server while you author (existing backend\n   included); keep it: the first `dev.ensure` then answers at once.\n   `devStart:false` remains available when you choose to refuse preparation,\n   such as for a backend-only check. Vite starts after setup without opening\n   a viewer. Call `dev.sync` once after the final repair pass; use `dev.open`\n   to reveal the running viewer."
+ },
+ {
+  "family": "authoring",
+  "old": "throw { code: \"NAME_REQUIRED\", message: \"name is required\", status: 400 }",
+  "new": "throw { code: \"NAME_REQUIRED\", message: \"name is required\" }"
+ },
+ {
+  "family": "authoring",
+  "old": "`throw { code: \"INVALID\", message: \"Invalid input\", status: 400 }`.",
+  "new": "`throw { code: \"INVALID\", message: \"Invalid input\" }`."
+ },
+ {
+  "family": "authoring",
+  "old": "resource or parameter, failed dependency), with a `status` when one fits:",
+  "new": "resource or parameter, failed dependency):"
+ },
+ {
+  "family": "authoring",
+  "old": "catch reads `local.failure.code` / `.message` / `.status`.",
+  "new": "catch reads `local.failure.code` / `.message`."
+ },
+ {
+  "family": "crud",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Role denied\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Role denied\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"LIVRE_INDISPONIBLE\", message: \"Livre déjà emprunté\", status: 409 }",
+  "new": "throw { code: \"LIVRE_INDISPONIBLE\", message: \"Livre déjà emprunté\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"PRET_DEJA_RENDU\", message: \"Prêt déjà rendu\", status: 409 }",
+  "new": "throw { code: \"PRET_DEJA_RENDU\", message: \"Prêt déjà rendu\" }"
+ },
+ {
+  "family": "entities",
+  "old": "Other dialects return `ENTITY_DIALECT_UNQUALIFIED` / 400 before data bootstrap.",
+  "new": "Other dialects return `ENTITY_DIALECT_UNQUALIFIED` before data bootstrap."
+ },
+ {
+  "family": "entities",
+  "old": "`ENTITY_SCHEMA_MISSING` / 403 invites the administrator to fix the database.",
+  "new": "`ENTITY_SCHEMA_MISSING` invites the administrator to fix the database."
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"UNAUTHENTICATED\", message: \"Sign in first\", status: 401 }",
+  "new": "throw { code: \"UNAUTHENTICATED\", message: \"Sign in first\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Active account required\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Active account required\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"DEMO_LOGIN_DISABLED\", message: \"Demo sign-in is disabled\", status: 403 }",
+  "new": "throw { code: \"DEMO_LOGIN_DISABLED\", message: \"Demo sign-in is disabled\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Demo account required\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Demo account required\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"TOO_MANY_ROWS\", message: \"Narrow the filter\", status: 413 }",
+  "new": "throw { code: \"TOO_MANY_ROWS\", message: \"Narrow the filter\" }"
+ },
+ {
+  "family": "entities",
+  "old": "ENTITY_SCHEMA_MISSING / 403 without the DDL plan; see Backend preview boundary.",
+  "new": "ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary."
+ },
+ {
+  "family": "entities",
+  "old": "`{code,message,status}` denies. Return `{scope:{field:value}}` to add **typed",
+  "new": "`{code,message}` denies. Return `{scope:{field:value}}` to add **typed"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Invalid access request.\", status: 403 }",
+  "new": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Invalid access request.\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ENTITY_UNAUTHENTICATED\", message: \"Sign in to read entities.\", status: 401 }",
+  "new": "throw { code: \"ENTITY_UNAUTHENTICATED\", message: \"Sign in to read entities.\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Writes are disabled by the application policy.\", status: 403 }",
+  "new": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Writes are disabled by the application policy.\" }"
+ },
+ {
+  "family": "entities",
+  "old": "`ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.",
+  "new": "`ENTITY_OPERATION_UNKNOWN`. Administrative primitives stay separate."
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Signed-in reads only\", status: 403 }",
+  "new": "throw { code: \"ENTITY_FORBIDDEN\", message: \"Signed-in reads only\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"VALIDATION_FAILED\", message: \"Title, room and dates required\", status: 400 }",
+  "new": "throw { code: \"VALIDATION_FAILED\", message: \"Title, room and dates required\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ENTITY_SCHEMA_MISSING\", message: local.failure.message, status: 403 }",
+  "new": "throw { code: \"ENTITY_SCHEMA_MISSING\", message: local.failure.message }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"VALIDATION_FAILED\", message: local.failure.message, status: 400 }",
+  "new": "throw { code: \"VALIDATION_FAILED\", message: local.failure.message }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"REVISION_CONFLICT\", message: \"Reload before saving\", status: 409 }",
+  "new": "throw { code: \"REVISION_CONFLICT\", message: \"Reload before saving\" }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"BOOKING_WINDOW_CONFLICT\", message: local.failure.message, status: 409 }",
+  "new": "throw { code: \"BOOKING_WINDOW_CONFLICT\", message: local.failure.message }"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"ROOM_ALREADY_BOOKED\", message: local.failure.message, status: 409 }\n      }\n      throw { code: \"BOOKING_FAILED\", message: \"Booking service unavailable\", status: 500 }",
+  "new": "throw { code: \"ROOM_ALREADY_BOOKED\", message: local.failure.message }\n      }\n      throw { code: \"BOOKING_FAILED\", message: \"Booking service unavailable\" }"
+ },
+ {
+  "family": "entities",
+  "old": "For an imposed business 409, set `Reservation.hooks.beforeSave` to",
+  "new": "For an imposed business error code, set `Reservation.hooks.beforeSave` to"
+ },
+ {
+  "family": "entities",
+  "old": "detailed recipe's locked overlap check. Its code/status reach the Flow unchanged:",
+  "new": "detailed recipe's locked overlap check. Its code reaches the Flow unchanged:"
+ },
+ {
+  "family": "entities",
+  "old": "throw { code: \"BOOKING_WINDOW_CONFLICT\", message: \"End must follow start\", status: 409 }",
+  "new": "throw { code: \"BOOKING_WINDOW_CONFLICT\", message: \"End must follow start\" }"
+ },
+ {
+  "family": "entities",
+  "old": "| ENTITY_UNAUTHENTICATED / 401 | UNAUTHENTICATED / 401 | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |\n| ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION / 403 | FORBIDDEN / 403 | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |\n| ENTITY_NOT_FOUND / 404 (also outside Possédé) | FORBIDDEN / 403 | Convert in catch, uniformly for absent and hidden rows; keep 404 if required instead. |\n| ENTITY_SCHEMA_MISSING / 403 | ENTITY_SCHEMA_MISSING / 403 | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |\n| ENTITY_VALIDATION / 422 | VALIDATION_FAILED / 400 | Validate inputs before save; convert remaining model validation in catch. |\n| ENTITY_CONFLICT / 409 | REVISION_CONFLICT / 409 | Convert in catch; reload, do not blindly retry. |\n| Your hook's code/status | BOOKING_WINDOW_CONFLICT / 409 | Throw in the hook; preserve that literal code/status in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED / 409. |",
+  "new": "| ENTITY_UNAUTHENTICATED | UNAUTHENTICATED | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |\n| ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION | FORBIDDEN | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |\n| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |\n| ENTITY_SCHEMA_MISSING | ENTITY_SCHEMA_MISSING | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |\n| ENTITY_VALIDATION | VALIDATION_FAILED | Validate inputs before save; convert remaining model validation in catch. |\n| ENTITY_CONFLICT | REVISION_CONFLICT | Convert in catch; reload, do not blindly retry. |\n| Your hook's code | BOOKING_WINDOW_CONFLICT | Throw in the hook; preserve that literal code in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED. |"
+ },
+ {
+  "family": "entities",
+  "old": "not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED / 500",
+  "new": "not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED"
+ },
+ {
+  "family": "entities",
+  "old": "A thrown error interrupts the Flow: HTTP status is its `status`, JSON contains\n`error.code`, `error.message`, `error.status`, and no success result. Use",
+  "new": "A thrown error interrupts the Flow: the requester answers with HTTP 200 and\nthe JSON envelope contains `error.code` and `error.message`, with no success result. Use"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Booking role required\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Booking role required\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Directory or audit unavailable\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Directory or audit unavailable\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"FORBIDDEN\", message: \"Manager action required\", status: 403 }",
+  "new": "throw { code: \"FORBIDDEN\", message: \"Manager action required\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"BOOKING_DATES_INVALID\", message: \"End must follow start\", status: 422 }",
+  "new": "throw { code: \"BOOKING_DATES_INVALID\", message: \"End must follow start\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"ROOM_NOT_FOUND\", message: \"Choose an existing room\", status: 422 }",
+  "new": "throw { code: \"ROOM_NOT_FOUND\", message: \"Choose an existing room\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"BOOKING_OVERLAP\", message: \"This room is already booked\", status: 422 }",
+  "new": "throw { code: \"BOOKING_OVERLAP\", message: \"This room is already booked\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"EXPORT_LIMIT\", message: \"Narrow the export below 201 rows\", status: 413 }",
+  "new": "throw { code: \"EXPORT_LIMIT\", message: \"Narrow the export below 201 rows\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"DEMO_RESET_DISABLED\", message: \"Demo reset is disabled\", status: 403 }",
+  "new": "throw { code: \"DEMO_RESET_DISABLED\", message: \"Demo reset is disabled\" }"
+ },
+ {
+  "family": "multipage-roles",
+  "file": "multipage-roles.md",
+  "currentOnly": true,
+  "old": "required\" }`: a `CallSequence` fails on it as on any error, but a client that\ntests the status, or wants the code of the application, needs the Flow to check\nthe user itself and `throw({ code, message, status: 401 })`. Write these names in lowercase in",
+  "new": "required\" }`: a `CallSequence` fails on it as on any error. If a client needs\nan application-specific code, the Flow must check\nthe user itself and `throw({ code, message })`. Write these names in lowercase in"
+ },
+ {
+  "family": "multipage-roles",
+  "file": "multipage-roles.md",
+  "currentOnly": true,
+  "old": "and the rights. When the called Flow throws (401 for an anonymous user, 403\nfor a role refused), `requestable.call` fails with that code, message and\nstatus, and the calling Flow stops there: no extra check is needed. Catch it",
+  "new": "and the rights. When the called Flow throws (UNAUTHENTICATED for an anonymous\nuser, FORBIDDEN for a refused role), `requestable.call` fails with that code and\nmessage, and the calling Flow stops there: no extra check is needed. Catch it"
+ },
+ {
+  "family": "rhino-block-api",
+  "file": "rhino-block-api.md",
+  "currentOnly": true,
+  "old": "- `ctx.throwFlow({ code, message, status, details, hint }, node)`: raises a",
+  "new": "- `ctx.throwFlow({ code, message, details, hint }, node)`: raises a"
+ },
+ {
+  "family": "start",
+  "old": "- `throw { code, message, status }` what must interrupt the caller: the",
+  "new": "- `throw { code, message }` what must interrupt the caller: the"
+ },
+ {
+  "family": "start",
+  "old": "An imposed HTTP contract (Flow names, error codes/statuses, JSON keys) keeps",
+  "new": "An imposed HTTP contract (Flow names, error codes, JSON keys) keeps"
+ },
+ {
+  "family": "authoring",
+  "file": "authoring.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/authoring-data` (7.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring-data` (7.1 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+ },
+ {
+  "family": "crud",
+  "file": "crud.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/crud-business` (14.2 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |",
+  "new": "| `flow://guide/crud-business` (14.1 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (6.2 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-auth` (5.5 KB) | sign-in, session, actor provider |",
+  "new": "| `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "throw { code: \"UNAUTHENTICATED\", message: \"Sign in first\", status: 401 }",
+  "new": "throw { code: \"UNAUTHENTICATED\", message: \"Sign in first\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "file": "multipage-entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |"
+ },
+ {
+  "family": "multipage-roles",
+  "file": "multipage-roles.md",
+  "currentOnly": true,
+  "old": "throw { code: \"DEMO_LOGIN_DISABLED\", message: \"Demo sign-in is disabled\", status: 403 }",
+  "new": "throw { code: \"DEMO_LOGIN_DISABLED\", message: \"Demo sign-in is disabled\" }"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.6 KB) |",
+  "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.5 KB) |"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.4 KB), then `flow://guide/multipage-entities` (11.7 KB) |",
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.2 KB), then `flow://guide/multipage-entities` (11.7 KB) |"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "may have HTTP 200 with a Flow error: show `Status`, not only a result field.",
+  "new": "return HTTP 200 with an `error` envelope: show `Status`, not only a result field."
  }
 ]

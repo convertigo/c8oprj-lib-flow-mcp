@@ -10,12 +10,12 @@ Direct SQL and generated CRUD require one.
 
 | Task | Read |
 | --- | --- |
-| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.6 KB) |
+| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.5 KB) |
 | Unclear syntax: two real samples | `flow://guide/samples` (2.1 KB) |
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` (8.5 KB) |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (3.9 KB) |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
-| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.4 KB), then `flow://guide/multipage-entities` (11.7 KB) |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.2 KB), then `flow://guide/multipage-entities` (11.7 KB) |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (7.6 KB) |
@@ -26,7 +26,7 @@ Direct SQL and generated CRUD require one.
 | Ordered tags and named project configurations | `flow://guide/tags` (4.4 KB) |
 | Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (10.8 KB) |
 
-An imposed HTTP contract (Flow names, error codes/statuses, JSON keys) keeps
+An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
 
 Read each guide once. Use `resources/read`, or

@@ -18,7 +18,7 @@ payload, user, roles?}`. `user` is exclusively the authenticated server session;
 `roles`, when requested, comes exclusively from the configured actor provider.
 Client `user`, `roles`, `write`, `scope`, `project` and `checkAccess` have no
 control over authorization. Normal termination allows; throw
-`{code,message,status}` denies. Return `{scope:{field:value}}` to add **typed
+`{code,message}` denies. Return `{scope:{field:value}}` to add **typed
 stored-field equalities**. No predicate language: client filters/search are
 ANDed with scope, also for count, options, relation validation and labels.
 Creation imposes scope values over forged input. Updates, including hook writes,
@@ -35,7 +35,7 @@ const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:
 function block({ input, config, result }) {
   // The request of the operation is an object: anything else is refused.
   if (!input.request || typeof input.request !== "object") {
-    throw { code: "ENTITY_FORBIDDEN", message: "Invalid access request.", status: 403 }
+    throw { code: "ENTITY_FORBIDDEN", message: "Invalid access request." }
   }
   // Entities readable without sign-in: for example ["Room"], or ["*"].
   local.publicRead = []
@@ -43,7 +43,7 @@ function block({ input, config, result }) {
     return {}
   }
   if (!input.request.user) {
-    throw { code: "ENTITY_UNAUTHENTICATED", message: "Sign in to read entities.", status: 401 }
+    throw { code: "ENTITY_UNAUTHENTICATED", message: "Sign in to read entities." }
   }
   // Rows per role, for reads and writes: ADMIN every ticket, SUPPORT the tickets assigned
   // to it, anyone else the tickets they requested (creation imposes requesterId).
@@ -59,7 +59,7 @@ function block({ input, config, result }) {
   //   return { scope: { requesterId: input.request.user } }
   // }
   if (input.request.write) {
-    throw { code: "ENTITY_FORBIDDEN", message: "Writes are disabled by the application policy.", status: 403 }
+    throw { code: "ENTITY_FORBIDDEN", message: "Writes are disabled by the application policy." }
   }
   return {}
 }
@@ -85,7 +85,7 @@ The closed read operations are `list`, `read`, `count`, `options`, `describe`;
 writes are `create`, `update`, `delete`. `save` is classified by its supplied
 identity (update requires an existing row; never upsert), never by client
 `write`. Unknown operations, `initialize` and `demoReset` return
-`ENTITY_OPERATION_UNKNOWN` / 400. Administrative primitives stay separate.
+`ENTITY_OPERATION_UNKNOWN`. Administrative primitives stay separate.
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 `describe.permissions` evaluates create/update/delete, including an additional
 authorization slot, without hooks or mutation;

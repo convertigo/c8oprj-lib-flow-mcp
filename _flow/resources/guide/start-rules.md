@@ -68,7 +68,7 @@ Generated output (`_private/svelte`, `DisplayObjects/mobile`) is never edited.
   ran it for an anonymous call): prove access control with a session that is
   not an administrator. Exploration, authoring, test and
   qualification Flows are always private.
-- `throw { code, message, status }` what must interrupt the caller: the
+- `throw { code, message }` what must interrupt the caller: the
   answer is the error alone and a frontend call fails and stops its chain.
   Return a normal result (`ok: false` with a reason) for an outcome the caller
   handles, such as a wrong password or nothing found.

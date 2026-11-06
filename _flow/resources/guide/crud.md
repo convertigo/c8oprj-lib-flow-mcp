@@ -186,4 +186,4 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 | Sub-guide (size) | Read it |
 | --- | --- |
 | `flow://guide/crud-modes` (5.3 KB) | choosing `generate` (full, data, flows) and entities with business rules |
-| `flow://guide/crud-business` (14.2 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |
+| `flow://guide/crud-business` (14.1 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |

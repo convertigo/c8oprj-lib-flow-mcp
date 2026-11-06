@@ -24,7 +24,7 @@ local.page = entity.list({
   options: { limit: 200, filter: { equipmentId: input.equipmentId } },
 })
 if (local.page.hasMore) {
-  throw { code: "TOO_MANY_ROWS", message: "Narrow the filter", status: 413 }
+  throw { code: "TOO_MANY_ROWS", message: "Narrow the filter" }
 }
 result.tickets = local.page.rows
 ```
@@ -47,7 +47,7 @@ or a library demo switch.** The application protects any public caller. Private
 Convertigo code has no internal ACL. The configured database account and its
 DDL/DML grants are the production boundary; use a secret password symbol and
 a restricted account, not root. Missing CREATE rights return a clear
-ENTITY_SCHEMA_MISSING / 403 without the DDL plan; see Backend preview boundary.
+ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.
 
 Declare `demo: {dataFile: "_flow/resources/entities/demo.json"}` in the model.
 The JSON seed maps entity names to rows using **field names**, not SQL columns;

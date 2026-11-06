@@ -70,12 +70,12 @@ const _meta = {
 function block({ input, config, result }) {
   local.user = session.authenticatedUser({})
   if (!local.user) {
-    throw { code: "UNAUTHENTICATED", message: "Sign in first", status: 401 }
+    throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
   local.accounts = sql.query({ query: "actorBySession", parameters: { user: local.user }, limit: 1 })
   local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
   if (!local.account || !local.account.role) {
-    throw { code: "FORBIDDEN", message: "Active account required", status: 403 }
+    throw { code: "FORBIDDEN", message: "Active account required" }
   }
   return { user: local.account.user, roles: [local.account.role] }
 }
@@ -95,12 +95,12 @@ const _flow = { sourceVersion: 2, accessibility: "hidden", inputs: { account: { 
 
 function DemoLogin({ input, config, result }) {
   if (String(config.demo.login) !== "true") {
-    throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled", status: 403 }
+    throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled" }
   }
   local.accounts = sql.query({ query: "demoAccount", parameters: { user: input.account }, limit: 1 })
   local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
   if (!local.account) {
-    throw { code: "FORBIDDEN", message: "Demo account required", status: 403 }
+    throw { code: "FORBIDDEN", message: "Demo account required" }
   }
   session.authenticate({ user: local.account.user })
   local.actor = app.actor({})

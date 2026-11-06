@@ -10,6 +10,10 @@ const root = path.resolve(__dirname, '..');
 const guideDir = path.join(root, '_flow/resources/guide');
 const before = path.join(__dirname, 'fixtures/guides-938fc6a');
 const rewrites = JSON.parse(fs.readFileSync(path.join(before, 'rewrites.json'), 'utf8'));
+for (const rewrite of rewrites.filter(item => item.currentOnly)) {
+  const current = fs.readFileSync(path.join(root, '_flow/resources/guide', rewrite.file), 'utf8');
+  assert.ok(current.replace(/\s+/g, ' ').includes(rewrite.new.replace(/\s+/g, ' ')), `${rewrite.file}: current-only rewrite missing`);
+}
 const { stale, guides, LIMIT } = require(path.join(root, 'tools/guide-sizes.cjs'));
 
 const families = {
@@ -59,7 +63,7 @@ for (const [entry, family] of Object.entries(families)) {
 
   // Paragraphs: every former paragraph (title and one-line description excepted) is served whole by the family.
   let previous = normalize(original);
-  for (const rewrite of rewrites.filter(item => item.family === entry)) {
+  for (const rewrite of rewrites.filter(item => item.family === entry && !item.currentOnly)) {
     const old = normalize(rewrite.old);
     assert.ok(previous.includes(old), `${entry}: rewrite source not found: ${rewrite.old}`);
     previous = previous.split(old).join(normalize(rewrite.new));
@@ -69,7 +73,7 @@ for (const [entry, family] of Object.entries(families)) {
   const paragraphs = original.split(/\n[ \t]*\n/).map(normalize).filter(Boolean)
     .filter(text => text !== normalize(lines[0]) && text !== normalize(lines[2]) && !/^#{2,3} /.test(text));
   for (let paragraph of paragraphs) {
-    for (const rewrite of rewrites.filter(item => item.family === entry)) {
+    for (const rewrite of rewrites.filter(item => item.family === entry && !item.currentOnly)) {
       paragraph = paragraph.split(normalize(rewrite.old)).join(normalize(rewrite.new));
     }
     assert.ok(union.includes(paragraph), `${entry}: paragraph lost or changed:\n${paragraph.slice(0, 300)}`);
