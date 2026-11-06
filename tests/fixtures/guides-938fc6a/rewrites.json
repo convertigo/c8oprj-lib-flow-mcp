@@ -103,5 +103,25 @@
   "family": "fullstack-paperboard",
   "old": "`flow://guide/frontend-svelte`) instead of duplicating markup and action",
   "new": "`flow://guide/frontend-svelte-components`) instead of duplicating markup and action"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Use `browser-verify` with `checks` for one visual check of the current page,\nand a Playwright evaluation",
+  "new": "When your tool list offers it, use `browser-verify` with `checks` for one\nvisual check of the current page, otherwise one screenshot through the\nPlaywright of your host, and a Playwright evaluation"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "Before handing a frontend over, have the verifier or `browser-verify` apply the\nvisual checklist, passed as `checks` (light and dark, 1366px and 390px wide):",
+  "new": "Before handing a frontend over, when your tool list offers it, have the\nverifier or `browser-verify` apply the visual checklist, passed as `checks`,\notherwise one screenshot through the Playwright of your host per case (light\nand dark, 1366px and 390px wide):"
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "one visual check through `browser-verify`;",
+  "new": "one visual check through `browser-verify` when listed,\n      otherwise one screenshot through the Playwright of your host;"
+ },
+ {
+  "family": "start",
+  "old": "`tools-more({name, arguments})`; `tools-more({})` lists them.",
+  "new": "`tools-more({name:\"flow-resource-patch\", arguments:{...}})`; `tools-more({})`\n  lists them, `tools-more({name})` gives one input schema. `browser-verify`\n  and `subagent-run` are not among them: without them in your list, prove\n  pages with the browser tools of your host (Playwright)."
  }
 ]
