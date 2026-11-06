@@ -3431,6 +3431,15 @@
 			}
 			source = readUtf8(engineFile);
 		}
+		// A JSON engine.yaml (the bootstrap keeps that form) is read as JSON.
+		if (/^\s*\{/.test(source)) {
+			try {
+				var parsed = JSON.parse(source), builders = parsed && parsed.config && parsed.config.frontbuilder || {};
+				var builder = builders[String(builderName || "svelte")] || {};
+				return builder.modelPath ? String(builder.modelPath) : "";
+			} catch (_ignoreJsonEngine) {
+			}
+		}
 		var builderSafe = safeFileName(builderName || "svelte");
 		var lines = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
 		var builderLine = -1;
@@ -3500,10 +3509,48 @@
 		var projectRoot = args.projectDir ? new File(String(args.projectDir)).getCanonicalFile() : null;
 		var modelPath = frontendBuilderModelPath(projectRoot, args.builder || "svelte", args.engineSource);
 		if (!modelPath) {
-			throw new Error(name + " requires sourceFile or config.frontbuilder.svelte.modelPath.");
+			// Without a configured page, the one page source of the project, else the exact call to make.
+			var pages = frontendPageSources(projectRoot, args.builder || "svelte", args.frontendSourceDrafts);
+			if (pages.length === 1) {
+				args.sourceFile = pages[0];
+				return args;
+			}
+			var project = JSON.stringify(String(args.project || (projectRoot ? projectRoot.getName() : "<project>")));
+			var error = new Error(name + " needs sourceFile: " + (pages.length ? "this project has " + pages.length + " page sources" : "this project has no Svelte frontend yet") + ".");
+			error.code = "FRONTEND_SOURCE_REQUIRED";
+			error.hint = pages.length
+				? "Pass sourceFile, one of: " + pages.join(", ") + "."
+				: "Create the frontend and its first page with flow-project-bootstrap({project:" + project + ", ui:true}), then call " + name.replace(/^frontend-svelte-/, "") + " again.";
+			error.details = { sources: pages };
+			throw error;
 		}
 		args.sourceFile = modelPath;
 		return args;
+	}
+
+	// The page sources (+page.flow.svelte) of a project, saved or in the working copies, relative to the project.
+	function frontendPageSources(projectRoot, builderName, drafts) {
+		var found = {};
+		if (!projectRoot) {
+			return [];
+		}
+		var modelDir = new File(projectRoot, "_flow/frontbuilder/" + safeFileName(builderName || "svelte") + "/model");
+		(function walk(dir, depth) {
+			var files = depth < 12 && dir.isDirectory() ? dir.listFiles() : null;
+			for (var i = 0; files && i < files.length; i++) {
+				var fileName = String(files[i].getName());
+				if (files[i].isDirectory()) {
+					if (fileName !== "node_modules" && fileName.charAt(0) !== ".") walk(files[i], depth + 1);
+				} else if (fileName === "+page.flow.svelte") {
+					found[relativeProjectPath(projectRoot, files[i])] = true;
+				}
+			}
+		})(modelDir, 0);
+		Object.keys(drafts || {}).forEach(function (path) {
+			var relative = relativeProjectPath(projectRoot, new File(path));
+			if (/^_flow\/frontbuilder\/[^/]+\/model\/.*\+page\.flow\.svelte$/.test(relative)) found[relative] = true;
+		});
+		return Object.keys(found).sort();
 	}
 
 	function safeFileName(value) {
@@ -4211,9 +4258,13 @@
 				out[key] = value[key];
 			}
 		});
-			if (value.draft === true || value.workingCopy === true) {
+			// A missing working copy is not an unsaved one.
+			if ((value.draft === true || value.workingCopy === true) && !(value.error && value.error.code === "FLOW_CODE_DRAFT_MISSING")) {
 				out.workingCopy = true;
 				out.unsaved = true;
+			}
+			if (value.note && /promote$/.test(name)) {
+				out.note = value.note;
 			}
 		// Corrections are an audit trail, never a lossy preview. Keep the full
 		// source and every before/after even in the default compact response.
@@ -4283,6 +4334,8 @@
 		out.responseDetail = "summary";
 		if (value.ok === false && value.proposedPatch && value.proposedPatch.edits && value.proposedPatch.edits.length) {
 			out.next = value.proposedPatch.next;
+		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_MISSING" && out.error.hint) {
+			out.next = out.error.hint;
 		} else if (value.ok === false && out.error && out.error.code === "FLOW_CODE_DRAFT_REVISION_MISMATCH" && out.error.details && out.error.details.copySlip === true) {
 			// The engine recognized a mistyped copy of the current revision: nothing changed, no review is needed.
 			out.next = /promote$/.test(name)
