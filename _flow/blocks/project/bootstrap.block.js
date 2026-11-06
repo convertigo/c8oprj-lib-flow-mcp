@@ -26,7 +26,7 @@ const _meta = {
       "kind": "literal",
       "type": "boolean",
       "default": true,
-      "description": "With ui:true, start Svelte dev preparation in the background after saving. Set false to skip this startup.",
+      "description": "With ui:true, prepare the Svelte dev server in the background after saving (existing backend included), so the first dev.ensure answers at once. Set false when you choose to refuse preparation, such as for a backend-only check.",
     },
     "references": {
       "kind": "literal",

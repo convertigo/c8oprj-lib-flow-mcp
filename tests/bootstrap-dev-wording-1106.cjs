@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const guide = fs.readFileSync(path.join(root, '_flow/resources/guide/frontend-svelte.md'), 'utf8');
+const tool = fs.readFileSync(path.join(root, '_flow/blocks/project/bootstrap.block.js'), 'utf8');
+assert.match(guide, /existing backend\s+included/);
+assert.match(guide, /first `dev\.ensure` then answers at once/);
+assert.match(guide, /`devStart:false`[\s\S]*?backend-only check/);
+assert.match(guide, /you choose to refuse preparation/);
+assert.doesNotMatch(guide, /skip the early `dev\.ensure`/);
+assert.match(tool, /existing backend included/);
+assert.match(tool, /choose to refuse preparation/);
+console.log('bootstrap-dev-wording-1106 OK');

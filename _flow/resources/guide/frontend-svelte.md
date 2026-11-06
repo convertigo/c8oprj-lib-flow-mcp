@@ -69,9 +69,11 @@ a pending preparation, never an unchanged active viewer.
 4. Use one targeted palette lookup only when the contract lacks a block,
    property or schema path, and a focused tree only when a source target is
    genuinely unknown. Apply returned picker mutations unchanged.
-5. A fresh UI bootstrap starts dev preparation while you author; pass
-   `devStart:false` to opt out and skip the early `dev.ensure`. By default,
-   Vite starts after setup without opening a viewer. Call `dev.sync` once
+5. The UI bootstrap prepares the dev server while you author (existing backend
+   included); keep it: the first `dev.ensure` then answers at once.
+   `devStart:false` remains available when you choose to refuse preparation,
+   such as for a backend-only check. Vite starts after setup without opening
+   a viewer. Call `dev.sync` once
    after the final repair pass; use `dev.open` to reveal the running viewer.
 6. `flow-app-progress` is optional on the fast path; add `qname` only when a
    real backend Flow is part of the application. Prove the requested visible
