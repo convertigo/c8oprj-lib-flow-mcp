@@ -47,6 +47,56 @@ const _meta = {
     if (!project) fail("UNKNOWN_PROJECT", "Unknown project: " + name);
     return project;
   }
+  // An unknown requestable of a loaded project: a Flow not promoted yet (a working copy, or a file that a project-save
+  // wrote before any promotion) gives the code-promote call; otherwise the close requestables of the project.
+  function declaredNames(project) {
+    var out = [];
+    try { var list = project.getSequencesList(); for (var i = 0; i < list.size(); i++) out.push(String(list.get(i).getName())); } catch (_ignore) {}
+    return out;
+  }
+  function flowSourceExists(project, name) {
+    try {
+      var file = new Packages.java.io.File(String(project.getDirPath()), "_flow/flows/" + name + ".flow.js");
+      if (file.isFile()) return true;
+      var flowEngine = typeof project.getFlowEngine === "function" ? project.getFlowEngine() : null;
+      return !!flowEngine && flowEngine.hasSource(String(file.getAbsolutePath())) === true;
+    } catch (_ignore) { return false; }
+  }
+  function distance(a, b) {
+    var previous = [], current, i, j;
+    for (j = 0; j <= b.length; j++) previous.push(j);
+    for (i = 1; i <= a.length; i++) {
+      current = [i];
+      for (j = 1; j <= b.length; j++) current.push(Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1)));
+      previous = current;
+    }
+    return previous[b.length];
+  }
+  function unknownRequestable(engine, qname, error) {
+    var parts = qname.split("."), projectName = parts[0], name = parts[1] || "", project = null;
+    try { project = engine.theApp.databaseObjectsManager.getOriginalProjectByName(projectName, false); } catch (_ignore) {}
+    if (!project || !name) return error;
+    var known = declaredNames(project), out = new Error(String(error.message || error));
+    out.code = "UNKNOWN_REQUESTABLE";
+    if (parts.length === 3 && known.indexOf(name) >= 0) {
+      out.hint = "Call requestable \"" + projectName + "." + name + "\": a Flow or sequence takes no suffix.";
+      out.details = { project: projectName, name: name, requestable: projectName + "." + name };
+    } else if (parts.length === 2 && flowSourceExists(project, name)) {
+      out.message = out.message.replace(/\.?$/, ".") + " A Flow source " + name + " exists but is not promoted.";
+      out.hint = "Promote it with code-promote({project:\"" + projectName + "\", name:\"" + name + "\"}), then call requestable-execute again.";
+      out.details = { project: projectName, name: name, promoted: false, next: { tool: "code-promote", arguments: { project: projectName, name: name } } };
+    } else {
+      var lower = name.toLowerCase(), close = known.filter(function (candidate) {
+        var other = candidate.toLowerCase();
+        return other.indexOf(lower) >= 0 || lower.indexOf(other) >= 0 || distance(lower, other) <= 2;
+      }).sort(function (a, b) { return distance(lower, a.toLowerCase()) - distance(lower, b.toLowerCase()); });
+      var listed = (close.length ? close : known).slice(0, 10).map(function (candidate) { return projectName + "." + candidate; });
+      out.hint = !known.length ? "Project " + projectName + " declares no Flow or sequence yet: write one with code-set, then promote it with code-promote."
+        : (close.length ? "Close requestables: " : "Requestables of " + projectName + ": ") + listed.join(", ") + ". A Flow written with code-set runs here once promoted with code-promote.";
+      out.details = { project: projectName, name: name, candidates: listed };
+    }
+    return out;
+  }
   function execute(ctx, engine, name, args) {
     var projectName = String(args.project || "").trim();
     if (name === "project-save") {
@@ -68,7 +118,10 @@ const _meta = {
           (bare ? ": requestable \"<project>." + bare[1] + "\", or project with requestable \"" + bare[1] + "\"." : "."));
       }
       target(engine, requestable.split(".")[0]);
-      var out = { ok: true, result: ctx.callBlock("requestable.call", { requestable: requestable, input: args.input || {} }, { trace: false }) };
+      var result;
+      try { result = ctx.callBlock("requestable.call", { requestable: requestable, input: args.input || {} }, { trace: false }); }
+      catch (error) { throw error && String(error.code) === "UNKNOWN_REQUESTABLE" ? unknownRequestable(engine, requestable, error) : error; }
+      var out = { ok: true, result: result };
       if (note) out.note = note;
       return out;
     }
