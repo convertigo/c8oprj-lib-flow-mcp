@@ -681,8 +681,7 @@ const _meta = {
 						hint: flowBlock && (name === "target" || name === "out")
 							? "A block writes its result with $$out=\"page.<state>\" (or local.<name>); other actions read it as @" +
 								String(projected.id || node.nodeId || "<$$id>") + ". Catalog properties: " + accepted.join(", ") + "."
-							: (UNKNOWN_PROPERTY_FORMS[String(projected.type || projected.tag || node.type || "") + "." + name] || "") +
-								"Use one of the catalog properties: " + accepted.join(", ") + "."
+							: "Use one of the catalog properties: " + accepted.join(", ") + "."
 					});
 				});
 			}
@@ -977,11 +976,6 @@ const _meta = {
 		"number.subtract": true,
 		"number.choose": true,
 		"value.toText": true
-	};
-
-	// The form to write for a property another block of the catalog has (DataTable rowKey on a Table).
-	var UNKNOWN_PROPERTY_FORMS = {
-		"Table.rowKey": "Table keys its rows by their _id or id field, else by position: remove rowKey (DataTable accepts rowKey). "
 	};
 
 	function standardStarterItems(items, includeAll) {

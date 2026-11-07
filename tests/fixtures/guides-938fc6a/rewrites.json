@@ -465,5 +465,10 @@
   "family": "frontend-svelte",
   "old": "always means the page project, and a result no `CallSequence` produces warns\n  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`;",
   "new": "always means the page project, and a result no `CallSequence` produces warns\n  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`; the page project written in full is\n  another result name: on a page of `App`, `requestable=\"App.Sequence\"` is read\n  `@App.Sequence`, not `@.Sequence`, so write `requestable=\".Sequence\"`;"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path` |",
+  "new": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path`; optional `rowKey` names the row identity field (else `_id`, `id`) |"
  }
 ]
