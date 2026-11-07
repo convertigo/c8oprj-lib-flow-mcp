@@ -1094,6 +1094,14 @@ const _meta = {
 			found[tag] = true;
 			return true;
 		}).map(starterBlock);
+		// A block asked for by its tag may come from a referenced library (Chart of the charts library).
+		(contract.items || []).forEach(function (item) {
+			var id = String(item.id || ""), tag = String(item.tag || item.insert && item.insert.tag || "");
+			var key = tag.toLowerCase();
+			if (!tag || id.indexOf("flow.block.") === 0 || found[key] || lower.indexOf(key) === -1) return;
+			found[key] = true;
+			blocks.push(starterBlock(item));
+		});
 		var portableBlocks = [], seen = {};
 		(contract.items || []).forEach(function (item) {
 			var id = String(item.id || ""), tag = String(item.tag || item.insert && item.insert.tag || "");
