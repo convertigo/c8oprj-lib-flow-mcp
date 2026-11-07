@@ -12,6 +12,8 @@ typing filters `options`, but only a proposed value is accepted. Set
 label; `@event.value` is then the selected value or the typed text, so one
 backend Flow must resolve an existing id or create the value and reject an
 empty label. Do not emulate this with `Input`, `ForEach` and buttons.
+For options read from a `{id,name}` source, write `labelField="name" valueField="id"`
+(`Combobox` and `Select`) rather than a native `<select>` or a manual mapping.
 
 An `Input` or `Textarea` `value` only displays its binding. Use
 `bind:value={page.name}` to write State on input, or an explicit event. Keep the text with an event and `@event.value`: `OnInput` runs

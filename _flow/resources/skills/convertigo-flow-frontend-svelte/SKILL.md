@@ -196,7 +196,8 @@ invisible to all of them; a refusal says what to write instead.
   sources, the theme and the assets, and bind to the contracts of
   `docs/generated/PROGRESS.md` as they are; never write Flows, `engine.yaml`
   or `PROGRESS.md`, and on a revision conflict read again and redo the change.
-- Use the standard `Combobox` for searchable choices. Set
+- Use the standard `Combobox` for searchable choices; for `{id,name}` options set
+  `labelField="name" valueField="id"`. Set
   `allowCustomValue={true}` when the business field may accept a value absent
   from `options`; the same input then emits the selected option value or the
   typed text. Do not replace it with an `Input` plus suggestion buttons, and do
