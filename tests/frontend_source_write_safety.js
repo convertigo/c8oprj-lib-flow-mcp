@@ -255,6 +255,26 @@ var compactPropertyCheck = run({
 assertTrue(compactPropertyCheck.ok === false && compactPropertyCheck.diagnostics.some(function (diagnostic) {
 	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "bogus";
 }), "Compact tree validation must keep rejecting properties absent from the canonical contract.");
+// rowKey belongs to DataTable: on a Table, the refusal gives the form to write.
+treeResponse = {
+	ok: true,
+	diagnostics: [],
+	children: [{ type: "Table", nodeId: "sales", path: "routes.test.structure.sales", children: [] }]
+};
+contractResponse = {
+	ok: true,
+	items: [{ tag: "Table", properties: { source: { type: "array" }, columns: { type: "array" }, caption: { type: "string" } } }]
+};
+var tableRowKeyCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	code: "<FlowComponent $$id=\"root\"><Structure><Table $$id=\"sales\" rowKey=\"category\" /></Structure></FlowComponent>\n"
+});
+assertTrue(tableRowKeyCheck.ok === false && tableRowKeyCheck.diagnostics.some(function (diagnostic) {
+	return diagnostic.code === "FRONTEND_PROPERTY_UNKNOWN" && diagnostic.property === "rowKey" &&
+		/_id or id/.test(diagnostic.hint) && /remove rowKey/.test(diagnostic.hint);
+}), "rowKey on a Table must be refused with the form to write: " + JSON.stringify(tableRowKeyCheck.diagnostics));
 treeResponse = null;
 contractResponse = null;
 

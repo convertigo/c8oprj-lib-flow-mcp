@@ -33,7 +33,9 @@ Sources:
   as its `CallSequence` names it (`requestable="lib_OAuth.GetOAuthCredentials"`
   is read by `@lib_OAuth.GetOAuthCredentials.GoogleClientID`); `@.Sequence`
   always means the page project, and a result no `CallSequence` produces warns
-  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`;
+  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`; the page project written in full is
+  another result name: on a page of `App`, `requestable="App.Sequence"` is read
+  `@App.Sequence`, not `@.Sequence`, so write `requestable=".Sequence"`;
 - `@<actionId>.path`: a FullSync or portable action result;
 - `@page.name`, `@layout.name`, `@comp.name`: a variable (`State`, `Derived`,
   `Translations`) named by its owner, as in NGX: `page.` in a page,

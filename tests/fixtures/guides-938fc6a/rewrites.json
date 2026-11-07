@@ -460,5 +460,10 @@
   "family": "authoring",
   "old": "for each item. A block nested there can use `$$id` for an explicit name.",
   "new": "for each item. A block nested there can use `$$id` for an explicit name.\n- For physical line numbers, split before skipping blanks:\n  `local.lines = text.split({ text: input.csv, separator: \"\\\\r?\\\\n\", regex: true, trim: false, removeEmpty: false })`.\n  Iterate `local.lines` with `while` and a zero-based `local.index`; report\n  `local.index + 1` as top-level `throw.line`, and filter only after numbering.\n  `text.split` and `text.lines` otherwise drop empty items by default, shifting\n  later line numbers; `list.map` and `forEach` do not expose an index."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "always means the page project, and a result no `CallSequence` produces warns\n  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`;",
+  "new": "always means the page project, and a result no `CallSequence` produces warns\n  with `FRONTEND_SEQUENCE_RESULT_UNKNOWN`; the page project written in full is\n  another result name: on a page of `App`, `requestable=\"App.Sequence\"` is read\n  `@App.Sequence`, not `@.Sequence`, so write `requestable=\".Sequence\"`;"
  }
 ]

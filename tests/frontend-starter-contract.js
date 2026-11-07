@@ -103,6 +103,24 @@ assertTrue(picked && picked.detail === "blocks" && picked.blocks.length === 1 &&
 	picked.blocks[0].properties.title === "string:literal" && picked.portableBlocks.length === 1 &&
 	picked.portableBlocks[0].properties.text && JSON.stringify(picked.missingBlocks) === '["Nope"]' && picked.rules === undefined,
 	"contractBlocks must return only the blocks asked for, in full: " + JSON.stringify(picked));
+// A block of a referenced library (Chart of the charts library) is returned like a frontbuilder block.
+props.contractBlocks = "Chart";
+var libraryPicked = block.run({
+	props: function () { return props; },
+	resourceGet: function () { return { content: source, hash: "revision", contentLength: source.length }; },
+	authoringContractSource: function () {
+		return { items: [
+			{ id: "svelte.text", tag: "Text", properties: { text: { type: "string", intents: ["literal", "source"] } }, slots: {} },
+			{ id: "charts.apex", tag: "Chart", properties: { ariaLabel: { type: "string", intents: ["literal", "source"] },
+				series: { type: "array", intents: ["literal", "source"] } }, slots: {} }
+		] };
+	},
+	write: function () {}
+}, {}).authoringContract;
+assertTrue(libraryPicked && libraryPicked.blocks.length === 1 && libraryPicked.blocks[0].tag === "Chart" &&
+	libraryPicked.blocks[0].properties.ariaLabel && libraryPicked.blocks[0].properties.series &&
+	JSON.stringify(libraryPicked.missingBlocks) === "[]",
+	"contractBlocks must return the contract of a block of a referenced library: " + JSON.stringify(libraryPicked));
 delete props.contractBlocks;
 props.contractDetail = "full";
 var fullResult = block.run({
