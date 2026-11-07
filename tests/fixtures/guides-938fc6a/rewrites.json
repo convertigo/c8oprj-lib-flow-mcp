@@ -442,7 +442,7 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.6 KB) |",
-  "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.5 KB) |"
+  "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.6 KB) |"
  },
  {
   "family": "start",
@@ -470,5 +470,10 @@
   "family": "frontend-svelte",
   "old": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path` |",
   "new": "| Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path`; optional `rowKey` names the row identity field (else `_id`, `id`) |"
+ },
+ {
+  "family": "authoring",
+  "old": "A value that does not convert is a 400 `FLOW_INPUT_TYPE_INVALID`.",
+  "new": "A value that does not convert is a `FLOW_INPUT_TYPE_INVALID` application error (200 with its envelope) that names the input, never the value."
  }
 ]

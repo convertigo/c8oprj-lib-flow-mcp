@@ -132,7 +132,8 @@ function Greeting({ input, config, result }) {
   `any` is left as sent. An absent input takes its `default`; for a non-text
   input `""` and `null` count as absent unless `nullable: true`; a
   `required: true` input must be given. A value that does not convert is a
-  400 `FLOW_INPUT_TYPE_INVALID`. Blocks get the same conversion with
+  `FLOW_INPUT_TYPE_INVALID` application error (200 with its envelope) that
+  names the input, never the value. Blocks get the same conversion with
   `ctx.convert(value, schema)`.
 - **An `array` input is a list** in the Flow (`input.ids.length`,
   `input.ids.join(",")`, `list.*` blocks); its Convertigo variable is
