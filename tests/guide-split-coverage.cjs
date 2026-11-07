@@ -24,6 +24,11 @@ assert.match(authoringData, /local\.index \+ 1/, 'the guide uses the original ze
 assert.match(authoringData, /top-level `throw\.line`/, 'the physical line is a top-level error field');
 assert.match(authoringData, /filter only after numbering/i, 'filtering cannot discard the original line index');
 
+// A CallSequence naming the page project in full stores its result under that name, not under @.Sequence.
+const frontendData = fs.readFileSync(path.join(guideDir, 'frontend-svelte-data.md'), 'utf8').replace(/\s+/g, ' ');
+assert.match(frontendData, /`requestable="App\.Sequence"` is read `@App\.Sequence`, not `@\.Sequence`/,
+  'the data guide tells how a result of a call naming the page project is read');
+
 const families = {
   'frontend-svelte': { entryMax: 8000, subs: ['sources', 'layout', 'data', 'forms', 'datatable', 'actions', 'themes', 'components', 'proof'].map(s => 'frontend-svelte-' + s) },
   start: { entryMax: 6000, subs: ['start-rules'] },
