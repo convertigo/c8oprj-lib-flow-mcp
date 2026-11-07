@@ -4050,6 +4050,15 @@
 			}
 			if (!candidates.length && coreNames.indexOf(wanted) !== -1) return { uri: "flow://guide/" + wanted };
 		}
+		if (!candidates.length && wanted) {
+			// A topic word held by one core guide only (datatable, components), or a sub-topic of a core guide (fullsync-scaffold).
+			var bare = wanted.replace(/\.md$/, "");
+			var lower = coreNames.map(function (name) { return String(name).toLowerCase(); });
+			var byWord = lower.filter(function (name) { return name.split("-").indexOf(bare) !== -1; });
+			var parents = lower.filter(function (name) { return bare.indexOf(name + "-") === 0; }).sort(function (a, b) { return b.length - a.length; });
+			if (byWord.length === 1) return { uri: "flow://guide/" + byWord[0] };
+			if (parents.length) return { uri: "flow://guide/" + parents[0] };
+		}
 		if (candidates.length === 1) return { uri: candidates[0].uri };
 		var all = coreNames.map(function (name) { return "flow://guide/" + name; }).concat(guides.map(function (guide) { return guide.uri; }));
 		var key = short(library) + " " + wanted;
