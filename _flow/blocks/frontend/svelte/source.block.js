@@ -692,6 +692,43 @@ const _meta = {
 		return diagnostics;
 	}
 
+	// The projects the project references (c8oProject.yaml), found next to it as in the workspace.
+	function referencedProjectDirs(projectDir) {
+		var dirs = [];
+		try {
+			var yaml = new File(projectDir, "c8oProject.yaml");
+			if (!yaml.isFile()) return dirs;
+			var text = String(Packages.org.apache.commons.io.FileUtils.readFileToString(yaml, "UTF-8"));
+			var pattern = /\[references\.ProjectSchemaReference\]:(?:(?!\u2193)[\s\S])*?projectName:\s*'?([A-Za-z0-9_.-]+)/g, match;
+			while ((match = pattern.exec(text)) !== null) {
+				var dir = new File(projectDir.getParentFile(), match[1]);
+				if (dir.isDirectory()) dirs.push(dir);
+			}
+		} catch (e) {}
+		return dirs;
+	}
+
+	// @.Seq names a sequence of the page project. When the page project has no Seq and a referenced project has one,
+	// the warning gives the reference to write: @Project.Seq, called by <CallSequence requestable="Project.Seq">.
+	function otherProjectSequenceHints(props, diagnostics) {
+		diagnostics.forEach(function (item) {
+			if (!item || item.code !== "FRONTEND_SEQUENCE_RESULT_UNKNOWN" || !/^Call the sequence/.test(String(item.hint || ""))) return;
+			var match = /the result @\.([A-Za-z_][A-Za-z0-9_]*)\b/.exec(String(item.message || ""));
+			if (!match) return;
+			var projectDir = new File(String(props.projectDir || ""));
+			var sequenceFile = "_c8oProject/sequences/" + match[1] + ".yaml";
+			if (new File(projectDir, sequenceFile).isFile()) return;
+			var owners = referencedProjectDirs(projectDir).filter(function (dir) {
+				return new File(dir, sequenceFile).isFile();
+			}).map(function (dir) { return String(dir.getName()); });
+			if (!owners.length) return;
+			var reference = owners[0] + "." + match[1];
+			item.suggestedReference = "@" + reference;
+			item.hint = match[1] + " is not a sequence of " + String(projectDir.getName()) + " but of the referenced project " + owners[0] +
+				": call it with <CallSequence requestable=\"" + reference + "\"> and read @" + reference + ", not @." + match[1] + ".";
+		});
+	}
+
 	function validate(ctx, props, path, source, propose) {
 		if (isStylesheet(path)) {
 			var cssDiagnostics = [];
@@ -841,6 +878,7 @@ const _meta = {
 				});
 			}
 		}
+		otherProjectSequenceHints(props, diagnostics);
 		// Syntax diagnostics come from Svelte; show their exact location before textual contract checks.
 		diagnostics.sort(function (a, b) { return (b.svelte ? 1 : 0) - (a.svelte ? 1 : 0); });
 		return {
