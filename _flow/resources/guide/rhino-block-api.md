@@ -66,6 +66,8 @@ Runtime helpers available in `run(ctx,node)`:
   FlowScript composition when possible.
 - `ctx.throwFlow({ code, message, details, hint }, node)`: raises a
   structured Flow error.
+  `ctx.throwFlow({ code, message }, node, { applicative: true })` raises an
+  application error (a refusal): 200 with the envelope unless `status` is set.
 - `ctx.lib("name")`: loads a helper library declared in `_meta.uses`.
 - `ctx.canContinue()`: false once the execution is cancelled (Studio cancel,
   requestable timeout, cancelled caller). The engine already checks it before

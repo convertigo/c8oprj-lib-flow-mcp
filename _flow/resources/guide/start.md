@@ -13,7 +13,7 @@ Direct SQL and generated CRUD require one.
 | Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.5 KB) |
 | Unclear syntax: two real samples | `flow://guide/samples` (2.1 KB) |
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` (8.5 KB) |
-| Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (3.9 KB) |
+| Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (4.0 KB) |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
 | Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.2 KB), then `flow://guide/multipage-entities` (11.7 KB) |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
