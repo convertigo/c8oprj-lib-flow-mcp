@@ -115,6 +115,15 @@ var guideAliasFor = mcp.guideAliasFor;
 var flowscriptAlias = mcp.guideAlias('flow://guide/flowscript', [], ['start', 'authoring']);
 assert(flowscriptAlias.uri === 'flow://guide/authoring',
 	'backend guide shorthand leads directly to the authoring guide: ' + JSON.stringify(flowscriptAlias));
+// A topic word that only one core guide holds, or a sub-topic of a core guide, leads to that guide.
+var coreGuides = ["start", "fullsync", "frontend-svelte", "frontend-svelte-datatable", "frontend-svelte-components"];
+var topicAliases = [["flow://lib/lib_flow_frontbuilder_svelte/datatable", "frontend-svelte-datatable"], ["flow://lib/lib_flow_frontbuilder_svelte/components", "frontend-svelte-components"],
+	["flow://guide/fullsync-scaffold", "fullsync"], ["flow://guide/fullsync-transactions", "fullsync"]];
+topicAliases.forEach(function (pair) {
+	var found = mcp.guideAlias(pair[0], [{ uri: "flow://lib/lib_flow_frontbuilder_svelte/frontend-design", project: "lib_flow_frontbuilder_svelte" },
+		{ uri: "flow://lib/lib_flow_frontbuilder_svelte/frontend-actions", project: "lib_flow_frontbuilder_svelte" }], coreGuides);
+	assert(found.uri === "flow://guide/" + pair[1], pair[0] + " leads to " + pair[1] + ": " + JSON.stringify(found));
+});
 mcp.guideAliasFor = function (ctx, uri) {
 	return mcp.guideAlias(uri, [{ uri: "flow://lib/lib_flow_sql/sql", project: "lib_flow_sql" }], ["start", "frontend-svelte"]);
 };

@@ -520,10 +520,33 @@ const _meta = {
 		return readiness;
 	}
 
+	var TYPE_ALIASES = {
+		view: "getView", getviews: "getView", allviews: "getView",
+		serverinfo: "getServerInfo", info: "getServerInfo",
+		getattachment: "getDocumentAttachment", putattachment: "putDocumentAttachment",
+		bulkdocuments: "postBulkDocuments", postbulk: "postBulkDocuments", resetdb: "resetDatabase"
+	};
+
+	function canonicalType(type) {
+		var text = String(type == null ? "" : type);
+		if (TRANSACTION_TYPES[text]) {
+			return text;
+		}
+		var key = text.toLowerCase().replace(/[^a-z]/g, "");
+		for (var known in TRANSACTION_TYPES) {
+			if (known.toLowerCase() === key) {
+				return known;
+			}
+		}
+		return TYPE_ALIASES[key] || text;
+	}
+
 	function transactionClass(type) {
 		var name = TRANSACTION_TYPES[type];
 		if (!name) {
-			throw new Error("Unsupported FullSync transaction type: " + type);
+			throw new Error("Unsupported FullSync transaction type: '" + (type || "") + "' (transactions[].type is required). Use one of "
+				+ Object.keys(TRANSACTION_TYPES).join(", ")
+				+ ". Writes, updates and deletes of a document all use postDocument (a deletion posts the document with _deleted:true); a view query uses getView.");
 		}
 		return name;
 	}
@@ -801,6 +824,7 @@ const _meta = {
 		designWarnings: designWarnings,
 		designMismatches: designMismatches,
 		newTransaction: newTransaction,
+		canonicalType: canonicalType,
 
 		run: function (ctx, node) {
 			var props = ctx.props(node);
@@ -875,7 +899,7 @@ const _meta = {
 			transactions.forEach(function (rawSpec) {
 				var spec = objectValue(rawSpec, "transactions[]");
 				dboName(spec.name, "transaction name");
-				var type = String(spec.type || "");
+				var type = canonicalType(spec.type);
 				transactionClass(type);
 				mergedVariables(type, spec);
 			});
@@ -966,7 +990,7 @@ const _meta = {
 			transactions.forEach(function (rawSpec) {
 				var spec = objectValue(rawSpec, "transactions[]");
 				var transactionName = dboName(spec.name, "transaction name");
-				var type = String(spec.type || "");
+				var type = canonicalType(spec.type);
 				var expectedClass = transactionClass(type);
 				var qname = connectorQName + "." + transactionName;
 				var transaction = connector.getTransactionByName(transactionName);
