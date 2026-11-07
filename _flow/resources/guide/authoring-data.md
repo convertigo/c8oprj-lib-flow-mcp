@@ -143,11 +143,12 @@ outside the SDK requires one (standard REST codes: URL mapper operations).
 
 Rare, explicit choices for a client outside the SDK; by default write
 `throw { code, message }` and the SDK receives 200 with the error envelope.
-- `response.error({code,message,details})` answers that envelope in place of
-  the result, without stopping the Flow or setting a status.
-- `response.status({code})` (100 to 599) sets the status of the Flow requested
-  over HTTP only; a child call never changes its caller's response.
-- `response.header({name,value})` sets one header of that response; CR/LF and
+- `response.error({code,message,details})` writes that structure at
+  `result.error` (or `path`) beside the rest of the result, without stopping
+  the Flow or setting a status.
+- `response.status({code})` (100 to 599) sets the response status, also from a
+  called Flow; without HTTP request (schedule, FullSync) it has no effect.
+- `response.header({name,value})` sets one header the same way; CR/LF and
   engine-owned headers (`Set-Cookie`, `Content-Length`, CORS, security) are refused.
 
 Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
