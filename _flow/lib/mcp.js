@@ -2549,6 +2549,19 @@
 		if (normalized.code === "PROJECT_HAS_STUDIO_DRAFTS" && tool === "flow-object-remove") {
 			normalized.hint = "For each listed draft, call code-get({project,name}) to inspect it, then code-promote({project,name,revision}) to save it or code-discard({project,name}) to abandon it before retrying flow-object-remove.";
 		}
+		if (normalized.code === "UNKNOWN_RESOURCE" && tool === "flow-resource-get") {
+			var missing = String(args.uri || args.path || "");
+			var near = guideAliasFor(ctx, missing).suggestions || [];
+			if (/^_flow\/resources\/sql\/[^/]+\/schema\.json$/.test(missing)) {
+				near = libraryGuides().some(function (guide) { return guide.uri === "flow://lib/lib_flow_sql/sql"; })
+					? ["flow://lib/lib_flow_sql/sql"] : [];
+				normalized.hint = (near.length ? "Read " + near[0] + ". " : "") +
+					"Use flow-resource-search to locate an existing project resource; this schema path is not a guide.";
+			} else if (near.length && !normalized.hint) {
+				normalized.hint = "Did you mean " + near.join(", ") + "?";
+			}
+			if (near.length) normalized.details = Object.assign({}, normalized.details || {}, { didYouMean: near });
+		}
 		if (normalized.code === "UNKNOWN_BLOCK") {
 			var diagnostic = withBlockContract(request, withWorkspaceProviders(request,
 				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true));
@@ -4045,6 +4058,15 @@
 			return entries.length === 1 ? entries[0] : null;
 		}
 		var wanted = "", library = "";
+		var sql = "flow://lib/lib_flow_sql/sql";
+		var hasSql = guides.some(function (guide) { return guide.uri === sql; });
+		if (hasSql && ["flow://lib/lib_flow_sql/guide", "flow://lib/lib_flow_sql/start",
+			"flow://guide/sql", "flow://lib/lib_flow_sql"].indexOf(text) !== -1) return { uri: sql };
+		if (/^flow:\/\/lib\/lib_flow_sql\/(direct-sql|setup)$/.test(text))
+			return { suggestions: hasSql ? [sql] : [] };
+		if (["flow://guide/flows", "flow://skills/flow-authoring/SKILL",
+			"flow://skills/authoring/SKILL"].indexOf(text) !== -1)
+			return { suggestions: coreNames.indexOf("authoring") !== -1 ? ["flow://guide/authoring"] : [] };
 		if ((match = /^flow:\/\/guide\/([A-Za-z0-9_.-]+)$/.exec(text))) {
 			wanted = match[1].toLowerCase();
 			if (wanted === "flowscript" && coreNames.indexOf("authoring") !== -1) return { uri: "flow://guide/authoring" };
