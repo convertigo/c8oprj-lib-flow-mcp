@@ -2525,14 +2525,13 @@
 		request = request || {};
 		var normalized = normalizeToolError(error);
 		var tool = toolName(request), args = toolArguments(request);
-		if (normalized.code === "UNKNOWN_REQUESTABLE" &&
+		// The refusal names the missing requestable, which may be called inside the Flow that runs: only a source of
+		// that name is proposed for promotion, once.
+		var missingRequestable = /^Unknown (?:Convertigo )?requestable: ([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)/.exec(normalized.message);
+		if (normalized.code === "UNKNOWN_REQUESTABLE" && missingRequestable && !(normalized.details && normalized.details.next) &&
 			(tool === "code-run" || tool === "flow-code-run" || tool === "requestable-execute")) {
-			var qname = String(tool === "requestable-execute" ? args.requestable || "" : args.qname || args.name || args.flow || "");
-			var projectName = String(args.project || "");
-			if (qname.charAt(0) === ".") qname = projectName + qname;
-			if (qname.indexOf(".") < 0) qname = projectName + "." + qname;
-			var parts = qname.split(".");
-			if (parts.length === 2 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(parts[1])) {
+			var parts = missingRequestable[1].split(".");
+			if (parts.length === 2) {
 				try {
 					var owner = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getOriginalProjectByName(parts[0], false);
 					var source = owner && new File(String(owner.getDirPath()), "_flow/flows/" + parts[1] + ".flow.js");

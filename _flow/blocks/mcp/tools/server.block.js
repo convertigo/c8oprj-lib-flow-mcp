@@ -120,7 +120,12 @@ const _meta = {
       target(engine, requestable.split(".")[0]);
       var result;
       try { result = ctx.callBlock("requestable.call", { requestable: requestable, input: args.input || {} }, { trace: false }); }
-      catch (error) { throw error && String(error.code) === "UNKNOWN_REQUESTABLE" ? unknownRequestable(engine, requestable, error) : error; }
+      catch (error) {
+        // the requestable the refusal names: the one called, or one its Flow calls
+        var missing = error && String(error.code) === "UNKNOWN_REQUESTABLE" &&
+          /^Unknown (?:Convertigo )?requestable: ([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,2})/.exec(String(error.message || ""));
+        throw missing ? unknownRequestable(engine, missing[1], error) : error;
+      }
       var out = { ok: true, result: result };
       if (note) out.note = note;
       return out;
