@@ -47,8 +47,8 @@ MANAGER uses the same widgets: `app.entityAccess` decides the server perimeter.
 
 The optional table `ownershipFilter="mine"` narrows an authorized result; it is
 not the policy's typed `scope` and cannot grant access. Leave it unset for the
-nominal path. A 401 invites sign-in, 403 reports a forbidden action, and 400
-shows field validation when supplied. Native model validation can also return
+nominal path. A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,
+`ENTITY_FORBIDDEN` reports a forbidden action, and 400 shows field validation when supplied. Native model validation can also return
 422. A 409 shows the existing Reload command before retrying the stale row.
 The widgets clear old rows while reloading after a permission/session change.
 

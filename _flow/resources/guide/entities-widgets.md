@@ -33,8 +33,8 @@ Use the conflict reload command before retrying a stale revision; do not blindly
 resubmit the stale row. Effective `describe` capabilities hide denied save/delete
 actions, including
 immutable-row updates. The form sends `create` without a key and `update` with
-an existing key; it never performs an upsert. A 401 invites sign-in, 403 reports
-a forbidden action, 409 offers Reload, and 400 maps field diagnostics when
+an existing key; it never performs an upsert. A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,
+`ENTITY_FORBIDDEN` or `ENTITY_SCOPE_VIOLATION` reports a forbidden action, 409 offers Reload, and 400 maps field diagnostics when
 available (model validation can also use 422).
 
 The table's optional `ownershipFilter="mine"` is only an additional display

@@ -70,8 +70,8 @@ actor block (**Authentication** in `flow://guide/entities-auth`); without it, `r
 and everyone gets the narrowest scope. Scope fields can be relations, as above.
 A relation's labels, options and validation read its target through this same
 policy: keep a referenced directory readable when signed in (hide its other fields
-with `visibleTo`). If the policy, a model ACL or a slot refuses the target (401 or
-403; a 404 still fails the read), labels are omitted with the run warning
+with `visibleTo`). If the policy, a model ACL or a slot refuses the target (`ENTITY_UNAUTHENTICATED`
+or `ENTITY_FORBIDDEN`, a throw without status included; a 404 still fails the read), labels are omitted with the run warning
 `ENTITY_RELATION_LABELS_OMITTED`; options and validation return `ENTITY_FORBIDDEN`
 "Relation non autorisée." naming only `details.field`. A create or update that neither sets nor changes such a relation does not read its target and succeeds; any write that sets or changes it, including to null, is refused. A create also sets it when a default, an auto rule, the policy scope or the Possédé owner fills it.
 

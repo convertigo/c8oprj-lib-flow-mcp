@@ -187,7 +187,7 @@ function HttpBookingRule({ input, config, result }) {
 | ENTITY_UNAUTHENTICATED | UNAUTHENTICATED | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
 | ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION | FORBIDDEN | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |
 | ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |
-| ENTITY_SCHEMA_MISSING | ENTITY_SCHEMA_MISSING | Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
+| ENTITY_SCHEMA_MISSING | ENTITY_SCHEMA_MISSING | Preserve this setup error (a generic 500; its reason and plan are in the server log); fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
 | ENTITY_VALIDATION | VALIDATION_FAILED | Validate inputs before save; convert remaining model validation in catch. |
 | ENTITY_CONFLICT | REVISION_CONFLICT | Convert in catch; reload, do not blindly retry. |
 | Your hook's code | BOOKING_WINDOW_CONFLICT | Throw in the hook; preserve that literal code in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED. |
@@ -198,6 +198,10 @@ at this public boundary, without exposing internal errors; never report success.
 A thrown error interrupts the Flow: the requester answers with HTTP 200 and
 the JSON envelope contains `error.code` and `error.message`, with no success result. Use
 `return { ... }` for exact success keys, not `{error:...}` as a successful result.
+Entity refusals (`ENTITY_UNAUTHENTICATED`, `ENTITY_FORBIDDEN`, `ENTITY_SCOPE_VIOLATION`) answer
+the same way, with `Cache-Control: no-store` and one server log line. A client tests `ok`
+(or the `error` envelope) before reading data: `ok: false` with HTTP 200 is a refusal or a
+failure, never empty data to show as a success.
 For demo login and `me`, use the project actor in **Authentication** of `flow://guide/entities-auth` and
 **Demo login** in `flow://guide/multipage-entities-access`; the switch stays off by
 default. Login/session shape is independent of the choice of entities.
@@ -215,8 +219,8 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (6.2 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
+| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
 | `flow://guide/entities-model` (8.1 KB) | writing the model, list filters and pages, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
-| `flow://guide/entities-widgets` (4.7 KB) | EntityTable, EntityForm, named snippets |
+| `flow://guide/entities-widgets` (4.8 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |
