@@ -2521,6 +2521,37 @@
 		return out;
 	}
 
+	// The recovery of each unsaved Studio draft that blocks flow-object-remove, by kind of entry (pendingStudioDrafts):
+	// a Flow (flow <name>, or its source draft) with the code tools, a frontend source by sourceFile (no promotion), and
+	// the others (_flow/engine.yaml, block and other sources), which no tool saves or discards, in the Studio.
+	function studioDraftsRecovery(project, pending) {
+		var steps = [], studio = [], listed = pending.slice(0, 10), p = JSON.stringify(project);
+		listed.forEach(function (entry) {
+			entry = String(entry);
+			var flow = /^flow (.+)$/.exec(entry) || /^_flow\/flows\/([^/]+)\.flow\.js$/.exec(entry), name;
+			if (flow) {
+				name = JSON.stringify(flow[1]);
+				steps.push("Flow " + flow[1] + ": code-get({project:" + p + ",name:" + name + "}), then code-promote({project:" + p +
+					",name:" + name + ",revision}) to save it or code-discard({project:" + p + ",name:" + name + "}) to drop it.");
+			} else if (/^_flow\/frontbuilder\/.+\.flow\.(?:svelte|css)$/.test(entry)) {
+				name = JSON.stringify(entry);
+				steps.push("Source " + entry + ": code-get({project:" + p + ",sourceFile:" + name + "}) to keep its text, then code-discard({project:" +
+					p + ",sourceFile:" + name + "}), or have it saved in the Studio.");
+			} else {
+				studio.push(entry);
+			}
+		});
+		if (studio.length) {
+			steps.push(studio.join(", ") + ": no tool saves or discards " + (studio.length > 1 ? "them" : "it") +
+				"; ask the user to save or revert " + (studio.length > 1 ? "them" : "it") + " in the Studio.");
+		}
+		if (pending.length > listed.length) {
+			steps.push((pending.length - listed.length) + " more drafts are in details.pendingDrafts.");
+		}
+		return (steps.length ? "Resolve each listed draft before retrying flow-object-remove. " + steps.join(" ") : "Resolve the unsaved Studio work of the project before retrying flow-object-remove.") +
+			" Or call flow-object-remove again with saveProject:false to leave the deletion for the next Save.";
+	}
+
 	function toolError(request, error, ctx) {
 		request = request || {};
 		var normalized = normalizeToolError(error);
@@ -2546,7 +2577,8 @@
 			}
 		}
 		if (normalized.code === "PROJECT_HAS_STUDIO_DRAFTS" && tool === "flow-object-remove") {
-			normalized.hint = "For each listed draft, call code-get({project,name}) to inspect it, then code-promote({project,name,revision}) to save it or code-discard({project,name}) to abandon it before retrying flow-object-remove.";
+			normalized.hint = studioDraftsRecovery(String(args.project || normalized.details && normalized.details.project || ""),
+				normalized.details && normalized.details.pendingDrafts || []);
 		}
 		if (normalized.code === "UNKNOWN_RESOURCE" && tool === "flow-resource-get") {
 			var missing = String(args.uri || args.path || "");
