@@ -518,17 +518,12 @@
  {
   "family": "entities",
   "old": "Its hidden/absent-row 404 becomes 403 **for both** in this contract: do not\nunmask another user's row to distinguish them. If the contract requires 404,\nkeep that code instead. Adapt only the facade's JSON keys to your contract.",
-  "new": "A hidden row and an absent row answer the same 404 `ENTITY_NOT_FOUND`: do not\nunmask another user's row to distinguish them. A refusal answers 200 with an\n`ENTITY_*` code. Adapt only the facade's JSON keys to your contract."
- },
- {
-  "family": "entities",
-  "old": "if (local.failure.code === \"ENTITY_NOT_FOUND\" || local.failure.code === \"ENTITY_FORBIDDEN\" ||\n        local.failure.code === \"ENTITY_SCOPE_VIOLATION\" || local.failure.code === \"FORBIDDEN\") {\n        throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\" }\n      }",
-  "new": "if (local.failure.code === \"ENTITY_NOT_FOUND\") {\n        throw { code: \"ENTITY_NOT_FOUND\", message: \"Reservation not found\" }\n      }\n      if (local.failure.code === \"ENTITY_FORBIDDEN\" || local.failure.code === \"ENTITY_SCOPE_VIOLATION\" ||\n        local.failure.code === \"FORBIDDEN\") {\n        throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\" }\n      }"
+  "new": "A hidden row and an absent row answer the same 404 `ENTITY_NOT_FOUND`, and a\nrefusal answers 200 with an `ENTITY_*` code. This facade imposes `FORBIDDEN` for\nboth rows, so another user's row is never unmasked. Adapt only the facade's JSON\nkeys to your contract."
  },
  {
   "family": "entities",
   "old": "| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |",
-  "new": "| ENTITY_NOT_FOUND (also outside Possédé) | ENTITY_NOT_FOUND | Preserve it: the same 404 for an absent row and a hidden row. |"
+  "new": "| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN (imposed here) | The same for an absent row and a hidden row; without an imposed code, keep the native 404 `ENTITY_NOT_FOUND`. |"
  },
  {
   "family": "multipage-entities",
