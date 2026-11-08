@@ -244,18 +244,27 @@ const _meta = {
 		if (!uri || response && !failed(response)) {
 			return null;
 		}
-		function readContents(target) {
-			var read = ctx.callBlock("mcp.resources.read", {
+		function readResource(target) {
+			return ctx.callBlock("mcp.resources.read", {
 				request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
 					uri: target, project: request.params.arguments && request.params.arguments.project,
 					projectDir: request.params.arguments && request.params.arguments.projectDir
 				} },
 				out: "local.mcpResourceRead"
 			}, { trace: false });
+		}
+		function contentsOf(read) {
 			var found = read && read.result && read.result.contents;
 			return found && found.length ? found : null;
 		}
-		var contents = readContents(uri), note = null;
+		function readContents(target) {
+			return contentsOf(readResource(target));
+		}
+		var exact = readResource(uri), contents = contentsOf(exact), note = null;
+		// Only a URI that resources/read does not know is read under its alias; another failure is the answer.
+		if (!contents && exact && exact.error && !/^Unknown Flow MCP resource:/.test(String(exact.error.message || ""))) {
+			return exact;
+		}
 		if (!contents) {
 			// flow://guide/sql names the guide of a library (flow://lib/lib_flow_sql/sql) when only one matches.
 			var alias = mcp.guideAliasFor(ctx, uri);
