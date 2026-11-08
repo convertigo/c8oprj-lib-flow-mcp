@@ -409,7 +409,7 @@
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (6.2 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+  "new": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
  },
  {
   "family": "entities",
@@ -449,7 +449,7 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.4 KB), then `flow://guide/multipage-entities` (11.7 KB) |",
-  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.2 KB), then `flow://guide/multipage-entities` (11.7 KB) |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.7 KB) |"
  },
  {
   "family": "multipage-entities",
@@ -475,5 +475,35 @@
   "family": "authoring",
   "old": "A value that does not convert is a 400 `FLOW_INPUT_TYPE_INVALID`.",
   "new": "A value that does not convert is a `FLOW_INPUT_TYPE_INVALID` application error (200 with its envelope) that names the input, never the value."
+ },
+ {
+  "family": "entities",
+  "old": "`return { ... }` for exact success keys, not `{error:...}` as a successful result.",
+  "new": "`return { ... }` for exact success keys, not `{error:...}` as a successful result.\nEntity refusals (`ENTITY_UNAUTHENTICATED`, `ENTITY_FORBIDDEN`, `ENTITY_SCOPE_VIOLATION`) answer\nthe same way, with `Cache-Control: no-store` and one server log line. A client tests `ok`\n(or the `error` envelope) before reading data: `ok: false` with HTTP 200 is a refusal or a\nfailure, never empty data to show as a success."
+ },
+ {
+  "family": "entities",
+  "old": "Preserve this setup error; fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error.",
+  "new": "Preserve this setup error (a generic 500; its reason and plan are in the server log); fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error."
+ },
+ {
+  "family": "entities",
+  "old": "A 401 invites sign-in, 403 reports a forbidden action, 409 offers Reload,",
+  "new": "A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,\n`ENTITY_FORBIDDEN` or `ENTITY_SCOPE_VIOLATION` reports a forbidden action, 409 offers Reload,"
+ },
+ {
+  "family": "entities",
+  "old": "If the policy, a model ACL or a slot refuses the target (401 or 403; a 404 still fails the read),",
+  "new": "If the policy, a model ACL or a slot refuses the target (`ENTITY_UNAUTHENTICATED`\nor `ENTITY_FORBIDDEN`, a throw without status included; a 404 still fails the read),"
+ },
+ {
+  "family": "entities",
+  "old": "which differs from `context.getAuthenticatedUser()` is refused (403);",
+  "new": "which differs from `context.getAuthenticatedUser()` is refused (`ENTITY_FORBIDDEN`);"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "A 401 invites sign-in, 403 reports a forbidden action, and 400 shows field validation when supplied.",
+  "new": "A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,\n`ENTITY_FORBIDDEN` reports a forbidden action, and 400 shows field validation when supplied."
  }
 ]

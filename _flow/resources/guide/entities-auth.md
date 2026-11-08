@@ -10,7 +10,7 @@ Sub-guide of `flow://guide/entities`: read that guide first.
 **no inputs (`{}`)** only when the policy reads `request.roles`, or declared
 ACL/visibility/owner rules need roles. There is no default provider. It returns
 `{user: string, roles: string[]}` from the server directory. A provider user
-which differs from `context.getAuthenticatedUser()` is refused (403); an
+which differs from `context.getAuthenticatedUser()` is refused (`ENTITY_FORBIDDEN`); an
 anonymous session cannot invent an actor. Actors are never cached with models.
 Without an ACL or `checkAccess`, entity primitives require neither actor nor
 session. `Possédé` still fills its owner from the session or a supplied value;
