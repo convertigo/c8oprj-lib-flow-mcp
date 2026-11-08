@@ -2524,6 +2524,31 @@
 	function toolError(request, error, ctx) {
 		request = request || {};
 		var normalized = normalizeToolError(error);
+		var tool = toolName(request), args = toolArguments(request);
+		if (normalized.code === "UNKNOWN_REQUESTABLE" &&
+			(tool === "code-run" || tool === "flow-code-run" || tool === "requestable-execute")) {
+			var qname = String(tool === "requestable-execute" ? args.requestable || "" : args.qname || args.name || args.flow || "");
+			var projectName = String(args.project || "");
+			if (qname.charAt(0) === ".") qname = projectName + qname;
+			if (qname.indexOf(".") < 0) qname = projectName + "." + qname;
+			var parts = qname.split(".");
+			if (parts.length === 2 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(parts[1])) {
+				try {
+					var owner = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getOriginalProjectByName(parts[0], false);
+					var source = owner && new File(String(owner.getDirPath()), "_flow/flows/" + parts[1] + ".flow.js");
+					var flowEngine = owner && typeof owner.getFlowEngine === "function" ? owner.getFlowEngine() : null;
+					if (source && (source.isFile() || flowEngine && flowEngine.hasSource(String(source.getAbsolutePath())) === true)) {
+						normalized.message += " A Flow source " + parts[1] + " exists but is not promoted.";
+						normalized.hint = "Call code-promote({project:\"" + parts[0] + "\",name:\"" + parts[1] + "\"}), then retry " + tool + ".";
+						normalized.details = { project: parts[0], name: parts[1], promoted: false,
+							next: { tool: "code-promote", arguments: { project: parts[0], name: parts[1] } } };
+					}
+				} catch (_unknownRequestableLookup) {}
+			}
+		}
+		if (normalized.code === "PROJECT_HAS_STUDIO_DRAFTS" && tool === "flow-object-remove") {
+			normalized.hint = "For each listed draft, call code-get({project,name}) to inspect it, then code-promote({project,name,revision}) to save it or code-discard({project,name}) to abandon it before retrying flow-object-remove.";
+		}
 		if (normalized.code === "UNKNOWN_BLOCK") {
 			var diagnostic = withBlockContract(request, withWorkspaceProviders(request,
 				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true));

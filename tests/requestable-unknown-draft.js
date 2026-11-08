@@ -60,6 +60,23 @@ try {
   // An unknown name far from every requestable: the requestables of the project.
   var far = refusal({ project: "orders", requestable: "zzz" });
   assert(String(far.hint).indexOf("orders.book_get") >= 0 && String(far.hint).indexOf("orders.books_list") >= 0, "a far name lists the project requestables: " + far.hint);
+
+  // The same engine refusal also reaches code-run through the common MCP error formatter.
+  var realPackages = Packages;
+  var mocked = { java: Packages.java, org: Packages.org, com: { twinsoft: { convertigo: { engine: { Engine: engine } } } } };
+  var mcp = (function (Packages) { return eval(String(files.readFileToString(new java.io.File(root, "_flow/lib/mcp.js"), "UTF-8"))); })(mocked);
+  function formatted(name) {
+    return mcp.toolError({ jsonrpc: "2.0", id: 3, method: "tools/call", params: {
+      name: "code-run", arguments: { project: "orders", name: name }
+    } }, { code: "UNKNOWN_REQUESTABLE", message: "Unknown Convertigo requestable: orders." + name,
+      hint: "Use .Sequence, .Flow or .Connector.Transaction" }).result.structuredContent.error;
+  }
+  var draftRun = formatted("book_draft");
+  assert(/code-promote/.test(draftRun.hint) && draftRun.details.next.tool === "code-promote" &&
+    draftRun.details.next.arguments.name === "book_draft", "code-run names promotion for a source draft");
+  var unknownRun = formatted("missing");
+  assert(unknownRun.hint === "Use .Sequence, .Flow or .Connector.Transaction" && !unknownRun.details,
+    "an unknown source keeps the general engine refusal");
   print("requestable-unknown-draft OK (" + checks + " checks)");
 } finally {
   files.deleteDirectory(dir);
