@@ -398,6 +398,13 @@
   "new": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
+  "family": "authoring",
+  "file": "authoring.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring-data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+ },
+ {
   "family": "crud",
   "file": "crud.md",
   "currentOnly": true,

@@ -21,6 +21,9 @@ result.codes = local.codes
 result.usd = local.usd
 ```
 
+Filter each item with an unquoted expression: `local.tagged = list.filter({ items: input.rows, where: current.doc.tag == local.tag })`.
+Read a field of the current item as `current.new`, for example `local.names = list.map({ items: local.tagged, select: current.new })`; bare `new` is out of scope.
+
 - Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
   `select` takes an expression, object literal or named block call evaluated
   for each item. A block nested there can use `$$id` for an explicit name.
