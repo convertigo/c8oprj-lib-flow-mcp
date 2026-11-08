@@ -97,8 +97,11 @@ function SaveReservation({ input, config, result }) {
       if (local.failure.code === "ENTITY_VALIDATION") {
         throw { code: "VALIDATION_FAILED", message: local.failure.message }
       }
-      if (local.failure.code === "ENTITY_NOT_FOUND" || local.failure.code === "ENTITY_FORBIDDEN" ||
-        local.failure.code === "ENTITY_SCOPE_VIOLATION" || local.failure.code === "FORBIDDEN") {
+      if (local.failure.code === "ENTITY_NOT_FOUND") {
+        throw { code: "ENTITY_NOT_FOUND", message: "Reservation not found" }
+      }
+      if (local.failure.code === "ENTITY_FORBIDDEN" || local.failure.code === "ENTITY_SCOPE_VIOLATION" ||
+        local.failure.code === "FORBIDDEN") {
         throw { code: "FORBIDDEN", message: "Reservation unavailable" }
       }
       if (local.failure.code === "ENTITY_CONFLICT") {
@@ -130,9 +133,9 @@ Identifiers/revisions stay text, including int64 above 2^53; dates stay ISO.
 `checkAccess: true` applies the policy scope and the optional model restrictions,
 including `Possédé` and `visibleTo`. Trusted calls default to `false` and do not
 apply those access restrictions; their public caller must protect them.
-Its hidden/absent-row 404 becomes 403 **for both** in this contract: do not
-unmask another user's row to distinguish them. If the contract requires 404,
-keep that code instead. Adapt only the facade's JSON keys to your contract.
+A hidden row and an absent row answer the same 404 `ENTITY_NOT_FOUND`: do not
+unmask another user's row to distinguish them. A refusal answers 200 with an
+`ENTITY_*` code. Adapt only the facade's JSON keys to your contract.
 
 <!-- example: http-list-reservations -->
 ```javascript
@@ -186,7 +189,7 @@ function HttpBookingRule({ input, config, result }) {
 |---|---|---|
 | ENTITY_UNAUTHENTICATED | UNAUTHENTICATED | Prevent with the session guard **before** entity.*; do not require authenticatedContextRequired on the public facade, which would preempt your guard. |
 | ENTITY_FORBIDDEN / ENTITY_SCOPE_VIOLATION | FORBIDDEN | Deny in app.entityAccess (server roles), or convert its refusal in catch. Never trust client roles. |
-| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |
+| ENTITY_NOT_FOUND (also outside Possédé) | ENTITY_NOT_FOUND | Preserve it: the same 404 for an absent row and a hidden row. |
 | ENTITY_SCHEMA_MISSING | ENTITY_SCHEMA_MISSING | Preserve this setup error (a generic 500; its reason and plan are in the server log); fix database CREATE/ALTER grants or apply its plan as DBA. It is not an end-user role error. |
 | ENTITY_VALIDATION | VALIDATION_FAILED | Validate inputs before save; convert remaining model validation in catch. |
 | ENTITY_CONFLICT | REVISION_CONFLICT | Convert in catch; reload, do not blindly retry. |

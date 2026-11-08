@@ -398,6 +398,13 @@
   "new": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
+  "family": "authoring",
+  "file": "authoring.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring-data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+ },
+ {
   "family": "crud",
   "file": "crud.md",
   "currentOnly": true,
@@ -452,6 +459,13 @@
   "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.7 KB) |"
  },
  {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.7 KB) |",
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.8 KB) |"
+ },
+ {
   "family": "multipage-entities",
   "old": "may have HTTP 200 with a Flow error: show `Status`, not only a result field.",
   "new": "return HTTP 200 with an `error` envelope: show `Status`, not only a result field."
@@ -502,8 +516,28 @@
   "new": "which differs from `context.getAuthenticatedUser()` is refused (`ENTITY_FORBIDDEN`);"
  },
  {
+  "family": "entities",
+  "old": "Its hidden/absent-row 404 becomes 403 **for both** in this contract: do not\nunmask another user's row to distinguish them. If the contract requires 404,\nkeep that code instead. Adapt only the facade's JSON keys to your contract.",
+  "new": "A hidden row and an absent row answer the same 404 `ENTITY_NOT_FOUND`: do not\nunmask another user's row to distinguish them. A refusal answers 200 with an\n`ENTITY_*` code. Adapt only the facade's JSON keys to your contract."
+ },
+ {
+  "family": "entities",
+  "old": "if (local.failure.code === \"ENTITY_NOT_FOUND\" || local.failure.code === \"ENTITY_FORBIDDEN\" ||\n        local.failure.code === \"ENTITY_SCOPE_VIOLATION\" || local.failure.code === \"FORBIDDEN\") {\n        throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\" }\n      }",
+  "new": "if (local.failure.code === \"ENTITY_NOT_FOUND\") {\n        throw { code: \"ENTITY_NOT_FOUND\", message: \"Reservation not found\" }\n      }\n      if (local.failure.code === \"ENTITY_FORBIDDEN\" || local.failure.code === \"ENTITY_SCOPE_VIOLATION\" ||\n        local.failure.code === \"FORBIDDEN\") {\n        throw { code: \"FORBIDDEN\", message: \"Reservation unavailable\" }\n      }"
+ },
+ {
+  "family": "entities",
+  "old": "| ENTITY_NOT_FOUND (also outside Possédé) | FORBIDDEN | Convert in catch, uniformly for absent and hidden rows; preserve ENTITY_NOT_FOUND if required instead. |",
+  "new": "| ENTITY_NOT_FOUND (also outside Possédé) | ENTITY_NOT_FOUND | Preserve it: the same 404 for an absent row and a hidden row. |"
+ },
+ {
   "family": "multipage-entities",
   "old": "A 401 invites sign-in, 403 reports a forbidden action, and 400 shows field validation when supplied.",
   "new": "A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,\n`ENTITY_FORBIDDEN` reports a forbidden action, and 400 shows field validation when supplied."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "translate known errors, then return exact keys. For example, convert hidden-row 404 uniformly to 403.",
+  "new": "translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`."
  }
 ]

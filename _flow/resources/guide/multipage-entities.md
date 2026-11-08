@@ -31,7 +31,7 @@ For the simplest compliant start with persisted business data and roles, use **S
    For an imposed 409, use HttpBookingRule from the entities guide instead.
 9. Expose only the named Flows your HTTP contract needs: guard the session,
    validate inputs, call entity.list/read/save/delete with checkAccess:true,
-   translate known errors, then return exact keys. For example, convert hidden-row 404 uniformly to 403.
+   translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`.
 10. Add EntityTable/EntityForm without targetProject: they use this application
     EntityGateway. Put New in its Toolbar, guarded by context.permissions.create;
     wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`.

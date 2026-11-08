@@ -10,9 +10,12 @@ const root = path.resolve(__dirname, '..');
 const guideDir = path.join(root, '_flow/resources/guide');
 const before = path.join(__dirname, 'fixtures/guides-938fc6a');
 const rewrites = JSON.parse(fs.readFileSync(path.join(before, 'rewrites.json'), 'utf8'));
-for (const rewrite of rewrites.filter(item => item.currentOnly)) {
-  const current = fs.readFileSync(path.join(root, '_flow/resources/guide', rewrite.file), 'utf8');
-  assert.ok(current.replace(/\s+/g, ' ').includes(rewrite.new.replace(/\s+/g, ' ')), `${rewrite.file}: current-only rewrite missing`);
+const currentOnlyByFile = new Map();
+for (const rewrite of rewrites.filter(item => item.currentOnly).reverse()) {
+  const current = currentOnlyByFile.get(rewrite.file) ?? fs.readFileSync(path.join(root, '_flow/resources/guide', rewrite.file), 'utf8').replace(/\s+/g, ' ');
+  const next = rewrite.new.replace(/\s+/g, ' ');
+  assert.ok(current.includes(next), `${rewrite.file}: current-only rewrite missing`);
+  currentOnlyByFile.set(rewrite.file, current.replace(next, rewrite.old.replace(/\s+/g, ' ')));
 }
 const { stale, guides, LIMIT } = require(path.join(root, 'tools/guide-sizes.cjs'));
 
