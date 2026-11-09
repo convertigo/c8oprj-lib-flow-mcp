@@ -153,3 +153,6 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
   of the related label field, `—` when the related row is missing; it is
   optional: it is omitted when the related entity is refused. With a dynamic
   `field`, `entity.options` leaves the types of `value` and `label` open.
+- **Hidden and required:** a field hidden by `visibleTo` from a role that may
+  create needs a `default`, an `auto` rule or the policy create scope (a hook
+  cannot fill it); otherwise the model is refused.
