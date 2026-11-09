@@ -162,6 +162,9 @@ function MyReservations({ input, config, result }) {
 }
 ```
 
+For `entity.list`, `options.orderBy` is one field name string, never an array.
+When sorting by another field, the engine adds the automatic identity field as a stable tie-breaker.
+
 For an imposed business error code, set `Reservation.hooks.beforeSave` to
 `HttpBookingRule`. It adds the application's date-order refusal and reuses the
 detailed recipe's locked overlap check. Its code reaches the Flow unchanged:

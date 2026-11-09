@@ -553,5 +553,31 @@
   "currentOnly": true,
   "old": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.6 KB) |",
   "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.7 KB) |"
+ },
+ {
+  "family": "start",
+  "old": "`workingCopy:true` means promote before stopping. `code-status` shows\n   drafts; `code-discard` cancels them.",
+  "new": "`workingCopy:true` means promote before stopping. `code-status` shows\n   drafts; `code-discard` cancels them.\n   When one Flow calls another with `requestable.call`, write both, promote the\n   called Flow first, then run the caller with `code-run`."
+ },
+ {
+  "family": "authoring",
+  "file": "authoring.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/authoring-data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.7 KB) |",
+  "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.8 KB) |"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.8 KB) |",
+  "new": "| `flow://guide/entities` (11.8 KB), then `flow://guide/multipage-entities` (11.8 KB) |"
  }
 ]

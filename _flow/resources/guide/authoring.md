@@ -226,6 +226,8 @@ names; a value that does not match the declared type is refused with
 
 ## Loop
 
+Copy the full `revision`; after a revision conflict, read again with `code-get` before rewriting.
+
 1. If the given `project`, `qname` or `block` is not accessible, stop and
    report it; never fall back to another project.
 2. Write the Flow with `code-set`, pass its returned `revision` to `code-patch`
@@ -254,6 +256,6 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/authoring-data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
+| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
 | `flow://guide/authoring-source` (5.7 KB) | editing existing or protected sources, formatting, accessibility |
 | `flow://guide/authoring-blocks` (3.9 KB) | a missing block or a mock, samples, native Convertigo sequence properties |
