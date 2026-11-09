@@ -642,5 +642,17 @@
   "currentOnly": true,
   "old": "| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |",
   "new": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |"
+ },
+ {
+  "family": "entities",
+  "old": "(`_flow.authenticatedContextRequired`; set it to false deliberately for anonymous `publicRead` pages).",
+  "new": "(`_flow.authenticatedContextRequired`; set it to false deliberately for anonymous `publicRead` pages: false opens to anonymous callers every read the policy allows through the gateway, for every entity, not only those pages)."
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
  }
 ]

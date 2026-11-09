@@ -226,7 +226,7 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
+| `flow://guide/entities-policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
 | `flow://guide/entities-model` (9.8 KB) | writing the model, list filters and pages, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
 | `flow://guide/entities-widgets` (4.9 KB) | EntityTable, EntityForm, named snippets |
