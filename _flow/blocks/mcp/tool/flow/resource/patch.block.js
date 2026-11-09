@@ -418,6 +418,19 @@ const _meta = {
 		return null;
 	}
 
+	// flow-resource-get with format:"text" answers "Resource metadata: {...}", an empty line, then the text of a project
+	// resource. That answer sent back as content wrote the line into the file: an engine.yaml began with six of them, one
+	// per patch, and stayed valid YAML (a repeated key). A text that has more of these lines than the current one is
+	// refused, whatever the mode; a patch that removes them is accepted.
+	function readHeaderAdded(current, content) {
+		var pattern = /^Resource metadata: \{"/gm;
+		var before = (String(current).match(pattern) || []).length;
+		var lines = String(content).split("\n");
+		var found = [];
+		lines.forEach(function (line, index) { if (/^Resource metadata: \{"/.test(line)) found.push(index + 1); });
+		return found.length > before ? { line: found[0] } : null;
+	}
+
 	// A project resource: a unified patch applied here hunk by hunk (headers, offsets and unique context accepted), or
 	// content, the whole new text. lib_flow_engine then writes that text as one replacement hunk checked against the
 	// hash read here, with its own path rules, validation and working copy guard.
@@ -460,6 +473,14 @@ const _meta = {
 		var applied = hasContent || hasEdits ? null : patchLib.applyUnifiedPatch(current.content, text);
 		var content = hasContent ? patchLib.normalize(args.content) : hasEdits ? applyEdits(patchLib, current.content, args.edits) : applied.content;
 		var mode = hasContent ? "content" : hasEdits ? "edits" : "patch";
+		var header = readHeaderAdded(current.exists ? patchLib.normalize(current.content) : "", content);
+		if (header) {
+			throw failure("RESOURCE_CONTENT_READ_HEADER", "The new text of " + path + " has, at line " + header.line + ", the \"Resource metadata: {...}\" line " +
+				"that flow-resource-get writes before the text of a resource: that line is not part of the file. Nothing written.",
+				"Send only the text that follows the first empty line of the flow-resource-get answer; without format:\"text\", " +
+				"flow-resource-get gives the text alone in text and its hash apart. Each " + mode + " is checked the same way.",
+				{ path: path, line: header.line, mode: mode });
+		}
 		var cut = hasContent && current.exists ? truncatedReadEnd(patchLib.normalize(current.content), content) : null;
 		if (cut) {
 			throw failure("RESOURCE_CONTENT_TRUNCATED", "content ends " + (cut.midLine ? "in the middle of line " + cut.line : "at line " + cut.line) +
