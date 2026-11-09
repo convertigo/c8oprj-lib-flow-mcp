@@ -75,7 +75,8 @@ invisible to all of them; a refusal says what to write instead.
   Use `flow://guide/multipage-roles` only with no persisted business data or
   an explicit user request for direct SQL. Never replace entity permissions
   or per-user scopes with checks confined to the page.
-  EntityTable/EntityForm use the current application's local EntityGateway; omit
+  EntityTable/EntityForm use the current application's local EntityGateway
+  (model-set with gateway: true); omit
   targetProject unless selecting another application. Put custom New in Toolbar
   behind context.permissions.create; describe controls save/delete capabilities.
   Wire ordinary select/saved/deleted events to the editor and refreshKey. The

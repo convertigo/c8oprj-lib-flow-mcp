@@ -72,14 +72,23 @@ try {
  assert(noRevision&&(noRevision.ok===false||!!noRevision.error),"Set without revision refused");
  var saved=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:"missing"});
  assert(saved&&saved.ok===true,"Initial write failed: "+JSON.stringify(saved));
- assert(saved.scaffold&&saved.scaffold.created.indexOf("EntityGateway")>=0&&saved.scaffold.created.indexOf("block:app.entityAccess")>=0,"Local gateway and policy were scaffolded");
- assert(/publicRead/.test(saved.scaffold.message)&&/Writes stay denied/.test(saved.scaffold.message),"Scaffold reports application decisions");
+ // Without gateway: true, the policy only: business Flows need no generic HTTP entry point.
+ assert(saved.scaffold&&saved.scaffold.created.join()==="block:app.entityAccess"&&saved.scaffold.gateway==="absent","Only the policy is scaffolded without gateway: true: "+JSON.stringify(saved.scaffold));
+ assert(/publicRead/.test(saved.scaffold.message)&&/Writes stay denied/.test(saved.scaffold.message)&&/gateway: true/.test(saved.scaffold.message),"Scaffold reports application decisions and how to ask for the gateway");
  var gateway=new java.io.File(target,"_flow/flows/EntityGateway.flow.js"),policy=new java.io.File(target,"_flow/blocks/app/entityAccess.block.js");
+ assert(!gateway.exists(),"No gateway without gateway: true");
+ var gatewayOption=described["flow-entity-model-set"].inputSchema.properties.gateway;
+ assert(gatewayOption&&gatewayOption.type==="boolean"&&/EntityTable/.test(gatewayOption.description)&&/signed-in/.test(gatewayOption.description),"Set publishes the gateway option: "+JSON.stringify(gatewayOption));
+ // On request, for EntityTable/EntityForm pages: a hidden gateway that requires a session.
+ var asked=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:saved.revision,gateway:true});
+ assert(asked&&asked.ok===true&&asked.scaffold.created.join()==="EntityGateway"&&asked.scaffold.gateway==="created","Gateway scaffolded on request: "+JSON.stringify(asked));
+ var gatewayHeader=String(FileUtils.readFileToString(gateway,"UTF-8")).split("\nfunction ")[0];
+ assert(/accessibility:\s*"hidden"/.test(gatewayHeader)&&/authenticatedContextRequired:\s*true/.test(gatewayHeader),"Requested gateway is hidden and requires a session: "+gatewayHeader);
  assert(String(FileUtils.readFileToString(gateway,"UTF-8")).indexOf("$$authorize")<0,"Scaffold has no second authorization slot");
  var authored=String(FileUtils.readFileToString(policy,"UTF-8"))+"\n// Application-owned policy\n";
  FileUtils.writeStringToFile(policy,authored,"UTF-8");
  var gatewayText=String(FileUtils.readFileToString(gateway,"UTF-8"));
- var replay=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:saved.revision});
+ var replay=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:asked.revision,gateway:true});
  assert(replay.ok&&replay.scaffold.created.length===0&&replay.scaffold.preserved.length===2,"Scaffold replay preserves application sources");
  assert(String(FileUtils.readFileToString(policy,"UTF-8"))===authored&&String(FileUtils.readFileToString(gateway,"UTF-8"))===gatewayText,"Neither custom policy nor gateway was overwritten");
  var read=tool("flow-entity-model-get",args);

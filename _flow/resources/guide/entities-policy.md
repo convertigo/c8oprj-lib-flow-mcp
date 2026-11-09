@@ -6,9 +6,13 @@ Sub-guide of `flow://guide/entities`: read that guide first.
 
 ## One access policy, local to the application
 
-`flow-entity-model-set` creates a public `EntityGateway` and a private
-`app.entityAccess` **only if missing**. Its response lists created/preserved
-sources and the policy decisions still required. Neither is regenerated on
+`flow-entity-model-set` creates a private `app.entityAccess` **only if
+missing**, and an `EntityGateway` only with `gateway: true`, for pages that use
+EntityTable or EntityForm: hidden, for signed-in sessions
+(`_flow.authenticatedContextRequired`; set it to false deliberately for
+anonymous `publicRead` pages). The gateway runs every operation this policy
+allows, outside the rules of business Flows: open only the writes its pages
+need. Its response lists created/preserved sources and the policy decisions still required. Neither is regenerated on
 model edits. There is no shared library gateway, project selector, gateway
 configuration flag or migration fallback. The widgets call this local gateway directly; omitting `targetProject` uses
 the application serving the frontend.

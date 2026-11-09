@@ -586,5 +586,61 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities` (11.8 KB), then `flow://guide/multipage-entities` (11.8 KB) |",
   "new": "| `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.8 KB) |"
+ },
+ {
+  "family": "entities",
+  "old": "`flow-entity-model-set` creates a public `EntityGateway` and a private `app.entityAccess` **only if missing**.",
+  "new": "`flow-entity-model-set` creates a private `app.entityAccess` **only if missing**, and an `EntityGateway` only with `gateway: true`, for pages that use EntityTable or EntityForm: hidden, for signed-in sessions (`_flow.authenticatedContextRequired`; set it to false deliberately for anonymous `publicRead` pages). The gateway runs every operation this policy allows, outside the rules of business Flows: open only the writes its pages need."
+ },
+ {
+  "family": "entities",
+  "old": "Omit `targetProject` to call the public `EntityGateway` of the project serving this frontend.",
+  "new": "Omit `targetProject` to call the `EntityGateway` of the project serving this frontend, created by `flow-entity-model-set` with `gateway: true` (hidden, signed-in sessions)."
+ },
+ {
+  "family": "entities",
+  "old": "`flow-entity-model-set` creates the project-owned gateway and `app.entityAccess` without overwriting either.",
+  "new": "`flow-entity-model-set` creates `app.entityAccess` without overwriting it; facades need no gateway (`gateway: true` adds one for EntityTable/EntityForm pages)."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "EntityTable and EntityForm use the application's local `EntityGateway`;",
+  "new": "EntityTable and EntityForm use the application's local `EntityGateway` (`flow-entity-model-set` with `gateway: true`);"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "widgets call this application's public `EntityGateway`, never a library Flow.",
+  "new": "widgets call this application's `EntityGateway` (hidden, signed-in sessions), never a library Flow."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Model-set has created `EntityGateway` and the default private `app.entityAccess` without overwriting existing code.",
+  "new": "Model-set has created the default private `app.entityAccess`, and `EntityGateway` with `gateway: true`, without overwriting existing code."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "`flow-entity-model-check` then `flow-entity-model-set` using its revision.",
+  "new": "`flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm."
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.8 KB) |",
+  "new": "| `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+ },
+ {
+  "family": "multipage-entities",
+  "file": "multipage-entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |"
  }
 ]

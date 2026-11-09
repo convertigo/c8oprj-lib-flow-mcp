@@ -10,8 +10,9 @@ Find `EntityTable` and `EntityForm` with `authoring-palette` under the qualified
 Structure parent returned by `authoring-tree`. Execute `items[].apply` unchanged.
 Both are library widgets. Their inputs remain model driven; a page supplies the
 entity name and selection/event bindings supported by the installed widget
-contract. Omit `targetProject` to call the public `EntityGateway` of the project
-serving this frontend. Set it only for an intentional cross-project screen: it
+contract. Omit `targetProject` to call the `EntityGateway` of the project serving
+this frontend, created by `flow-entity-model-set` with `gateway: true` (hidden,
+signed-in sessions). Set it only for an intentional cross-project screen: it
 then selects that project's local gateway. There is no library gateway fallback.
 The transport sends only `entity`, `operation`, `payload`; identity, roles,
 `checkAccess` and the policy scope always stay on the server. Do not copy their

@@ -57,8 +57,9 @@ contract requires: `MyReservations` → `entity.list`, `ReadReservation` →
 `entity.read` (not `entity.get`), `SaveReservation` → `entity.save`,
 `DeleteReservation` → `entity.delete`. Use `checkAccess: true` on each public facade call (or the local
 `EntityGateway`); a session guard alone is not an authorization policy.
-`flow-entity-model-set` creates the project-owned gateway and `app.entityAccess`
-without overwriting either. Edit that one policy before opening writes;
+`flow-entity-model-set` creates `app.entityAccess` without overwriting it;
+facades need no gateway (`gateway: true` adds one for EntityTable/EntityForm
+pages). Edit that one policy before opening writes;
 see **One access policy** in `flow://guide/entities-policy`. Use the same guard and error translation
 for each endpoint; keep SQL, ownership and audit in the declared model.
 With the Reservation model in `flow://guide/multipage-entities`, this
@@ -225,8 +226,8 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
+| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
 | `flow://guide/entities-model` (9.8 KB) | writing the model, list filters and pages, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
-| `flow://guide/entities-widgets` (4.8 KB) | EntityTable, EntityForm, named snippets |
+| `flow://guide/entities-widgets` (4.9 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |
