@@ -2,6 +2,8 @@
 
 Entity core: the short path (model, policy, public Flow), your own HTTP contract over entities and the access policy; details in sub-guides.
 
+Before writing FlowScript, read the **JavaScript → FlowScript** box in `flow://guide/start`.
+
 ## Short path: model, policy, public Flow
 
 For persisted business data with roles, start with this small model, identical

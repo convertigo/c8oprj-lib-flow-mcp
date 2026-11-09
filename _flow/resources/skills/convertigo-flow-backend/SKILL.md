@@ -100,6 +100,7 @@ for Svelte actions. Business rules stay in Flows.
 
 - Use the `convertigo-flow` MCP server and the `convertigo-flow-mcp` skill.
 - Read `flow://guide/start` once, then only the smallest relevant guide.
+- Before writing FlowScript, read the **JavaScript → FlowScript** box in `flow://guide/start`.
 - Keep business orchestration visible in FlowScript. Use project-local mocks
   only for explicit missing primitives and replace them before hardening.
 - Before creating a backend mock or custom primitive, use the `proposedPatch`
