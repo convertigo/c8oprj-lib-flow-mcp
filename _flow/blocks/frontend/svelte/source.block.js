@@ -1161,13 +1161,18 @@ const _meta = {
 			var header = content.match(/\bpage["']?\s*:\s*\{([\s\S]*?)\}/);
 			var idMatch = header && header[1].match(/\bid["']?\s*:\s*["']([^"']+)["']/);
 			var routeMatch = header && header[1].match(/\broute["']?\s*:\s*["']([^"']+)["']/);
-			var path = routeMatch ? String(routeMatch[1]) : routeParts.length ? "/" + routeParts.join("/") : "/";
-			return {
+			// The folder is the route of the page, as the frontbuilder reads it: links, navigation and prerendering go
+			// there. A declared route that differs is reported apart (the check warns, or refuses another route).
+			var path = routeParts.length ? "/" + routeParts.join("/") : "/";
+			var declared = routeMatch ? String(routeMatch[1]) : "";
+			var page = {
 				id: idMatch ? String(idMatch[1]) : safeId(path === "/" ? "home" : path.replace(/^\/+/, "")),
 				path: path,
 				parameters: parameters,
 				sourceFile: relative
 			};
+			if (declared && "/" + declared.split("/").filter(Boolean).join("/") !== path) page.declaredRoute = declared;
+			return page;
 		});
 	}
 

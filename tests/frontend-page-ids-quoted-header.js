@@ -14,6 +14,11 @@ sources[routes + "orders/+page.flow.svelte"] = '<script module>\n  export const 
 	'<FlowComponent $$id="order_list"><Structure /></FlowComponent>\n';
 sources[routes + "about/+page.flow.svelte"] = '<script module>\n  export const _flow = { sourceVersion: 2 };\n</script>\n' +
 	'<FlowComponent $$id="about"><Structure /></FlowComponent>\n';
+// The folder is the route of a page: a declared route that differs is kept apart, as declaredRoute.
+sources[routes + "items/[id]/+page.flow.svelte"] = '<script module>\n  export const _flow = { sourceVersion: 2, page: { id: "item", route: "/items/:id" } };\n</script>\n' +
+	'<FlowComponent $$id="item"><Structure /></FlowComponent>\n';
+sources[routes + "adminUsers/+page.flow.svelte"] = '<script module>\n  export const _flow = { sourceVersion: 2, page: { route: "/admin/users" } };\n</script>\n' +
+	'<FlowComponent $$id="users"><Structure /></FlowComponent>\n';
 Object.keys(sources).forEach(function (path) {
 	var file = new java.io.File(projectDir, path);
 	file.getParentFile().mkdirs();
@@ -47,4 +52,11 @@ assertTrue(pages["/"] === "app_dashboard", "quoted header id of the root page: "
 assertTrue(pages["/login"] === "app_login", "quoted header id of a sub-route page: " + JSON.stringify(result.authoringContract.pages));
 assertTrue(pages["/orders"] === "order_list", "unquoted header id and route: " + JSON.stringify(result.authoringContract.pages));
 assertTrue(pages["/about"] === "about", "a page without id keeps the route-derived id: " + JSON.stringify(result.authoringContract.pages));
-print("frontend-page-ids-quoted-header: 4 checks passed");
+var byId = {};
+result.authoringContract.pages.forEach(function (page) { byId[page.id] = page; });
+assertTrue(byId.item && byId.item.path === "/items/[id]" && byId.item.declaredRoute === "/items/:id" && byId.item.parameters[0].name === "id",
+	"a page is at the route of its folder: " + JSON.stringify(result.authoringContract.pages));
+assertTrue(byId.adminUsers && byId.adminUsers.path === "/adminUsers" && byId.adminUsers.declaredRoute === "/admin/users",
+	"a page without id takes the id of its folder route: " + JSON.stringify(result.authoringContract.pages));
+assertTrue(!Object.prototype.hasOwnProperty.call(byId.order_list, "declaredRoute"), "a route written as its folder is not repeated");
+print("frontend-page-ids-quoted-header: 7 checks passed");
