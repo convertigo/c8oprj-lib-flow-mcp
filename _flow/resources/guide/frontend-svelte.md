@@ -86,6 +86,10 @@ a pending preparation, never an unchanged active viewer.
    Never claim a color, layout, timer, navigation or viewer state that was
    not observed.
 
+A French application sets `app: { locale: "fr-FR" }` in the `_flow` header of
+its entry source: `DataTable`, `Select` and the other controls then show French
+texts and dates (the default locale is `en`).
+
 On a project loaded in Convertigo, MCP writes are working copies like Studio
 edits (`draft:true`, `dirty:true`): they are previewed and checked at once and
 written to disk by **Save project**. Standalone runs write the files.
@@ -96,11 +100,11 @@ Read only the sub-guide of the current task, once; each one is short enough to b
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/frontend-svelte-sources` (9.5 KB) | before writing or repairing any `.flow.svelte` file: source layout, header, `$$id`, slots, accepted HTML and Svelte, diagnostics |
+| `flow://guide/frontend-svelte-sources` (9.9 KB) | before writing or repairing any `.flow.svelte` file: source layout, header, `$$id`, slots, accepted HTML and Svelte, diagnostics |
 | `flow://guide/frontend-svelte-layout` (7.9 KB) | to lay out Pages: containers, `AppShell` navigation, `PageHeader`, `StatCard`, `DataTable` columns, links by Page id, images |
 | `flow://guide/frontend-svelte-data` (8.4 KB) | to bind values: `@.Sequence`, `@page`, `@event`, `@route`, `@props`, State, `$$out`, `CallSequence`, `Status` |
 | `flow://guide/frontend-svelte-forms` (4.1 KB) | for inputs and forms: `Input`, `Textarea`, `Combobox`, choices, `Form` submit, `AlertDialog`, locale |
-| `flow://guide/frontend-svelte-datatable` (4.2 KB) | for a `DataTable` with selection, cards, or server paging, filter and sort |
+| `flow://guide/frontend-svelte-datatable` (4.9 KB) | for a `DataTable` with selection, cards, or server paging, filter and sort |
 | `flow://guide/frontend-svelte-actions` (6.8 KB) | for events and actions: chains, `If`, reentrancy, `OnMount`, `OnAfterNavigate`, session Layout, timers, clocks |
 | `flow://guide/frontend-svelte-themes` (3.7 KB) | for colors, palettes, light and dark mode, fonts and icons |
 | `flow://guide/frontend-svelte-components` (3.8 KB) | for a reusable component, its props and events, or a library component |

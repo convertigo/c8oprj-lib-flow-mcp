@@ -16,6 +16,18 @@ Button, and `OnSelectionChange` gives the same keys as `@event.value`
 the loaded page with `serverSide={true}`. A column `format` may be a date
 pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`.
 
+## Column and row action keys
+
+A column is `{ path, label }` plus `format`, `labels`, `tones`, `template`,
+`align`, `emphasis`, `sortable` and `filterable`; a status column is
+`{ path: "status", label: "Status", format: "badge", labels: { ON: "Active" },
+tones: { ON: "success" } }`. A row action is `{ id, label }` plus `variant`,
+`page`, `query`, `when` and `unless`: OnClick gives its `id` as
+`@event.value.action`. Other keys (`type`, `options`) are not read: code-set
+refuses them with the keys to write. `action` without `id` is read as the id,
+with a warning. Texts and dates follow the application locale
+(`app: { locale: "fr-FR" }` in the entry header, `en` by default).
+
 ## Server pagination with DataTable
 
 With `serverSide={true}`, `source` is one server page, `total` is the total

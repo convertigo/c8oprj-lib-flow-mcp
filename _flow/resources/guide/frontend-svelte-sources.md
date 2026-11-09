@@ -23,6 +23,11 @@ Sources live in `_flow/frontbuilder/svelte/model/<App>/src/`:
 | `src/theme.flow.css`, `src/app.flow.css`, `src/i18n/<locale>.json` | theme, free CSS, translations |
 | `Navigate`, `GoBack` | `goto` and browser history |
 
+The folder is the route of a Page: `src/routes/items/[id]/` is `/items/[id]`,
+for links, navigation and prerendering. Omit `route` in the Page header; the
+same route in another syntax (`/items/:id`) draws a warning, and another route
+is refused (`FRONTEND_PAGE_ROUTE_FOLDER_MISMATCH`): move the source instead.
+
 Pages and Layouts outside `src/routes` are refused
 (`FLOW_ROUTES_ROOT_REQUIRED`). Knowing SvelteKit helps, but never edit
 `_private/svelte`, call `$app/navigation`, read the URL manually or write
