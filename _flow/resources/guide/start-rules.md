@@ -176,3 +176,20 @@ behavior and a minimal reproduction without secrets or personal data. Honor
 server feedback consent. If absent or refused, mention it in the final answer;
 never enable reporting, write an agent-local file or use another endpoint to
 bypass consent.
+
+## Reading guides
+
+Read each guide once. Use `resources/read`, or
+`flow-resource-get({uri,format:"text"})` for guide/library/skill URIs without a
+project. In Vibe `run_typescript`, print the returned Markdown with
+`console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`.
+Returning or JSON-stringifying it escapes newlines. Each guide is short enough to
+be read whole; its size follows its name. Structured mode keeps the document in `text`
+(under `structuredContent` in an MCP envelope).
+
+## Frontend entry
+
+Choose the task guide from the table above before coding. For Svelte, use `code-get` / `code-set` on `sourceFile`, then
+`authoring-tree`, `authoring-palette` and `authoring-mutate` as needed. Run the
+viewer through `frontend-svelte-action`. Pages live under
+`_flow/frontbuilder/svelte/model/<App>/src/routes`; never edit generated Svelte.

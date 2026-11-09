@@ -579,5 +579,12 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities` (11.6 KB), then `flow://guide/multipage-entities` (11.8 KB) |",
   "new": "| `flow://guide/entities` (11.8 KB), then `flow://guide/multipage-entities` (11.8 KB) |"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities` (11.8 KB), then `flow://guide/multipage-entities` (11.8 KB) |",
+  "new": "| `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.8 KB) |"
  }
 ]

@@ -24,7 +24,7 @@ Direct SQL and generated CRUD require one.
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` (8.5 KB) |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (4.0 KB) |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
-| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.8 KB), then `flow://guide/multipage-entities` (11.8 KB) |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.8 KB) |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (7.6 KB) |
@@ -33,18 +33,12 @@ Direct SQL and generated CRUD require one.
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
 | Ordered tags and named project configurations | `flow://guide/tags` (4.4 KB) |
-| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (10.8 KB) |
+| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (11.6 KB) |
 
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
 
-Read each guide once. Use `resources/read`, or
-`flow-resource-get({uri,format:"text"})` for guide/library/skill URIs without a
-project. In Vibe `run_typescript`, print the returned Markdown with
-`console.log(await tools.mcp_convertigo_flow.flow_resource_get({uri,format:"text"}))`.
-Returning or JSON-stringifying it escapes newlines. Each guide is short enough to
-be read whole; its size follows its name. Structured mode keeps the document in `text`
-(under `structuredContent` in an MCP envelope).
+Resource reading details: `flow://guide/start-rules`.
 
 ## Source contract in five rules
 
@@ -93,10 +87,3 @@ be read whole; its size follows its name. Structured mode keeps the document in 
 Address executable Flows with `qname:"Project.Flow"`, project blocks with
 `block:"ns.name"`, and Flow Svelte or CSS sources with `sourceFile`. Never
 encode a block in `qname`.
-
-## Frontend entry
-
-Choose the task guide from the table above before coding. For Svelte, use `code-get` / `code-set` on `sourceFile`, then
-`authoring-tree`, `authoring-palette` and `authoring-mutate` as needed. Run the
-viewer through `frontend-svelte-action`. Pages live under
-`_flow/frontbuilder/svelte/model/<App>/src/routes`; never edit generated Svelte.
