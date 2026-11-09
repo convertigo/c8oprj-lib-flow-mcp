@@ -102,6 +102,30 @@ const _meta = {
 		return result;
 	}
 
+	// The entity library that runs entity.model.set must create the EntityGateway only on request (gateway option):
+	// an older one ignores that option and creates a public gateway on every model set. The block called below is the
+	// one this MCP resolves, so its contract is read here, before anything is written.
+	function requireEntityGatewayOption(ctx) {
+		var described = null;
+		try {
+			described = ctx.callBlock("block.get", { name: "entity.model.set" }, { trace: false });
+		} catch (e) {
+			described = null;
+		}
+		var properties = described && described.ok === true && described.block && described.block.properties;
+		if (properties && Object.prototype.hasOwnProperty.call(properties, "gateway")) {
+			return;
+		}
+		throw {
+			code: "ENTITY_LIBRARY_TOO_OLD",
+			message: "lib_flow_entity is too old for this MCP: update it. Its entity.model.set " +
+				(properties ? "has no gateway option and would create a public EntityGateway on every model set."
+					: "contract cannot be read.") + " Nothing was written.",
+			hint: "Update the lib_flow_entity project to the version delivered with this MCP, then call flow-entity-model-set again.",
+			details: { block: "entity.model.set", missingProperty: "gateway" }
+		};
+	}
+
 	function extraArgs(ctx, value) {
 		if (value === undefined || value === null || value === "") {
 			return {};
@@ -356,6 +380,9 @@ const _meta = {
 						result = ctx.authoringMutateSource(args);
 					}
 				} else {
+					if (target === "entity.model.set") {
+						requireEntityGatewayOption(ctx);
+					}
 					result = ctx.callBlock(target, args, { trace: false });
 				}
 				if (target === "entity.model.set" && result && result.ok && result.scaffold &&
