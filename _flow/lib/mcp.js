@@ -6259,8 +6259,10 @@
 		var target = args.sourceFile ? "source:" + String(args.sourceFile).replace(/\\/g, "/")
 			: /flow-block-code-/.test(toolName(request)) ? "block:" + String(args.block || args.name || "") + ":" + String(args.target || "backend") : "flow:" + String(args.name || args.flow || args.qname || "").split(".").pop();
 		if (target === "flow:" || !args.projectDir) return null;
-		return stableEntry("source-observation", [caller, conversation, subagent, canonicalPath(new File(String(args.projectDir))), target,
-			stableGeneration()], 60 * 60 * 1000);
+		// No cache generation in the key: every write (a promote, another draft) moves it, and the observation
+		// was lost between two edits of the same conversation. A stale observation stays safe: the writer compares it.
+		return stableEntry("source-observation", [caller, conversation, subagent, canonicalPath(new File(String(args.projectDir))), target],
+			60 * 60 * 1000);
 	}
 
 	function observedSourceRevision(ctx, request, args) {
@@ -6274,8 +6276,9 @@
 	function rememberSourceRevision(ctx, request, args, result) {
 		if (!result || !result.revision) return;
 		var name = toolName(request);
-		if (!/(?:^|-)code-(?:get|set|patch)$/.test(name) ||
-			!(result.written === true || /-get$/.test(name) && result.ok === true)) return;
+		// A promote answers the working revision it leaves: the conversation observed it too.
+		if (!/(?:^|-)code-(?:get|set|patch|promote)$/.test(name) ||
+			!(result.written === true || /-(?:get|promote)$/.test(name) && result.ok === true)) return;
 		if (result.sourceFile && !args.sourceFile) args = Object.assign({}, args, {sourceFile:result.sourceFile});
 		var key = sourceObservationKey(ctx, args, request);
 		if (key) stableWrite(key, {revision: String(result.revision)});

@@ -27,6 +27,15 @@ try {
  context=null;r=call('code-patch',{name:'Example',edits:[{oldText:'= 4',newText:'= 5'}]});assert(r.error.code==='FLOW_CODE_REVISION_REQUIRED','unidentified client unchanged');
  actor('A');r=call('code-set',{name:'Example',code:'function Example({input,result}) { result.n = }'});assert(!r.ok && r.written && r.revision,'invalid draft kept');
  r=call('code-patch',{name:'Example',edits:[{oldText:'result.n = }',newText:'result.n = 6 }'}]});assert(r.ok && r.revisionInferred,'invalid own draft observation '+JSON.stringify(r));
+ // A promote leaves a working revision this conversation observed: the next patch reuses it, as do patches of other
+ // Flows written before it (sonnet in it45: set, promote, then patch without revision was refused).
+ var other=new File(temp,'_flow/flows/Other.flow.js');FU.writeStringToFile(other,'function Other({input,result}) { result.n = 1 }','UTF-8');
+ r=call('code-get',{name:'Other'});assert(r.ok,'read other');
+ r=call('code-promote',{name:'Example'});assert(r.ok && r.revision,'promote own draft '+JSON.stringify(r));
+ r=call('code-patch',{name:'Example',edits:[{oldText:'= 6',newText:'= 9'}]});assert(r.ok && r.revisionInferred,'patch after promote '+JSON.stringify(r));
+ r=call('code-patch',{name:'Other',edits:[{oldText:'= 1',newText:'= 2'}]});assert(r.ok && r.revisionInferred,'patch of a Flow read before another write '+JSON.stringify(r));
+ actor('B');r=call('code-patch',{name:'Example',edits:[{oldText:'= 9',newText:'= 10'}]});assert(r.ok===false && /REVISION_MISMATCH/.test(r.error.code),'another conversation stays stale '+JSON.stringify(r));
+ actor('A');
  // A direct file edit after a read still changes the current revision.
  call('code-discard',{name:'Example'});call('code-get',{name:'Example'});FU.writeStringToFile(file,source(7),'UTF-8');
  r=call('code-set',{name:'Example',code:source(8)});assert(!r.ok && /REVISION_MISMATCH/.test(r.error.code),'external edit refused '+JSON.stringify(r));
