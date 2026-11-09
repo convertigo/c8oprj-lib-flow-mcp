@@ -405,6 +405,100 @@ const _meta = {
 		return String(source).substring(0, offset).split("\n").length;
 	}
 
+	// The engine attributes written with one dollar in the opening tag of a Flow block ($id, $nodes...): what an agent
+	// writes for $$id, or a JavaScript String.replace whose replacement text held $$. Quoted values, {expressions},
+	// <script>, <style> and comments are skipped: "$id=" in a text is no attribute.
+	var ENGINE_ATTRIBUTE_NAMES = ["id", "comment", "disabled", "out", "nodes"];
+	function skipExpression(source, at) {
+		var depth = 0;
+		for (var k = at; k < source.length; k++) {
+			var ch = source.charAt(k);
+			if (ch === "\"" || ch === "'" || ch === "`") {
+				for (k = k + 1; k < source.length && source.charAt(k) !== ch; k++) {
+					if (source.charAt(k) === "\\") k++;
+				}
+				continue;
+			}
+			if (ch === "{") depth++;
+			else if (ch === "}" && --depth === 0) return k + 1;
+		}
+		return source.length;
+	}
+	function singleDollarAttributes(source) {
+		source = String(source || "");
+		var found = [], i = 0, n = source.length;
+		while (i < n) {
+			var ch = source.charAt(i);
+			if (ch === "{") { i = skipExpression(source, i); continue; }
+			if (ch !== "<") { i++; continue; }
+			if (source.substring(i, i + 4) === "<!--") {
+				var commentEnd = source.indexOf("-->", i + 4);
+				i = commentEnd < 0 ? n : commentEnd + 3;
+				continue;
+			}
+			var raw = /^<(script|style)\b/i.exec(source.substring(i, i + 8));
+			if (raw) {
+				var rawEnd = source.toLowerCase().indexOf("</" + raw[1].toLowerCase(), i + 1);
+				i = rawEnd < 0 ? n : rawEnd + 2;
+				continue;
+			}
+			var opening = /^<([A-Z][A-Za-z0-9_.]*)/.exec(source.substring(i, i + 200));
+			if (!opening) { i++; continue; }
+			var tag = opening[1], j = i + opening[0].length, attributes = [];
+			while (j < n) {
+				var c = source.charAt(j);
+				if (c === ">") { j++; break; }
+				if (c === "/" && source.charAt(j + 1) === ">") { j += 2; break; }
+				if (c === "\"" || c === "'") {
+					var quoteEnd = source.indexOf(c, j + 1);
+					j = quoteEnd < 0 ? n : quoteEnd + 1;
+					continue;
+				}
+				if (c === "{") { j = skipExpression(source, j); continue; }
+				var name = /^[^\s=>\/"'{]+/.exec(source.substring(j, j + 200));
+				if (!name) { j++; continue; }
+				attributes.push({ name: name[0], start: j });
+				j += name[0].length;
+			}
+			attributes.forEach(function (attribute) {
+				var single = /^\$([A-Za-z]+)$/.exec(attribute.name);
+				if (!single || ENGINE_ATTRIBUTE_NAMES.indexOf(single[1]) < 0) return;
+				found.push({
+					tag: tag, name: single[1], start: attribute.start, line: lineNumber(source, attribute.start),
+					twin: attributes.some(function (other) { return other.name === "$$" + single[1]; })
+				});
+			});
+			i = j;
+		}
+		return found;
+	}
+
+	// $id written for $$id on a tag that has no $$id is unambiguous: the write corrects it, with a warning per attribute.
+	function engineAttributeCorrections(source) {
+		source = String(source || "");
+		var found = singleDollarAttributes(source).filter(function (each) { return !each.twin; });
+		var corrected = source;
+		for (var index = found.length - 1; index >= 0; index--) {
+			corrected = corrected.substring(0, found[index].start) + "$" + corrected.substring(found[index].start);
+		}
+		return {
+			source: corrected,
+			diagnostics: found.map(function (each) {
+				return {
+					severity: "warning",
+					code: "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR",
+					message: "$" + each.name + " on <" + each.tag + "> has one dollar: written $$" + each.name + ", the engine attribute.",
+					line: each.line,
+					property: "$" + each.name,
+					corrected: true,
+					before: "$" + each.name,
+					after: "$$" + each.name,
+					hint: "Engine attributes are written $$id, $$out, $$comment, $$disabled, $$nodes. code-set and code-patch write the corrected source; code-get returns it."
+				};
+			})
+		};
+	}
+
 	function sourceDiagnostics(source, path) {
 		var diagnostics = [];
 		var seen = {};
@@ -428,18 +522,19 @@ const _meta = {
 			}
 		}
 		// $id, $nodes... with one dollar are no engine attributes: the node would silently get a default identity.
-		// It is the usual trace of a JavaScript String.replace whose replacement text holds $$ (a pattern that writes $).
-		var singleDollarPattern = /<([A-Z][A-Za-z0-9_.]*)\b[^>]*?[\s]\$(id|comment|disabled|out|nodes)\s*=/g;
-		while ((match = singleDollarPattern.exec(source)) !== null) {
+		// The write corrects them (engineAttributeCorrections); one left here sits beside its $$ twin.
+		singleDollarAttributes(source).forEach(function (found) {
+			if (!found.twin) return;
 			diagnostics.push({
 				severity: "error",
 				code: "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR",
-				message: "$" + match[2] + " on <" + match[1] + "> has one dollar: engine attributes are written $$" + match[2] + ".",
-				line: lineNumber(source, match.index),
-				property: "$" + match[2],
-				hint: "Write $$" + match[2] + ". When the source is built with String.replace or replaceAll, $$ in a replacement text writes a single $: pass the replacement as a function (() => text), or use split(oldText).join(newText), or the edits of code-patch."
+				message: "$" + found.name + " on <" + found.tag + "> has one dollar, and the tag already has $$" + found.name + ": remove $" + found.name + ".",
+				line: found.line,
+				property: "$" + found.name,
+				twin: true,
+				hint: "Engine attributes are written $$" + found.name + ", once per tag. When the source is built with String.replace or replaceAll, $$ in a replacement text writes a single $: pass the replacement as a function (() => text), or use split(oldText).join(newText), or the edits of code-patch."
 			});
-		}
+		});
 		var variableSourcePattern = /<Variable\b[^>]*\bsource\s*=/g;
 		while ((match = variableSourcePattern.exec(source)) !== null) {
 			diagnostics.push({
@@ -788,7 +883,10 @@ const _meta = {
 				warningCount: cssDiagnostics.filter(function (item) { return item.severity === "warning"; }).length
 			};
 		}
-		var diagnostics = sourceDiagnostics(source, path);
+		var corrections = engineAttributeCorrections(source);
+		var submitted = source;
+		source = corrections.source;
+		var diagnostics = corrections.diagnostics.concat(sourceDiagnostics(source, path));
 		if (/<DisplayModeControl\b[^>]*\bclass\s*=\s*["'][^"']*\btheme-switch\b/.test(String(source || ""))) {
 			diagnostics.push({
 				severity: "warning",
@@ -803,6 +901,7 @@ const _meta = {
 				return {
 					ok: !diagnostics.some(function (item) { return item.severity === "error"; }),
 					sourceFile: path.relative,
+					correctedSource: source !== submitted ? source : undefined,
 					diagnostics: diagnostics,
 					errorCount: diagnostics.filter(function (item) { return item.severity === "error"; }).length,
 					warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length
@@ -880,14 +979,20 @@ const _meta = {
 		otherProjectSequenceHints(props, diagnostics);
 		// Syntax diagnostics come from Svelte; show their exact location before textual contract checks.
 		diagnostics.sort(function (a, b) { return (b.svelte ? 1 : 0) - (a.svelte ? 1 : 0); });
+		var proposal = propose !== false && diagnostics.some(function (item) { return item.severity === "error"; })
+			? sourceProposal(ctx, props, path, source, diagnostics) : null;
+		// The proposal applies to the submitted text: it holds the corrections too.
+		if (proposal && source !== submitted && proposal.edits && proposal.edits.length === 1 && proposal.edits[0].oldText === source) {
+			proposal.edits[0].oldText = proposal.edits[0].before = submitted;
+		}
 		return {
 			ok: !diagnostics.some(function (item) { return item.severity === "error"; }),
 			sourceFile: path.relative,
+			correctedSource: source !== submitted ? source : undefined,
 			diagnostics: diagnostics,
 			errorCount: diagnostics.filter(function (item) { return item.severity === "error"; }).length,
 			warningCount: diagnostics.filter(function (item) { return item.severity === "warning"; }).length,
-			proposedPatch: propose !== false && diagnostics.some(function (item) { return item.severity === "error"; })
-				? sourceProposal(ctx, props, path, source, diagnostics) : null
+			proposedPatch: proposal
 		};
 	}
 
@@ -922,7 +1027,7 @@ const _meta = {
 		if (after === source) {
 			var lines = source.split("\n");
 			diagnostics.forEach(function (d) {
-				if (d.code !== "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" || !d.line || !/^\$[A-Za-z]+$/.test(d.property || "")) return;
+				if (d.code !== "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" || d.twin || d.severity !== "error" || !d.line || !/^\$[A-Za-z]+$/.test(d.property || "")) return;
 				var line = lines[d.line - 1], before = d.property + "=";
 				if (line && line.split(before).length === 2) lines[d.line - 1] = line.split(before).join("$" + before);
 			});
@@ -1472,10 +1577,22 @@ const _meta = {
 	// The source is checked before the write lock, which covers only the revision check and the write: a check
 	// takes seconds on cold caches, and the writes of other sources would wait for it. A source changed meanwhile
 	// still refuses the write with its stale revision.
+	// The corrections of the check (engineAttributeCorrections) are written, and listed with their warnings.
+	function correctedWrite(result, validation) {
+		var corrected = (validation.diagnostics || []).filter(function (item) { return item.corrected === true; });
+		if (corrected.length) {
+			result.corrections = corrected.map(function (item) {
+				return { code: item.code, line: item.line, before: item.before, after: item.after };
+			});
+		}
+		return result;
+	}
+
 	function write(ctx, props, path, source) {
 		assertSetRevision(ctx, props, path);
 		var validation = validate(ctx, props, path, source);
 		requireValid(validation);
+		if (typeof validation.correctedSource === "string") source = validation.correctedSource;
 		var draft;
 		sourceWriteLock.lock();
 		try {
@@ -1491,7 +1608,7 @@ const _meta = {
 		saved.errorCount = validation.errorCount;
 		saved.warningCount = validation.warningCount;
 		saved.written = true;
-		return saved;
+		return correctedWrite(saved, validation);
 	}
 
 	return {
@@ -1523,6 +1640,8 @@ const _meta = {
 					? String(props.code)
 					: String(read(ctx, props, path, false).code);
 				result = validate(ctx, props, path, source);
+				// The check writes nothing: its warnings say what code-set corrects.
+				delete result.correctedSource;
 				result.revision = sourceStore(ctx, props).exists(path.file) ? read(ctx, props, path, false).revision : null;
 			} else if (operation === "set") {
 				if (props.code === undefined || props.code === null) {
@@ -1558,11 +1677,12 @@ const _meta = {
 				var preview = ctx.resourcePatch(patchRequest);
 				var validation = validate(ctx, props, path, String(preview.content));
 				requireValid(validation);
+				var patched = typeof validation.correctedSource === "string" ? validation.correctedSource : String(preview.content);
 				var patchedDraft;
 				sourceWriteLock.lock();
 				try {
 					assertSetRevision(ctx, props, path);
-					patchedDraft = persist(ctx, props, path, String(preview.content));
+					patchedDraft = persist(ctx, props, path, patched);
 				} finally {
 					sourceWriteLock.unlock();
 				}
@@ -1575,6 +1695,7 @@ const _meta = {
 				result.errorCount = validation.errorCount;
 				result.warningCount = validation.warningCount;
 				result.written = true;
+				correctedWrite(result, validation);
 			} else {
 				throw new Error("Unsupported Flow Svelte source operation: " + operation);
 			}

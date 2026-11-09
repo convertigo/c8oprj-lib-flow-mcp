@@ -73,6 +73,12 @@ key or positional call is refused with a `proposedPatch`: line, before, after,
 and exact `oldText`/`newText` edits for `code-patch`. Review it; no suggestion
 is ever applied automatically, including when an old client sends `autoCorrect`.
 
+One correction is written: a slot or an engine attribute with one dollar
+(`$nodes: function () {...}`, `$id`) where the block declares that slot and no
+`$$` twin is written. code-set and code-patch write `$$nodes` and answer
+`fixes` with a `FLOWSCRIPT_SLOT_SIGIL_CORRECTED` warning; a plain key such as
+`nodes:` stays refused, as it may be a business property.
+
 Only `code-promote` and Studio tree edits format. Promotion checks the tree
 before and after formatting and saves nothing if the program changes. Its
 answer includes `linted`, `changedLines` and the text-hash `revision`. An

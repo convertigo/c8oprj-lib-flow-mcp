@@ -301,16 +301,44 @@ assertTrue(pageScopedCheck.errorCount === 1 && pageScopedCheck.warningCount === 
 	"The check of a page must keep its own diagnostics and those of no source, not those of the other pages.");
 treeResponse = null;
 
-// $id with one dollar (the trace of a String.replace whose replacement held $$id) is refused with its cause.
+// $id with one dollar (written for $$id, or the trace of a String.replace whose replacement held $$id) is the engine
+// attribute: the check warns, and code-set writes $$id. A "$id=" inside a quoted value or an expression is no attribute.
 var singleDollarCheck = run({
 	operation: "check",
 	projectDir: String(root.getAbsolutePath()),
 	sourceFile: sourceFile,
 	code: "<FlowComponent $$id=\"root\"><Variables><State $id=\"picked\" type=\"array\" value={[]} /></Variables><Structure /></FlowComponent>\n"
 });
-assertTrue(singleDollarCheck.ok === false && singleDollarCheck.diagnostics.some(function (item) {
-	return item.code === "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" && item.property === "$id" && /String\.replace/.test(item.hint);
-}), "A single-dollar engine attribute must be refused with the String.replace cause.");
+assertTrue(singleDollarCheck.ok === true && singleDollarCheck.correctedSource === undefined && singleDollarCheck.diagnostics.some(function (item) {
+	return item.code === "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" && item.severity === "warning" && item.property === "$id" && item.corrected === true;
+}), "A single-dollar engine attribute must be reported as a correction by the check: " + JSON.stringify(singleDollarCheck.diagnostics));
+var singleDollarCurrent = run({ operation: "get", projectDir: String(root.getAbsolutePath()), sourceFile: sourceFile });
+var singleDollarSource = "<FlowComponent $$id=\"root\"><Variables><State $id=\"picked\" type=\"array\" value={[]} /></Variables>" +
+	"<Structure><Text $id=\"note\" text=\"price $id=3\" class={\"a $out=b\"} /><Button $nodes=\"x\" label=\"Go\" /></Structure></FlowComponent>\n";
+var singleDollarSet = run({
+	operation: "set",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: singleDollarCurrent.revision,
+	code: singleDollarSource
+});
+var singleDollarWritten = String(FileUtils.readFileToString(source, "UTF-8"));
+// split/join: a String.replace replacement text writes $$ as one $.
+assertTrue(singleDollarSet.written === true && singleDollarWritten === singleDollarSource
+	.split("<State $id=").join("<State $$id=").split("<Text $id=").join("<Text $$id=").split("<Button $nodes=").join("<Button $$nodes="),
+	"code-set must write the engine attributes with two dollars, and leave quoted values alone: " + singleDollarWritten);
+assertTrue(singleDollarSet.corrections.length === 3 && singleDollarSet.corrections[0].before === "$id" && singleDollarSet.corrections[0].after === "$$id" &&
+	singleDollarSet.warningCount === 3 && singleDollarSet.diagnostics.filter(function (item) { return item.corrected === true; }).length === 3,
+	"code-set must list each correction with a warning: " + JSON.stringify(singleDollarSet));
+var twinCheck = run({
+	operation: "check",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	code: "<FlowComponent $$id=\"root\"><Structure><Text $$id=\"note\" $id=\"other\" text=\"x\" /></Structure></FlowComponent>\n"
+});
+assertTrue(twinCheck.ok === false && twinCheck.diagnostics.some(function (item) {
+	return item.code === "FRONTEND_ENGINE_ATTRIBUTE_SINGLE_DOLLAR" && item.severity === "error" && item.twin === true && /String\.replace/.test(item.hint);
+}), "$id beside $$id is ambiguous and stays refused with the String.replace cause: " + JSON.stringify(twinCheck.diagnostics));
 
 var componentSourceFile = "_flow/frontbuilder/svelte/components/TestBadge.flow.svelte";
 var componentSource = [

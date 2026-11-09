@@ -55,6 +55,7 @@ const _meta = {
 				mcp.assertProjectSaveAllowed(args);
 				mcp.assertFlowNameFree(args);
 				var write = ctx.flowCodePatch(args);
+				write = mcp.applySlotSigilProposal(args, write, function (retry) { return ctx.flowCodeSet(retry); });
 				if (write.ok === true && !isDry(args) && !isDraft(args)) {
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
 				}

@@ -570,6 +570,12 @@
 				value.warnings.slice(0, 2).map(function (warning) {
 					return warning.hint || warning.message || warning.code || "warning";
 				}).join(" | "));
+		} else if (Array.isArray(value.diagnostics) && value.diagnostics.some(function (item) { return item && item.severity === "warning"; })) {
+			// A frontend source written or checked with warnings (a correction, a route spelling) says them in the text too.
+			var warned = value.diagnostics.filter(function (item) { return item && item.severity === "warning"; });
+			parts.push("warnings=" + warned.length + ": " + warned.slice(0, 3).map(function (warning) {
+				return (warning.code ? "[" + warning.code + "] " : "") + String(warning.message || warning.hint || "warning").replace(/\.$/, "");
+			}).join(" | "));
 		}
 		if (value.matches) {
 			parts.push(String(value.matches.length) + " matches: " + listNames(value.matches, 6).join(", "));
@@ -2017,6 +2023,41 @@
 
 	// A Flow cannot take the name of a sequence the project file still declares: its deletion is not
 	// saved yet, and declaring both would bring the sequence back, and rename the Flow, at the next load.
+	// A slot or an engine attribute written with one dollar ($nodes: function () {...}, $id: "x") is refused by the
+	// engine with a proposal made only of FLOWSCRIPT_SLOT_SIGIL_CORRECTED corrections: the block declares that slot, or
+	// the attribute is none of its properties, and no $$ twin is written. Nothing else is meant: the write sends that
+	// proposal once on the refused working copy, as code-patch would, and the answer lists each correction with a
+	// warning. Any other proposal stays a proposal.
+	function applySlotSigilProposal(args, write, again) {
+		if (!write || write.ok !== false || !write.error || write.dry === true || typeof again !== "function") return write;
+		var edits = write.proposedPatch && write.proposedPatch.edits || [];
+		var edit = edits.length === 1 ? edits[0] : null;
+		var corrections = edit && Array.isArray(edit.corrections) ? edit.corrections : [];
+		function bare(text) { return String(text || "").replace(/^["']|["']$/g, ""); }
+		if (!edit || typeof edit.newText !== "string" || !corrections.length || !corrections.every(function (correction) {
+			return correction && correction.code === "FLOWSCRIPT_SLOT_SIGIL_CORRECTED" && /^\$+[A-Za-z]+$/.test(bare(correction.before)) &&
+				bare(correction.after) === "$$" + bare(correction.before).replace(/^\$+/, "");
+		})) return write;
+		var retry = {};
+		Object.keys(args || {}).forEach(function (key) {
+			if (["patch", "codepatch", "unifiedDiff", "diff", "edits", "baseRevision", "baseHash"].indexOf(key) < 0) retry[key] = args[key];
+		});
+		retry.code = edit.newText;
+		if (write.written === true && write.revision) retry.revision = write.revision;
+		var second = again(retry);
+		if (!second || typeof second !== "object") return write;
+		second.fixes = corrections.concat(second.fixes || []);
+		second.warnings = corrections.map(function (correction) {
+			return {
+				severity: "warning", code: "FLOWSCRIPT_SLOT_SIGIL_CORRECTED", line: correction.line,
+				message: bare(correction.before) + " written " + bare(correction.after) + " at line " + correction.line +
+					": slots and engine attributes take two dollars. The source was corrected; code-get returns it."
+			};
+		}).concat(second.warnings || []);
+		if (typeof second.code !== "string") second.code = edit.newText;
+		return second;
+	}
+
 	function assertFlowNameFree(args, flowName) {
 		args = args || {};
 		var name = String(flowName || args.name || String(args.qname || args.flowQName || "").split(".").pop() || "");
@@ -6360,6 +6401,7 @@
 		_studioReloadObject: studioReloadObject,
 		_studioReloadFrontend: studioReloadFrontend,
 		assertFlowNameFree: assertFlowNameFree,
+		applySlotSigilProposal: applySlotSigilProposal,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,

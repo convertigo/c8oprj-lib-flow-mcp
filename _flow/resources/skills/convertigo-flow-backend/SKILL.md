@@ -66,7 +66,8 @@ Flow as it is, without envelope (`result.items` gives `{ items }`); only
 of named properties. `code-set` and `code-patch` compile your exact text. Guessed
 names, keys and positional calls produce a suggested patch with line, before
 and after. Review and send the edits with their revision; they are never
-applied automatically. Promotion formats once, checks the same tree and returns
+applied automatically, except `$nodes`/`$id` written for `$$nodes`/`$$id`,
+corrected with a warning. Promotion formats once, checks the same tree and returns
 `linted`, `changedLines` and the text revision. If unchanged, keep that revision.
 A refused write with `written:true` has become the working copy: patch its new
 revision, not the previous successful one. An identified MCP conversation may
