@@ -58,8 +58,8 @@ function Logout({ input, config, result }) {
 
 ## Application access, one editable block
 
-Model-set has created `EntityGateway` and the default private
-`app.entityAccess` without overwriting existing code. Replace **only the policy**
+Model-set has created the default private `app.entityAccess`, and
+`EntityGateway` with `gateway: true`, without overwriting existing code. Replace **only the policy**
 with this application decision. The actor provider of `flow://guide/multipage-entities` supplies server roles.
 No gateway slot or config key is needed; no model ACL opens additional rights.
 `Audit`/`APP_USER` retain optional deny-only ACLs as a second restriction.

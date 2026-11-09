@@ -38,7 +38,7 @@ replay sign-in. Navigate only in the successful login/logout action chain.
 ```
 
 For the guarded `mine` page, use this editing chain. Omit `targetProject`: both
-widgets call this application's public `EntityGateway`, never a library Flow.
+widgets call this application's `EntityGateway` (hidden, signed-in sessions), never a library Flow.
 Only cross-project screens set `targetProject` to the other application.
 `describe` returns effective capabilities: put New inside the table Toolbar
 and test `context.permissions.create`; EntityForm hides denied save/delete

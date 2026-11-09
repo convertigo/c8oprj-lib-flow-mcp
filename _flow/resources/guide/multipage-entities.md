@@ -13,7 +13,8 @@ For the simplest compliant start with persisted business data and roles, use **S
    first when Flow names, JSON keys or error codes are imposed. They do not
    require direct SQL: ordinary public Flows wrap `entity.*`.
 3. Configure one SQL connection and declare Room/Reservation once with
-   `flow-entity-model-check` then `flow-entity-model-set` using its revision.
+   `flow-entity-model-check` then `flow-entity-model-set` using its revision,
+   with `gateway: true` because step 10 uses EntityTable/EntityForm.
    Keep IDs/revisions as text and dates as ISO; no duplicate business schema.
 4. Install the private `app.actor` from the entities guide. It reads only the
    authenticated server session and the server directory; never client roles.
@@ -227,5 +228,5 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |
+| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |
 | `flow://guide/multipage-entities-pages` (11.6 KB) | pages, CSV export, scheduled jobs, audit, final proof |

@@ -203,8 +203,9 @@ for Svelte actions. Business rules stay in Flows.
 Return a compact handoff containing changed Flow/block QNames, effective output
 schemas, remaining mocks, validation evidence and the frontend contract.
 
-Entity backend access: model-set scaffolds a project-local EntityGateway and the
-unique private app.entityAccess without overwriting existing sources. Reads
+Entity backend access: model-set scaffolds the unique private app.entityAccess
+without overwriting existing sources, and a project-local EntityGateway (hidden,
+signed-in sessions) only with gateway: true, for EntityTable/EntityForm pages. Reads
 require an authenticated user by default; publicRead explicitly opens anonymous
 entities. Writes stay denied until the application policy opens them. Optional
 model ACLs only add denials. Public custom facades use checkAccess:true; trusted
