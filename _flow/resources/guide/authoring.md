@@ -228,7 +228,8 @@ names; a value that does not match the declared type is refused with
 
 1. If the given `project`, `qname` or `block` is not accessible, stop and
    report it; never fall back to another project.
-2. Write the Flow with `code-set`, patch with `code-patch`, run with
+2. Write the Flow with `code-set`, pass its returned `revision` to `code-patch`
+   (then pass each patch's new `revision` to the next), run with
    `code-run`, then `code-promote` once diagnostics and behavior are clean.
    `unsaved:true` / `workingCopy:true` in `code-run` means: promote before
    stopping. `code-status` gives dirty/revision state, `code-discard` cancels,

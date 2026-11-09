@@ -534,5 +534,10 @@
   "family": "multipage-entities",
   "old": "translate known errors, then return exact keys. For example, convert hidden-row 404 uniformly to 403.",
   "new": "translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`."
+ },
+ {
+  "family": "authoring",
+  "old": "Write the Flow with `code-set`, patch with `code-patch`, run with",
+  "new": "Write the Flow with `code-set`, pass its returned `revision` to `code-patch`\n   (then pass each patch's new `revision` to the next), run with"
  }
 ]

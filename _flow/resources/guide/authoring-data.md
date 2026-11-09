@@ -4,6 +4,9 @@ Lists, maps and config in FlowScript, output schemas, native inputs and backend 
 
 Sub-guide of `flow://guide/authoring`: read that guide first.
 
+Run a block as a statement, then test its result: `local.m = text.match({ text: input.id, pattern: "^[0-9]+$" })`, then `if (local.m.matched) { ... }`.
+`Array.push` is not a block: create `json.array({ path: "local.errors", itemType: { type: "string" } })`, then append with `json.push({ path: "local.errors", value: "Invalid ID" })`.
+
 ## Lists, maps and config
 
 ```javascript

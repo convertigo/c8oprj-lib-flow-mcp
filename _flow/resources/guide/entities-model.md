@@ -42,6 +42,24 @@ needed when writing the model. An explicit `entity.initialize({})` can also run
 without a session; `dryRun:true` previews, `verifyOnly:true` checks a DBA schema.
 `config.entities.schema: verify` makes the automatic check read-only.
 
+Define the complete entity before the first `entity.*` call, including fields,
+traits and relations. For example, set the model with both entities first:
+
+```json
+{"version":2,"modelVersion":1,"entities":{"Customer":{"fields":{"name":{"type":"string"}}},"Order":{"traits":["Horodaté"],"fields":{"amount":{"type":"decimal","precision":12,"scale":2},"customerId":{"type":"int64","relation":{"entity":"Customer","labelField":"name"}}}}}}
+```
+
+Only then call `entity.save({ entity: "Order", values: { amount: "12.50", customerId: "1" } })`.
+After initialization, changing `amount`'s type or precision,
+replacing a trait, or renaming its table is refused with
+`SQL_SCHEMA_MIGRATION_UNSUPPORTED`; the public message is deliberately generic.
+During development, keep the existing declaration and add a new entity (table)
+or a new nullable field (column), or a required field with a default. Copy old
+values into a new field explicitly if needed; do not rename or alter the old one.
+Send decimals as exact text, for example `"12.50"`, not a JavaScript number.
+Omit server-managed timestamps on writes: `Horodaté` supplies `dateCreation`
+and `dateModification` (or use `createdAt` with `auto:"create"` in a custom trait).
+
 **Neither entity.initialize nor entity.demoReset is protected by session, role
 or a library demo switch.** The application protects any public caller. Private
 Convertigo code has no internal ACL. The configured database account and its
