@@ -71,6 +71,8 @@ be read whole; its size follows its name. Structured mode keeps the document in 
 3. `code-patch`, `code-run`, then `code-promote` when clean. `unsaved:true` or
    `workingCopy:true` means promote before stopping. `code-status` shows
    drafts; `code-discard` cancels them.
+   When one Flow calls another with `requestable.call`, write both, promote the
+   called Flow first, then run the caller with `code-run`.
 4. Stop after a successful run plus promotion unless deployed HTTP validation
    was requested. Do not call `flow-test` when `code-run` already proved it.
 5. Use `flow-search` only after the first draft, when a block or pattern is
