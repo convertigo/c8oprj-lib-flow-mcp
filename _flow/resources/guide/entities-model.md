@@ -56,9 +56,13 @@ replacing a trait, or renaming its table is refused with
 During development, keep the existing declaration and add a new entity (table)
 or a new nullable field (column), or a required field with a default. Copy old
 values into a new field explicitly if needed; do not rename or alter the old one.
-Send decimals as exact text, for example `"12.50"`, not a JavaScript number.
-Omit server-managed timestamps on writes: `Horodaté` supplies `dateCreation`
-and `dateModification` (or use `createdAt` with `auto:"create"` in a custom trait).
+Send decimals as exact text, for example `"12.50"`; a JSON number within the
+field's precision and scale is also stored as exact text, but a computed one
+such as `0.1 + 0.2` is refused: send its text. Omit server-managed timestamps
+on writes: `Horodaté` supplies `dateCreation` and `dateModification` (or declare
+`"createdAt": {"type": "timestamp", "auto": "create"}`). A timestamp you send
+is local `yyyy-MM-ddTHH:mm:ss`, without `Z`. On `ENTITY_VALIDATION`,
+`details.fields` names each refused field with its expected type and form.
 
 **Neither entity.initialize nor entity.demoReset is protected by session, role
 or a library demo switch.** The application protects any public caller. Private
