@@ -5649,6 +5649,42 @@
 		return { request: forwarded };
 	}
 
+	// requestable-execute (lib_ConvertigoMCP) keeps the first 12 items of each list of the payload (result.truncated,
+	// truncatedField, totalItems), and a preview of a payload over 24 000 characters (payloadPreview, payloadBytes). Its
+	// text said "result keys: requestable, status, truncated, totalItems, payload": an agent read 12 test cases of 17 as
+	// the whole suite. The answer now starts with what is shown, and says how to read the rest.
+	var RELAY_TRUNCATION_NEXT = "To read every item: run a Flow with code-run({ qname: \"<project>.<Flow>\", input: {...} }), whose result " +
+		"keeps its lists whole up to maxResultChars (6000 characters by default, 12000 at most); or have the requestable return its list " +
+		"by pages (offset and limit inputs), or its count with the failed items only, and call requestable-execute for each page.";
+	function relayedTruncation(value) {
+		var result = value && typeof value === "object" && value.result && typeof value.result === "object" ? value.result : null;
+		if (!result || result.truncated !== true) return null;
+		var payload = result.payload && typeof result.payload === "object" ? result.payload : null;
+		var field = typeof result.truncatedField === "string" ? result.truncatedField : "";
+		var list = field && payload && Array.isArray(payload[field]) ? payload[field] : null;
+		var out = { truncated: true };
+		if (list) {
+			// totalItems is the length of the last list of the payload: it counts this list only when it is that one.
+			var lists = Object.keys(payload).filter(function (key) { return Array.isArray(payload[key]); });
+			var total = lists[lists.length - 1] === field && typeof result.totalItems === "number" && result.totalItems > list.length ? result.totalItems : null;
+			out.path = "result.payload." + field;
+			out.shown = list.length;
+			if (total !== null) out.total = total;
+			out.summary = "TRUNCATED: " + (total !== null ? list.length + " of " + total + " items" : "only the first " + list.length + " items") +
+				" of " + out.path + " are shown (requestable-execute keeps the first 12 items of each list). Do not count or judge the list from them.";
+		} else if (typeof result.payloadPreview === "string") {
+			out.path = "result.payloadPreview";
+			out.shownChars = result.payloadPreview.length;
+			if (typeof result.payloadBytes === "number") out.totalChars = result.payloadBytes;
+			out.summary = "TRUNCATED: result.payloadPreview holds the first " + result.payloadPreview.length +
+				(out.totalChars ? " of " + out.totalChars : "") + " characters of the payload, cut in the middle of its JSON.";
+		} else {
+			out.summary = "TRUNCATED: the payload of this answer is incomplete.";
+		}
+		out.next = RELAY_TRUNCATION_NEXT;
+		return out;
+	}
+
 	// The text content of a relayed answer that carries structuredContent only. A sub-agent or a verification still
 	// running must say how to collect it, also to a client that shows the text content alone.
 	function relaySummary(value) {
@@ -5830,6 +5866,14 @@
 					type: "text",
 					text: relaySummary(answer.result.structuredContent)
 				}];
+			}
+			var truncation = answer && answer.result ? relayedTruncation(answer.result.structuredContent) : null;
+			if (truncation) {
+				answer.result.structuredContent.truncation = truncation;
+				var first = answer.result.content[0];
+				var lead = truncation.summary + " " + truncation.next;
+				if (first && first.type === "text") first.text = lead + "\n" + String(first.text || "");
+				else answer.result.content.unshift({ type: "text", text: lead });
 			}
 			return answer;
 		} catch (error) {
@@ -6402,6 +6446,7 @@
 		_studioReloadFrontend: studioReloadFrontend,
 		assertFlowNameFree: assertFlowNameFree,
 		applySlotSigilProposal: applySlotSigilProposal,
+		_relayedTruncation: relayedTruncation,
 		frontendCreateSourceSpec: frontendCreateSourceSpec,
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
