@@ -133,3 +133,15 @@ not. To reactivate a row, an allowed actor reads it (`options: {active: "all"}`
 or no option) and saves its key with the active field set to `true`. Writes by
 key reach inactive rows: to keep a role that writes away from them, use the
 scope that fixes the active field.
+
+Relations to an Activable entity follow the same decision, taken before any row
+is read: for an actor kept from inactive rows, the options of the relation
+(`entity.options`, EntityForm pickers) offer no inactive row, the label of a
+linked inactive row is omitted as for a missing row, and a write that links an
+inactive row is refused as a missing one (`ENTITY_VALIDATION`, rule `relation`).
+
+A policy may run more than once in one call (this default, unique fields,
+`describe`): keep it free of side effects, with no write, counter or external
+call. It receives `options.active: "all"` on reads the caller sent without the
+option: refuse with a plain `throw` (or status 401 or 403), or ignore an option
+it does not expect; a throw with another status fails the read.
