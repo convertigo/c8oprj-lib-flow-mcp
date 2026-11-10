@@ -67,6 +67,8 @@ check(/details\.errors/.test(entities)&&/ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED/.
 // The only way to create rows a guide proposes stays under the access policy: never a SQL write beside it.
 var naturalKey=model.substring(model.indexOf('**Natural key.**'));
 check(model.indexOf('**Natural key.**')>=0&&!/sql\.write|config\.sql\.writes/.test(naturalKey)&&!/sql\.write/.test(entities),'guides propose no SQL write beside the access policy to create rows',naturalKey.substring(0,400));
+// A model change the schema refuses names its place; its full detail is for authoring runs and the server log.
+check(/ENTITY_SCHEMA_CHANGE_REFUSED/.test(model)&&/table, the column, the kind of change/.test(model)&&/server log/.test(model)&&!/deliberately generic/.test(model),'entities-model says a refused model change names its table, column and change',null);
 var expected=results.filter(function(r){return r.regression;}).length,failed=results.filter(function(r){return !r.passed;});
 var passed=negative?failed.length===expected&&results.filter(function(r){return !r.regression;}).every(function(r){return r.passed;}):failed.length===0;
 print(JSON.stringify({ok:passed,baseline:negative,checks:checks,expectedBaselineFailures:expected,failures:failed.map(function(r){return r.name;})}));
