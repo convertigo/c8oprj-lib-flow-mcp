@@ -109,9 +109,10 @@ composition and jobs. Do not expose an unguarded trusted primitive publicly.
 ## Inactive rows
 
 An `Activable` entity lists and counts active rows only. `options.active` of
-`entity.list`, `entity.count` and of the gateway's list and count asks for
-others: `"active"` (the default), `"inactive"` or `"all"`; `null` reads as the
-default, any other value is `ENTITY_ACTIVE_INVALID`. The option is subject to
+`entity.list`, `entity.count`, `entity.read` and of the gateway's list, count
+and read asks for others: `"active"` (the default of a list or a count),
+`"inactive"` or `"all"`; `null` reads as absent, any other value is
+`ENTITY_ACTIVE_INVALID`. The option is subject to
 this policy: `input.request.payload.options.active` carries it, and the policy
 may refuse it (a throw), for instance for every role but ADMIN. A policy scope
 that fixes the active field (`{scope: {actif: true}}`) still applies: inactive
@@ -121,3 +122,14 @@ rows stay out of reach, and a filter on that field is refused with
 with that option, so a filter never reaches a row that the same request with
 `options.active` would not. An explicit `options.active` wins over such a
 filter; a top-level `{actif: true}` keeps the default.
+
+A read by key (`entity.read`, the gateway's read) without `options.active`
+returns the row whatever its state. On a controlled read this policy receives
+it as `options.active: "all"`; when the policy, or the gateway's `$$authorize`
+slot, refuses that, the read keeps to active rows: an actor kept from inactive
+rows reads an inactive row as `ENTITY_NOT_FOUND`, exactly as a missing key, and
+an explicit `"all"` or `"inactive"` gets the refusal whether the row exists or
+not. To reactivate a row, an allowed actor reads it (`options: {active: "all"}`
+or no option) and saves its key with the active field set to `true`. Writes by
+key reach inactive rows: to keep a role that writes away from them, use the
+scope that fixes the active field.
