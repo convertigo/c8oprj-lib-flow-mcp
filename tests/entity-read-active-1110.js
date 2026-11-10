@@ -3,7 +3,8 @@
 // - flow-block-get returns the contract of entity.read with options.active: its values, its refusal, the access policy
 //   that receives it, the scope that still applies and the missing-row answer of an inactive row kept from the actor.
 // - The entities guide names entity.read beside entity.list and entity.count; the entities-policy guide says what a read
-//   by key returns without the option, who decides, and how to reactivate a row.
+//   by key returns without the option, who decides, and how to reactivate a row; relations follow the same decision, and
+//   a policy, evaluated more than once in a call, keeps free of side effects.
 // Run with Rhino: arguments are the lib_flow_mcp project, then the engine _flow; the entity library beside the MCP answers.
 // FLOW_MCP_EXPECT_BASELINE=true runs it against an older MCP and entity: every regression check fails, every contract check passes.
 var root=String(new java.io.File(arguments[0]).getCanonicalPath());
@@ -34,6 +35,10 @@ check(/`entity\.list`, `entity\.count`, `entity\.read`/.test(policy)&&/read by k
  /receives it as `options\.active: "all"`/.test(policy)&&/`ENTITY_NOT_FOUND`, exactly as a missing key/.test(policy)&&/whether the row exists or not/.test(policy)&&/reactivate a row/.test(policy),
  'entities-policy says what a read by key returns, who decides, the missing-row answer and how to reactivate',null);
 check(/Writes by key reach inactive rows/.test(policy),'entities-policy says writes by key reach inactive rows and the scope keeps them away',null);
+check(/Relations to an Activable entity follow the same decision/.test(policy)&&/options of the relation/.test(policy)&&/label of a linked inactive row is omitted/.test(policy)&&
+ /links an inactive row is refused as a missing one/.test(policy),'entities-policy says relations follow the decision of a read by key on inactive rows',null);
+check(/free of side effects/.test(policy)&&/receives `options\.active: "all"` on reads the caller sent without the option/.test(policy)&&/a throw with another status fails the read/.test(policy),
+ 'entities-policy says a policy runs more than once without side effects and what it now receives',null);
 check(/input\.request\.payload\.options\.active/.test(policy)&&/scope that fixes the active field/.test(policy),'entities-policy keeps the policy and the scope of options.active',null,false);
 var expected=results.filter(function(r){return r.regression;}).length,failed=results.filter(function(r){return !r.passed;});
 var passed=negative?failed.length===expected&&results.filter(function(r){return !r.regression;}).every(function(r){return r.passed;}):failed.length===0;
