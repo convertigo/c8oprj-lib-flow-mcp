@@ -105,3 +105,19 @@ The scaffold has **no slot**, so it never authorizes twice. Direct public
 facades use `checkAccess:true` instead; it is a source option, never copied
 from HTTP input. Trusted defaults (`false`) remain for private application
 composition and jobs. Do not expose an unguarded trusted primitive publicly.
+
+## Inactive rows
+
+An `Activable` entity lists and counts active rows only. `options.active` of
+`entity.list`, `entity.count` and of the gateway's list and count asks for
+others: `"active"` (the default), `"inactive"` or `"all"`; `null` reads as the
+default, any other value is `ENTITY_ACTIVE_INVALID`. The option is subject to
+this policy: `input.request.payload.options.active` carries it, and the policy
+may refuse it (a throw), for instance for every role but ADMIN. A policy scope
+that fixes the active field (`{scope: {actif: true}}`) still applies: inactive
+rows stay out of reach, and a filter on that field is refused with
+`ENTITY_FORBIDDEN`. A filter on the active field, such as `{actif: false}` or an
+`or` naming it, reads as `options.active: "all"`: the policy receives the request
+with that option, so a filter never reaches a row that the same request with
+`options.active` would not. An explicit `options.active` wins over such a
+filter; a top-level `{actif: true}` keeps the default.

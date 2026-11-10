@@ -471,6 +471,26 @@
 		return lines.join("");
 	}
 
+	// The refused fields of an error, in the text too: a client that shows only the text of an error (Claude Code for
+	// isError) read "See structuredContent.error" and never the field to correct. details.errors (field, rule, message,
+	// expected) when the error has it, else details.fields (field: message); never more than the error holds.
+	function errorFieldLines(error) {
+		var details = error && error.details;
+		if (!details || typeof details !== "object" || Array.isArray(details)) return "";
+		function text(value) { return typeof value === "string" ? value : JSON.stringify(value); }
+		var entries = Array.isArray(details.errors) ? details.errors.filter(function (entry) {
+			return entry && typeof entry === "object" && typeof entry.field === "string";
+		}).map(function (entry) {
+			var message = text(entry.message || ""), expected = entry.expected ? text(entry.expected) : "";
+			return entry.field + (entry.rule ? " (" + text(entry.rule) + ")" : "") + ": " + message +
+				(expected && expected !== message ? " Expected: " + expected : "");
+		}) : details.fields && typeof details.fields === "object" && !Array.isArray(details.fields) ? Object.keys(details.fields).map(function (name) {
+			return name + ": " + text(details.fields[name]);
+		}) : [];
+		var lines = entries.slice(0, 8).map(function (line) { return "\n- " + (line.length > 300 ? line.substring(0, 299) + "…" : line); }).join("");
+		return lines + (entries.length > 8 ? "\n- " + (entries.length - 8) + " more in structuredContent.error.details." : "");
+	}
+
 	// A refused code-set or code-patch of a Flow keeps the refused source as its working copy (code-check reports its
 	// diagnostics): its revision changed. The text says so with the revision, as an agent reading the text alone
 	// retried on the former revision and got FLOW_CODE_DRAFT_REVISION_MISMATCH.
@@ -543,7 +563,7 @@
 		}
 		if (value.error) {
 			return "Error [" + String(value.error.code || "FLOW_MCP_TOOL_ERROR") + "]: " + String(value.error.message || value.error).replace(/\.$/, "") + "." +
-				errorDiagnosticLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
+				errorDiagnosticLines(value.error) + errorFieldLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
 		}
 		if (value.ok === false) {
 			return "Error [" + failedCode(value) + "]: " + String(value.message || value.title || "The tool reported a failure").replace(/\.$/, "") + "." +

@@ -29,6 +29,13 @@ if (local.page.hasMore) {
 result.tickets = local.page.rows
 ```
 
+An empty group is the neutral element of its operator: `{and: []}` adds no
+condition and `{or: []}` matches no row (as `{field: []}` does), so a filter
+built piece by piece may start from either. Both stay ANDed with the policy
+scope: an empty group never reaches a row outside it. A group holds at most 12
+members, 5 levels deep. For `options.active` of an `Activable` entity, see
+**Inactive rows** in `flow://guide/entities-policy`.
+
 To page instead, pass `offset: input.offset || 0` and return `local.page.nextOffset`
 (`null` on the last page) with the rows.
 
@@ -156,3 +163,15 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
 - **Hidden and required:** a field hidden by `visibleTo` from a role that may
   create needs a `default`, an `auto` rule or the policy create scope (a hook
   cannot fill it); otherwise the model is refused.
+
+**Natural key.** An entity may declare a natural identity, such as
+`"identity": ["email"]` with a `string` field: `entity.read`, `entity.delete`
+and `entity.save` with `key: {email}` (an update, never an upsert) use it.
+`entity.save` creates a row only when the database generates its identity, so a
+create on such an entity answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` (400),
+after the access policy and before any write. To create rows today, give the
+entity the generated identity (declare no identity: an int64 `id`) and keep the
+natural key as an ordinary field, looked up with `entity.list` before
+`entity.save` (the model declares no unique constraint); or, on an existing
+table, insert the row with a declared SQL write (`config.sql.writes`,
+`sql.write`) in a Flow that applies the same access rule as the policy.

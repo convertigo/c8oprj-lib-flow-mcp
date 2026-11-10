@@ -168,6 +168,11 @@ function MyReservations({ input, config, result }) {
 For `entity.list`, `options.orderBy` is one field name string, never an array.
 When sorting by another field, the engine adds the automatic identity field as a stable tie-breaker.
 
+An `Activable` entity lists and counts active rows only. `options.active` of
+`entity.list` and `entity.count` is `"active"` (the default), `"inactive"` or
+`"all"`; `null` reads as the default, any other value is `ENTITY_ACTIVE_INVALID`.
+The access policy receives it and decides: see **Inactive rows** in `flow://guide/entities-policy`.
+
 For an imposed business error code, set `Reservation.hooks.beforeSave` to
 `HttpBookingRule`. It adds the application's date-order refusal and reuses the
 detailed recipe's locked overlap check. Its code reaches the Flow unchanged:
@@ -199,6 +204,17 @@ function HttpBookingRule({ input, config, result }) {
 | ENTITY_CONFLICT | REVISION_CONFLICT | Convert in catch; reload, do not blindly retry. |
 | Your hook's code | BOOKING_WINDOW_CONFLICT | Throw in the hook; preserve that literal code in catch. Map BOOKING_OVERLAP separately if your contract calls it ROOM_ALREADY_BOOKED. |
 
+`ENTITY_VALIDATION` names each refused field in `details.fields` (field: message)
+and in `details.errors`: `{field, rule, message, expected}`, the rule one of
+`required`, `type`, `maxLength`, `enum`, `notFuture`, `unknown`, `identity`,
+`readOnly`, `serverManaged`, `owner` or `relation`, `expected` the form the model
+accepts; never the value received. A `try` keeps only `code`, `message`, `status`
+and `hint` of the error: validate the fields your contract names before
+`entity.save`. `entity.save` creates a row only when the database generates its
+identity: on an entity identified by a natural key (an email, a code), a create
+answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` with how to do it today
+(**Natural key** in `flow://guide/entities-model`).
+
 A throw code is literal text: add one catch branch per expected business code,
 not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED
 at this public boundary, without exposing internal errors; never report success.
@@ -226,8 +242,8 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |
-| `flow://guide/entities-model` (9.8 KB) | writing the model, list filters and pages, schema initialization, demo reset |
+| `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
+| `flow://guide/entities-model` (11.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
 | `flow://guide/entities-widgets` (4.9 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |
