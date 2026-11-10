@@ -59,7 +59,7 @@ traits and relations. For example, set the model with both entities first:
 Only then call `entity.save({ entity: "Order", values: { amount: "12.50", customerId: "1" } })`.
 After initialization, changing `amount`'s type or precision,
 replacing a trait, or renaming its table is refused with
-`ENTITY_SCHEMA_CHANGE_REFUSED` (409): its message, `hint` and `details` name the
+`SQL_SCHEMA_MIGRATION_UNSUPPORTED` (409): its message, `hint` and `details` name the
 table, the column, the kind of change (`details.change`: `addColumn`,
 `changeColumn`, `removeColumn`…) and the reason (`notNullWithoutDefault`,
 `changed`, `missing`), never a row value. The full detail (the refusal text, a
