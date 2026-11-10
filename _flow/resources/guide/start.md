@@ -33,7 +33,7 @@ Direct SQL and generated CRUD require one.
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
 | Ordered tags and named project configurations | `flow://guide/tags` (4.4 KB) |
-| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (11.6 KB) |
+| Tool hygiene (cleanup, removal, metadata), design rules (CORS, secrets, config), drafts and Save, project layout, demo login and add-ons, project switches, friction reports | `flow://guide/start-rules` (12.0 KB) |
 
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.

@@ -158,6 +158,11 @@ Ordinary clients flag `isError:true`; Vibe returns that error with
   Orphan sources use their `qname` too. Never delete source files or edit
   project YAML instead. See `flow://guide/search-and-edit` for details.
 - Tracing: Convertigo symbol `flow.mcp.traceJsonl`, see `flow://guide/tracing`.
+- A test Flow never promoted is only a working copy: `code-discard({project,name})`
+  deletes it; `flow-object-remove` deletes saved objects only. On
+  `PROJECT_HAS_UNSAVED_CHANGES`, retry with `saveProject:false` and ask for
+  **Save project**; on `SOURCE_WORKING_COPY`, edit that file with
+  `code-get`/`code-set`, or `code-discard({project,sourceFile})` first.
 
 ## Non-secret project switches
 

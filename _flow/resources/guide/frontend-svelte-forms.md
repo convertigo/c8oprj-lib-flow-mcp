@@ -44,6 +44,14 @@ query). `@event.value` is the chosen option value with its type (`Select`,
 (`Range`), the item value as a string (`Segment`) or one value per column
 (`WheelPicker`).
 
+A date field that starts on today: `<DateToday $$id="today" $$out="page.day" />`
+in the page `OnMount` and `<DatePicker value="@page.day" />` (`day` a declared
+State; a result goes to `$$out`, `target` is for `SetValue`, `UpdateList` and
+`UpdateNumber` only). `Status` is a widget, not an action: the `Then`/`Else` of
+an `If` in `Actions` set a message State (`SetValue target="page.message"`)
+that a `Text` of the page shows, and a `<Status actionId="save" successText="Saved." />`
+beside the form shows the run, error and success of the action `save`.
+
 ```svelte
 <Input $$id="noteInput" label="Note" value="@page.note"><Events>
   <OnInput $$id="typed"><Actions>

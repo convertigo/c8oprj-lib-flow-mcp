@@ -225,6 +225,10 @@ wait stays in it for the rest of the task.
   context.
 - Use Playwright yourself only for one quick evaluation of DOM state or
   timing; never a `browser_snapshot` per step.
+- Playwright call form: `browser_click({ element: "Save button", target: "e4" })`,
+  `browser_type({ element: "Name field", target: "e3", text: "Ada" })`;
+  `target` is the `[ref=e4]` of the latest `browser_snapshot` (no `ref`
+  argument, never `null`); on `Ref ... not found`, take a new snapshot.
 - The verifier is read-only: fix what it reports with the Flow tools, then
   run it again on the failed paths only.
 
