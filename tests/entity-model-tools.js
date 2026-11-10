@@ -8,7 +8,10 @@ var __flowEngineDir = String(new java.io.File(engineDir).getCanonicalPath());
 var __flowProjectDir = String(new java.io.File(projectDir).getCanonicalPath());
 var engine = eval(String(FileUtils.readFileToString(new java.io.File(engineDir,"Engine.js"),"UTF-8")));
 var source = String(FileUtils.readFileToString(new java.io.File(projectDir,"_flow/flows/McpServer.flow.js"),"UTF-8"));
-var workspace = Files.createTempDirectory(new java.io.File(projectDir,"../.cache/entity-tests").getCanonicalFile().toPath(),"entity-mcp-tools-").toFile();
+// A new checkout layout has no ../.cache/entity-tests yet: create it before the temporary directory inside it.
+var workspaces = new java.io.File(projectDir,"../.cache/entity-tests").getCanonicalFile();
+workspaces.mkdirs();
+var workspace = Files.createTempDirectory(workspaces.toPath(),"entity-mcp-tools-").toFile();
 var target = new java.io.File(workspace,"EntityToolsTest");
 ["lib_flow_engine","lib_flow_entity","lib_flow_sql","lib_flow_crud_data"].forEach(function(n){Files.createSymbolicLink(new java.io.File(workspace,"c8oprj-"+n.replace(/_/g,"-")).toPath(),new java.io.File(projectDir,"../"+n).getCanonicalFile().toPath());});
 var calls=0,assertions=0;
