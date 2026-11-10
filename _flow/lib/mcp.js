@@ -2643,6 +2643,14 @@
 				else if (String(normalized.hint || "").indexOf(diagnostic.next) < 0)
 					normalized.hint = diagnostic.next + (normalized.hint ? " " + normalized.hint : "");
 			}
+			// A widget of the Svelte catalog asked of the backend (flow-block-get LinkButton): one line, the frontend call.
+			var widget = frontendCatalogWidget(ctx, request, String(diagnostic.block || ""));
+			if (widget) {
+				diagnostic.frontendWidget = { id: widget.id, tag: widget.tag, label: widget.label || "" };
+				diagnostic.next = frontendWidgetHint(String(args.project || ""), widget);
+				delete diagnostic.contract;
+				normalized.hint = diagnostic.next;
+			}
 		}
 		if (request.method && request.method !== "tools/call") {
 			return finalizeResponse(ctx, request, jsonRpcError(request.id, -32000, normalized.message, {
@@ -4287,6 +4295,31 @@
 				"query: \"" + item + "\" })." };
 		}
 		return null;
+	}
+
+	// The widget of the Svelte catalog of the project (svelte.linkButton) named exactly by a capitalized name, or null:
+	// it is read with authoring-palette, the frontend catalog, never with flow-block-get.
+	function frontendCatalogWidget(ctx, request, name) {
+		var project = String(toolArguments(request).project || "");
+		if (!ctx || !project || !/^[A-Z][A-Za-z0-9]*$/.test(name)) return null;
+		try {
+			var asked = copyJson(toolArguments(request));
+			delete asked.name;
+			asked.query = name;
+			var args = prepareToolArguments(ctx, { params: { name: "authoring-palette", arguments: asked } }, {});
+			var palette = ctx.callBlock("authoring.palette", args, { trace: false }) || {};
+			return [].concat(palette.items || [], palette.queryElsewhere || []).filter(function (item) {
+				return item && String(item.tag || "") === name && /^[\w$-]+\.[\w$.-]+$/.test(String(item.id || ""));
+			})[0] || null;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function frontendWidgetHint(project, widget) {
+		return widget.tag + " is the Svelte widget " + widget.id + (widget.label ? " (" + widget.label + ")" : "") +
+			", not a backend Flow block: read its contract with authoring-palette({ project: \"" + (project || "<project>") +
+			"\", parentPath: \"<the Structure parentPath of the page, from code-get or authoring-tree>\", query: \"" + widget.tag + "\" }).";
 	}
 
 	function withBlockContract(request, diagnostic) {
