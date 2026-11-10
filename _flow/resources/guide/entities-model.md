@@ -29,6 +29,13 @@ if (local.page.hasMore) {
 result.tickets = local.page.rows
 ```
 
+An empty group is the neutral element of its operator: `{and: []}` adds no
+condition and `{or: []}` matches no row (as `{field: []}` does), so a filter
+built piece by piece may start from either. Both stay ANDed with the policy
+scope: an empty group never reaches a row outside it. A group holds at most 12
+members, 5 levels deep. For `options.active` of an `Activable` entity, see
+**Inactive rows** in `flow://guide/entities-policy`.
+
 To page instead, pass `offset: input.offset || 0` and return `local.page.nextOffset`
 (`null` on the last page) with the rows.
 
@@ -52,7 +59,13 @@ traits and relations. For example, set the model with both entities first:
 Only then call `entity.save({ entity: "Order", values: { amount: "12.50", customerId: "1" } })`.
 After initialization, changing `amount`'s type or precision,
 replacing a trait, or renaming its table is refused with
-`SQL_SCHEMA_MIGRATION_UNSUPPORTED`; the public message is deliberately generic.
+`SQL_SCHEMA_MIGRATION_UNSUPPORTED` (409): its message, `hint` and `details` name the
+table, the column, the kind of change (`details.change`: `addColumn`,
+`changeColumn`, `removeColumn`…) and the reason (`notNullWithoutDefault`,
+`changed`, `missing`), never a row value. The full detail (the refusal text, a
+failed statement and its database cause) is in the server log, and in
+`details.detail`, `details.sql` and `details.cause` of a `code-run` only, never
+in the answer of a Flow called over HTTP.
 During development, keep the existing declaration and add a new entity (table)
 or a new nullable field (column), or a required field with a default. Copy old
 values into a new field explicitly if needed; do not rename or alter the old one.
@@ -156,3 +169,15 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
 - **Hidden and required:** a field hidden by `visibleTo` from a role that may
   create needs a `default`, an `auto` rule or the policy create scope (a hook
   cannot fill it); otherwise the model is refused.
+
+**Natural key.** An entity may declare a natural identity, such as
+`"identity": ["email"]` with a `string` field: `entity.read`, `entity.delete`
+and `entity.save` with `key: {email}` (an update, never an upsert) use it.
+`entity.save` creates a row only when the database generates its identity, so a
+create on such an entity answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` (400),
+after the access policy and before any write; it names only the identity
+fields the actor sees. To create rows today, give the entity the generated
+identity (declare no identity: an int64 `id`) and keep the natural key as an
+ordinary field, looked up with `entity.list` before `entity.save` (the model
+declares no unique constraint). Stay under the access policy: a SQL write beside
+it would be a second access rule, without the audit or the traits.

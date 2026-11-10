@@ -24,7 +24,7 @@ Direct SQL and generated CRUD require one.
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` (8.5 KB) |
 | Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (4.0 KB) |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
-| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (11.9 KB), then `flow://guide/multipage-entities` (11.9 KB) |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (13.1 KB), then `flow://guide/multipage-entities` (11.9 KB) |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (7.9 KB) |
