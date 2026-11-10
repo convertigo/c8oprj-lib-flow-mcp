@@ -675,5 +675,12 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities` (13.1 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
   "new": "| `flow://guide/entities` (13.2 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  }
 ]

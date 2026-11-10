@@ -169,8 +169,10 @@ For `entity.list`, `options.orderBy` is one field name string, never an array.
 When sorting by another field, the engine adds the automatic identity field as a stable tie-breaker.
 
 An `Activable` entity lists and counts active rows only. `options.active` of
-`entity.list` and `entity.count` is `"active"` (the default), `"inactive"` or
-`"all"`; `null` reads as the default, any other value is `ENTITY_ACTIVE_INVALID`.
+`entity.list`, `entity.count` and `entity.read` is `"active"` (the default of a
+list or a count), `"inactive"` or `"all"`; `null` reads as absent, any other
+value is `ENTITY_ACTIVE_INVALID`. A read by key without it returns the row
+whatever its state, when the policy allows inactive rows to that actor.
 The access policy receives it and decides: see **Inactive rows** in `flow://guide/entities-policy`.
 
 For an imposed business error code, set `Reservation.hooks.beforeSave` to
@@ -244,7 +246,7 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
+| `flow://guide/entities-policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
 | `flow://guide/entities-model` (14.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
 | `flow://guide/entities-widgets` (4.9 KB) | EntityTable, EntityForm, named snippets |
