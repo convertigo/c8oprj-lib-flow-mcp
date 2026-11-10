@@ -52,6 +52,11 @@ an `If` in `Actions` set a message State (`SetValue target="page.message"`)
 that a `Text` of the page shows, and a `<Status actionId="save" successText="Saved." />`
 beside the form shows the run, error and success of the action `save`.
 
+`bind:value={page.x}` keeps the choice of a `Select`, `RadioGroup`,
+`Segment` or `Combobox` in a declared State, and `bind:checked={page.x}`
+the state of a `Checkbox` or `Toggle`, as for an `Input`; an `OnChange` is
+then needed only for other actions.
+
 ```svelte
 <Input $$id="noteInput" label="Note" value="@page.note"><Events>
   <OnInput $$id="typed"><Actions>

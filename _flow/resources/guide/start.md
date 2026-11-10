@@ -28,7 +28,7 @@ Direct SQL and generated CRUD require one.
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.3 KB) |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (7.9 KB) |
-| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (5.3 KB) |
+| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (5.8 KB) |
 | FullSync server DBOs and client actions | `flow://guide/fullsync` (7.5 KB) |
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
