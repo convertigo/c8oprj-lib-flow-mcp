@@ -94,7 +94,12 @@ supply values through `Params` and `Query`:
 Write the target Page before the Page that navigates to it; a `Navigate` to a
 Page that does not exist yet fails with `FRONTEND_NAVIGATE_PAGE_UNKNOWN`.
 
-The generator resolves and encodes the URL. Do not interpolate paths.
+The generator resolves and encodes the URL. Do not interpolate paths: a
+native `<a href={"/product/" + item.id}>` leaves an application served under
+its base (`DisplayObjects/mobile/`), and a native `<a>` does not resolve `~/`.
+`code-check` and `code-set` warn `FRONTEND_LINK_ORIGIN_ROOT` on such an
+address (`<a>`, `LinkButton` `href`, DataTable row action `href`) with the
+Page to link instead.
 
 `LinkButton` takes the same `Params` and `Query` for a link to a Page with
 parameters:
