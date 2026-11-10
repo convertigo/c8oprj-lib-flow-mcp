@@ -63,7 +63,10 @@ var diagnostics=String(respond('code-set',{project:'App'},{error:{code:'FLOWSCRI
 check(/\n- line 2: X: Bad\./.test(diagnostics)&&!/undefined/.test(diagnostics),'diagnostic lists are unchanged',diagnostics,false);
 var plain=String(thrown('code-run',{project:'App'},{code:'FLOW_THROW',message:'Boom.',details:'raw text'}).content[0].text);
 check(plain==='Error [FLOW_THROW]: Boom. See structuredContent.error.','an error without field details keeps its one line',plain,false);
-check(/details\.errors/.test(entities)&&/ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED/.test(entities)&&/ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED/.test(model)&&/sql\.write/.test(model),'guides name details.errors and the natural key refusal with how to create today',null);
+check(/details\.errors/.test(entities)&&/ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED/.test(entities)&&/ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED/.test(model)&&/entity\.list/.test(model),'guides name details.errors and the natural key refusal with how to create today',null);
+// The only way to create rows a guide proposes stays under the access policy: never a SQL write beside it.
+var naturalKey=model.substring(model.indexOf('**Natural key.**'));
+check(model.indexOf('**Natural key.**')>=0&&!/sql\.write|config\.sql\.writes/.test(naturalKey)&&!/sql\.write/.test(entities),'guides propose no SQL write beside the access policy to create rows',naturalKey.substring(0,400));
 var expected=results.filter(function(r){return r.regression;}).length,failed=results.filter(function(r){return !r.passed;});
 var passed=negative?failed.length===expected&&results.filter(function(r){return !r.regression;}).every(function(r){return r.passed;}):failed.length===0;
 print(JSON.stringify({ok:passed,baseline:negative,checks:checks,expectedBaselineFailures:expected,failures:failed.map(function(r){return r.name;})}));
