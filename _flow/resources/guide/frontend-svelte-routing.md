@@ -96,6 +96,14 @@ Page that does not exist yet fails with `FRONTEND_NAVIGATE_PAGE_UNKNOWN`.
 
 The generator resolves and encodes the URL. Do not interpolate paths.
 
+`LinkButton` takes the same `Params` and `Query` for a link to a Page with
+parameters:
+`<LinkButton $$id="open" label="@item.name" page="product"><Params><Variable name="id" value="@item.id" /></Params></LinkButton>`
+links to `/product/42/`. A parameter missing from `Params` is read from
+`Query`, which is not repeated in the query string. A required parameter
+supplied by neither is refused (`FRONTEND_LINK_PARAMETER_REQUIRED`); a value
+empty at run time leaves the link without address, never `/product/[id]`.
+
 Use a visible Button with `GoBack` for history navigation and set a fallback
 Page for direct entry. Complete browser-history restoration, scroll restoration
 and offline return paths may be deferred from a POC, but the requested Page

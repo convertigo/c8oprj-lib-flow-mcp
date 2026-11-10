@@ -162,6 +162,8 @@ invisible to all of them; a refusal says what to write instead.
 - For internal links, set `LinkButton.page` to the logical Page id. If no Page
   target is suitable, `~/path` means the deployed application root; `/path`
   means the web origin and is usually wrong behind Convertigo's base path.
+  A Page with route parameters takes them as for `Navigate`:
+  `<LinkButton page="product"><Params><Variable name="id" value="@row.id" /></Params></LinkButton>`.
 - Prove one representative navigation/theme slice before repeating it. When
   the same pattern occurs more than once, prefer a reusable application block
   over duplicating Page markup and event wiring.

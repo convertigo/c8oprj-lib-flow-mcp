@@ -70,6 +70,15 @@ Read a portable computation's contract before composing client actions;
 `JSON.stringify([@event.value.row.id])` is invalid JavaScript; use
 `value={JSON.stringify([event.value.row.id])}`.
 
+Braces in the markup are Svelte expressions too: `{page.name}`,
+`{item.title}`, never `{@page.name}`. A sequence result has no name inside
+braces, so `{@.GetNews.title}` and `{#if @.GetNews.error}` are refused with
+the form that reads it: keep the result with the Output of its call,
+`$$out="page.news"` and `<State $$id="news" value={{}} />`, then read
+`{page.news.title}` (`?.` for the deeper levels: `{#if page.news.item?.name}`),
+or bind it without braces: `<Text text="@.GetNews.title" />`,
+`<If test="@.GetNews.error">`.
+
 Create target Pages before writing a `Navigate` to their **Page id**. Use the
 `authoringContract.pages` and bindings from `code-get` for actual names and
 paths; do not guess state/action ids, properties or schema fields. An `If`

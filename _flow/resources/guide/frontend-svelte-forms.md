@@ -44,6 +44,11 @@ query). `@event.value` is the chosen option value with its type (`Select`,
 (`Range`), the item value as a string (`Segment`) or one value per column
 (`WheelPicker`).
 
+`bind:value={page.x}` keeps the choice of a `Select`, `RadioGroup`,
+`Segment` or `Combobox` in a declared State, and `bind:checked={page.x}`
+the state of a `Checkbox` or `Toggle`, as for an `Input`; an `OnChange` is
+then needed only for other actions.
+
 ```svelte
 <Input $$id="noteInput" label="Note" value="@page.note"><Events>
   <OnInput $$id="typed"><Actions>

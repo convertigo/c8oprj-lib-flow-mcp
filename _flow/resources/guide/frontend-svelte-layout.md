@@ -126,7 +126,10 @@ links use `<LinkButton $$id="toProduct" label="Product" page="product" />`;
 the fallback syntax `~/help` is rooted at the deployed application base,
 `/help` at the web origin. When navigation follows `SetValue`,
 `FullSyncGet`, `FullSyncView`, `FullSyncSync` or `CallSequence`, place
-`Navigate` after that action in the same `Actions` slot.
+`Navigate` after that action in the same `Actions` slot. A link to a Page
+with route parameters gives them as `Navigate` does:
+`<LinkButton $$id="open" label="@row.name" page="product"><Params><Variable name="id" value="@row.id" /></Params></LinkButton>`
+links to `/product/42/`, the value encoded.
 
 ## Assets
 

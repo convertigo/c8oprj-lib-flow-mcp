@@ -102,15 +102,15 @@ Read only the sub-guide of the current task, once; each one is short enough to b
 | Sub-guide (size) | Read it |
 | --- | --- |
 | `flow://guide/frontend-svelte-sources` (9.9 KB) | before writing or repairing any `.flow.svelte` file: source layout, header, `$$id`, slots, accepted HTML and Svelte, diagnostics |
-| `flow://guide/frontend-svelte-layout` (7.9 KB) | to lay out Pages: containers, `AppShell` navigation, `PageHeader`, `StatCard`, `DataTable` columns, links by Page id, images |
-| `flow://guide/frontend-svelte-data` (8.4 KB) | to bind values: `@.Sequence`, `@page`, `@event`, `@route`, `@props`, State, `$$out`, `CallSequence`, `Status` |
-| `flow://guide/frontend-svelte-forms` (4.1 KB) | for inputs and forms: `Input`, `Textarea`, `Combobox`, choices, `Form` submit, `AlertDialog`, locale |
+| `flow://guide/frontend-svelte-layout` (8.1 KB) | to lay out Pages: containers, `AppShell` navigation, `PageHeader`, `StatCard`, `DataTable` columns, links by Page id, images |
+| `flow://guide/frontend-svelte-data` (8.9 KB) | to bind values: `@.Sequence`, `@page`, `@event`, `@route`, `@props`, State, `$$out`, `CallSequence`, `Status` |
+| `flow://guide/frontend-svelte-forms` (4.3 KB) | for inputs and forms: `Input`, `Textarea`, `Combobox`, choices, `Form` submit, `AlertDialog`, locale |
 | `flow://guide/frontend-svelte-datatable` (4.9 KB) | for a `DataTable` with selection, cards, or server paging, filter and sort |
 | `flow://guide/frontend-svelte-actions` (6.8 KB) | for events and actions: chains, `If`, reentrancy, `OnMount`, `OnAfterNavigate`, session Layout, timers, clocks |
 | `flow://guide/frontend-svelte-themes` (3.7 KB) | for colors, palettes, light and dark mode, fonts and icons |
 | `flow://guide/frontend-svelte-components` (3.8 KB) | for a reusable component, its props and events, or a library component |
 | `flow://guide/frontend-svelte-proof` (3.2 KB) | before handing over: POC acceptance, browser proof, verifier, visual checklist |
-| `flow://guide/frontend-svelte-routing` (5.3 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |
+| `flow://guide/frontend-svelte-routing` (5.8 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |
 
 ## Known Limits
 
