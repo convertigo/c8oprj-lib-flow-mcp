@@ -2319,6 +2319,10 @@
 	}
 
 	function traceJsonl(ctx, direction, request, payload, extra) {
+		// An inner answer (the project before the guide, resources/read) is not what the client receives: not traced.
+		if (direction === "response" && request && request.__flowMcpTraceDeferred === true) {
+			return;
+		}
 		var file = traceFile(ctx);
 		if (!file) {
 			return;
@@ -2643,12 +2647,16 @@
 		}
 		if (normalized.code === "UNKNOWN_RESOURCE" && tool === "flow-resource-get") {
 			var missing = String(args.uri || args.path || "");
-			var near = guideAliasFor(ctx, missing).suggestions || [];
+			var guideLike = /^flow:\/\/(guides?|lib)\//i.test(String(args.uri || "")) && !String(args.path || "").trim() ? String(args.uri) : guidePathUri(args.path);
+			var near = guideAliasFor(ctx, guideLike || missing).suggestions || [];
 			if (/^_flow\/resources\/sql\/[^/]+\/schema\.json$/.test(missing)) {
 				near = libraryGuides().some(function (guide) { return guide.uri === "flow://lib/lib_flow_sql/sql"; })
 					? ["flow://lib/lib_flow_sql/sql"] : [];
 				normalized.hint = (near.length ? "Read " + near[0] + ". " : "") +
 					"Use flow-resource-search to locate an existing project resource; this schema path is not a guide.";
+			} else if (guideLike && (!normalized.hint || /MCP resources\/read/.test(normalized.hint))) {
+				// A guide is read by its URI, with or without project: never through resources/read, which some clients lack.
+				normalized.hint = guideHint(near);
 			} else if (near.length && !normalized.hint) {
 				normalized.hint = "Did you mean " + near.join(", ") + "?";
 			}
@@ -4141,16 +4149,56 @@
 		return found ? String(new Packages.java.lang.String(Files.readAllBytes(new File(found.file).toPath()), StandardCharsets.UTF_8)) : null;
 	}
 
+	// The spelling of a guide name an agent may vary: case, "_" for "-", a ".md" suffix.
+	function guideKey(name) { return String(name || "").toLowerCase().replace(/\.md$/, "").replace(/_/g, "-"); }
+	function editDistance(a, b) {
+		var previous = [], current, i, j;
+		for (j = 0; j <= b.length; j++) previous[j] = j;
+		for (i = 1; i <= a.length; i++) {
+			current = [i];
+			for (j = 1; j <= b.length; j++)
+				current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+			previous = current;
+		}
+		return previous[b.length];
+	}
+	// The nearest guide URIs of an unknown name, at most three: those of the named library first, then the most shared
+	// words (a word also matches a close spelling: entity, entities), then the smallest edit distance of the names.
+	function nearestGuides(all, wanted, library, near) {
+		var key = guideKey(wanted), words = (String(library || "").toLowerCase().replace(/^lib_(flow_)?/, "") + " " + key)
+			.split(/[^a-z0-9]+/).filter(function (word) { return word.length > 2; });
+		function close(word, other) {
+			return word === other || word.length >= 4 && other.length >= 4 && (other.indexOf(word) === 0 || word.indexOf(other) === 0 ||
+				editDistance(word, other) <= (Math.min(word.length, other.length) >= 6 ? 2 : 1));
+		}
+		return all.map(function (each) {
+			var path = each.toLowerCase().replace(/^flow:\/\/(guide|lib)\//, ""), own = path.split(/[^a-z0-9]+/).filter(Boolean);
+			return { uri: each, own: library && each.indexOf("flow://lib/" + library + "/") === 0 ? 1 : 0,
+				shared: words.filter(function (word) { return own.some(function (other) { return close(word, other); }); }).length,
+				distance: editDistance(key, guideKey(path.replace(/^.*\//, ""))), listed: near.indexOf(each) !== -1 };
+		}).filter(function (item) {
+			return item.listed || item.own || item.shared > 0 || item.distance <= Math.max(2, Math.floor(key.length / 4));
+		}).sort(function (a, b) {
+			return b.own - a.own || b.shared - a.shared || a.distance - b.distance || (a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : 0);
+		}).slice(0, 3).map(function (item) { return item.uri; });
+	}
 	// An unknown guide URI (flow://guide/<name>, flow://lib/<library>/<name>): the one guide it names without ambiguity,
 	// else the nearest guide URIs. guides are library guides ({uri, project}); coreNames are the flow://guide/<name> names.
 	// A split guide is a family: its entry guide <name> and sub-guides <name>-<topic>. The entry answers the generic names
 	// of its library (flow://lib/<library>/guide, start, index, readme) and its short name (flow://guide/frontend).
 	function guideAlias(uri, guides, coreNames) {
-		var text = String(uri || ""), match, candidates = [];
+		var text = String(uri || "").trim(), match, candidates = [];
 		guides = guides || [];
 		coreNames = coreNames || [];
 		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
 		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
+		// One guide spelled differently (case, "_" for "-", ".md", a final "/", "guides" for "guide"): that guide.
+		var spelled = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text), spelledLib = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
+		var same = spelled ? coreNames.filter(function (name) { return guideKey(name) === guideKey(spelled[1]); }).map(function (name) { return "flow://guide/" + name; })
+			: spelledLib ? guides.filter(function (guide) { return String(guide.project).toLowerCase() === spelledLib[1].toLowerCase() && guideKey(base(guide)) === guideKey(spelledLib[2]); })
+				.map(function (guide) { return guide.uri; }) : [];
+		if (same.length === 1) return { uri: same[0] };
+		if (spelled) text = "flow://guide/" + spelled[1].replace(/\.md$/i, "");
 		function familyEntry(names) {
 			var entries = names.filter(function (name) {
 				return names.every(function (other) { return other === name || other.indexOf(name + "-") === 0; });
@@ -4216,13 +4264,21 @@
 					return word.length > 2 && each.toLowerCase().replace(/^flow:\/\/(guide|lib)\//, "").indexOf(word) !== -1;
 				});
 		});
-		// The guides of the named library first, then the other near guides.
-		var own = library ? near.filter(function (each) { return each.indexOf("flow://lib/" + library + "/") === 0; }) : [];
-		return { suggestions: own.concat(near.filter(function (each) { return own.indexOf(each) === -1; })).slice(0, 5) };
+		return { suggestions: wanted ? nearestGuides(all, wanted, library, near) : near.slice(0, 3) };
 	}
 
-	function guideAliasFor(ctx, uri) {
-		var names = [], guides = [];
+	// The refusal of an unknown guide, in one line: the nearest exact URIs, then the guide index.
+	function guideHint(near) {
+		return (near && near.length ? "Did you mean " + near.join(", ") + "? " : "") +
+			"flow://guide/start lists the guides (flow://guide/<name>); library guides are flow://lib/<library>/<guide>.";
+	}
+	// The guide a path of a project names (_flow/resources/guide/<name>.md), for a project that does not hold it.
+	function guidePathUri(path) {
+		var match = /^\/?_flow\/resources\/guides?\/([A-Za-z0-9_.-]+?)(?:\.md)?$/i.exec(String(path || "").trim());
+		return match ? "flow://guide/" + match[1] : "";
+	}
+	function coreGuideNames(ctx) {
+		var names = [];
 		try {
 			var root = knownProjectDir(ctx);
 			var dir = root ? new File(new File(String(root)), "_flow/resources/guide") : null;
@@ -4233,11 +4289,23 @@
 			}
 		} catch (e) {
 		}
+		return names;
+	}
+	function knownLibraryGuides() {
 		try {
-			guides = libraryGuides();
+			return libraryGuides();
 		} catch (e) {
+			return [];
 		}
-		return guideAlias(uri, guides, names);
+	}
+	function guideAliasFor(ctx, uri) {
+		return guideAlias(uri, knownLibraryGuides(), coreGuideNames(ctx));
+	}
+	// The existing guide a URI names, exactly or under one unambiguous alias; "" for none.
+	function knownGuide(ctx, uri) {
+		var names = coreGuideNames(ctx), guides = knownLibraryGuides();
+		if (names.some(function (name) { return "flow://guide/" + name === uri; }) || guides.some(function (guide) { return guide.uri === uri; })) return uri;
+		return guideAlias(uri, guides, names).uri || "";
 	}
 
 	function withWorkspaceProviders(request, diagnostic, exactOnly) {
@@ -6445,6 +6513,9 @@
 		libraryGuideText: libraryGuideText,
 		guideAlias: guideAlias,
 		guideAliasFor: guideAliasFor,
+		guideHint: guideHint,
+		guidePathUri: guidePathUri,
+		knownGuide: knownGuide,
 		guideSizeLabel: guideSizeLabel,
 		withGuideSizes: withGuideSizes,
 		legacyRelayTool: legacyRelayTool,

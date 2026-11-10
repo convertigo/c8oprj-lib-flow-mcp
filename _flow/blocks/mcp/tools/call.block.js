@@ -208,7 +208,7 @@ const _meta = {
 	// URI. Without a project, or when the project does not answer it (no such resource, a project not created yet),
 	// the Flow MCP resource answers; finalizeResponse selects readable text or the compatible structured result. The
 	// guides that tell how to start are readable before any project exists.
-	var MCP_RESOURCE_URI = /^flow:\/\/(?:(?:guide|lib|skills)\/|ace(?:\/|$))/;
+	var MCP_RESOURCE_URI = /^flow:\/\/(?:(?:guides?|lib|skills)\/|ace(?:\/|$))/i;
 	function withExperience(ctx, mcp, request, response) {
 		if (!response || !response.result || typeof mcp._experienceHost !== "function") return response;
 		try {
@@ -235,12 +235,41 @@ const _meta = {
 		return !!(response && response.error || result && (result.isError === true || result.structuredContent && result.structuredContent.error));
 	}
 	function unknownResourceHint(mcp, ctx, request) {
-		var near = mcp.guideAliasFor(ctx, mcpResourceUri(request)).suggestions || [];
-		return (near.length ? "Did you mean " + near.join(", ") + "? " : "") +
-			"flow://guide/start lists the guides (flow://guide/<name>); library guides are flow://lib/<library>/<guide>. A project resource needs project and path.";
+		return mcp.guideHint(mcp.guideAliasFor(ctx, mcpResourceUri(request)).suggestions || []) + " A project resource needs project and path.";
+	}
+	function unknownResource(response) {
+		var error = response && response.result && response.result.structuredContent && response.result.structuredContent.error;
+		return !!(error && error.code === "UNKNOWN_RESOURCE");
+	}
+	// A project file asked as flow://_flow/<path> (the address of a guide, the path of a project file): the file at that
+	// path of the same project, with a note that gives the address to use. Only when the project refused the URI.
+	function projectPathThroughTool(ctx, mcp, request, response, block) {
+		var args = request.params && request.params.arguments || {};
+		var match = /^flow:\/\/(_flow\/[^?#]+)$/.exec(String(args.uri || "").trim());
+		if (!block || !match || filled(args.path) || !(filled(args.project) || filled(args.projectDir)) || !unknownResource(response)) {
+			return null;
+		}
+		var inner = {};
+		Object.keys(args).forEach(function (key) { if (key !== "uri" && key !== "format") inner[key] = args[key]; });
+		inner.path = match[1];
+		var read = ctx.callBlock(block, { request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "tools/call",
+			params: { name: "flow-resource-get", arguments: inner }, __flowMcpTraceDeferred: true }, out: "local.mcpProjectPathRead" }, { trace: false });
+		var structured = read && read.result && read.result.structuredContent;
+		if (!structured || failed(read)) {
+			return null;
+		}
+		structured.note = String(args.uri).trim() + " is read as path " + match[1] + " of this project: a project file is read by path; use path next time.";
+		return mcp.finalizeResponse(ctx, request, read);
 	}
 	function mcpResourceThroughTool(ctx, mcp, request, response) {
-		var uri = mcpResourceUri(request);
+		var uri = mcpResourceUri(request), args = request.params && request.params.arguments || {}, fromPath = "";
+		// A guide asked by its path in a project that does not hold it (_flow/resources/guide/<name>.md): that guide,
+		// only when it exists, and only when the project refused the path.
+		if (!uri && filled(args.path) && (filled(args.project) || filled(args.projectDir)) && unknownResource(response)) {
+			var guide = mcp.guidePathUri(args.path);
+			uri = guide ? mcp.knownGuide(ctx, guide) : "";
+			fromPath = uri ? String(args.path).trim() : "";
+		}
 		if (!uri || response && !failed(response)) {
 			return null;
 		}
@@ -249,7 +278,7 @@ const _meta = {
 				request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
 					uri: target, project: request.params.arguments && request.params.arguments.project,
 					projectDir: request.params.arguments && request.params.arguments.projectDir
-				} },
+				}, __flowMcpTraceDeferred: true },
 				out: "local.mcpResourceRead"
 			}, { trace: false });
 		}
@@ -260,7 +289,8 @@ const _meta = {
 		function readContents(target) {
 			return contentsOf(readResource(target));
 		}
-		var exact = readResource(uri), contents = contentsOf(exact), note = null;
+		var exact = readResource(uri), contents = contentsOf(exact), note = fromPath && contents
+			? fromPath + " is not a file of this project; it is read as the guide " + uri + ": read guides by uri, without project, next time." : null;
 		// Only a URI that resources/read does not know is read under its alias; another failure is the answer.
 		if (!contents && exact && exact.error && !/^Unknown Flow MCP resource:/.test(String(exact.error.message || ""))) {
 			return exact;
@@ -321,6 +351,8 @@ const _meta = {
 					return response;
 				}
 				var block = toolMap(ctx)[name];
+				// flow-resource-get may answer after inner reads (the project, then the guide): only its last answer is traced.
+				if (name === "flow-resource-get") request.__flowMcpTraceDeferred = true;
 				var format = request.params && request.params.arguments && request.params.arguments.format;
 				if (name === "flow-resource-get" && format !== undefined && format !== "text" && format !== "structured") {
 					throw { code: "INVALID_ARGUMENT", message: "flow-resource-get format must be text or structured." };
@@ -357,7 +389,7 @@ const _meta = {
 						? ctx.callBlock(block, { request: request, out: out }, { trace: false })
 						: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
 					if (name === "flow-resource-get") {
-						response = mcpResourceThroughTool(ctx, mcp, request, response) || response;
+						response = mcpResourceThroughTool(ctx, mcp, request, response) || projectPathThroughTool(ctx, mcp, request, response, block) || response;
 					}
 				}
 				// Older Flow wrappers can still return a JSON-RPC error. At the tools/call boundary it is a tool error.
@@ -371,7 +403,10 @@ const _meta = {
 			}
 			// A tool that may have written (even when it failed) drops the kept project answers.
 			mcp.stableToolCalled(name);
-			if (name === "flow-resource-get") response = mcp.finalizeResponse(ctx, request, response);
+			if (name === "flow-resource-get") {
+				delete request.__flowMcpTraceDeferred;
+				response = mcp.finalizeResponse(ctx, request, response);
+			}
 			response = withExperience(ctx, mcp, request, response);
 			ctx.write(out, response);
 			return response;
