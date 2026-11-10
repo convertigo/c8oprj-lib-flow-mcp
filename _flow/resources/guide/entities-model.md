@@ -59,7 +59,13 @@ traits and relations. For example, set the model with both entities first:
 Only then call `entity.save({ entity: "Order", values: { amount: "12.50", customerId: "1" } })`.
 After initialization, changing `amount`'s type or precision,
 replacing a trait, or renaming its table is refused with
-`SQL_SCHEMA_MIGRATION_UNSUPPORTED`; the public message is deliberately generic.
+`ENTITY_SCHEMA_CHANGE_REFUSED` (409): its message, `hint` and `details` name the
+table, the column, the kind of change (`details.change`: `addColumn`,
+`changeColumn`, `removeColumn`…) and the reason (`notNullWithoutDefault`,
+`changed`, `missing`), never a row value. The full detail (the refusal text, a
+failed statement and its database cause) is in the server log, and in
+`details.detail`, `details.sql` and `details.cause` of a `code-run` only, never
+in the answer of a Flow called over HTTP.
 During development, keep the existing declaration and add a new entity (table)
 or a new nullable field (column), or a required field with a default. Copy old
 values into a new field explicitly if needed; do not rename or alter the old one.
