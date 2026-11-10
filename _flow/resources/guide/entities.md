@@ -207,8 +207,10 @@ function HttpBookingRule({ input, config, result }) {
 `ENTITY_VALIDATION` names each refused field in `details.fields` (field: message)
 and in `details.errors`: `{field, rule, message, expected}`, the rule one of
 `required`, `type`, `maxLength`, `enum`, `notFuture`, `unknown`, `identity`,
-`readOnly`, `serverManaged`, `owner` or `relation`, `expected` the form the model
-accepts; never the value received. A `try` keeps only `code`, `message`, `status`
+`readOnly`, `serverManaged`, `owner`, `relation` or `unique`, `expected` the form
+the model accepts; never the value received. A duplicate of a unique field
+outside the actor's list answers the model ACL refusal instead (**Unique
+fields** in `flow://guide/entities-model`). A `try` keeps only `code`, `message`, `status`
 and `hint` of the error: validate the fields your contract names before
 `entity.save`. `entity.save` creates a row only when the database generates its
 identity: on an entity identified by a natural key (an email, a code), a create
@@ -243,7 +245,7 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 | Sub-guide (size) | Read it |
 | --- | --- |
 | `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
-| `flow://guide/entities-model` (11.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
+| `flow://guide/entities-model` (14.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
 | `flow://guide/entities-widgets` (4.9 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |
