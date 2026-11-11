@@ -117,8 +117,9 @@ function Greeting({ input, config, result }) {
 - **Dates** use the `date.*` blocks, in a Flow and in Svelte actions alike
   (same contract on the server and in the browser): `date.today`,
   `date.now({ format: "iso" })`, `date.add` (years, months, days, hours,
-  minutes; month ends adjusted as `LocalDate.plusMonths`: 2025-12-31 + 2
-  months + 15 days = 2026-03-15), `date.format` (pattern, locale, timeZone),
+  minutes; month ends adjusted as `LocalDate.plusMonths`: 2024-01-31 + 1
+  month + 10 days = 2024-03-10: 2024-02-29 after the month, then 10 days),
+  `date.format` (pattern, locale, timeZone),
   `date.parse`, `date.isValid` (strict: 2026-02-30 is invalid), `date.diff`,
   `date.compare`. Store dates as ISO text. The server reads
   `config.date.timeZone` (default UTC) and `config.date.locale`; pass the

@@ -696,5 +696,10 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities-policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
   "new": "| `flow://guide/entities-policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+ },
+ {
+  "family": "authoring",
+  "old": "2025-12-31 + 2 months + 15 days = 2026-03-15",
+  "new": "2024-01-31 + 1 month + 10 days = 2024-03-10: 2024-02-29 after the month, then 10 days"
  }
 ]
