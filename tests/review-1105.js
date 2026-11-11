@@ -71,7 +71,7 @@ try{
   var raw=api('resourcePatch',{path:path,content:JSON.stringify(d),baseHash:api('resourceGet',{path:path}).hash});
   assert(!raw.ok&&raw.error.code==='SQL_CONFIG_INVALID','B2 invalid bound refused');
   var err=finalError(raw,'flow-resource-patch').details.errors.filter(function(e){return /maxConnections$/.test(e.path);})[0];
-  assert(err&&/integer/.test(err.message)&&/Received type:/.test(err.message)&&err.details.minimum===1,'B2 type and bounds explained');
+  assert(err&&/integer/.test(err.message)&&(typeof value==='number'?err.message.indexOf('Received '+String(value)+'.')>=0:/Received type:/.test(err.message))&&err.details.minimum===1,'B2 type and bounds explained');
   if(typeof value==='number')assert(err.details.received===value,'finite number may be retained');
   else assert(!Object.prototype.hasOwnProperty.call(err.details,'received'),'arbitrary received value omitted');
   write(String(temp)+'/'+path,JSON.stringify(d));
