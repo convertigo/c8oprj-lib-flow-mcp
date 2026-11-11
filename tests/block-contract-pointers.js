@@ -85,7 +85,7 @@ try {
 		return answer.result.structuredContent;
 	}
 	var dateAdd = tool(2, "flow-block-get", { projectDir: targetDir, name: "date.add" });
-	assert(dateAdd.ok === true && /2026-03-15/.test(dateAdd.block.longDescription) && dateAdd.block.properties.months,
+	assert(dateAdd.ok === true && /2024-03-10/.test(dateAdd.block.longDescription) && dateAdd.block.properties.months,
 		"date.add keeps its longDescription with its example: " + JSON.stringify(dateAdd.block).substring(0, 400));
 	var email = tool(3, "flow-block-get", { projectDir: targetDir, name: "email.send" });
 	assert(email.block.properties.password && email.block.properties.password.type === "string" &&
