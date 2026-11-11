@@ -114,9 +114,9 @@ FlowScript. Entity operations interpret it; this tool creates neither CRUD
 Flows nor pages. Keep project-specific validation and side effects as ordinary
 Flow hooks. SQL initialization is explicit and preserves existing data.
 
-<!-- example: equipment-model -->
+<!-- example: book-model -->
 ```json
-{"version":2,"modelVersion":1,"entities":{"Equipement":{"label":"Equipment","display":{"title":"libelle"},"permissions":{"read":["USER","ADMIN"],"create":["USER","ADMIN"],"update":["USER","ADMIN"],"delete":["ADMIN"]},"traits":["Activable","Horodaté","Révisé"],"fields":{"libelle":{"type":"string","maxLength":120},"dateDerniereVerification":{"type":"date","notFuture":true}}}}}
+{"version":2,"modelVersion":1,"entities":{"Book":{"label":"Book","display":{"title":"title"},"permissions":{"read":["USER","ADMIN"],"create":["USER","ADMIN"],"update":["USER","ADMIN"],"delete":["ADMIN"]},"traits":["Activable","Horodaté","Révisé"],"fields":{"title":{"type":"string","maxLength":120},"publishedOn":{"type":"date","notFuture":true}}}}}
 ```
 
 When using lib_UserManager for ownership and responsible-person pickers, declare `imports: {userManager:
@@ -194,7 +194,8 @@ a `maxLength` of 600 at most, an `int64`, `date` or `enum` field that every crea
 sees and sends; never on the identity, a computed, `auto`, `readOnly` or
 `secret` field, a field hidden by `visibleTo` from a role that may create, or an
 entity with `storage`, `source` or `readOnly`. The comparison is exact:
-normalize the value in your Flow before `entity.save` (an email in lower case).
+normalize the value in your Flow before `entity.save` when your rule ignores case or
+surrounding spaces.
 
 After the access policy and the model ACL, a duplicate answers:
 - `ENTITY_VALIDATION` (422) with `{field, rule: "unique", message, expected}`
@@ -206,7 +207,7 @@ After the access policy and the model ACL, a duplicate answers:
   gets one `ENTITY_UNIQUE_CONFLICT` line with the actor, the entity, the field
   and the operation, never the value.
 
-Read a row by its unique value with `entity.list({entity: "Reader", checkAccess: true,
+Read a row by its unique value with `entity.list({entity: "Supplier", checkAccess: true,
 options: {filter: {email: input.email}, limit: 1}})` (the same empty page for an
 absent or a hidden row), then update it with `key: {id}`. An inactive row
 (`Activable`) keeps its value: reactivate it rather than create another.

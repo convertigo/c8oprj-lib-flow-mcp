@@ -47,12 +47,12 @@ filter. It replaces the ambiguous widget prop name `scope`; the policy's typed
 <FlowComponent $$id="selectionExample">
   <Variables><State $$id="row" type="object" value={null} /></Variables>
   <Structure>
-    <EntityTable $$id="equipment" entity="Equipement">
+    <EntityTable $$id="books" entity="Book">
       <Events><OnSelect $$id="selected"><Actions>
         <SetValue $$id="keepRow" target="page.row" value="@event.value" />
       </Actions></OnSelect></Events>
     </EntityTable>
-    <EntityForm $$id="edit" entity="Equipement" row="@page.row" />
+    <EntityForm $$id="edit" entity="Book" row="@page.row" />
   </Structure>
 </FlowComponent>
 ```

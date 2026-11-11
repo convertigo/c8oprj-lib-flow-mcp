@@ -114,7 +114,7 @@ and read asks for others: `"active"` (the default of a list or a count),
 `"inactive"` or `"all"`; `null` reads as absent, any other value is
 `ENTITY_ACTIVE_INVALID`. The option is subject to
 this policy: `input.request.payload.options.active` carries it, and the policy
-may refuse it (a throw), for instance for every role but ADMIN. A policy scope
+may refuse it (a throw), for instance for every role but an administrator role. A policy scope
 that fixes the active field (`{scope: {actif: true}}`) still applies: inactive
 rows stay out of reach, and a filter on that field is refused with
 `ENTITY_FORBIDDEN`. A filter on the active field, such as `{actif: false}` or an
