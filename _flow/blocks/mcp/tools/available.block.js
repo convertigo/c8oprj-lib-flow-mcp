@@ -323,7 +323,7 @@ const _meta = {
 		"never send it on create, read it in row.key.id. " +
 		"Field: type, label, nullable (default false), required, maxLength, precision, scale, values (enum), default, " +
 		"auto (create, update, currentUser, currentRole), readOnly, computed, notFuture, visibleTo (role list), secret, table, column, relation, where, " +
-		"unique (true: one row per value, NULLs excepted, on a string of 1024 characters at most, an int64, a date or an enum field every creating role sees). " +
+		"unique (true: one row per value, NULLs excepted, on a string declared with a maxLength of 600 at most, an int64, a date or an enum field every creating role sees). " +
 		"Types: string, text, enum, int64, decimal, boolean, date, timestamp; no array or json type: store serialized JSON in a text field. " +
 		"Relation: not a type; the field has the type of the target identity, for example int64 for the default identity (an imported identity may be a string), " +
 		"and relation {entity, labelField, where}. " +
