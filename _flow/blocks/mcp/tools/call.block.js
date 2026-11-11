@@ -245,6 +245,7 @@ const _meta = {
 	// map by the tool name, so that every caller of this reviewed site calls a published tool block and nothing else.
 	function callTool(ctx, name, request, out) {
 		var block = toolMap(ctx)[name];
+		if (!block) throw { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name };
 		return ctx.callBlock(block, { request: request, out: out }, { trace: false });
 	}
 	// A project file asked as flow://_flow/<path> (the address of a guide, the path of a project file): the file at that
