@@ -701,5 +701,25 @@
   "family": "authoring",
   "old": "2025-12-31 + 2 months + 15 days = 2026-03-15",
   "new": "2024-01-31 + 1 month + 10 days = 2024-03-10: 2024-02-29 after the month, then 10 days"
+ },
+ {
+  "family": "entities",
+  "old": "<!-- example: equipment-model -->",
+  "new": "<!-- example: book-model -->"
+ },
+ {
+  "family": "entities",
+  "old": "{\"version\":2,\"modelVersion\":1,\"entities\":{\"Equipement\":{\"label\":\"Equipment\",\"display\":{\"title\":\"libelle\"},\"permissions\":{\"read\":[\"USER\",\"ADMIN\"],\"create\":[\"USER\",\"ADMIN\"],\"update\":[\"USER\",\"ADMIN\"],\"delete\":[\"ADMIN\"]},\"traits\":[\"Activable\",\"Horodaté\",\"Révisé\"],\"fields\":{\"libelle\":{\"type\":\"string\",\"maxLength\":120},\"dateDerniereVerification\":{\"type\":\"date\",\"notFuture\":true}}}}}",
+  "new": "{\"version\":2,\"modelVersion\":1,\"entities\":{\"Book\":{\"label\":\"Book\",\"display\":{\"title\":\"title\"},\"permissions\":{\"read\":[\"USER\",\"ADMIN\"],\"create\":[\"USER\",\"ADMIN\"],\"update\":[\"USER\",\"ADMIN\"],\"delete\":[\"ADMIN\"]},\"traits\":[\"Activable\",\"Horodaté\",\"Révisé\"],\"fields\":{\"title\":{\"type\":\"string\",\"maxLength\":120},\"publishedOn\":{\"type\":\"date\",\"notFuture\":true}}}}}"
+ },
+ {
+  "family": "entities",
+  "old": "<EntityTable $$id=\"equipment\" entity=\"Equipement\">",
+  "new": "<EntityTable $$id=\"books\" entity=\"Book\">"
+ },
+ {
+  "family": "entities",
+  "old": "<EntityForm $$id=\"edit\" entity=\"Equipement\" row=\"@page.row\" />",
+  "new": "<EntityForm $$id=\"edit\" entity=\"Book\" row=\"@page.row\" />"
  }
 ]
