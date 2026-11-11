@@ -241,8 +241,10 @@ const _meta = {
 		var error = response && response.result && response.result.structuredContent && response.result.structuredContent.error;
 		return !!(error && error.code === "UNKNOWN_RESOURCE");
 	}
-	// The block of a published tool (toolMap), the only block this relay calls by a computed name.
-	function callTool(ctx, block, request, out) {
+	// The block of a published tool, the only block this relay calls by a computed name: resolved here from the tool
+	// map by the tool name, so that every caller of this reviewed site calls a published tool block and nothing else.
+	function callTool(ctx, name, request, out) {
+		var block = toolMap(ctx)[name];
 		return ctx.callBlock(block, { request: request, out: out }, { trace: false });
 	}
 	// A project file asked as flow://_flow/<path> (the address of a guide, the path of a project file): the file at that
@@ -256,7 +258,7 @@ const _meta = {
 		var inner = {};
 		Object.keys(args).forEach(function (key) { if (key !== "uri" && key !== "format") inner[key] = args[key]; });
 		inner.path = match[1];
-		var read = callTool(ctx, block, { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "tools/call",
+		var read = callTool(ctx, "flow-resource-get", { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "tools/call",
 			params: { name: "flow-resource-get", arguments: inner }, __flowMcpTraceDeferred: true }, "local.mcpProjectPathRead");
 		var structured = read && read.result && read.result.structuredContent;
 		if (!structured || failed(read)) {
@@ -390,7 +392,7 @@ const _meta = {
 					}, ctx);
 				} else {
 					response = block
-						? callTool(ctx, block, request, out)
+						? callTool(ctx, name, request, out)
 						: mcp.toolError(request, { code: "FLOW_MCP_TOOL_ERROR", message: "Unknown Flow MCP tool: " + name }, ctx);
 					if (name === "flow-resource-get") {
 						response = mcpResourceThroughTool(ctx, mcp, request, response) || projectPathThroughTool(ctx, mcp, request, response, block) || response;

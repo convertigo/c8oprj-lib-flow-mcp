@@ -17,7 +17,7 @@ function check(v,m,detail){checks++;if(!v)failed.push(m);print((v?'PASS ':'FAIL 
 var model=guide('entities-model'),entities=guide('entities');
 var at=model.indexOf('## Unique fields'),section=at>=0?model.substring(at):'';
 // 1. The section.
-check(at>=0&&/"unique": true/.test(section)&&/string[^.]*1024[^.]*int64[^.]*date[^.]*enum/.test(section)&&/several `null` values/.test(section),'entities-model declares unique and where it holds',section.substring(0,400));
+check(at>=0&&/"unique": true/.test(section)&&/string[^.]*maxLength[^.]*600[^.]*int64[^.]*date[^.]*enum/.test(section)&&/several `null` values/.test(section),'entities-model declares unique and where it holds',section.substring(0,400));
 check(/never on the identity[^.]*computed[^.]*`auto`[^.]*`secret`[^.]*`visibleTo`[^.]*`storage`/.test(section),'entities-model names where unique is refused',section.substring(0,600));
 check(/`ENTITY_VALIDATION` \(422\)[^.]*rule: "unique"/.test(section)&&/could list with the default options/.test(section)&&/never the value nor the other key/.test(section),'entities-model gives the answer in the actor list',section.substring(0,900));
 check(/exactly the refusal of the model ACL/.test(section)&&/The declared model ACL denies this operation\./.test(section)&&/another owner[^.]*hidden field[^.]*inactive row/.test(section),'entities-model gives the model ACL refusal for any other duplicate',section.substring(0,900));

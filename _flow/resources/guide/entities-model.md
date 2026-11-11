@@ -189,8 +189,8 @@ it would be a second access rule, without the audit or the traits.
 Declare `"unique": true` on a field of an entity with the generated identity:
 `"email": {"type": "string", "maxLength": 120, "unique": true}`. Its table gets
 the constraint `UQ_<TABLE>_<COLUMN>`: one row per value, several `null` values
-stay allowed. `flow-entity-model-check` accepts it on a `string` (1024
-characters at most), `int64`, `date` or `enum` field that every creating role
+stay allowed. `flow-entity-model-check` accepts it on a `string` declared with
+a `maxLength` of 600 at most, an `int64`, `date` or `enum` field that every creating role
 sees and sends; never on the identity, a computed, `auto`, `readOnly` or
 `secret` field, a field hidden by `visibleTo` from a role that may create, or an
 entity with `storage`, `source` or `readOnly`. The comparison is exact:
