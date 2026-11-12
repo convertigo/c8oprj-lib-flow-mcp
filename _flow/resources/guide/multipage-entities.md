@@ -24,8 +24,8 @@ For the simplest compliant start with persisted business data and roles, use **S
 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their
    rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly
    opens selected entities. Writes stay closed until this application decision.
-7. Declare the typed entity demo seed below and call the public `demo_reset`
-   before sign-in. No ADMIN cookie or separate initialization Flow is needed.
+7. Declare the typed entity demo seed below and call the private Studio `demo_reset`
+   through internal tooling before demo sign-in. An HTTP entry point must require ADMIN.
    Its guard belongs to the application; the library imposes none.
 8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap
    across all owners, and throws on refusal; data and audit roll back together.
@@ -193,20 +193,20 @@ Save this typed **entity field** seed at `_flow/resources/entities/demo.json`:
 {"entities":{"Reservation":[],"Room":[{"id":"1","name":"Room A"}],"APP_USER":[{"user":"demo-alpha","role":"USER","active":true,"demo":true},{"user":"demo-beta","role":"USER","active":true,"demo":true},{"user":"demo-manager","role":"ADMIN","active":true,"demo":true}]}}
 ```
 
-`entity.initialize` and `entity.demoReset` have **no session, role or demo-switch
-protection**. Convertigo Private is not an internal ACL: a public Flow calling
-private code is responsible for exposing it. Protect public entry points in the
-application according to its contract. Production relies on the configured DB
-account's grants (password from a secret symbol), normally not a root account.
-The initializer only creates/adds; the separate reset explicitly deletes data.
+`entity.initialize` remains additive and session independent. `entity.demoReset`
+deletes data and reapplies the typed seed: its calling Flow must be **private**.
+It runs in Studio; on a server it is refused unless the server symbol
+`lib_flow_entity.demoReset.enabled` is explicitly `true` (default false).
+Neither request input nor project config enables it. The server log records the
+actor, instant and actual number of seeded rows. Database grants still apply.
 
-Here the application chooses its existing demo-login switch for `demo_reset`.
-Remove or adapt this guard when your application's contract requires another
-policy. The library neither enforces this switch nor an `allowOnServer` flag.
+Keep the optional demo-login switch below as an additional application condition.
+For an ADMIN button, use a separate hidden Flow that verifies ADMIN before
+`requestable.call` to this private Flow; a switch alone is never a role check.
 
 <!-- example: demo-reset -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
+const _flow = { sourceVersion: 2, accessibility: "private" }
 
 function demo_reset({ input, config, result }) {
   if (String(config.demo.login) !== "true") {
@@ -216,7 +216,7 @@ function demo_reset({ input, config, result }) {
 }
 ```
 
-Call this public HTTP Flow before sign-in, without any cookie; it initializes
+Call this private Flow from Studio tooling before demo sign-in; it initializes
 the model tables, empties them in relation/FK order and reapplies the seed.
 Replay returns the same demo rows, including the neutral directory. Other
 application databases are not involved. It bypasses entity permissions and hooks

@@ -101,9 +101,11 @@ public entities, including their fields and relations. Server scope is also
 applied to labels, options and counts. `Possédé` remains a reusable checked
 ownership trait; private hooks may read across owners deliberately.
 `initialize` and `demoReset` are not gateway operations and are not protected by
-this policy. Their public calling Flow supplies its own guard as below:
-`demoReset` requires the ADMIN role, even in demo mode; the demo symbol alone
-never guards a reset.
+this policy. Initialization callers supply their own application guard. A reset
+Flow must be private; an HTTP entry point verifies ADMIN before calling it with
+`requestable.call`. Demo reset runs only in Studio, or with the explicit server
+symbol `lib_flow_entity.demoReset.enabled=true` (false by default). A project demo
+login symbol never enables a reset.
 
 ## 2. Apply the rule in an ordinary hook
 

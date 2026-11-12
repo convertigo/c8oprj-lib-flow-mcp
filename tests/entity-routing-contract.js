@@ -90,9 +90,11 @@ console.log('entity-backend-review-contract: exact DDL guarantee and borrowed ro
 
 for (const text of [entities, multi, router, backend]) {
   assert.ok(text.includes('MariaDB') && text.includes('HSQLDB') && text.includes('PostgreSQL'));
-  assert.ok(text.includes('private:false') && /without (?:a )?guards?/.test(text));
+  assert.ok(text.includes('private:false'), 'Entity building blocks remain exported');
+  assert.ok(text.includes('lib_flow_entity.demoReset.enabled') && /default false|false by default/.test(text), 'Demo reset has a closed server gate');
+  assert.ok(/reset Flow must be private|Flow must be private/.test(text) && text.includes('ADMIN') && text.includes('requestable.call'), 'HTTP reset entry verifies ADMIN and calls a private Flow');
   assert.ok(text.includes('dryRun:true') && text.includes('code-run'));
 }
 assert.ok(entities.includes('metadata-only') && entities.includes('explicit public keys'));
 assert.ok(!entities.includes('403 with the available additive plan'));
-console.log('entity-publication-contract: exported unguarded blocks, typed scope and bounded public diagnostics');
+console.log('entity-publication-contract: exported blocks, gated private resets, typed scope and bounded public diagnostics');

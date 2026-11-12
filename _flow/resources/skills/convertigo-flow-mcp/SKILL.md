@@ -385,8 +385,12 @@ uses create/update, never upsert. See flow://guide/entities-policy, One access p
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 
 Entity data operations support HSQLDB and PostgreSQL only; MariaDB is not qualified
-for Entity CRUD. initialize/demoReset are exported blocks without guards
-(private:false), called by an application-protected Flow. Trusted owner creation
+for Entity CRUD. initialize/demoReset are exported blocks (private:false).
+Initialization callers need their application guard. A reset Flow must be private;
+an HTTP entry point verifies ADMIN then uses requestable.call. Demo reset runs
+only in Studio, or when the server symbol lib_flow_entity.demoReset.enabled is
+true (false by default). A project demo login flag does not enable reset.
+Trusted owner creation
 prefers the session, else an explicit owner. describe is metadata-only, with an
 explicit UI projection and no unreadable relation metadata. SQL names/DDL stay
 out of public errors; the authenticated MCP author can use code-run with

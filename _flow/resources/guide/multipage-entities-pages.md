@@ -221,7 +221,9 @@ fence above; `frontend-guide-examples` compiles the exact layout and editor.
 
 Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support
 is not Entity qualification. `initialize`/`demoReset` remain exported blocks
-without guards (`private:false`), called from a Flow protected by the application.
+(`private:false`). The reset Flow must be private; an HTTP entry point verifies
+ADMIN then uses `requestable.call`. Demo reset runs only in Studio, or when the
+server symbol `lib_flow_entity.demoReset.enabled` is true (false by default).
 Trusted ownership prefers a live session, otherwise preserves an explicit owner.
 `describe` is metadata-only and bounded; unreadable relation targets are omitted.
 Public errors omit SQL names and DDL. Author diagnostics and the additive preview

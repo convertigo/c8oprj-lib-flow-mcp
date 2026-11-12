@@ -82,9 +82,11 @@ Declaring or changing `timeZone` on a model that has data leaves its earlier
 timestamps in their former zone. On `ENTITY_VALIDATION`,
 `details.fields` names each refused field with its expected type and form.
 
-**Neither entity.initialize nor entity.demoReset is protected by session, role
-or a library demo switch.** The application protects any public caller. Private
-Convertigo code has no internal ACL. The configured database account and its
+`entity.initialize` is session independent. `entity.demoReset` runs only in Studio,
+or when the server symbol `lib_flow_entity.demoReset.enabled` is explicitly true
+(false by default). Both are exported building blocks. A reset Flow must be private;
+a separate HTTP entry point verifies ADMIN and uses `requestable.call`.
+The configured database account and its
 DDL/DML grants are the production boundary; use a secret password symbol and
 a restricted account, not root. Missing CREATE rights return a clear
 ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.
@@ -97,8 +99,9 @@ Auto timestamps are filled by the server. `entity.demoReset({})` explicitly
 empties the model's SQL tables (including mapped tables and the journal), then
 uses the SQL typed seed in dependency order. External provider entities are not
 SQL tables and cannot be seeded this way. Cyclic dependencies need an explicit
-application reset. See the complete public `demo_reset` and seed in
-`flow://guide/multipage-entities`; its optional guard belongs to the application.
+application reset. See the private Studio `demo_reset` and seed in
+`flow://guide/multipage-entities`. A server needs the explicit reset symbol; an
+HTTP entry point must verify ADMIN before calling the private reset Flow.
 Reset bypasses business hooks/access checks. Public CRUD must use the local
 gateway or explicit `checkAccess: true`; trusted primitives are not session-bound.
 

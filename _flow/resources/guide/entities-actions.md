@@ -17,7 +17,7 @@ Preconditions for this example:
   and `adherent` relations and `rendu: boolean` (default false).
 - Both `Livre` and `Pret` use the `Révisé` trait, on the same named SQL
   connection `app`. The additive schema is ensured on first use; no ADMIN
-  initialization facade is needed. Use the application’s public `demo_reset`
+  initialization facade is needed. Use the application’s private Studio `demo_reset`
   before demo sign-in, as in `flow://guide/multipage-entities`.
 - The authenticated application role has read/create/update rights needed by
   the operation. This example grants the two writes to `BIBLIOTHECAIRE`;
@@ -147,11 +147,13 @@ with optional millisecond fraction, strict strings/booleans and explicit null.
 No conversion to JavaScript Number. Directory filters use the same equality;
 an OR with a non-identity branch cannot be reduced to an identity prefilter.
 
-`entity.initialize` and `entity.demoReset` are **exported blocks without a guard,
-to call from a Flow protected by the application** (`private:false` in the block
-catalog). They are not public HTTP endpoints by themselves and are not technically
-private blocks. Keeping them exported lets project Flows and agent pickers call
-them normally; changing visibility would hide the intended installation path.
+`entity.initialize` and `entity.demoReset` are exported blocks (`private:false`
+in the catalog), so project Flows can call them. The reset Flow must be private.
+Demo reset is refused outside Studio unless the server symbol
+`lib_flow_entity.demoReset.enabled` is `true` (default false); project config or
+request input cannot enable it. A separate hidden application entry point must
+verify ADMIN before calling the private reset with `requestable.call`.
+The reset trace records the actor, instant and actual number of seeded rows.
 
 In trusted mode, creating a Possédé row prefers the authenticated server session
 for its owner; without a session, an explicit owner is preserved. No ACL is added.
