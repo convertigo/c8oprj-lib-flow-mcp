@@ -329,7 +329,7 @@ const _meta = {
 		"and relation {entity, labelField, where}. " +
 		"Traits: Révisé, Horodaté, Activable, Immuable, Journalisé {fields: [...]}, " +
 		"Possédé {owner: field, unrestricted: [roles]} (needs Révisé; adds the owner field, filled with the session user unless an unrestricted role sets it), " +
-		"Échéance {reference: [date fields], delay: {months}, timeZone}. " +
+		"Échéance {reference: [date fields], delay: {months, days}, timeZone, inclusive}. " +
 		"Project trait: {parameters {name: default}, fields {name: field}, rules [{kind, ...}] (kinds: active, owner, deadline, revision, immutable, audit), ui}; " +
 		"a \"$name\" field name or value takes the parameter, and an entity lists the trait as \"Name\" or {\"Name\": {parameter: value}}. " +
 		"Source: {provider: block} on a read-only entity (readOnly: true): the block, such as app.directory, lists the rows " +
