@@ -13,7 +13,7 @@ A condition, a value or an expression property is a small JavaScript subset; any
   `isNaN`, `isFinite`, `Number(x)`, `String(x)`, `Number.isInteger`, `Number.isFinite`, `Number.isNaN`, the pure
   `Math.*` functions (`sqrt`, `pow`, `trunc`, `sign`, `hypot`, `log`, `log2`, `log10`, `exp`, `sin`, `atan2`...),
   `lower`, `upper`, `trim`, `contains`, `startsWith`, `endsWith`, `length`, `default(x, fallback)`, `json(x)`,
-  `oneOf`, `overlaps`, `Array.isArray`.
+  `oneOf`, `overlaps`, `Array.isArray`, `text.repeat(text, n)`.
 - **Methods:** text `trim`, `toLowerCase`, `includes`, `split`, `replace`/`replaceAll` (text patterns), `slice`,
   `padStart`...; lists `includes`, `indexOf`, `slice`, `join`, `at`, `length`; numbers `toFixed`.
 - **Regex:** `text.match({ text, pattern: "^[0-9]+$", flags: "i" })` (then `.matched`, `.groups`),
@@ -238,6 +238,8 @@ Copy the full `revision`; after a revision conflict, read again with `code-get` 
    stopping. `code-status` gives dirty/revision state, `code-discard` cancels,
    `code-analyze` returns scopes (`input`, `local`, `current`, `result`) and
    data-flow diagnostics for the working copy.
+   Test a length limit from a draft `flow.call` of the Flow with
+   `input: { comment: text.repeat("x", 2001) }`, never a long value typed by hand.
 3. Do not pass `saveProject`, `refresh`, `draft` or `dry` unless low-level
    debugging was requested.
 4. `flow-list` only for maintenance. `flow-search` only after a first draft
