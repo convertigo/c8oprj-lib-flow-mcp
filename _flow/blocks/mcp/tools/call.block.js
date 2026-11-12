@@ -127,7 +127,7 @@ const _meta = {
 			return { error: { code: "UNKNOWN_TOOL",
 				message: name + " is not offered to this client: it is a tool of the Convertigo MCP relay, which is off or does not offer it on this server.",
 				hint: name === "browser-verify" || name === "subagent-run"
-					? "Prove the page with the browser tools of your host (Playwright) on the openUrl of dev.open or dev.sync: execute the acceptance.calls plan of openBuilt, one screenshot for a visual check."
+					? "Prove the page with the browser tools of your host (Playwright) on the openUrl of dev.open or dev.sync: execute the acceptance.calls plan of openBuilt, then walk its paths and each acceptance criterion as its user would (flow://guide/frontend-svelte-proof); one screenshot for a visual check."
 					: "Use the tools of your list; tools-more({}) lists the others.",
 				details: { relayed: true } } };
 		}

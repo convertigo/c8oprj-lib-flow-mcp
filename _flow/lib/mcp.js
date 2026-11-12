@@ -3983,8 +3983,9 @@
 		}
 		if (value.acceptance) {
 			out.next = (out.next ? out.next + " " : "") +
-				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance.calls plan (or build with detail:\"full\"); run it with " +
-				HOST_BROWSER_TOOLS;
+				"For a browser proof, frontend-svelte-action openBuilt returns the acceptance plan (or build with detail:\"full\"): " +
+				"run its acceptance.calls, which prove that the build renders, then walk its acceptance.paths and each acceptance " +
+				"criterion of the specification that goes through a screen, with " + HOST_BROWSER_TOOLS;
 		}
 		return out;
 	}
