@@ -25,6 +25,10 @@ check(/submit one value the specification refuses: its message must show on the 
 check(/Leave each list page and come back: the list must show again/.test(proof), 'a list survives a return');
 check(/A criterion proved only by a direct Flow call is not proved on the screen/.test(proof), 'a direct call is no screen proof');
 check(/criterion, path, what the screen showed/.test(proof), 'the handoff reports each criterion');
+// The walk writes for real (a form submitted, a refusal tried, a notification sent): on the development data with the
+// test accounts, never a production connection nor the account of a real person (security review of 12/11, R3)
+check(/Walk on the development database or the demo data, signed in with the test accounts of the project seed/.test(proof), 'the walk uses development data and test accounts');
+check(/never walk against a production connection or with the account of a real person/.test(proof), 'never production, never a real account');
 
 // The entry guide, the skills: the single pass stays for a simple page, never for an application with a specification
 check(/Application Acceptance/.test(entry), 'the entry guide names the section');
