@@ -18,6 +18,9 @@ check(/An application from a specification first writes its acceptance table \(c
 check(/Before building, write the acceptance table from the specification: one line per criterion that goes through a screen/.test(read('guide/frontend-svelte-proof.md')),
   'proof guide: the table before building');
 check(/fill its seen column during the walk/.test(read('guide/frontend-svelte-proof.md')), 'proof guide: filled during the walk');
+// the table ends in the final answer: it never copies a password, a token or personal data (security review of 12/11, 11h43)
+check(/The seen column says what showed \(the message, the page, the count of rows\), never a password, a token or personal data; a path names the test account, not its password/.test(read('guide/frontend-svelte-proof.md')),
+  'proof guide: no secret in the table');
 check(/Before building it, write its acceptance table from the specification \(criterion, path, seen\)/.test(read('skills/convertigo-flow-mcp/SKILL.md')),
   'MCP skill: the table before building');
 check(/write the acceptance table \(criterion, path, seen\) from the specification before building/.test(read('skills/convertigo-flow-frontend-svelte/SKILL.md')),
