@@ -121,3 +121,26 @@ mutually exclusive local state. A downstream Page or surface is not visible
 before its required selection. A successful POC proves the requested
 transitions, not merely that all data eventually appears somewhere in one
 scrolling document.
+
+## Typed query parameters
+
+Query values remain strings unless the receiving Page declares their type:
+
+```svelte
+<script module>
+  export const _flow = {sourceVersion: 2, page: {id: "declare", title: "Declare", query: {
+    ids: {type: "array", items: {type: "string"}, default: []},
+    count: {type: "number", default: 0}
+  }}};
+</script>
+```
+
+Read `@route.query.ids` to get the array, and use `route.query.ids.length` in an
+action expression to count selected rows. Navigate and LinkButton already encode
+arrays as JSON in Query. Supported types: string, number, integer, boolean,
+array; array items may declare a scalar type. Missing values use their declared
+default (otherwise [], 0, false or empty string according to the type).
+Malformed JSON, repeated typed parameters and incompatible values fail with
+`FRONTEND_PAGE_QUERY_INVALID`; they never become raw text silently. Undeclared
+parameters keep their text semantics. A `.length` read on an undeclared query
+parameter warns with `FRONTEND_PAGE_QUERY_LENGTH_UNTYPED`.
