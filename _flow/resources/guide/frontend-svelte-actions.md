@@ -115,7 +115,10 @@ put the anonymous login page outside that group when it needs no shell.
 
 `Interval` and `Timeout` register on mount and clean up on teardown; nest them
 under `OnMount` only inside a larger explicit mount chain. `OnMount once={true}`
-survives route round trips but not a full reload.
+runs its chain once per load of the application: a page mounted again after a
+route round trip does not run it, and its State starts from its initial value.
+Load the data of a page with a plain `OnMount`; keep `once` for work whose
+result lives outside the page.
 
 ## Clocks And Timers
 

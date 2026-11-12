@@ -738,5 +738,10 @@
   "family": "authoring",
   "old": "data-flow diagnostics for the working copy.",
   "new": "data-flow diagnostics for the working copy. Test a length limit from a draft `flow.call` of the Flow with `input: { comment: text.repeat(\"x\", 2001) }`, never a long value typed by hand."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "`OnMount once={true}` survives route round trips but not a full reload.",
+  "new": "`OnMount once={true}` runs its chain once per load of the application: a page mounted again after a route round trip does not run it, and its State starts from its initial value. Load the data of a page with a plain `OnMount`; keep `once` for work whose result lives outside the page."
  }
 ]
