@@ -100,10 +100,7 @@ Flow Svelte uses the palette tag generated from that id, inside an event's
 <Text $$id="normalized" text="@normalizeName" />
 ```
 
-With no `target`, read the result as `@<$$id>` (`@normalizeName`). Set
-`target` only to an existing `page.name` (`layout.` / `comp.` in a layout or a
-component) when the action must update that
-state. Never author `RunAxiom`; insert the portable tag directly. The Svelte
+Without `$$out`, read the result as `@<$$id>` (`@normalizeName`). To write an existing State, use `$$out="page.name"` (`layout.` / `comp.` in a layout or a component): `flow://guide/frontend-svelte-data`. Never author `RunAxiom`; insert the portable tag directly. The Svelte
 compiler lowers it to a static import and bundles only used browser functions.
 
 If `code-check` reports `FRONTEND_BLOCK_UNKNOWN`, use its ranked palette

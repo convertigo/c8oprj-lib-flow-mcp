@@ -168,8 +168,7 @@ so dependency preparation overlaps source inspection and authoring.
 Inspect bootstrap's `existing` flag before claiming a project was created. If
 it returns `existing:true`, the one successful `dev.ensure` also counts as the
 existing-project preflight. When that response is active (`pending:false`, with
-`browser` and `openUrl`) and `code-get` shows that the requested behavior is
-already present, stop and answer. Do not repeat `dev.ensure` or call
+`browser` and `openUrl`) and `code-get` shows that the requested behavior is already present, change nothing, then verify the visible behavior asked that is not observed yet before answering. Do not repeat `dev.ensure` or call
 `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for this unchanged
 no-op path.
 
@@ -231,10 +230,7 @@ wait stays in it for the rest of the task.
   context.
 - Use Playwright yourself only for one quick evaluation of DOM state or
   timing; never a `browser_snapshot` per step.
-- Playwright call form: `browser_click({ element: "Save button", target: "e4" })`,
-  `browser_type({ element: "Name field", target: "e3", text: "Ada" })`;
-  `target` is the `[ref=e4]` of the latest `browser_snapshot` (no `ref`
-  argument, never `null`); on `Ref ... not found`, take a new snapshot.
+- Read the schema of the browser tools of your host and use its argument names: an element reference comes from the latest snapshot, and a reference not found asks for a new snapshot.
 - The verifier is read-only: fix what it reports with the Flow tools, then
   run it again on the failed paths only.
 

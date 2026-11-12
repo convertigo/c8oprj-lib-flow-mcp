@@ -15,7 +15,7 @@ or an explicit user request for direct SQL.
 
 The default goal is a runnable POC: one backend pass, one frontend application
 pass, build, and one useful browser path. One application pass may contain
-several Page sources. Stop after at most two focused repairs. Exhaustive
+several Page sources. Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`). Exhaustive
 schemas, offline/history edge cases and visual refinement belong to explicit
 hardening; functional Page separation and transitions do not.
 
@@ -42,7 +42,7 @@ Represent those intentions with palette blocks immediately, even when the data
 is mocked. Deliver in two phases:
 
 1. POC: paperboard visible in the generated app;
-2. POC: primary action wired to a backend Flow, mock acceptable but explicit;
+2. POC: primary action wired to a backend Flow; a mock is allowed while building, but replace every mock the request needs before delivery, unless the user accepts it;
 3. Hardening: backend mock replaced by real Flow/HTTP/parsing blocks;
 4. Hardening: output schema reviewed so frontend pickers see real fields;
 5. Hardening: visual/layout refinement using semantic layout properties and
@@ -125,8 +125,7 @@ source, including a structured literal for intentionally static content.
      static link. `OnMount` runs when the page mounts; `OnAfterNavigate` after
      each navigation, to load what depends on the address
      (`@event.to.params.id`). Put `GoBack` below a visible Button event action
-     chain, and use `OnMount once={true}` only for bootstrap state that must
-     survive a route round trip.
+     chain, and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte-actions`).
    Keep the default theme and adjust its tokens in `theme.flow.css`; use the
    application CSS source plus explicit `class` values only for gradients,
    illustrations and one-off rules. Do not expand every UI block into a CSS
@@ -143,12 +142,11 @@ source, including a structured literal for intentionally static content.
    real command replaces them so agents cannot choose between parallel data
    paths with different validation rules.
 8. On an existing project where dev mode was not started during bootstrap,
-   start it after this first complete paperboard with `wait:false`. Continue
-   the two allowed focused repair passes while dependencies install. Do not
+   start it after this first complete paperboard with `wait:false`. Continue the focused repairs while dependencies install. Do not
    poll: Vite and the Studio viewer open automatically when setup completes.
    Run `dev.sync` once after the final repair to regenerate the completed
    source. Use `dev.open` only to reveal an already running viewer.
-9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.
+9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start-rules`).
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
 10. Prove the POC with a short check:

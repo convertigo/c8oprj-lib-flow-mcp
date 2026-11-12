@@ -223,7 +223,7 @@ Collections are created typed, then mutated explicitly: `json.array({ path,
 itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
 `json.put({ path, key, value })`. Destinations are static `local.`/`result.`
 names; a value that does not match the declared type is refused with
-`VALUE_TYPE_MISMATCH`. Create them with `path:` (not with an assignment).
+`VALUE_TYPE_MISMATCH`. Create them with `path:`, or assign the call (it gives the `path`).
 
 ## Loop
 

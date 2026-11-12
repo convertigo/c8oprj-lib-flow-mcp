@@ -3879,7 +3879,7 @@
 	// The browser plan names generic Playwright calls: the agent runs them with the browser tools of its host, whatever
 	// their prefix. In the light bench of 06/11 (it4), Codex looked for them among the convertigo-flow tools.
 	var HOST_BROWSER_TOOLS = "the browser tools of your host (its Playwright MCP server, whatever the tool-name prefix: " +
-		"browser_navigate {url}, browser_snapshot, browser_click {element, ref}, browser_type, browser_evaluate {function}), " +
+		"browser_navigate, browser_snapshot, browser_click, browser_type, browser_evaluate, with the argument names of their own schema), " +
 		"not through convertigo-flow, which has no browser tool.";
 
 	function withHostBrowserTools(action, value) {
@@ -4982,7 +4982,7 @@
 				if (value.draft === true) compactRun.unsaved = true;
 				compactRun.next = value.draft === true
 					? "UNSAVED DRAFT: if the result is right, call code-promote({project,qname,revision})."
-					: "Saved Flow passed. Stop unless another validation is asked.";
+					: "Execution completed. Compare the result with the expected outcome and finish the outstanding acceptance checks before reporting completion.";
 			} else if ((name === "flow-code-run" || name === "code-run") && value.ok !== false) {
 				var runOut = mutableOut();
 				if (value.draft === true) {
@@ -4992,7 +4992,7 @@
 				}
 				runOut.next = value.draft === true
 					? "PASSED ON DRAFT: code-run proved the working copy. If the returned result matches the user request, call code-promote({project,qname,revision}) now. Do not resend code or rewrite for cosmetic changes."
-					: "Official Flow run/test passed. Stop unless the user asked for another validation.";
+					: "Execution completed. Compare the result with the expected outcome and finish the outstanding acceptance checks before reporting completion.";
 				if (value.draft === true) {
 					var warnings = runOut.warnings || [];
 					warnings.push({
@@ -5007,7 +5007,7 @@
 				}
 			} else if (name === "flow-test" && value.ok !== false) {
 			var testOut = mutableOut();
-			testOut.next = "Saved Flow test passed. Stop unless the user asked for another validation.";
+			testOut.next = "Saved Flow test completed. Compare the result with the expected outcome and finish the outstanding acceptance checks before reporting completion.";
 		}
 		var compacted = out || value;
 		if ((name === "flow-code-run" || name === "code-run") && compacted && typeof compacted === "object") {

@@ -108,8 +108,7 @@ invisible to all of them; a refusal says what to write instead.
   so dependency preparation overlaps source inspection and authoring.
 - Inspect bootstrap's `existing` flag before claiming a project was created.
   For `existing:true`, if the single `dev.ensure` is active (`pending:false`,
-  with `browser` and `openUrl`) and `code-get` proves the request is already
-  satisfied, stop and answer. Do not repeat `dev.ensure`, and do not call
+  with `browser` and `openUrl`) and `code-get` shows the request is already done, change nothing, then verify the visible behavior asked that is not observed yet before answering. Do not repeat `dev.ensure`, and do not call
   `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for unchanged
   source. `code-check` is only for an explicit dry-run or changed draft;
   `dev.sync` follows a mutation or completes pending preparation.

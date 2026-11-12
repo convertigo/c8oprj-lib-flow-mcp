@@ -48,9 +48,9 @@ assertTrue(String(response.frontendSkillPath || "").indexOf("convertigo-flow-fro
   "Flow Codex setup omitted the frontend specialist");
 assertTrue(routerSkillSource.indexOf("no-op path") >= 0,
   "Flow router must preserve the existing-project no-op fast path");
-assertTrue(frontendSkillSource.indexOf("stop and answer") >= 0,
-  "Flow frontend skill must stop after a proven unchanged result");
-assertTrue(frontendGuideSource.indexOf("successful\nno-op") >= 0,
+assertTrue(frontendSkillSource.indexOf("change nothing") >= 0 && frontendSkillSource.indexOf("verify the visible behavior asked") >= 0,
+  "Flow frontend skill must change nothing on a proven unchanged source, then verify what is asked");
+assertTrue(frontendGuideSource.replace(/\s+/g, " ").indexOf("successful no-op") >= 0,
   "Flow frontend guide must document the existing-project no-op fast path");
 assertTrue(!codexHome.exists(), "Flow Codex setup wrote files during dryRun");
 

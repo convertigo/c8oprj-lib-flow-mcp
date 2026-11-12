@@ -61,9 +61,7 @@ The project configuration of a Flow is `default` merged with the named
 configurations its tags select, value by value: tags apply in their order,
 then the configs of each tag in their order, and for a value set several
 times the last one wins (objects merge; arrays, scalars and `null` replace).
-Around it, precedence per root key stays Flow defaults < project
-configuration < explicit request config: a call config replaces whole root
-branches, and `config.use` merges explicitly. When a Flow receives
+Around it, precedence stays Flow defaults < project configuration < explicit request config. A call configuration merges by the same rules (objects merge, other values replace: `flow://guide/authoring-data`), and `config.use` merges explicitly. When a Flow receives
 configuration, its `authoring-tree` shows a read-only **Effective
 configuration** with each resulting value and its origin. Private keys
 (`configVisibility`) stay masked in named configurations and in the effective

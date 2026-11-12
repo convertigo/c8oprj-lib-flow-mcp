@@ -743,5 +743,45 @@
   "family": "frontend-svelte",
   "old": "`OnMount once={true}` survives route round trips but not a full reload.",
   "new": "`OnMount once={true}` runs its chain once per load of the application: a page mounted again after a route round trip does not run it, and its State starts from its initial value. Load the data of a page with a plain `OnMount`; keep `once` for work whose result lives outside the page."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "and use `OnMount once={true}` only for bootstrap state that must survive a route round trip.",
+  "new": "and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte-actions`)."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "2. POC: primary action wired to a backend Flow, mock acceptable but explicit;",
+  "new": "2. POC: primary action wired to a backend Flow; a mock is allowed while building, but replace every mock the request needs before delivery, unless the user accepts it;"
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.",
+  "new": "9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start-rules`)."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "Stop after at most two focused repairs.",
+  "new": "Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`)."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "Continue the two allowed focused repair passes while dependencies install.",
+  "new": "Continue the focused repairs while dependencies install."
+ },
+ {
+  "family": "authoring",
+  "old": "Create them with `path:` (not with an assignment).",
+  "new": "Create them with `path:`, or assign the call (it gives the `path`)."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "source already satisfies the request, stop and answer: this is a successful no-op. Do not repeat `dev.ensure`, and do not call `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for unchanged source.",
+  "new": "source already does what is asked, change nothing: a successful no-op for the sources. Do not repeat `dev.ensure`, and do not call `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for unchanged source; verify the visible behavior asked that is not observed yet before answering."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "On failure, allow one focused browser diagnostic instead of an exploratory test campaign.",
+  "new": "On failure, keep each diagnostic on a failed path, and go on while a fix resolves an identified failure; report a blocker when no next step remains, never an exploratory test campaign."
  }
 ]

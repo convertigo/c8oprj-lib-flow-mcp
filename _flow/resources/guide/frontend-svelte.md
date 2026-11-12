@@ -44,9 +44,7 @@ target.
 When bootstrap returns `existing:true`, treat the sequence as an existing
 project, not as a creation. If the one `dev.ensure` response is already active
 (`pending:false`, with `browser` and `openUrl`) and `code-get` proves that the
-source already satisfies the request, stop and answer: this is a successful
-no-op. Do not repeat `dev.ensure`, and do not call `code-check`, `code-set`,
-`dev.sync` or `flow-app-progress` for unchanged source. `code-check` is for an
+source already does what is asked, change nothing: a successful no-op for the sources. Do not repeat `dev.ensure`, and do not call `code-check`, `code-set`, `dev.sync` or `flow-app-progress` for unchanged source; verify the visible behavior asked that is not observed yet before answering. `code-check` is for an
 explicit dry-run or a changed draft; `dev.sync` follows a mutation or completes
 a pending preparation, never an unchanged active viewer.
 
@@ -109,7 +107,7 @@ Read only the sub-guide of the current task, once; each one is short enough to b
 | `flow://guide/frontend-svelte-actions` (7.0 KB) | for events and actions: chains, `If`, reentrancy, `OnMount`, `OnAfterNavigate`, session Layout, timers, clocks |
 | `flow://guide/frontend-svelte-themes` (3.7 KB) | for colors, palettes, light and dark mode, fonts and icons |
 | `flow://guide/frontend-svelte-components` (3.8 KB) | for a reusable component, its props and events, or a library component |
-| `flow://guide/frontend-svelte-proof` (4.4 KB) | before handing over: Application Acceptance, POC, verifier, visual checklist |
+| `flow://guide/frontend-svelte-proof` (4.5 KB) | before handing over: Application Acceptance, POC, verifier, visual checklist |
 | `flow://guide/frontend-svelte-routing` (6.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |
 
 ## Known Limits
