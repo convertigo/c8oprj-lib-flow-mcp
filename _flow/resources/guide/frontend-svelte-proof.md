@@ -1,8 +1,22 @@
 # Flow Svelte POC Acceptance And Browser Proof
 
-What a POC must prove, the safe Playwright plan, the verifier sub-agent, browser-verify and the visual checklist before handing over.
+What an application and a POC must prove, the safe Playwright plan, the verifier sub-agent, browser-verify and the visual checklist before handing over.
 
 Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the authoring loop.
+
+## Application Acceptance
+
+An application built from a specification is done only when each of its
+acceptance criteria that goes through a screen has been walked in the browser,
+as its user would: open the page from the navigation, fill the form, submit
+it, read the result on the screen (the list, the message, the next page). For
+each form, also submit one value the specification refuses: its message must
+show on the screen. Leave each list page and come back: the list must show
+again. A criterion proved only by a direct Flow call is not proved on the
+screen. Give these walks as the `paths` and `checks` of the verifier below (or
+of a sub-agent of your host), fix what fails, walk the failed paths again,
+and end the handoff with one line per criterion: criterion, path, what the
+screen showed. A simple page without a specification keeps the single proof.
 
 ## POC Acceptance
 

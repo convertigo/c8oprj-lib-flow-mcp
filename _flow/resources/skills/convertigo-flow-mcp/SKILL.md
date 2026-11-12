@@ -202,6 +202,12 @@ when the viewer target is ambiguous; do not split one assertion across
 Keep long Playwright sequences out of your context: each snapshot, click and
 wait stays in it for the rest of the task.
 
+- An application built from a specification is done only when each acceptance
+  criterion that goes through a screen has been walked in the browser: fill,
+  submit, read the result, one refused value per form whose message shows,
+  leave and come back to each list (`flow://guide/frontend-svelte-proof`,
+  Application Acceptance). A direct Flow call proves no screen.
+
 - A multi-step proof (sign in, go through several pages, fill and submit a
   form, check a list after a write) goes to one relayed
   `subagent-run({profile:"verifier", task, inputs:{project, url, paths, checks,

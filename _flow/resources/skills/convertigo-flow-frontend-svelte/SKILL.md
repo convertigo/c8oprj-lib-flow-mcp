@@ -172,6 +172,8 @@ invisible to all of them; a refusal says what to write instead.
   state. Do not recheck an unchanged pilot or repeat browser setup attempts.
   Run one compact browser pass after propagation; if the managed viewer is not
   controllable after one readiness check, report that limitation and stop.
+  For an application built from a specification, that pass does not replace
+  the acceptance walk of each criterion (`flow://guide/frontend-svelte-proof`).
 - For a simple reactive proof, use one browser evaluation that records the
   initial value, waits, and verifies the updated value. List/select tabs only
   when the viewer is ambiguous; do not split one assertion across a find and
