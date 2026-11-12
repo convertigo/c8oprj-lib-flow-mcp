@@ -27,8 +27,8 @@ check(/To write an existing State, use `\$\$out="page\.name"`/.test(read('guide/
 // 6. a typed collection may be assigned (json.array, json.map contracts, parser)
 check(!/Create them with `path:` \(not with an assignment\)/.test(read('guide/authoring.md')), 'authoring: assignment allowed');
 check(/or assign the call \(it gives the `path`\)/.test(read('guide/authoring.md')), 'authoring: assignment gives the path');
-// 7. the browser tools are those of the host: their own schema, never a signature imposed by Flow
-check(!/no `ref` argument/.test(read('skills/convertigo-flow-mcp/SKILL.md')), 'skill: no imposed browser signature');
+// 7. the browser tools are those of the host: their own schema first; the Playwright form of the bench (target, the
+// guide-drafts-forms-browser.cjs witness of a bench friction) stays as its example, and the MCP no longer says ref
 check(/Read the schema of the browser tools of your host and use its argument names/.test(read('skills/convertigo-flow-mcp/SKILL.md')), 'skill: host schema');
 check(!/browser_click \{element, ref\}/.test(mcp), 'mcp: no imposed browser signature');
 // 8. a mock is allowed while building, never at delivery without the agreement of the user
