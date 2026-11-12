@@ -114,7 +114,8 @@ identity data: change it after a session change as well as after a write.
 
 Default View/Edit actions raise `OnView`/`OnEdit`, plus compatible `OnSelect`.
 Wire them to an editor/record view, or set `viewPage`/`editPage` to the logical
-page id. Dynamic route parameters come from `row.key`. Activation sends only
+page id. Dynamic route parameters come from `row.key`; `[id]` also aliases the single
+identity field when its model name differs. Activation sends only
 key, revision and the active-field change through the gateway. Its rule must
 live in a model hook, not only in a calling Flow. An `Actions` slot replaces
 defaults, including in read-only sessions where it may offer View.
