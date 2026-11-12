@@ -156,3 +156,16 @@ A policy may run more than once in one call (this default, unique fields,
 call. It receives `options.active: "all"` on reads the caller sent without the
 option: refuse with a plain `throw` (or status 401 or 403), or ignore an option
 it does not expect; a throw with another status fails the read.
+
+## A policy with no rows
+
+Return `{none: true}` alone to close the row set. It is absorbing: an authorize
+slot or additional equality cannot reopen it. Combining it with scope, including
+`{none: true, scope: {}}`, fails with `ENTITY_POLICY_INVALID`.
+
+A list returns total 0 without schema bootstrap or SQL; a read answers the same
+`ENTITY_NOT_FOUND` and message as a missing key; writes get the usual model ACL
+refusal. Relation options targeting that entity are empty. Count is zero.
+`{}` and `{scope: {}}` retain their existing meaning: no additional restriction.
+They never mean no rows. Literal incompatible scopes fail code-check; likely
+sentinels (`"__none__"`, `"none"`, -1, or an empty identifier) receive a warning.
