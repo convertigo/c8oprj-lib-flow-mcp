@@ -60,6 +60,8 @@ var lines = whole.code.split("\n");
   assert(bounded.code === lines.slice(2, 5).join("\n") && bounded.partial === true && bounded.totalLines === lines.length,
     "Router ignored the range of a block read by " + key + ": " + JSON.stringify(bounded).substring(0, 300));
 });
-var outside = codeGet({projectDir:__flowProjectDir,block:"sample.formatGreeting",startLine:1,endLine:lines.length + 1});
-assert(outside.isError === true && outside.structuredContent.error.code === "CODE_RANGE_INVALID", "A range outside the block must be a readable tool error");
+var past = codeGet({projectDir:__flowProjectDir,block:"sample.formatGreeting",startLine:1,endLine:lines.length + 1}).structuredContent;
+assert(past.endLine === lines.length && /bounded to/.test(String(past.note)), "A range past the end of the block is bounded to its last line: " + JSON.stringify(past).substring(0, 300));
+var outside = codeGet({projectDir:__flowProjectDir,block:"sample.formatGreeting",startLine:lines.length + 1,endLine:lines.length + 2});
+assert(outside.isError === true && outside.structuredContent.error.code === "CODE_RANGE_INVALID", "A range that starts outside the block must be a readable tool error");
 print("code-get ranges: " + count + " assertions passed");

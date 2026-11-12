@@ -5265,7 +5265,9 @@
 			reject("CODE_STALE_REVISION", "Source changed since the requested revision. Read its current revision before requesting a range.");
 		}
 		var lines = value.code.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-		var start = Number(args.startLine), end = Number(args.endLine);
+		var start = Number(args.startLine), end = Number(args.endLine), asked = end;
+		// A range past the end of the source reads up to its last line (lines 1-60 of a 37 line source were refused).
+		if (isFinite(end) && end > lines.length && start <= lines.length) end = lines.length;
 		if (!isFinite(start) || !isFinite(end) || Math.floor(start) !== start || Math.floor(end) !== end ||
 			start < 1 || end < start || end > lines.length || end - start + 1 > 500) {
 			reject("CODE_RANGE_INVALID", "Use inclusive one-based bounds inside the " + lines.length + " line source, at most 500 lines.");
@@ -5276,6 +5278,7 @@
 		out.startLine = start;
 		out.endLine = end;
 		out.totalLines = lines.length;
+		if (asked !== end) out.note = "endLine " + asked + " is past the end of the source: bounded to " + end + ", its last line.";
 		out.totalContentLength = value.code.length;
 		out.contentLength = out.code.length;
 		delete out.descriptor;

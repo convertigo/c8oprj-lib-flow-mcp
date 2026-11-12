@@ -1433,6 +1433,9 @@ const _meta = {
 		if (hasStartLine) {
 			startLine = Number(props.startLine);
 			endLine = Number(props.endLine);
+			// A range past the end of the source reads up to its last line (lines 1-60 of a 37 line source were refused).
+			var askedEnd = endLine;
+			if (isFinite(endLine) && endLine > totalLines && startLine <= totalLines) endLine = totalLines;
 			var validIntegers = isFinite(startLine) && isFinite(endLine) &&
 				Math.floor(startLine) === startLine && Math.floor(endLine) === endLine;
 			if (!validIntegers || startLine < 1 || endLine < startLine || endLine > totalLines || endLine - startLine + 1 > 500) {
@@ -1461,6 +1464,7 @@ const _meta = {
 			result.startLine = startLine;
 			result.endLine = endLine;
 			result.totalLines = totalLines;
+			if (askedEnd !== endLine) result.note = "endLine " + askedEnd + " is past the end of the source: bounded to " + endLine + ", its last line.";
 			result.totalContentLength = resource.contentLength;
 			result.partial = true;
 			result.next = "Use this revision with code-patch, or request another bounded range. Escalate to full code-get only when context is ambiguous.";
