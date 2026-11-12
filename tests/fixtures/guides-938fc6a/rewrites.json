@@ -721,5 +721,22 @@
   "family": "entities",
   "old": "<EntityForm $$id=\"edit\" entity=\"Equipement\" row=\"@page.row\" />",
   "new": "<EntityForm $$id=\"edit\" entity=\"Book\" row=\"@page.row\" />"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (15.8 KB) |",
+  "new": "| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (16.0 KB) |"
+ },
+ {
+  "family": "authoring",
+  "old": "`oneOf`, `overlaps`, `Array.isArray`.",
+  "new": "`oneOf`, `overlaps`, `Array.isArray`, `text.repeat(text, n)`."
+ },
+ {
+  "family": "authoring",
+  "old": "data-flow diagnostics for the working copy.",
+  "new": "data-flow diagnostics for the working copy. Test a length limit from a draft `flow.call` of the Flow with `input: { comment: text.repeat(\"x\", 2001) }`, never a long value typed by hand."
  }
 ]
