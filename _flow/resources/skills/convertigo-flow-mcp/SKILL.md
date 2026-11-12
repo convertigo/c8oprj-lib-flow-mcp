@@ -201,8 +201,9 @@ when the viewer target is ambiguous; do not split one assertion across
 Keep long Playwright sequences out of your context: each snapshot, click and
 wait stays in it for the rest of the task.
 
-- An application built from a specification is done only when each acceptance
-  criterion that goes through a screen has been walked in the browser: fill,
+- Before building it, write its acceptance table from the specification
+  (criterion, path, seen), then fill seen on the screen and give the table in
+  the final answer. An application built from a specification is done only when each acceptance criterion that goes through a screen has been walked in the browser: fill,
   submit, read the result, one refused value per form whose message shows,
   leave and come back to each list (`flow://guide/frontend-svelte-proof`,
   Application Acceptance). A direct Flow call proves no screen.

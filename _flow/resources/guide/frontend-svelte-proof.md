@@ -6,6 +6,10 @@ Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the
 
 ## Application Acceptance
 
+Before building, write the acceptance table from the specification: one line per
+criterion that goes through a screen, with the path a user walks and an empty
+seen column; fill its seen column during the walk.
+
 An application built from a specification is done only when each of its
 acceptance criteria that goes through a screen has been walked in the browser,
 as its user would: open the page from the navigation, fill the form, submit

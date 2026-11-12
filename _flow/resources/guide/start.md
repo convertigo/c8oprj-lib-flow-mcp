@@ -38,8 +38,6 @@ Direct SQL and generated CRUD require one.
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
 
-Resource reading details: `flow://guide/start-rules`.
-
 ## Source contract in five rules
 
 1. Every block call is `block.name({ key: value })` with one object argument.
@@ -61,8 +59,6 @@ Resource reading details: `flow://guide/start-rules`.
    `props.*` are not expression scopes (in Flow Svelte, `@props.<name>` reads
    component inputs).
 
-`flow://guide/authoring` gives the full backend dialect with examples.
-
 ## Default backend loop
 
 1. Draft compact FlowScript with `code-set` before catalog browsing or copying
@@ -78,6 +74,8 @@ Resource reading details: `flow://guide/start-rules`.
    called Flow first, then run the caller with `code-run`.
 4. Stop after a successful run plus promotion unless deployed HTTP validation
    was requested. Do not call `flow-test` when `code-run` already proved it.
+   An application from a specification first writes its acceptance table
+   (criterion, path, seen), then fills it on the screen.
 5. Use `flow-search` only after the first draft, when a block or pattern is
    still unknown (`GetFeed requestable call sort`); `kind:"sample"` matches
    are private `sample_*` Flows.
