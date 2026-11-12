@@ -138,8 +138,10 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
 
 - **Types:** `string`, `text`, `enum` (with `values`), `int64`, `decimal`,
   `boolean`, `date`, `timestamp`. There is no array or JSON type: store
-  serialized JSON in a `text` field, or declare a related entity. A field
-  without `default` is required unless `nullable: true`.
+  serialized JSON in a `text` field, or declare a related entity. A `string`
+  or `text` without `maxLength` holds 1 024 characters, and a longer value is
+  refused: give a mail body or a comment its bound (`"maxLength": 20000`). A
+  field without `default` is required unless `nullable: true`.
 - **Identity:** `"identity": ["id"]`, the default, without an `id` field, is an
   int64 auto-incremented by the database. Never send it on create; read it in
   `row.key.id`.
