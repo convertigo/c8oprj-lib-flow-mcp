@@ -76,7 +76,10 @@ on writes: `Horodaté` supplies `dateCreation` and `dateModification` (or declar
 `"createdAt": {"type": "timestamp", "auto": "create"}`). A timestamp you send
 is local `yyyy-MM-ddTHH:mm:ss`, without `Z`; declare `"timeZone": "Europe/Paris"`
 at the root of the model so that automatic timestamps are written in that zone
-too (UTC without it). On `ENTITY_VALIDATION`,
+too (UTC without it). A local time has no offset and an hour repeats when the
+clocks go back: order a journal by revision or identity, never by timestamp.
+Declaring or changing `timeZone` on a model that has data leaves its earlier
+timestamps in their former zone. On `ENTITY_VALIDATION`,
 `details.fields` names each refused field with its expected type and form.
 
 **Neither entity.initialize nor entity.demoReset is protected by session, role
