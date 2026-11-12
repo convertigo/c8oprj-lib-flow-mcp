@@ -314,7 +314,7 @@ const _meta = {
 	// with the example an empty flow-entity-model-get returns. tests/entity-model-tools.js keeps them aligned.
 	var ENTITY_MODEL_FORMAT = "Complete entity model as JSON data, never code. Format version 2: check and set refuse any other key " +
 		"and any reference to a missing entity or field, naming its full path, the accepted values and the correct form, every problem at once. " +
-		"Model: version (2, required), modelVersion (positive integer, raised when the schema changes), entities {Name: entity}, " +
+		"Model: version (2, required), modelVersion (positive integer, raised when the schema changes), timeZone (IANA zone of the automatic timestamps, UTC without it), entities {Name: entity}, " +
 		"traits {Name: project trait}, demo {dataFile}, imports {alias: project}. " +
 		"Entity: fields {name: field}, identity, label, display {title, subtitle}, traits, " +
 		"permissions {read, create, update, delete: role lists; none means no model ACL}, hooks {beforeSave, afterSave, beforeDelete: Flow name}, " +

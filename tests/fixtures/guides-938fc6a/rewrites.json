@@ -841,5 +841,12 @@
   "family": "entities",
   "old": "or declare a related entity. A field without `default`",
   "new": "or declare a related entity. A `string` or `text` without `maxLength` holds 1 024 characters, and a longer value is refused: give a mail body or a comment its bound (`\"maxLength\": 20000`). A field without `default`"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
+  "new": "| `flow://guide/entities-model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  }
 ]

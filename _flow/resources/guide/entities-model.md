@@ -74,7 +74,9 @@ field's precision and scale is also stored as exact text, but a computed one
 such as `0.1 + 0.2` is refused: send its text. Omit server-managed timestamps
 on writes: `Horodaté` supplies `dateCreation` and `dateModification` (or declare
 `"createdAt": {"type": "timestamp", "auto": "create"}`). A timestamp you send
-is local `yyyy-MM-ddTHH:mm:ss`, without `Z`. On `ENTITY_VALIDATION`,
+is local `yyyy-MM-ddTHH:mm:ss`, without `Z`; declare `"timeZone": "Europe/Paris"`
+at the root of the model so that automatic timestamps are written in that zone
+too (UTC without it). On `ENTITY_VALIDATION`,
 `details.fields` names each refused field with its expected type and form.
 
 **Neither entity.initialize nor entity.demoReset is protected by session, role
