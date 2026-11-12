@@ -202,6 +202,26 @@ expectError({
 	startLine: 0,
 	endLine: 1
 }, "FRONTEND_SOURCE_RANGE_INVALID");
+// A range past the end of the source is bounded to its last line, said in a note (lines 1 to 60 of a 37 line source
+// were refused in the light bench, it85); a start past the end has nothing to read and is still refused.
+var bounded = run({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: patched.revision,
+	startLine: 1,
+	endLine: 60
+});
+assertTrue(bounded.startLine === 1 && bounded.endLine === 2 && bounded.totalLines === 2 && /bounded to 2/.test(String(bounded.note)),
+	"A range past the end of the source should be bounded to its last line, with a note: " + JSON.stringify(bounded));
+expectError({
+	operation: "get",
+	projectDir: String(root.getAbsolutePath()),
+	sourceFile: sourceFile,
+	revision: patched.revision,
+	startLine: 5,
+	endLine: 60
+}, "FRONTEND_SOURCE_RANGE_INVALID");
 expectError({
 	operation: "get",
 	projectDir: String(root.getAbsolutePath()),

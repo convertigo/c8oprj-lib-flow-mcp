@@ -26,7 +26,10 @@ fails({endLine:1},"CODE_RANGE_INCOMPLETE");
 fails({startLine:0,endLine:1},"CODE_RANGE_INVALID");
 fails({startLine:2,endLine:1},"CODE_RANGE_INVALID");
 fails({startLine:1.5,endLine:2},"CODE_RANGE_INVALID");
-fails({startLine:1,endLine:7},"CODE_RANGE_INVALID");
+// past the end: bounded to the last line, with a note (it85: lines 1-60 of a 37 line source were refused)
+var past = read("code-get",{block:"sample.probe",startLine:3,endLine:60});
+assert(past.startLine === 3 && past.endLine === 6 && past.totalLines === 6 && /bounded to 6/.test(String(past.note)),"A range past the end was not bounded: " + JSON.stringify(past));
+fails({startLine:7,endLine:9},"CODE_RANGE_INVALID");
 fails({startLine:1,endLine:2,revision:"stale"},"CODE_STALE_REVISION");
 var huge = {ok:true,revision:"rev",code:new Array(503).join("line\n")};
 try { read("code-get",{block:"sample.probe",startLine:1,endLine:501},huge); assert(false,"501 lines accepted"); }
