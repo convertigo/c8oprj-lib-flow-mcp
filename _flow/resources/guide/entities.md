@@ -50,9 +50,21 @@ The schema is ensured on first authorized use. No hand-written schema, migration
 or CRUD generation is needed. The remaining sections explain HTTP adaptation,
 write permissions and setup; `flow://guide/multipage-entities` orders the full recipe.
 
+## Short path for a CRUD page
+
+For a business list, start with `EntityTable`; for create/update use `EntityForm`;
+for a read-only record by key or `/[id]`, use `EntityView` (E3 kit). Search the
+palette by intent: **liste** or **formulaire**, then inspect the installed contract.
+Set the model with `gateway: true` for these components. Open only the required
+operations in `app.entityAccess`; enforce business invariants in private model
+hooks, shared by the gateway and checked facades. A component cannot grant access.
+See `flow://guide/entities-widgets` for actions, slots, refresh and route recipes.
+Prefer `code-patch` with the returned revision on existing pages and group reads.
+For browser inputs use `frontend-svelte-action` field help before retrying typing.
+
 ## Your own HTTP contract over entities
 
-No widget or generated CRUD is required. Name public Flows as your application
+For a custom HTTP contract, name public Flows as your application
 contract requires: `MyReservations` → `entity.list`, `ReadReservation` →
 `entity.read` (not `entity.get`), `SaveReservation` → `entity.save`,
 `DeleteReservation` → `entity.delete`. Use `checkAccess: true` on each public facade call (or the local
