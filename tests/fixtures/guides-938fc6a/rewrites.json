@@ -793,5 +793,41 @@
   "family": "start",
   "old": "Do not call `flow-test` when `code-run` already proved it.",
   "new": "Do not call `flow-test` when `code-run` already proved it. An application from a specification first writes its acceptance table (criterion, path, seen), then fills it on the screen."
+ },
+ {
+  "family": "authoring",
+  "file": "authoring.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring-data` (10.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+ },
+ {
+  "family": "entities",
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+ },
+ {
+  "family": "multipage-entities",
+  "file": "multipage-entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities-access` (7.2 KB) | demo login, me and logout, application access, access rule hook |"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Their public calling Flow supplies its own guard as below.",
+  "new": "Their public calling Flow supplies its own guard as below: `demoReset` requires the ADMIN role, even in demo mode; the demo symbol alone never guards a reset."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "do not send external effects in a JDBC transaction.",
+  "new": "do not send external effects in a JDBC transaction. A manual run of a job for the ADMIN is a separate hidden Flow that checks the ADMIN role, then calls the private job with `requestable.call`; never make the job itself public or hidden."
+ },
+ {
+  "family": "authoring",
+  "old": "so never write it as a JavaScript template literal.",
+  "new": "so never write it as a JavaScript template literal. Never concatenate values into `html`: a label typed by a user would become markup."
  }
 ]

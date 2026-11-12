@@ -101,7 +101,9 @@ public entities, including their fields and relations. Server scope is also
 applied to labels, options and counts. `Possédé` remains a reusable checked
 ownership trait; private hooks may read across owners deliberately.
 `initialize` and `demoReset` are not gateway operations and are not protected by
-this policy. Their public calling Flow supplies its own guard as below.
+this policy. Their public calling Flow supplies its own guard as below:
+`demoReset` requires the ADMIN role, even in demo mode; the demo symbol alone
+never guards a reset.
 
 ## 2. Apply the rule in an ordinary hook
 

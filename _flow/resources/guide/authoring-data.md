@@ -95,7 +95,8 @@ Emails: `email.send({ to, subject, html })` uses the SMTP server of the platform
 a `.ftlh` template escapes the values for HTML, `welcome_fr.ftlh` is picked for
 the `fr` locale. A FreeMarker template is a resource file of the project (or a
 plain string in the Expert `template` property); its `${...}` belong to
-FreeMarker, so never write it as a JavaScript template literal.
+FreeMarker, so never write it as a JavaScript template literal. Never
+concatenate values into `html`: a label typed by a user would become markup.
 
 Secrets never appear in a configuration: reference a Convertigo global symbol
 ending with `.secret`, always with a default, so that the project declares it

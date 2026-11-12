@@ -18,6 +18,17 @@ model edits. There is no shared library gateway, project selector, gateway
 configuration flag or migration fallback. The widgets call this local gateway directly; omitting `targetProject` uses
 the application serving the frontend.
 
+Three rules for the gateway:
+- Set `gateway: true` only when a page uses EntityTable or EntityForm; business
+  Flows need no gateway.
+- The gateway inherits no check of the facades: only this policy and its slot
+  protect it. An entity holding the data of a user gets a `scope` from the
+  policy for every role but ADMIN, or is `Possédé` when its owner is the
+  session login.
+- Open its operations as an allow-list per entity, operation and role, refused
+  by default: `delete`, and writes to a journal or a notification entity, in
+  particular.
+
 `app.entityAccess` receives `input.request = {entity, operation, write, key,
 payload, user, roles?}`. `user` is exclusively the authenticated server session;
 `roles`, when requested, comes exclusively from the configured actor provider.

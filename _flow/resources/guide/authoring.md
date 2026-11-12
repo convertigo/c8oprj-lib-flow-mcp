@@ -259,6 +259,6 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
+| `flow://guide/authoring-data` (10.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |
 | `flow://guide/authoring-source` (6.0 KB) | editing existing or protected sources, formatting, accessibility |
 | `flow://guide/authoring-blocks` (3.9 KB) | a missing block or a mock, samples, native Convertigo sequence properties |

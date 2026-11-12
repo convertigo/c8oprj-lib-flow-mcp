@@ -228,5 +228,5 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 
 | Sub-guide (size) | Read it |
 | --- | --- |
-| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |
-| `flow://guide/multipage-entities-pages` (11.6 KB) | pages, CSV export, scheduled jobs, audit, final proof |
+| `flow://guide/multipage-entities-access` (7.2 KB) | demo login, me and logout, application access, access rule hook |
+| `flow://guide/multipage-entities-pages` (11.8 KB) | pages, CSV export, scheduled jobs, audit, final proof |
