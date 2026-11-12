@@ -8,7 +8,9 @@ Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the
 
 Before building, write the acceptance table from the specification: one line per
 criterion that goes through a screen, with the path a user walks and an empty
-seen column; fill its seen column during the walk.
+seen column; fill its seen column during the walk. The seen column says what showed (the
+message, the page, the count of rows), never a password, a token or personal
+data; a path names the test account, not its password.
 
 An application built from a specification is done only when each of its
 acceptance criteria that goes through a screen has been walked in the browser,
