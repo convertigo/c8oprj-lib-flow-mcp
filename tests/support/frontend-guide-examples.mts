@@ -122,6 +122,7 @@ test('the documented layout containers keep their slots, properties and rendered
 // library descriptors. No implicit provider discovery or modified guide snippets.
 const entityExamples = [
   { guide: "entities", id: "selectionExample", project: "EquipmentApp", route: "", layout: false },
+  { guide: "entities", id: "postView", project: "EquipmentApp", route: "postes/[id]", layout: false },
   { guide: "multipage-entities", id: "sessionLayout", project: "BookingApp", route: "", layout: true },
   { guide: "multipage-entities", id: "bookingEditor", project: "BookingApp", route: "mine", layout: false },
 ];
@@ -145,6 +146,7 @@ async function entityGuideFixture(t: test.TestContext, plan: typeof entityExampl
   for (const companion of entityExamples.filter(item => item.guide === plan.guide)) {
     const code = await example(companion.guide, companion.id);
     const filename = companion.layout ? join(routes, "+layout.flow.svelte") : join(routes, companion.route, "+page.flow.svelte");
+    await mkdir(dirname(filename), {recursive:true});
     await writeFile(filename, code);
     if (companion.id === plan.id) source = code;
   }
@@ -166,6 +168,10 @@ async function entityGuideFixture(t: test.TestContext, plan: typeof entityExampl
     assert.doesNotThrow(() => compile(code, { filename: name, generate: "client" }), `${plan.guide}/${plan.id}: ${name}`);
     generated.set(name, code);
   }
+  if(plan.route && !["mine","manage","journal"].includes(plan.route)) {
+    const name=plan.route+"/+page.svelte", code=await readFile(join(built.generatedRoot,"src/routes",name),"utf8");
+    assert.doesNotThrow(()=>compile(code,{filename:name,generate:"client"}));generated.set(name,code);
+  }
   const layout = await readFile(join(built.generatedRoot, "src/routes/+layout.svelte"), "utf8");
   assert.doesNotThrow(() => compile(layout, { filename: "+layout.svelte", generate: "client" }));
   generated.set("+layout.svelte", layout);
@@ -185,7 +191,10 @@ test("all Svelte fences in both entity guides have an explicit compilation proof
 for (const plan of entityExamples) {
   test(`${plan.guide}: exact ${plan.id} fence loads and generates compilable Svelte with entity references`, async t => {
     const { doc, source, generated } = await entityGuideFixture(t, plan);
-    if (!plan.layout) {
+    if(plan.id === "postView") {
+      assert.match(source, /<EntityView/);assert.match(source, /routeId="@route.params.id"/);assert.match(source, /related=/);
+      assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityView/);
+    } else if (!plan.layout) {
       const tags = source.match(/<Entity(?:Table|Form)\b[^>]*>/g) || [];
       assert.equal(tags.length, 2, "The selection/editor example keeps both native entity widgets");
       for (const tag of tags) {
