@@ -17,6 +17,10 @@ screen. Give these walks as the `paths` and `checks` of the verifier below (or
 of a sub-agent of your host), fix what fails, walk the failed paths again,
 and end the handoff with one line per criterion: criterion, path, what the
 screen showed. A simple page without a specification keeps the single proof.
+Walk on the development database or the demo data, signed in with the test
+accounts of the project seed; a path that sends an email or calls an outside
+service uses the development settings; never walk against a production
+connection or with the account of a real person.
 
 ## POC Acceptance
 
