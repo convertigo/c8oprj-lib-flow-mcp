@@ -29,7 +29,7 @@ Direct SQL and generated CRUD require one.
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
 | Svelte-only frontend | `flow://guide/frontend-svelte` (8.0 KB) |
 | Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (6.2 KB) |
-| FullSync server DBOs and client actions | `flow://guide/fullsync` (7.5 KB) |
+| FullSync server DBOs and client actions | `flow://guide/fullsync` (7.6 KB) |
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
 | Ordered tags and named project configurations | `flow://guide/tags` (4.5 KB) |

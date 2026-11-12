@@ -43,4 +43,7 @@ check(/keep each diagnostic on a failed path, and go on while a fix resolves an 
 // 11. a run that ends ok is no acceptance
 check(!/Saved Flow passed\. Stop unless|run\/test passed\. Stop unless/.test(mcp), 'mcp: ok is no verdict');
 check(/Execution completed\. Compare the result with the expected outcome/.test(mcp), 'mcp: compare with the expected outcome');
+// 5. the marker of a FullSync reset is the last one applied, no one-time value (generateSvelteProject.ts, resetGuard)
+check(!/runs once per browser and marker value/.test(read('guide/fullsync.md')), 'fullsync: no once per marker value');
+check(/skipped while it is the last marker this browser applied/.test(read('guide/fullsync.md')), 'fullsync: the last marker applied');
 console.log(JSON.stringify({ ok: true, checks }));

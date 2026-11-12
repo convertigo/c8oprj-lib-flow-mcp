@@ -96,8 +96,9 @@ The Svelte palette exposes operation-aware action blocks under an event:
 </FullSyncSync>
 ```
 - `FullSyncReset`: resets the local database. Set a stable migration `marker`
-  so the reset runs once per browser and marker value; changing the marker
-  explicitly schedules a new one-time reset.
+  so the reset is skipped while it is the last marker this browser applied; a
+  different marker resets again (A, B, then A resets three times), and no marker
+  resets on every call.
 
 The `database` property selects the project FullSync connector. `marker` is an
 optional stable SDK marker. `schemaRequestable` records the safe server read
