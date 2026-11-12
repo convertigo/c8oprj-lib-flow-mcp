@@ -63,7 +63,7 @@ try {
  });
  assert(/`int64` for the default identity[^.]*`string`/.test(guideText)&&/\*\*Project traits:\*\* [^-]*`parameters`[^-]*`rules`/.test(guideText)&&/\*\*Source:\*\* `"source": \{"provider"/.test(guideText),"The entities guide documents the relation type, project traits and source");
  var bogus=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{},bogusSection:{}}});
- assert(bogus&&bogus.valid===false&&bogus.diagnostics.some(function(d){return d.path==="bogusSection"&&/Accepted here: version, modelVersion, entities[^.]*\. Correct form: /.test(d.message);}),"Invented section refused: "+JSON.stringify(bogus));
+ assert(bogus&&bogus.valid===false&&bogus.diagnostics.some(function(d){return d.path==="bogusSection"&&/Accepted here: version, modelVersion, timeZone, entities[^.]*\. Correct form: /.test(d.message);}),"Invented section refused: "+JSON.stringify(bogus));
  var relation=tool("flow-entity-model-check",{projectDir:args.projectDir,model:{version:2,entities:{Pret:{fields:{materiel:{type:"relation"}}}}}});
  assert(relation&&relation.valid===false&&relation.diagnostics.some(function(d){return d.path==="entities.Pret.fields.materiel.type"&&d.message.indexOf("Accepted types: "+format.types.join(", "))>=0&&d.message.indexOf('"relation": {"entity"')>=0;}),"Relation type refused with the types and the relation form: "+JSON.stringify(relation));
  var example=tool("flow-entity-model-check",{projectDir:args.projectDir,model:first.example});
