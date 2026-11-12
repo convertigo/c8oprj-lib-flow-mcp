@@ -165,6 +165,8 @@ does not compute or validate it. This kit does not implement E5 listFlow/saveFlo
 and never falls back to a different source after failure.
 
 Compatibility: the hard-coded deadline status control becomes explicit
-`filters={[{field:"statut"}]}`. Private table CSS selectors change to DataTable.
+`filters={[{field:"statut"}]}`. Private table CSS selectors change to DataTable. Native deadline label aliases
+`labels.current`/`labels.overdue` move to the status column labels
+(`aJour`/`aRelancer`).
 Existing EntityTable props, OnSelect and the generic Cell/Actions slots, and
 EntityForm save/delete/cancel events, remain supported.
