@@ -321,7 +321,8 @@ const _meta = {
 				throw new Error("Unable to resolve Convertigo project: " + projectNameValue);
 			}
 			if (referencedProject == null) {
-				throw new Error("Unable to resolve referenced Convertigo project: " + referenceName +
+				throw new Error("Unable to resolve referenced Convertigo project: " + referenceName + "." +
+						(function () { try { var m = ctx.lib("mcp"); return m.unknownProjectText(referenceName, m.serverProjectNames()); } catch (e) { return ""; } }()) +
 					". Checked workspace roots: " + lastWorkspaceRoots.join(", "));
 			}
 			var existing = projectReference(project, referenceName);

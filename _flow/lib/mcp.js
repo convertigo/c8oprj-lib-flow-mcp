@@ -673,6 +673,43 @@
 		return fallback;
 	}
 
+
+	// An unknown project name, told with the projects this server has: the nearest first ("Did you mean"), then the
+	// others, bounded (it97, 13/11: about 300 blind searches for a library absent from the server).
+	function unknownProjectText(asked, names) {
+		var wanted = String(asked || ""), key = function (s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ""); };
+		var list = [];
+		(names || []).forEach(function (n) { n = String(n); if (n && list.indexOf(n) < 0) list.push(n); });
+		list.sort();
+		function distance(a, b) {
+			var d = [], i, j;
+			for (i = 0; i <= a.length; i++) d[i] = [i];
+			for (j = 0; j <= b.length; j++) d[0][j] = j;
+			for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++)
+				d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+			return d[a.length][b.length];
+		}
+		var k = key(wanted), near = list.filter(function (n) {
+			var other = key(n);
+			return other && k && (other.indexOf(k) >= 0 || k.indexOf(other) >= 0 || distance(other, k) <= Math.max(2, Math.floor(k.length / 4)));
+		}).slice(0, 5);
+		var shown = list.slice(0, 40);
+		return (near.length ? " Did you mean " + near.join(", ") + "?" : "") +
+			(list.length ? " Projects of this server: " + shown.join(", ") + (list.length > shown.length ? ", … (" + list.length + ")" : "") + "." :
+				" This server has no project.") +
+			(near.length ? "" : " A library absent from this list is not installed: do not search it under other names.");
+	}
+
+	function serverProjectNames() {
+		try {
+			var names = [], it = Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getAllProjectNamesList(false).iterator();
+			while (it.hasNext()) names.push(String(it.next()));
+			return names;
+		} catch (e) {
+			return [];
+		}
+	}
+
 	function resolveProjectDir(args) {
 		args = args || {};
 		if (args.projectDir || !args.project) {
@@ -684,7 +721,7 @@
 		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 		var project = Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project), true);
 		if (project == null) {
-			throw new Error("Unknown Convertigo project: " + args.project);
+			throw new Error("Unknown Convertigo project: " + args.project + "." + unknownProjectText(args.project, serverProjectNames()));
 		}
 		args.projectDir = String(project.getDirPath());
 		return args;
@@ -1580,7 +1617,7 @@
 		var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
 		var project = Engine.theApp.databaseObjectsManager.getOriginalProjectByName(String(args.project), false);
 		if (project == null) {
-			throw new Error("Unknown Convertigo project: " + args.project);
+			throw new Error("Unknown Convertigo project: " + args.project + "." + unknownProjectText(args.project, serverProjectNames()));
 		}
 		var flow = projectSequenceByName(project, args.name);
 		if (!isFlowDbo(flow)) {
@@ -6613,6 +6650,8 @@
 		withSourceDrafts: withSourceDrafts,
 		pendingStudioDrafts: pendingStudioDrafts,
 		assertProjectSaveAllowed: assertProjectSaveAllowed,
+		unknownProjectText: unknownProjectText,
+		serverProjectNames: serverProjectNames,
 		assertNoUnsavedProjectChanges: assertNoUnsavedProjectChanges,
 		unsavedProjectChanges: unsavedProjectChanges,
 		withProjectFlagLock: withProjectFlagLock,
