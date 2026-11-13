@@ -2673,6 +2673,17 @@
 			}
 			// A widget of the Svelte catalog asked of the backend (flow-block-get LinkButton): one line, the frontend call.
 			var widget = frontendCatalogWidget(ctx, request, String(diagnostic.block || ""));
+			// flow-block-get EntityTable: the contract of the widget itself (properties, events, slots), not an error the
+			// agent answers by asking for each widget in turn (L27F of 13/11: four lookups lost in one run).
+			var widgetContract = widget && toolName(request) === "flow-block-get" ? frontendWidgetContract(ctx, request, widget) : null;
+			if (widgetContract) {
+				return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult({
+					ok: true, name: widget.tag, kind: "frontendWidget", frontendWidget: widgetContract,
+					next: widget.tag + " is a Svelte widget, not a backend Flow block: write it in a page source (code-set, code-patch) " +
+						"with these properties, its events in <Events> and its slots as child tags (<Cell2>, <Toolbar>); " +
+						"code-get with contractBlocks: [\"" + widget.tag + "\"] gives the same contract for several widgets at once."
+				}, toolPathContext(request, ctx))));
+			}
 			if (widget) {
 				diagnostic.frontendWidget = { id: widget.id, tag: widget.tag, label: widget.label || "" };
 				diagnostic.next = frontendWidgetHint(String(args.project || ""), widget);
@@ -4400,6 +4411,45 @@
 			return [].concat(palette.items || [], palette.queryElsewhere || []).filter(function (item) {
 				return item && String(item.tag || "") === name && /^[\w$-]+\.[\w$.-]+$/.test(String(item.id || ""));
 			})[0] || null;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// The contract of a widget of the Svelte catalog of the project: its properties (type, default, description), events and
+	// slots, the named snippets included (Cell2, Toolbar of EntityTable), each with the values it receives. null when the
+	// catalog cannot be read.
+	function frontendWidgetContract(ctx, request, widget) {
+		try {
+			var asked = copyJson(toolArguments(request));
+			delete asked.name;
+			var args = prepareToolArguments(ctx, { params: { name: "authoring-palette", arguments: asked } }, {});
+			if (!args.projectDir) return null;
+			var source = { projectDir: String(args.projectDir), surface: "frontend", builder: "svelte" };
+			if (args.engineSource !== undefined) source.engineSource = args.engineSource;
+			var contract = ctx.authoringContractSource(source) || {};
+			var item = (contract.items || []).filter(function (candidate) {
+				return candidate && String(candidate.tag || candidate.insert && candidate.insert.tag || "") === widget.tag;
+			})[0];
+			if (!item) return null;
+			var properties = {};
+			Object.keys(item.properties || {}).forEach(function (name) {
+				var definition = item.properties[name] || {}, out = { type: String(definition.type || "") };
+				if (definition["default"] !== undefined) out["default"] = definition["default"];
+				if (definition.description) out.description = String(definition.description).substring(0, 400);
+				properties[name] = out;
+			});
+			function slotName(name) { return name === "default" || name === "children" ? "Children" : name.charAt(0).toUpperCase() + name.substring(1); }
+			var slots = Object.keys(item.slots || {}).map(slotName), snippets = {};
+			Object.keys(item.snippets || {}).forEach(function (name) {
+				var tag = slotName(name), parameters = (item.snippets[name] && item.snippets[name].parameters) || [];
+				if (slots.indexOf(tag) < 0) slots.push(tag);
+				snippets[tag] = parameters.map(function (parameter) { return String(parameter && parameter.name || parameter); });
+			});
+			var out = { id: String(item.id || widget.id), tag: widget.tag, description: String(item.description || widget.description || ""),
+				properties: properties, events: (item.events || []).slice ? (item.events || []).slice() : Object.keys(item.events || {}), slots: slots };
+			if (Object.keys(snippets).length) out.snippets = snippets;
+			return out;
 		} catch (e) {
 			return null;
 		}

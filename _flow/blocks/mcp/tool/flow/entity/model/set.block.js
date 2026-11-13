@@ -32,6 +32,12 @@ const _meta = {
       "type": "string",
       "description": "Required SHA-256 returned by get, or missing for first creation. Stale revisions are refused."
     },
+    "confirmStorageChange": {
+      "kind": "literal",
+      "type": "boolean",
+      "default": false,
+      "description": "true writes a model that changes or removes how an existing field or entity is stored (type, maxLength, precision, scale, nullable, default). Only for an entity never used yet: a used one refuses the change at its first call, so the model write refuses it first (ENTITY_MODEL_STORAGE_CHANGE, with the declaration to restore)."
+    },
     "gateway": {
       "kind": "literal",
       "type": "boolean",

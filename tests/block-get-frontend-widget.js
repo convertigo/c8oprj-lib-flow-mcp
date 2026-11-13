@@ -26,14 +26,20 @@ function call(name, args) {
 	return out;
 }
 try {
+	// E6 (L27F of 13/11): the backend tool answers the contract of the widget itself, not an error the agent answered by
+	// asking for each widget in turn.
 	var widget = call("flow-block-get", Object.assign({ name: "LinkButton" }, base));
-	var error = widget.error || {};
-	assert(error.code === "UNKNOWN_BLOCK", "LinkButton stays refused by the backend tool: " + JSON.stringify(widget).substring(0, 600));
-	assert(error.hint === 'LinkButton is the Svelte widget svelte.linkButton (Link button), not a backend Flow block: read its contract with ' +
-		'authoring-palette({ project: "App", parentPath: "<the Structure parentPath of the page, from code-get or authoring-tree>", query: "LinkButton" }).',
-		"one line names the widget and the frontend call: " + error.hint);
-	assert(error.hint.indexOf("crypto.hmac") < 0 && !error.details.contract, "no backend block is proposed for a widget: " + JSON.stringify(error.details).substring(0, 600));
-	assert(error.details.frontendWidget && error.details.frontendWidget.id === "svelte.linkButton", "the widget is in the details: " + JSON.stringify(error.details.frontendWidget));
+	assert(widget.ok === true && widget.kind === "frontendWidget" && widget.frontendWidget && widget.frontendWidget.id === "svelte.linkButton",
+		"LinkButton answers its widget contract: " + JSON.stringify(widget).substring(0, 600));
+	assert(widget.frontendWidget.properties.page && widget.frontendWidget.properties.page.type && widget.frontendWidget.properties.label,
+		"the properties carry their type: " + JSON.stringify(widget.frontendWidget.properties).substring(0, 600));
+	assert(/not a backend Flow block/.test(widget.next) && /contractBlocks/.test(widget.next) && widget.next.indexOf("crypto.hmac") < 0,
+		"the next step writes it in a page source: " + widget.next);
+	// The named snippets are slots, with the values they receive (EntityTable Cell2 and Toolbar were missing).
+	var table = call("flow-block-get", Object.assign({ name: "DataTable" }, base)).frontendWidget;
+	assert(table && table.slots.indexOf("Cell2") >= 0 && table.slots.indexOf("Actions") >= 0 && table.snippets.Cell2.join() === "row,column,value",
+		"DataTable lists its snippets as slots: " + JSON.stringify(table && { slots: table.slots, snippets: table.snippets }));
+	var got = call("code-get", Object.assign({ sourceFile: sourceFile, contractBlocks: ["DataTable"] }, base));
 
 	// The call the hint gives, with the Structure parentPath of the page, returns the contract of the widget.
 	var tree = call("authoring-tree", Object.assign({ maxDepth: 6 }, base));

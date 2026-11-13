@@ -1204,6 +1204,8 @@ const _meta = {
 		return out;
 	}
 
+	function objectWith(name) { var out = {}; out[name] = true; return out; }
+
 	function sourceSlots(slots) {
 		return Object.keys(slots || {}).map(function (name) {
 			if (name === "default" || name === "children") return "Children";
@@ -1228,6 +1230,14 @@ const _meta = {
 			properties: compactProperties(item.properties),
 			slots: sourceSlots(item.slots)
 		};
+		// the named snippets of a widget are child tags too (Cell2, Toolbar of EntityTable), with the values they receive
+		var snippets = {};
+		Object.keys(item.snippets || {}).forEach(function (name) {
+			var tag = sourceSlots(objectWith(name))[0], parameters = (item.snippets[name] && item.snippets[name].parameters) || [];
+			if (starter.slots.indexOf(tag) < 0) starter.slots.push(tag);
+			snippets[tag] = parameters.map(function (parameter) { return String(parameter && parameter.name || parameter); });
+		});
+		if (Object.keys(snippets).length) starter.snippets = snippets;
 		// the handlers of the events the block raises, in its Events slot (OnClick, OnSelectionChange...)
 		if (Array.isArray(item.events) && item.events.length) starter.events = item.events.slice();
 		return starter;

@@ -103,6 +103,21 @@ assertTrue(picked && picked.detail === "blocks" && picked.blocks.length === 1 &&
 	picked.blocks[0].properties.title === "string:literal" && picked.portableBlocks.length === 1 &&
 	picked.portableBlocks[0].properties.text && JSON.stringify(picked.missingBlocks) === '["Nope"]' && picked.rules === undefined,
 	"contractBlocks must return only the blocks asked for, in full: " + JSON.stringify(picked));
+// A widget of a library that declares only named snippets (EntityTable: toolbar, cell2) lists them as slots, with the
+// values each one receives (E6, L27F of 13/11: its contract showed "slots: []").
+props.contractBlocks = "EntityTable";
+var snippetsPicked = block.run({
+	props: function () { return props; },
+	resourceGet: function () { return { content: source, hash: "revision", contentLength: source.length }; },
+	authoringContractSource: function () {
+		return { items: [{ id: "entity.table", tag: "EntityTable", properties: { entity: { type: "string", intents: ["literal"] } }, slots: {},
+			snippets: { toolbar: { parameters: [{ name: "context" }] }, cell2: { parameters: [{ name: "row" }, { name: "field" }] } } }] };
+	},
+	write: function () {}
+}, {}).authoringContract;
+var entityTable = snippetsPicked && snippetsPicked.blocks[0];
+assertTrue(entityTable && entityTable.slots.join() === "Toolbar,Cell2" && entityTable.snippets.Cell2.join() === "row,field" && entityTable.snippets.Toolbar.join() === "context",
+	"contractBlocks must list the named snippets of a widget as slots: " + JSON.stringify(snippetsPicked));
 // A block of a referenced library (Chart of the charts library) is returned like a frontbuilder block.
 props.contractBlocks = "Chart";
 var libraryPicked = block.run({
