@@ -169,7 +169,8 @@ sees**, not an absolute total. A refused count shows `—` with the refusal; cha
 Counts per value (a breakdown) come in one query: `entity.aggregate({entity,
 checkAccess: true, groupBy, options: {filter, active}, limit})` answers
 `{groups: [{key, label, count}], hasMore}` over the rows `count` would count,
-grouped by an enum, a boolean or a relation (most first; at most 200 groups).
+grouped by an enum, a boolean or a relation (most first; at most 200 groups,
+and `hasMore` may be true at exactly 200).
 A relation label is read under the target's own policy. Through the gateway a
 grouped count is enabled per entity and field by the model:
 `"gateway": {"aggregate": ["statut", "rpcaId"]}` (none by default).
@@ -179,7 +180,9 @@ EntityTable `counts` entry, `[{as, label, entity, via, filter, active}]`: the
 server counts, for the rows of the page it read, the rows of `entity` whose
 `via` holds their key, in one query under that entity's policy (the rows this
 session sees). A refused count has no column, never zeros. Through the gateway,
-`entity` must list `via` in its `gateway.aggregate`. `entity.list` takes the same
+`entity` must list `via` in its `gateway.aggregate`, and the gateway slot
+`$$authorize` applies to the counted entity too. In a Flow, an unknown counted
+entity is an error. `entity.list` takes the same
 `options.counts` (at most 4) and answers `row.counts`.
 
 A breakdown (counts per value: postes per RPCA, rows per status) is an
