@@ -4,6 +4,10 @@ Input, Textarea, Combobox and choice controls with their events, Form submit, Al
 
 Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the authoring loop.
 
+A create or edit form of an entity of the model: use `EntityForm` (`flow://guide/entities-widgets`),
+with the editors, labels, relations and checks of the model, and `defaults` for a creation.
+The controls below are for other forms.
+
 ## Inputs, Choices And Dialogs
 
 `Combobox` is the standard searchable choice. Its default contract is closed:

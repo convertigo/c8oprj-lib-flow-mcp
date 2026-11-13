@@ -4,6 +4,10 @@ DataTable row cards, selection and date formats, then server pagination, filter 
 
 Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the authoring loop.
 
+Rows of an entity of the model: use `EntityTable` (`flow://guide/entities-widgets`). It lists,
+searches, filters and pages on the server under the access policy, with no list Flow to write.
+This DataTable is for rows a Flow computes.
+
 ## DataTable Selection And Layout
 
 A `DataTable` keeps its row actions on the right of a wide table and, with

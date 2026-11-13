@@ -921,7 +921,7 @@
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (15.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "new": "| `flow://guide/entities-model` (16.0 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "file": "entities.md",
@@ -972,5 +972,18 @@
   "family": "entities",
   "old": "`Activable` and `Immuable` take no parameter.",
   "new": "`Activable` and `Immuable` take no parameter. `Échéance: {reference, delay: {months, days}, timeZone, inclusive, upToDate, due}` computes `dateEcheance` and `statut` in SQL (filter, sort, `entity.count`); `upToDate`/`due` rename the codes `aJour`/`aRelancer` (e.g. `A_JOUR`)."
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |",
+  "new": "| Persisted business data with roles (add the `lib_flow_entity` reference) | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities-widgets` |"
+ },
+ {
+  "family": "start",
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
+  "new": "| Persisted business data with roles (add the `lib_flow_entity` reference) | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (15.6 KB) |"
  }
 ]

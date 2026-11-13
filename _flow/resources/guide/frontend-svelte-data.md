@@ -4,6 +4,9 @@ Binding modes and sources (@.Sequence, @page, @event, @route, @props), State and
 
 Sub-guide of `flow://guide/frontend-svelte`: read that entry guide first for the authoring loop.
 
+Data of an entity of the model is read by its widgets (`EntityTable`, `EntityForm`, `EntityView`,
+`EntityStat`; `flow://guide/entities-widgets`), not by a list Flow and a CallSequence.
+
 ## Values And Bindings
 
 A bindable property has three human modes, as in the Studio picker:

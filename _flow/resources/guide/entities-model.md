@@ -66,9 +66,10 @@ table, the column, the kind of change (`details.change`: `addColumn`,
 failed statement and its database cause) is in the server log, and in
 `details.detail`, `details.sql` and `details.cause` of a `code-run` only, never
 in the answer of a Flow called over HTTP.
-During development, keep the existing declaration and add a new entity (table)
-or a new nullable field (column), or a required field with a default. Copy old
-values into a new field explicitly if needed; do not rename or alter the old one.
+`flow-entity-model-set` refuses it before writing (`ENTITY_MODEL_STORAGE_CHANGE`, with
+the declaration to restore; `confirmStorageChange: true` only for an unused entity).
+Keep the existing declaration: add an entity, a nullable field, or a required
+field with a default; copy old values into a new field, never alter the old one.
 Send decimals as exact text, for example `"12.50"`; a JSON number within the
 field's precision and scale is also stored as exact text, but a computed one
 such as `0.1 + 0.2` is refused: send its text. Omit server-managed timestamps

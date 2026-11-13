@@ -111,6 +111,8 @@ inactive rows set `active="all"`; neither control grants that access. Search,
 sort and pagination are server operations, and ordinary page/sort changes keep
 the previous page visible while controls are disabled. `refreshKey` clears old
 identity data: change it after a session change as well as after a write.
+`caption` names the table (its accessible name and title; the entity label by
+default): a heading above the table does not name it.
 
 Default View/Edit actions raise `OnView`/`OnEdit`, plus compatible `OnSelect`.
 Wire them to an editor/record view, or set `viewPage`/`editPage` to the logical
@@ -141,6 +143,8 @@ sent; `sections` groups them as `[{label, fields}]`. `visibleWhen:
 hidden field is not sent. `readOnly` forces consultation; it is presentation,
 not authorization. Deletion asks a confirmation click (`confirmDelete:
 false` removes it). Commands follow `locale` (`labels` overrides them).
+`defaults={{status: "AVAILABLE"}}` gives the initial values of a creation.
+Never add a model `default` to an existing field for that: the model write refuses it.
 Business rules stay in the model hooks: a hidden or absent field is never a
 server check.
 
