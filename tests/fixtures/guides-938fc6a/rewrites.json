@@ -688,7 +688,7 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities` (13.2 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| `flow://guide/entities` (14.1 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
+  "new": "| `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
  },
  {
   "family": "entities",
@@ -921,7 +921,7 @@
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (15.7 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "new": "| `flow://guide/entities-model` (15.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "file": "entities.md",
@@ -967,5 +967,10 @@
   "family": "entities",
   "old": "Execute `items[].apply` unchanged. Both are library widgets.",
   "new": "Execute `items[].apply` unchanged. These are library widgets."
+ },
+ {
+  "family": "entities",
+  "old": "`Activable` and `Immuable` take no parameter.",
+  "new": "`Activable` and `Immuable` take no parameter. `Échéance: {reference, delay: {months, days}, timeZone, inclusive, upToDate, due}` computes `dateEcheance` and `statut` in SQL (filter, sort, `entity.count`); `upToDate`/`due` rename the codes `aJour`/`aRelancer` (e.g. `A_JOUR`)."
  }
 ]

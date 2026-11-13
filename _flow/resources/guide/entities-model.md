@@ -160,6 +160,9 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
   trait adds and fills with the session user, and the roles that see every row;
   it needs `Révisé`. `Journalisé` takes `{fields: [...]}`; `Révisé`, `Horodaté`,
   `Activable` and `Immuable` take no parameter.
+  `Échéance: {reference, delay: {months, days}, timeZone, inclusive, upToDate, due}`
+  computes `dateEcheance` and `statut` in SQL (filter, sort, `entity.count`);
+  `upToDate`/`due` rename the codes `aJour`/`aRelancer` (e.g. `A_JOUR`).
 - **Project traits:** `"traits": {"Tagged": {"parameters": {"tag": "tag"}, "fields": {"$tag": {"type": "string", "maxLength": 40}}}}`
   at the model level. `parameters` gives each parameter its default, taken by a
   `"$name"` field name or value; `fields` are declared as on an entity, `rules`

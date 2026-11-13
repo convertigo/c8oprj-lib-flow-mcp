@@ -61,6 +61,8 @@ hooks, shared by the gateway and checked facades. A component cannot grant acces
 See `flow://guide/entities-widgets` for actions, slots, refresh and route recipes.
 Prefer `code-patch` with the returned revision on existing pages and group reads.
 For browser inputs use `frontend-svelte-action` field help before retrying typing.
+Count with `entity.count` (one SQL COUNT, same policy), never `rows.length` of a
+listed page; a dashboard figure is an `EntityStat` (search **compteur**).
 
 ## Your own HTTP contract over entities
 
@@ -259,7 +261,7 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 | Sub-guide (size) | Read it |
 | --- | --- |
 | `flow://guide/entities-policy` (10.6 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
-| `flow://guide/entities-model` (15.7 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
+| `flow://guide/entities-model` (15.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
-| `flow://guide/entities-widgets` (10.0 KB) | EntityTable, EntityForm, named snippets |
+| `flow://guide/entities-widgets` (11.5 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.6 KB) | a business action changing several records atomically, backend preview limits |

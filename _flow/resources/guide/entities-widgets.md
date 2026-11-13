@@ -1,6 +1,6 @@
 # Flow Entities: Reusable Widgets And Snippets
 
-Schema-driven CRUD: EntityTable, EntityForm, EntityView, column slots and inverse lists.
+Schema-driven CRUD: EntityTable, EntityForm, EntityView, EntityStat counters, column slots and inverse lists.
 
 Sub-guide of `flow://guide/entities`: read that guide first.
 
@@ -128,6 +128,32 @@ never count the characters of a serialized query parameter. Every business
 command must authorize every key on the server. `exportable` downloads the
 formatted current page only; complete exports use a checked server command
 from Toolbar, as in `flow://guide/multipage-entities-pages`.
+
+## Counters for dashboards
+
+`EntityStat` shows in a StatCard the number of rows the session sees, with one
+`count` request through the gateway (policy, scope and filter as EntityTable),
+without listing rows or writing a Flow. Search the palette for **compteur**.
+
+```svelte
+<GridLayout $$id="kpis" minColumnWidth="180px"><Children>
+  <EntityStat $$id="assigned" entity="Poste" label="Postes affectés" tone="primary" refreshKey="@page.refresh" />
+  <EntityStat $$id="due" entity="Poste" label="À relancer" tone="warning" filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
+</Children></GridLayout>
+```
+
+`filter`, `active` and `search` take the list forms; `page` links the card to
+the page of the counted list. The figure is the count of rows **this session
+sees**, not an absolute total. A refused count shows `—` with the refusal; change
+`refreshKey` after writes and session changes. Counting needs the gateway
+(`gateway: true` in the model) and read access in `app.entityAccess`.
+
+Other figures of a dashboard: a status computed by a trait (`Échéance`) is
+counted and filtered in SQL; "the oldest due first" is an EntityTable with a
+`filter`, sorted on `dateEcheance` with a small `pageSize`; "the last run" is
+one row ordered by date, descending. Store an immutable fact when it is
+written (the number of items of a sent notice), and a job summary in its own
+entity, rather than recounting them on each display.
 
 ## A record by route, sections and inverse history
 
