@@ -96,6 +96,9 @@ Without that block, the same default applies: nonempty
 authentication. There is **no model ACL by default**. A declared `permissions`
 ACL adds refusals after the policy; `["ADMIN"]` cannot open a policy-denied write.
 `visibleTo` and `Possédé` access restrictions apply only on controlled calls.
+A `secret: true` field is seen by trusted calls only (`checkAccess: false`): a
+controlled call never lists, reads, filters, searches, sorts, counts or writes
+it, whatever its roles, and an unknown field gets the same refusal.
 
 The closed read operations are `list`, `read`, `count`, `options`, `describe`;
 writes are `create`, `update`, `delete`. `save` is classified by its supplied
