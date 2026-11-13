@@ -166,6 +166,14 @@ sees**, not an absolute total. A refused count shows `—` with the refusal; cha
 `refreshKey` after writes and session changes. Counting needs the gateway
 (`gateway: true` in the model) and read access in `app.entityAccess`.
 
+Counts per value (a breakdown) come in one query: `entity.aggregate({entity,
+checkAccess: true, groupBy, options: {filter, active}, limit})` answers
+`{groups: [{key, label, count}], hasMore}` over the rows `count` would count,
+grouped by an enum, a boolean or a relation (most first; at most 200 groups).
+A relation label is read under the target's own policy. Through the gateway a
+grouped count is enabled per entity and field by the model:
+`"gateway": {"aggregate": ["statut", "rpcaId"]}` (none by default).
+
 Other figures of a dashboard: a status computed by a trait (`Échéance`) is
 counted and filtered in SQL; "the oldest due first" is an EntityTable with a
 `filter`, sorted on `dateEcheance` with a small `pageSize`; "the last run" is

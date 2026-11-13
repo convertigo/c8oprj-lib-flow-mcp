@@ -318,6 +318,7 @@ const _meta = {
 		"traits {Name: project trait}, demo {dataFile}, imports {alias: project}. " +
 		"Entity: fields {name: field}, identity, label, display {title, subtitle}, traits, " +
 		"permissions {read, create, update, delete: role lists; none means no model ACL}, hooks {beforeSave, afterSave, beforeDelete: Flow name}, " +
+		"gateway {aggregate: enum, boolean or relation fields the gateway may group counts by; none by default}, " +
 		"readOnly, storage {table, columns}, source, extends. " +
 		"Identity: field names, [\"id\"] by default. An int64 identity is auto-incremented by the database: keep [\"id\"] without declaring id, " +
 		"never send it on create, read it in row.key.id. " +
