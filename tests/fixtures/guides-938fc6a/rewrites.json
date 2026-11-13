@@ -855,5 +855,102 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities-model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
   "new": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+ },
+ {
+  "family": "entities",
+  "old": "- `Livre` has `disponible: boolean` (default true); `Pret` has the `livre` and `adherent` relations and `rendu: boolean` (default false). - Both `Livre` and `Pret` use the `Révisé` trait, on the same named SQL connection `app`. The additive schema is ensured on first use; no ADMIN initialization facade is needed. Use the application’s public `demo_reset` before demo sign-in, as in `flow://guide/multipage-entities`. - The authenticated application role has read/create/update rights needed by the operation. This example grants the two writes to `BIBLIOTHECAIRE`; `ADHERENT` does not acquire those rights by calling the Flow. Keep the real session actor provider, app.entityAccess policy and optional model ownership rules. A domain member key is not automatically the authenticated user's identifier. - Add the `lib_flow_entity` project reference. Read the installed contracts of `sql.transaction`, `entity.read` and `entity.save` before adapting the names.",
+  "new": "- `Livre` has `disponible: boolean` (default true); `Pret` has the `livre` and `adherent` relations and `rendu: boolean` (default false). - Both `Livre` and `Pret` use the `Révisé` trait, on the same named SQL connection `app`. The additive schema is ensured on first use; no ADMIN initialization facade is needed. Use the application’s private Studio `demo_reset` before demo sign-in, as in `flow://guide/multipage-entities`. - The authenticated application role has read/create/update rights needed by the operation. This example grants the two writes to `BIBLIOTHECAIRE`; `ADHERENT` does not acquire those rights by calling the Flow. Keep the real session actor provider, app.entityAccess policy and optional model ownership rules. A domain member key is not automatically the authenticated user's identifier. - Add the `lib_flow_entity` project reference. Read the installed contracts of `sql.transaction`, `entity.read` and `entity.save` before adapting the names."
+ },
+ {
+  "family": "entities",
+  "old": "`entity.initialize` and `entity.demoReset` are **exported blocks without a guard, to call from a Flow protected by the application** (`private:false` in the block catalog). They are not public HTTP endpoints by themselves and are not technically private blocks. Keeping them exported lets project Flows and agent pickers call them normally; changing visibility would hide the intended installation path.",
+  "new": "`entity.initialize` and `entity.demoReset` are exported blocks (`private:false` in the catalog), so project Flows can call them. The reset Flow must be private. Demo reset is refused outside Studio unless the server symbol `lib_flow_entity.demoReset.enabled` is `true` (default false); project config or request input cannot enable it. A separate hidden application entry point must verify ADMIN before calling the private reset with `requestable.call`. The reset trace records the actor, instant and actual number of seeded rows."
+ },
+ {
+  "family": "entities",
+  "old": "**Neither entity.initialize nor entity.demoReset is protected by session, role or a library demo switch.** The application protects any public caller. Private Convertigo code has no internal ACL. The configured database account and its DDL/DML grants are the production boundary; use a secret password symbol and a restricted account, not root. Missing CREATE rights return a clear ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.",
+  "new": "`entity.initialize` is session independent. `entity.demoReset` runs only in Studio, or when the server symbol `lib_flow_entity.demoReset.enabled` is explicitly true (false by default). Both are exported building blocks. A reset Flow must be private; a separate HTTP entry point verifies ADMIN and uses `requestable.call`. The configured database account and its DDL/DML grants are the production boundary; use a secret password symbol and a restricted account, not root. Missing CREATE rights return a clear ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary."
+ },
+ {
+  "family": "entities",
+  "old": "Declare `demo: {dataFile: \"_flow/resources/entities/demo.json\"}` in the model. The JSON seed maps entity names to rows using **field names**, not SQL columns; IDs are text, dates ISO, and owner/currentUser values must be explicit because there is no actor. Stored read-only fields can be seeded; computed fields cannot. Auto timestamps are filled by the server. `entity.demoReset({})` explicitly empties the model's SQL tables (including mapped tables and the journal), then uses the SQL typed seed in dependency order. External provider entities are not SQL tables and cannot be seeded this way. Cyclic dependencies need an explicit application reset. See the complete public `demo_reset` and seed in `flow://guide/multipage-entities`; its optional guard belongs to the application. Reset bypasses business hooks/access checks. Public CRUD must use the local gateway or explicit `checkAccess: true`; trusted primitives are not session-bound.",
+  "new": "Declare `demo: {dataFile: \"_flow/resources/entities/demo.json\"}` in the model. The JSON seed maps entity names to rows using **field names**, not SQL columns; IDs are text, dates ISO, and owner/currentUser values must be explicit because there is no actor. Stored read-only fields can be seeded; computed fields cannot. Auto timestamps are filled by the server. `entity.demoReset({})` explicitly empties the model's SQL tables (including mapped tables and the journal), then uses the SQL typed seed in dependency order. External provider entities are not SQL tables and cannot be seeded this way. Cyclic dependencies need an explicit application reset. See the private Studio `demo_reset` and seed in `flow://guide/multipage-entities`. A server needs the explicit reset symbol; an HTTP entry point must verify ADMIN before calling the private reset Flow. Reset bypasses business hooks/access checks. Public CRUD must use the local gateway or explicit `checkAccess: true`; trusted primitives are not session-bound."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "`publicRead` is the single explicit opt-in for anonymous reads. Carefully choose public entities, including their fields and relations. Server scope is also applied to labels, options and counts. `Possédé` remains a reusable checked ownership trait; private hooks may read across owners deliberately. `initialize` and `demoReset` are not gateway operations and are not protected by this policy. Their public calling Flow supplies its own guard as below: `demoReset` requires the ADMIN role, even in demo mode; the demo symbol alone never guards a reset.",
+  "new": "`publicRead` is the single explicit opt-in for anonymous reads. Carefully choose public entities, including their fields and relations. Server scope is also applied to labels, options and counts. `Possédé` remains a reusable checked ownership trait; private hooks may read across owners deliberately. `initialize` and `demoReset` are not gateway operations and are not protected by this policy. Initialization callers supply their own application guard. A reset Flow must be private; an HTTP entry point verifies ADMIN before calling it with `requestable.call`. Demo reset runs only in Studio, or with the explicit server symbol `lib_flow_entity.demoReset.enabled=true` (false by default). A project demo login symbol never enables a reset."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support is not Entity qualification. `initialize`/`demoReset` remain exported blocks without guards (`private:false`), called from a Flow protected by the application. Trusted ownership prefers a live session, otherwise preserves an explicit owner. `describe` is metadata-only and bounded; unreadable relation targets are omitted. Public errors omit SQL names and DDL. Author diagnostics and the additive preview stay in the server log and authenticated MCP `code-run` of `entity.initialize` with `dryRun:true`. See Backend preview boundary in `flow://guide/entities-actions`.",
+  "new": "Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support is not Entity qualification. `initialize`/`demoReset` remain exported blocks (`private:false`). The reset Flow must be private; an HTTP entry point verifies ADMIN then uses `requestable.call`. Demo reset runs only in Studio, or when the server symbol `lib_flow_entity.demoReset.enabled` is true (false by default). Trusted ownership prefers a live session, otherwise preserves an explicit owner. `describe` is metadata-only and bounded; unreadable relation targets are omitted. Public errors omit SQL names and DDL. Author diagnostics and the additive preview stay in the server log and authenticated MCP `code-run` of `entity.initialize` with `dryRun:true`. See Backend preview boundary in `flow://guide/entities-actions`."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "1. Bootstrap with `flow-project-bootstrap` and direct references to `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when a Svelte application is needed. Do not generate CRUD sources. 2. Read **Your own HTTP contract over entities** in `flow://guide/entities` first when Flow names, JSON keys or error codes are imposed. They do not require direct SQL: ordinary public Flows wrap `entity.*`. 3. Configure one SQL connection and declare Room/Reservation once with `flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm. Keep IDs/revisions as text and dates as ISO; no duplicate business schema. 4. Install the private `app.actor` from the entities guide. It reads only the authenticated server session and the server directory; never client roles. 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`. Prepare only neutral demo accounts; leave the demo switch off by default. Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker. 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly opens selected entities. Writes stay closed until this application decision. 7. Declare the typed entity demo seed below and call the public `demo_reset` before sign-in. No ADMIN cookie or separate initialization Flow is needed. Its guard belongs to the application; the library imposes none. 8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap across all owners, and throws on refusal; data and audit roll back together. For an imposed 409, use HttpBookingRule from the entities guide instead. 9. Expose only the named Flows your HTTP contract needs: guard the session, validate inputs, call entity.list/read/save/delete with checkAccess:true, translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`. 10. Add EntityTable/EntityForm without targetProject: they use this application EntityGateway. Put New in its Toolbar, guarded by context.permissions.create; wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`. 11. Add CSV through the same authorized entity list, Journalisé with an allowlist, and a private scheduled worker as independent additions. No fabricated browser actor for jobs; keep their switch off by default. 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input, overlap, stale revision, deletion and logout. Promote the verified Flows.",
+  "new": "1. Bootstrap with `flow-project-bootstrap` and direct references to `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when a Svelte application is needed. Do not generate CRUD sources. 2. Read **Your own HTTP contract over entities** in `flow://guide/entities` first when Flow names, JSON keys or error codes are imposed. They do not require direct SQL: ordinary public Flows wrap `entity.*`. 3. Configure one SQL connection and declare Room/Reservation once with `flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm. Keep IDs/revisions as text and dates as ISO; no duplicate business schema. 4. Install the private `app.actor` from the entities guide. It reads only the authenticated server session and the server directory; never client roles. 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`. Prepare only neutral demo accounts; leave the demo switch off by default. Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker. 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly opens selected entities. Writes stay closed until this application decision. 7. Declare the typed entity demo seed below and call the private Studio `demo_reset` through internal tooling before demo sign-in. An HTTP entry point must require ADMIN. Its guard belongs to the application; the library imposes none. 8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap across all owners, and throws on refusal; data and audit roll back together. For an imposed 409, use HttpBookingRule from the entities guide instead. 9. Expose only the named Flows your HTTP contract needs: guard the session, validate inputs, call entity.list/read/save/delete with checkAccess:true, translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`. 10. Add EntityTable/EntityForm without targetProject: they use this application EntityGateway. Put New in its Toolbar, guarded by context.permissions.create; wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`. 11. Add CSV through the same authorized entity list, Journalisé with an allowlist, and a private scheduled worker as independent additions. No fabricated browser actor for jobs; keep their switch off by default. 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input, overlap, stale revision, deletion and logout. Promote the verified Flows."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "`entity.initialize` and `entity.demoReset` have **no session, role or demo-switch protection**. Convertigo Private is not an internal ACL: a public Flow calling private code is responsible for exposing it. Protect public entry points in the application according to its contract. Production relies on the configured DB account's grants (password from a secret symbol), normally not a root account. The initializer only creates/adds; the separate reset explicitly deletes data.",
+  "new": "`entity.initialize` remains additive and session independent. `entity.demoReset` deletes data and reapplies the typed seed: its calling Flow must be **private**. It runs in Studio; on a server it is refused unless the server symbol `lib_flow_entity.demoReset.enabled` is explicitly `true` (default false). Neither request input nor project config enables it. The server log records the actor, instant and actual number of seeded rows. Database grants still apply."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Here the application chooses its existing demo-login switch for `demo_reset`. Remove or adapt this guard when your application's contract requires another policy. The library neither enforces this switch nor an `allowOnServer` flag.",
+  "new": "Keep the optional demo-login switch below as an additional application condition. For an ADMIN button, use a separate hidden Flow that verifies ADMIN before `requestable.call` to this private Flow; a switch alone is never a role check."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "<!-- example: demo-reset --> ```javascript const _flow = { sourceVersion: 2, accessibility: \"hidden\" }",
+  "new": "<!-- example: demo-reset --> ```javascript const _flow = { sourceVersion: 2, accessibility: \"private\" }"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Call this public HTTP Flow before sign-in, without any cookie; it initializes the model tables, empties them in relation/FK order and reapplies the seed. Replay returns the same demo rows, including the neutral directory. Other application databases are not involved. It bypasses entity permissions and hooks intentionally; use `entity.save` for ordinary authorized business writes.",
+  "new": "Call this private Flow from Studio tooling before demo sign-in; it initializes the model tables, empties them in relation/FK order and reapplies the seed. Replay returns the same demo rows, including the neutral directory. Other application databases are not involved. It bypasses entity permissions and hooks intentionally; use `entity.save` for ordinary authorized business writes."
+ },
+ {
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities-policy` (10.6 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+ },
+ {
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
+  "new": "| `flow://guide/entities-model` (15.7 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+ },
+ {
+  "file": "entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |",
+  "new": "| `flow://guide/entities-actions` (8.1 KB) | a business action changing several records atomically, backend preview limits |"
+ },
+ {
+  "file": "frontend-svelte.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/frontend-svelte-routing` (6.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |",
+  "new": "| `flow://guide/frontend-svelte-routing` (7.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |"
+ },
+ {
+  "file": "multipage-entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/multipage-entities-access` (7.2 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities-access` (7.4 KB) | demo login, me and logout, application access, access rule hook |"
+ },
+ {
+  "file": "multipage-entities.md",
+  "currentOnly": true,
+  "old": "| `flow://guide/multipage-entities-pages` (11.8 KB) | pages, CSV export, scheduled jobs, audit, final proof |",
+  "new": "| `flow://guide/multipage-entities-pages` (11.9 KB) | pages, CSV export, scheduled jobs, audit, final proof |"
+ },
+ {
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (6.2 KB) |",
+  "new": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (7.2 KB) |"
  }
 ]

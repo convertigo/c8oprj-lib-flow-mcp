@@ -22,7 +22,9 @@ check(/gets a `scope` from the policy for every role but ADMIN, or is `Possédé
 check(/allow-list per entity, operation and role, refused by default/.test(policy), '(c) an allow-list');
 check(/`delete`, and writes to a journal or a notification entity/.test(policy), '(c) delete, journal, notification refused by default');
 // The demo reset and the manual run of a job are guarded by the ADMIN role, never by a symbol alone
-check(/`demoReset` requires the ADMIN role, even in demo mode/.test(access), 'demoReset requires ADMIN');
+check(/Flow must be private/.test(access), 'reset Flow stays private');
+check(/HTTP entry point verifies ADMIN/.test(access) && access.includes('`requestable.call`'), 'HTTP reset entry verifies ADMIN before its private call');
+check(access.includes('lib_flow_entity.demoReset.enabled=true') && /false by default/.test(access) && /only in Studio/.test(access), 'reset server gate is closed by default');
 check(/A manual run of a job for the ADMIN is a separate hidden Flow that checks the ADMIN role/.test(pages), 'a manual run checks ADMIN');
 check(/never make the job itself public or hidden/.test(pages), 'the job stays private');
 // An email body never concatenates values
