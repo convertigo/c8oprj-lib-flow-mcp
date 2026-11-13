@@ -182,6 +182,13 @@ session sees). A refused count has no column, never zeros. Through the gateway,
 `entity` must list `via` in its `gateway.aggregate`. `entity.list` takes the same
 `options.counts` (at most 4) and answers `row.counts`.
 
+A breakdown (counts per value: postes per RPCA, rows per status) is an
+`EntityBreakdown` (search **répartition**): `entity`, `groupBy`, `filter`,
+`display="cards"` or `"table"` (proportional bars), `limit` up to 50, `tones`
+per key. It sends one `aggregate` request, never a list. For a bar or donut
+chart, handle its `OnLoaded` and pass `@event.value.categories` and
+`@event.value.series` to a `Chart` of `lib_flow_frontend_charts_svelte`.
+
 Other figures of a dashboard: a status computed by a trait (`Échéance`) is
 counted and filtered in SQL; "the oldest due first" is an EntityTable with a
 `filter`, sorted on `dateEcheance` with a small `pageSize`; "the last run" is
