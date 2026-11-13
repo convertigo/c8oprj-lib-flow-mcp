@@ -136,10 +136,13 @@ from Toolbar, as in `flow://guide/multipage-entities-pages`.
 without listing rows or writing a Flow. Search the palette for **compteur**.
 
 ```svelte
-<GridLayout $$id="kpis" minColumnWidth="180px"><Children>
-  <EntityStat $$id="assigned" entity="Poste" label="Postes affectés" tone="primary" refreshKey="@page.refresh" />
-  <EntityStat $$id="due" entity="Poste" label="À relancer" tone="warning" filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
-</Children></GridLayout>
+<script module>export const _flow = { sourceVersion: 2, page: { id: "myPosts" } };</script>
+<FlowComponent $$id="myPosts"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>
+  <GridLayout $$id="kpis" minColumnWidth="180px"><Children>
+    <EntityStat $$id="assigned" entity="Poste" label="Postes affectés" tone="primary" refreshKey="@page.refresh" />
+    <EntityStat $$id="due" entity="Poste" label="À relancer" tone="warning" filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
+  </Children></GridLayout>
+</Structure></FlowComponent>
 ```
 
 `filter`, `active` and `search` take the list forms; `page` links the card to
