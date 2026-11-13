@@ -11,11 +11,19 @@ These additions are independent of the data route:
 - Session and actor provider: `flow://guide/entities-auth`, Authentication section.
 - Demo login, CSV, jobs and audit: `flow://guide/multipage-entities-access` and `flow://guide/multipage-entities-pages`, matching sections.
 
+Accounts, passwords and roles: reference `lib_UserManager` and read
+`flow://lib/lib_UserManager/user-manager` (sign-in Flow, `actorProvider:
+userManager.actor`, a confirmed demonstration account with a password).
+
 A password-free demo login requires `String(config.demo.login) === "true"`;
 bootstrap declares `<project>.demo.login` false by default. Enable it only for a
 demo, never production. Identity and roles come from the server. CSV reuses read
 permissions/filters; jobs are private and bounded, without a browser session;
 mutation and allowlisted audit share a transaction. Never journal secrets.
+
+Address executable Flows with `qname:"Project.Flow"`, project blocks with
+`block:"ns.name"`, and Flow Svelte or CSS sources with `sourceFile`. Never
+encode a block in `qname`.
 
 ## Project layout
 

@@ -33,10 +33,13 @@ Direct SQL and generated CRUD require one.
 | Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
 | MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
 | Ordered tags and named project configurations | `flow://guide/tags` (4.5 KB) |
-| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start-rules` (12.0 KB) |
+| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start-rules` (12.4 KB) |
 
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
+
+Accounts, sign-in and roles: reference `lib_UserManager` and read
+`flow://lib/lib_UserManager/user-manager`; never a password check of your own.
 
 ## Source contract in five rules
 
@@ -81,7 +84,3 @@ entities: see Your own HTTP contract over entities in `flow://guide/entities`.
    are private `sample_*` Flows.
 6. Use `flow-requestable-list` / `flow-requestable-schema` only when a legacy
    sequence or transaction shape is needed.
-
-Address executable Flows with `qname:"Project.Flow"`, project blocks with
-`block:"ns.name"`, and Flow Svelte or CSS sources with `sourceFile`. Never
-encode a block in `qname`.

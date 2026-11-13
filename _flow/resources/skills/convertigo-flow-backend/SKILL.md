@@ -160,10 +160,13 @@ for Svelte actions. Business rules stay in Flows.
   `sql.write` / `sql.transaction` for bounded service work beyond entity CRUD.
   A missing SQL capability is a friction to report, not a reason to bypass
   the library.
-- Real accounts, sign-in and password reset come from the Flow libraries
+- Real accounts, sign-in, roles and password reset come from the Flow libraries
   `lib_UserManager` and `lib_OAuth` (Google, Microsoft, OpenID): reference them
   and call their Flows; never store, hash or check passwords in the application.
-  When a demonstration sign-in is explicitly requested, follow
+  Read `flow://lib/lib_UserManager/user-manager` first: its reference, its
+  sign-in Flow, `actorProvider: userManager.actor` for entity roles and a
+  confirmed demonstration account with a password (`AddDemoAccount`).
+  Only a password-free demonstration picker, when explicitly requested, follows
   `flow://guide/entities` and
   `flow://guide/multipage-entities`: a guarded server-side session
   and actor provider establish identity and roles; client parameters do not.

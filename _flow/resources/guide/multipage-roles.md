@@ -42,8 +42,8 @@ production. Ignore in Git the database files that tests create. A replayed
 initialization must keep the user's writes; a reset stays explicit and
 reserved for the demonstration.
 
-In production, call a real authentication provider, for example the Flows of
-`lib_UserManager`. `session.authenticate` establishes an identity; it does not
+In production, call a real authentication provider: the Flows of
+`lib_UserManager` (guide `flow://lib/lib_UserManager/user-manager`). `session.authenticate` establishes an identity; it does not
 check a password. An Alice/Bob/Manager picker is acceptable only behind a
 demonstration configuration, never as a production sign-in screen.
 

@@ -6,6 +6,14 @@ Sub-guide of `flow://guide/entities`: read that guide first.
 
 ## Authentication
 
+**Accounts by default: `lib_UserManager`.** Reference it, sign in through its
+`SignIn` Flow and set `config.entities.actorProvider: userManager.actor`: the
+actor is the signed-in account with its roles (account attribute `roles`), which
+the policy reads in `request.roles`. A confirmed demonstration account with a
+password comes from its `AddDemoAccount` Flow. Read
+`flow://lib/lib_UserManager/user-manager` before writing any sign-in; never
+store, hash or check passwords in the application.
+
 `config.entities.actorProvider` optionally names a **project block**, called with
 **no inputs (`{}`)** only when the policy reads `request.roles`, or declared
 ACL/visibility/owner rules need roles. There is no default provider. It returns
@@ -18,7 +26,10 @@ session. `Possédé` still fills its owner from the session or a supplied value;
 validation and immutability remain active. Read the directory directly in the
 provider; controlled entity calls from an access policy are rejected as recursion.
 
-For a project with its own account table, the following minimal configuration
+### Variant: an existing account directory of your own
+
+Only for accounts that already live outside Convertigo, in a table of the
+application database. For a project with its own account table, the following minimal configuration
 uses `APP_USER(USER_ID, ROLE, ACTIVE, DEMO)`; `USER_ID` is a unique text key,
 `ROLE` is a role stored by server-side administration, the last two columns
 are booleans. Entity permission lists authorize your domain role names; they
