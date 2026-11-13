@@ -174,6 +174,14 @@ A relation label is read under the target's own policy. Through the gateway a
 grouped count is enabled per entity and field by the model:
 `"gateway": {"aggregate": ["statut", "rpcaId"]}` (none by default).
 
+A column "how many related rows" (the active postes of each RPCA) is an
+EntityTable `counts` entry, `[{as, label, entity, via, filter, active}]`: the
+server counts, for the rows of the page it read, the rows of `entity` whose
+`via` holds their key, in one query under that entity's policy (the rows this
+session sees). A refused count has no column, never zeros. Through the gateway,
+`entity` must list `via` in its `gateway.aggregate`. `entity.list` takes the same
+`options.counts` (at most 4) and answers `row.counts`.
+
 Other figures of a dashboard: a status computed by a trait (`Échéance`) is
 counted and filtered in SQL; "the oldest due first" is an EntityTable with a
 `filter`, sorted on `dateEcheance` with a small `pageSize`; "the last run" is
