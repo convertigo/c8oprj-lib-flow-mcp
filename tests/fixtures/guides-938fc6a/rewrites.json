@@ -688,7 +688,7 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities` (13.2 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| `flow://guide/entities` (13.4 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
+  "new": "| `flow://guide/entities` (14.1 KB), then `flow://guide/multipage-entities` (11.9 KB) |"
  },
  {
   "family": "entities",
@@ -952,5 +952,20 @@
   "currentOnly": true,
   "old": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (6.2 KB) |",
   "new": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (7.2 KB) |"
+ },
+ {
+  "family": "entities",
+  "old": "No widget or generated CRUD is required. Name public Flows as",
+  "new": "For a custom HTTP contract, name public Flows as"
+ },
+ {
+  "family": "entities",
+  "old": "Find `EntityTable` and `EntityForm` with `authoring-palette`",
+  "new": "Find `EntityTable`, `EntityForm` and `EntityView` with `authoring-palette`"
+ },
+ {
+  "family": "entities",
+  "old": "Execute `items[].apply` unchanged. Both are library widgets.",
+  "new": "Execute `items[].apply` unchanged. These are library widgets."
  }
 ]

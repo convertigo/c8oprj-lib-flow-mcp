@@ -134,7 +134,7 @@ from Toolbar, as in `flow://guide/multipage-entities-pages`.
 Create the route `postes/[id]` and bind its parameter directly:
 
 ```svelte
-<script module>export const _flow={sourceVersion:2,page:{id:"postView"}};</script>
+<script module>export const _flow = { sourceVersion: 2, page: { id: "postView" } };</script>
 <FlowComponent $$id="postView"><Structure>
   <EntityView $$id="post" entity="Poste" routeId="@route.params.id"
     sections={[{label:"Identification",fields:["libelle","rpcaId"]},{label:"Suivi",fields:["dateEcheance","statut"]}]}
