@@ -927,7 +927,7 @@
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |",
-  "new": "| `flow://guide/entities-actions` (8.1 KB) | a business action changing several records atomically, backend preview limits |"
+  "new": "| `flow://guide/entities-actions` (8.6 KB) | a business action changing several records atomically, backend preview limits |"
  },
  {
   "file": "frontend-svelte.md",

@@ -155,6 +155,13 @@ request input cannot enable it. A separate hidden application entry point must
 verify ADMIN before calling the private reset with `requestable.call`.
 The reset trace records the actor, instant and actual number of seeded rows.
 
+The trace also names the tables the reset empties (`resetTables`: every table of
+the model schema) and the tables it seeds (`seededTables`). The desktop Studio
+counts as Studio. Two limits of the `code-check` rule, which the server refusal
+covers in production: a project block (`app.*`) that wraps `entity.demoReset` is
+not followed, and a Flow without an accessibility declaration is treated as
+public, so declare the reset Flow `private` explicitly.
+
 In trusted mode, creating a Possédé row prefers the authenticated server session
 for its owner; without a session, an explicit owner is preserved. No ACL is added.
 Controlled calls still use the application policy, scope and ownership rules.
