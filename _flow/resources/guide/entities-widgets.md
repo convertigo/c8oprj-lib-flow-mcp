@@ -129,6 +129,21 @@ command must authorize every key on the server. `exportable` downloads the
 formatted current page only; complete exports use a checked server command
 from Toolbar, as in `flow://guide/multipage-entities-pages`.
 
+## Forms for business screens
+
+`EntityForm` edits by field type: `text` is a multi-line area, `int64` and
+`decimal` numeric inputs, an `enum` a list of its model labels with an empty
+choice, a relation a list searched on the server when one page of options is
+not enough (the current choice keeps its label). `fields` orders and selects
+the shown fields (names or `{name, label, visibleWhen}`), and only they are
+sent; `sections` groups them as `[{label, fields}]`. `visibleWhen:
+{field, equals | in | notEmpty}` shows a field only for that value, and a
+hidden field is not sent. `readOnly` forces consultation; it is presentation,
+not authorization. Deletion asks a confirmation click (`confirmDelete:
+false` removes it). Commands follow `locale` (`labels` overrides them).
+Business rules stay in the model hooks: a hidden or absent field is never a
+server check.
+
 ## Counters for dashboards
 
 `EntityStat` shows in a StatCard the number of rows the session sees, with one
