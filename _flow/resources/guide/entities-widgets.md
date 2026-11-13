@@ -1,14 +1,14 @@
 # Flow Entities: Reusable Widgets And Snippets
 
-Schema-driven entity widgets (EntityTable, EntityForm) and named snippets.
+Schema-driven CRUD: EntityTable, EntityForm, EntityView, column slots and inverse lists.
 
 Sub-guide of `flow://guide/entities`: read that guide first.
 
 ## Reusable widgets and named snippets
 
-Find `EntityTable` and `EntityForm` with `authoring-palette` under the qualified
+Find `EntityTable`, `EntityForm` and `EntityView` with `authoring-palette` under the qualified
 Structure parent returned by `authoring-tree`. Execute `items[].apply` unchanged.
-Both are library widgets. Their inputs remain model driven; a page supplies the
+These are library widgets. Their inputs remain model driven; a page supplies the
 entity name and selection/event bindings supported by the installed widget
 contract. Omit `targetProject` to call the `EntityGateway` of the project serving
 this frontend, created by `flow-entity-model-set` with `gateway: true` (hidden,
@@ -78,6 +78,11 @@ setter property; it is not a FlowScript function call. Pass it unchanged as
 Do not introduce an inline browser script to run it. Read the installed input
 component contract before replacing the default field renderer.
 
+For a single DSL column set `columns={[{path:"libelle",cellSlot:"cell2"},{path:"statut"}]}`
+and use `<Cell2><Text text="@row.values.libelle" /></Cell2>` (with ordinary
+`$$id` values). Other columns keep their renderer; `Cell3`/`Cell4` are also
+static slots. The generic `Cell` remains a global override for compatibility.
+
 Native Svelte callers can also pass `cell_<field>` / `field_<field>` overrides,
 for example `cell_libelle` and `field_noteInterne`. These are concrete names,
 not angle-bracket wildcard slots. Preserve all other slots during an edit.
@@ -86,3 +91,82 @@ With checkAccess:true, the server removes hidden fields and enforces scope, opti
 revision checks. Hiding an action or a management link is only presentation.
 Test anonymous, ordinary-user and administrator sessions over HTTP, then test
 the pages. A page loading or a successful model write is not that proof.
+
+
+## Tables for business screens
+
+Columns default to visible `describe` fields; override with ordered `columns`
+entries `{path,label,format,labels,tones,order,cellSlot}`. Fields removed by the
+server cannot be restored. An explicit column may include `table:false`
+computed fields, for example `dateEcheance` from the `Échéance` trait.
+Enum values in the model may be strings or `{value,label,tone}`. Stored values
+stay strings; `describe` adds label/tone maps and `timeZone`. Dates use
+`dd/MM/yyyy`; table and record view share formatting. A timestamp without an
+offset is already local time in the model's zone.
+
+Use `filters={[{field:"statut"},{field:"rpcaId"},{field:"actif"}]}` for enum,
+searchable relation and boolean controls; dates and text also work. An optional
+base `filter` is ANDed with all controls on the server. Admin lists offering
+inactive rows set `active="all"`; neither control grants that access. Search,
+sort and pagination are server operations, and ordinary page/sort changes keep
+the previous page visible while controls are disabled. `refreshKey` clears old
+identity data: change it after a session change as well as after a write.
+
+Default View/Edit actions raise `OnView`/`OnEdit`, plus compatible `OnSelect`.
+Wire them to an editor/record view, or set `viewPage`/`editPage` to the logical
+page id. Dynamic route parameters come from `row.key`; `[id]` also aliases the single
+identity field when its model name differs. Activation sends only
+key, revision and the active-field change through the gateway. Its rule must
+live in a model hook, not only in a calling Flow. An `Actions` slot replaces
+defaults, including in read-only sessions where it may offer View.
+
+`selectable` plus `bulkActions={[{id:"declare",label:"Déclarer"}]}` raises
+`OnBulkAction` with `{action,keys}`; `OnSelectionChange` and bindable `selected`
+expose the array of exact object keys. Keep it as an array in page state when
+opening a local form. Typed URL arrays belong to the separate route change;
+never count the characters of a serialized query parameter. Every business
+command must authorize every key on the server. `exportable` downloads the
+formatted current page only; complete exports use a checked server command
+from Toolbar, as in `flow://guide/multipage-entities-pages`.
+
+## A record by route, sections and inverse history
+
+Create the route `postes/[id]` and bind its parameter directly:
+
+```svelte
+<script module>export const _flow={sourceVersion:2,page:{id:"postView"}};</script>
+<FlowComponent $$id="postView"><Structure>
+  <EntityView $$id="post" entity="Poste" routeId="@route.params.id"
+    sections={[{label:"Identification",fields:["libelle","rpcaId"]},{label:"Suivi",fields:["dateEcheance","statut"]}]}
+    related={[{entity:"Declaration",field:"posteId",label:"Historique",columns:[{path:"date",format:"dd/MM/yyyy"},{path:"commentaire"}]}]} />
+</Structure></FlowComponent>
+```
+
+A selected `row` or an exact `recordKey` also works. Composite identities need
+`recordKey`. The widget always re-reads the record; parent row values are never
+authorization evidence. `active` defaults to active rows; admin histories may
+request all when the server policy permits it. `OnEdit` should open EntityForm;
+`OnChanged` reports activation. `Actions(row,context)` replaces its defaults.
+A section field can use `cellSlot:"field2"` with `Field2(row,field)`; Field3 and
+Field4 also exist. `Field` is the compatible global override.
+
+Each `related` declaration adds the parent's key to the child's server filter,
+then ANDs an optional extra `filter`. A missing parent value never starts an
+unfiltered list. `sourceField` can name another visible parent field. Each
+inverse entity applies its own policy. Options include `columns`, `filters`,
+`pageSize`, `active`, `viewPage`, `editPage`, and `slot` selecting Related or
+Related2 for a custom list. Wire page actions for linked records as needed.
+
+The six verified integration page sources are shipped by lib_flow_entity at
+`_flow/resources/examples/entity-front`. They cover posts, RPCA, history,
+notifications and a bulk declaration form. Authoritative counters and the
+DeclarePosts command remain application services; displaying a returned count
+does not compute or validate it. This kit does not implement E5 listFlow/saveFlow,
+and never falls back to a different source after failure.
+
+Compatibility: the hard-coded deadline status control becomes explicit
+`filters={[{field:"statut"}]}`. Private table CSS selectors change to DataTable. Native deadline label aliases
+`labels.current`/`labels.overdue` move to the status column labels
+(`aJour`/`aRelancer`).
+Existing EntityTable props, OnSelect and the generic Cell/Actions slots, and
+EntityForm save/delete/cancel events, remain supported.
