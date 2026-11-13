@@ -144,6 +144,20 @@ false` removes it). Commands follow `locale` (`labels` overrides them).
 Business rules stay in the model hooks: a hidden or absent field is never a
 server check.
 
+## Business Flows as the source
+
+When writes carry business rules, give the widgets `flows` instead of the gateway:
+`{describe, list, read, count, aggregate, create, update, delete}` name project
+Flows called with the payload of that gateway operation (`{options}`, `{key,
+options}`, `{values}`, `{key, revision, values}`, `{key, revision}`) and answering
+as it does. An operation without a Flow is unavailable: a widget never falls back
+on the gateway, and an inverse list of EntityView needs its own `flows`. Each Flow
+is `hidden`, checks the session, and only passes the options on:
+`return entity.list({entity: "Poste", checkAccess: true, options: input.options})`
+(`entity.save` with `key`, `revision`, `values`; never an actor or an owner from
+the input). Close the gateway for these writes with `"gateway": {"writes": false}`
+on the entity; `code-check` says `ENTITY_GATEWAY_WRITES_OPEN` otherwise.
+
 ## Counters for dashboards
 
 `EntityStat` shows in a StatCard the number of rows the session sees, with one

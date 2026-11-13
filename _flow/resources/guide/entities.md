@@ -263,5 +263,5 @@ The rest of this guide is in focused sub-guides; read one only when the task nee
 | `flow://guide/entities-policy` (10.8 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |
 | `flow://guide/entities-model` (15.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |
 | `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |
-| `flow://guide/entities-widgets` (14.2 KB) | EntityTable, EntityForm, named snippets |
+| `flow://guide/entities-widgets` (15.1 KB) | EntityTable, EntityForm, named snippets |
 | `flow://guide/entities-actions` (8.6 KB) | a business action changing several records atomically, backend preview limits |
