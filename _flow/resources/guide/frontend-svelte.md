@@ -103,7 +103,7 @@ Read only the sub-guide of the current task, once; each one is short enough to b
 | `flow://guide/frontend-svelte-layout` (8.1 KB) | to lay out Pages: containers, `AppShell` navigation, `PageHeader`, `StatCard`, `DataTable` columns, links by Page id, images |
 | `flow://guide/frontend-svelte-data` (9.1 KB) | to bind values: `@.Sequence`, `@page`, `@event`, `@route`, `@props`, State, `$$out`, `CallSequence`, `Status` |
 | `flow://guide/frontend-svelte-forms` (5.1 KB) | for inputs and forms: `Input`, `Textarea`, `Combobox`, choices, `Form` submit, `AlertDialog`, locale |
-| `flow://guide/frontend-svelte-datatable` (5.1 KB) | for a `DataTable` with selection, cards, or server paging, filter and sort |
+| `flow://guide/frontend-svelte-datatable` (5.2 KB) | for a `DataTable` with selection, cards, or server paging, filter and sort |
 | `flow://guide/frontend-svelte-actions` (7.0 KB) | for events and actions: chains, `If`, reentrancy, `OnMount`, `OnAfterNavigate`, session Layout, timers, clocks |
 | `flow://guide/frontend-svelte-themes` (3.7 KB) | for colors, palettes, light and dark mode, fonts and icons |
 | `flow://guide/frontend-svelte-components` (3.8 KB) | for a reusable component, its props and events, or a library component |

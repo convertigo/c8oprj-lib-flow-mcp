@@ -980,10 +980,16 @@
   "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities-widgets` |"
  },
  {
+  "family": "frontend-svelte",
+  "file": "frontend-svelte-datatable.md",
+  "old": "A column `format` may be a date pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`.",
+  "new": "A column `format` may be `currency` with `currency: \"USD\"` (an amount for the locale, `$12,500.00`), or a date pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`."
+ },
+ {
   "family": "start",
   "file": "start.md",
   "currentOnly": true,
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (15.6 KB) |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |"
  }
 ]

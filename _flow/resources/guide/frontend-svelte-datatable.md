@@ -17,7 +17,8 @@ checkboxes and a Select all checkbox; bind `selected="@page.picked"`: the
 State holds the keys (`rowKey`) of the selected rows, for a bulk action
 Button, and `OnSelectionChange` gives the same keys as `@event.value`
 (`@event.source` row, all or none). Select all takes the filtered rows, or
-the loaded page with `serverSide={true}`. A column `format` may be a date
+the loaded page with `serverSide={true}`. A column `format` may be `currency`
+with `currency: "USD"` (an amount for the locale, `$12,500.00`), or a date
 pattern: `dd/MM/yyyy`, `EEEE d MMMM yyyy`, `dd/MM/yyyy HH:mm`.
 
 ## Column and row action keys

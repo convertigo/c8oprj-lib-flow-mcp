@@ -322,7 +322,7 @@ const _meta = {
 		"readOnly, storage {table, columns}, source, extends. " +
 		"Identity: field names, [\"id\"] by default. An int64 identity is auto-incremented by the database: keep [\"id\"] without declaring id, " +
 		"never send it on create, read it in row.key.id. " +
-		"Field: type, label, nullable (default false), required, maxLength, precision, scale, values (enum), default, " +
+		"Field: type, label, nullable (default false), required, maxLength, precision, scale, currency (ISO 4217 of an int64 or decimal amount), values (enum), default, " +
 		"auto (create, update, currentUser, currentRole), readOnly, computed, notFuture, visibleTo (role list), secret, table, column, relation, where, " +
 		"unique (true: one row per value, NULLs excepted, on a string declared with a maxLength of 600 at most, an int64, a date or an enum field every creating role sees). " +
 		"Types: string, text, enum, int64, decimal, boolean, date, timestamp; no array or json type: store serialized JSON in a text field. " +
