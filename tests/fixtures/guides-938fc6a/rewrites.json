@@ -977,13 +977,13 @@
   "family": "start",
   "file": "start.md",
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |",
-  "new": "| Persisted business data with roles (add the `lib_flow_entity` reference) | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities-widgets` |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities-widgets` |"
  },
  {
   "family": "start",
   "file": "start.md",
   "currentOnly": true,
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| Persisted business data with roles (add the `lib_flow_entity` reference) | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (15.6 KB) |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (15.6 KB) |"
  }
 ]
