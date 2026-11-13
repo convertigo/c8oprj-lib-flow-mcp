@@ -122,6 +122,7 @@ test('the documented layout containers keep their slots, properties and rendered
 // library descriptors. No implicit provider discovery or modified guide snippets.
 const entityExamples = [
   { guide: "entities", id: "selectionExample", project: "EquipmentApp", route: "", layout: false },
+  { guide: "entities", id: "myPosts", project: "EquipmentApp", route: "mine", layout: false },
   { guide: "entities", id: "postView", project: "EquipmentApp", route: "postes/[id]", layout: false },
   { guide: "multipage-entities", id: "sessionLayout", project: "BookingApp", route: "", layout: true },
   { guide: "multipage-entities", id: "bookingEditor", project: "BookingApp", route: "mine", layout: false },
@@ -191,7 +192,11 @@ test("all Svelte fences in both entity guides have an explicit compilation proof
 for (const plan of entityExamples) {
   test(`${plan.guide}: exact ${plan.id} fence loads and generates compilable Svelte with entity references`, async t => {
     const { doc, source, generated } = await entityGuideFixture(t, plan);
-    if(plan.id === "postView") {
+    if(plan.id === "myPosts") {
+      assert.equal((source.match(/<EntityStat\b/g) || []).length, 2, "The counter example keeps its two entity counters");
+      assert.match(source, /filter=\{\{statut:"aRelancer"\}\}/);
+      assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityStat/);
+    } else if(plan.id === "postView") {
       assert.match(source, /<EntityView/);assert.match(source, /routeId="@route.params.id"/);assert.match(source, /related=/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityView/);
     } else if (!plan.layout) {
