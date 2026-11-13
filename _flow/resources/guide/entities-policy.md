@@ -160,6 +160,13 @@ call. It receives `options.active: "all"` on reads the caller sent without the
 option: refuse with a plain `throw` (or status 401 or 403), or ignore an option
 it does not expect; a throw with another status fails the read.
 
+## Counts, sums and averages
+
+`entity.count` and `entity.aggregate` (`groupBy`, `sum`, `avg`) read the rows the policy lets the
+session list, through the same field visibility: a total only reveals values the list shows.
+Never grant a role an "aggregate only" view (a total of salaries, not each salary) by policy or
+visibility: two filters that differ by one row would isolate its value.
+
 ## A policy with no rows
 
 Return `{none: true}` alone to close the row set. It is absorbing: an authorize
