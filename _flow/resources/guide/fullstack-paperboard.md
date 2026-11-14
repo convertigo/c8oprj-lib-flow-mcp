@@ -110,7 +110,7 @@ source, including a structured literal for intentionally static content.
 5. When a backend domain block is missing, create a typed project-local mock
    with `flow-block-mock`. The mock must keep the parent Flow executable and
    must remain visible in `flow-block-mock-list`.
-6. Build the first frontend paperboard from palette blocks. Use real layout
+6. For entity-backed pages, read `flow://guide/entities-widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout
    blocks and visible placeholders:
    - `AppShell` in the root Layout (navigation, user, `PageContent`), or
      `PageShell` for a single Page;

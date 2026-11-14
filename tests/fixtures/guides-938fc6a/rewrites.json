@@ -1018,5 +1018,16 @@
   "family": "entities",
   "old": "Handle `OnCancel` by closing the editor and clearing its row as well.",
   "new": "On `OnCancel`, close the editor and clear its row."
+ },
+ {
+  "family": "fullstack-paperboard",
+  "old": "6. Build the first frontend paperboard from palette blocks. Use real layout",
+  "new": "6. For entity-backed pages, read `flow://guide/entities-widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout"
+ },
+ {
+  "file": "start.md",
+  "currentOnly": true,
+  "old": "| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.5 KB) |",
+  "new": "| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.8 KB) |"
  }
 ]
