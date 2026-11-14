@@ -1003,5 +1003,20 @@
   "currentOnly": true,
   "old": "| `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |",
   "new": "| `flow://guide/entities-auth` (6.1 KB) | sign-in, session, actor provider |"
+ },
+ {
+  "family": "entities",
+  "old": "These are library widgets. Their inputs remain model driven; a page supplies the entity name and selection/event bindings supported by the installed widget contract.",
+  "new": "These library widgets stay model driven: a page supplies the entity name and the selection/event bindings of the installed widget contract."
+ },
+ {
+  "family": "entities",
+  "old": "Effective `describe` capabilities hide denied save/delete actions, including immutable-row updates.",
+  "new": "Effective `describe` capabilities hide denied save/delete actions, immutable-row updates included."
+ },
+ {
+  "family": "entities",
+  "old": "Handle `OnCancel` by closing the editor and clearing its row as well.",
+  "new": "On `OnCancel`, close the editor and clear its row."
  }
 ]

@@ -8,9 +8,8 @@ Sub-guide of `flow://guide/entities`: read that guide first.
 
 Find `EntityTable`, `EntityForm` and `EntityView` with `authoring-palette` under the qualified
 Structure parent returned by `authoring-tree`. Execute `items[].apply` unchanged.
-These are library widgets. Their inputs remain model driven; a page supplies the
-entity name and selection/event bindings supported by the installed widget
-contract. Omit `targetProject` to call the `EntityGateway` of the project serving
+These library widgets stay model driven: a page supplies the entity name and the
+selection/event bindings of the installed widget contract. Omit `targetProject` to call the `EntityGateway` of the project serving
 this frontend, created by `flow-entity-model-set` with `gateway: true` (hidden,
 signed-in sessions). Set it only for an intentional cross-project screen: it
 then selects that project's local gateway. There is no library gateway fallback.
@@ -29,11 +28,10 @@ selection, close the editor, and increment the table's `refreshKey` state with `
 (`operation:"increment"`, `step:1`) to reload its current page. A New command
 clears the row and opens the creation form. Put it in the table
 `Toolbar` and show it only when `context.permissions.create` is true.
-Handle `OnCancel` by closing the editor and clearing its row as well.
+On `OnCancel`, close the editor and clear its row.
 Use the conflict reload command before retrying a stale revision; do not blindly
-resubmit the stale row. Effective `describe` capabilities hide denied save/delete
-actions, including
-immutable-row updates. The form sends `create` without a key and `update` with
+resubmit the stale row. Effective `describe` capabilities hide denied save/delete actions,
+immutable-row updates included. The form sends `create` without a key and `update` with
 an existing key; it never performs an upsert. A refusal answers 200 with `ok: false`: `ENTITY_UNAUTHENTICATED` invites sign-in,
 `ENTITY_FORBIDDEN` or `ENTITY_SCOPE_VIOLATION` reports a forbidden action, 409 offers Reload, and 400 maps field diagnostics when
 available (model validation can also use 422).
@@ -117,7 +115,8 @@ default): a heading above the table does not name it.
 Default View/Edit actions raise `OnView`/`OnEdit`, plus compatible `OnSelect`.
 Wire them to an editor/record view, or set `viewPage`/`editPage` to the logical
 page id. Dynamic route parameters come from `row.key`; `[id]` also aliases the single
-identity field when its model name differs. Activation sends only
+identity field when its model name differs. There, `EntityForm` and `EntityView`
+take `routeId="@route.params.id"`. Activation sends only
 key, revision and the active-field change through the gateway. Its rule must
 live in a model hook, not only in a calling Flow. An `Actions` slot replaces
 defaults, including in read-only sessions where it may offer View.
