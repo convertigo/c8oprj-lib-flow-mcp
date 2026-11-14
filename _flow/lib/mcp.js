@@ -2483,10 +2483,39 @@
 			if (value && value[key] !== undefined && value[key] !== null && value[key].length) notices[key] = value[key];
 		});
 		value = compactToolValue(request, value);
+		if (value && value.ok !== false && !value.error && entityPageGuidanceApplies(request, value)) {
+			value.entityPages = "Entity pages: EntityTable/EntityForm/EntityView/EntityStat/EntityBreakdown (flow://guide/entities-widgets)";
+		}
 		if (value && typeof value === "object") {
 			Object.keys(notices).forEach(function (key) { value[key] = notices[key]; });
 		}
 		return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult(value, toolPathContext(request, ctx))));
+	}
+
+	function entityPageGuidanceApplies(request, value) {
+		var name = toolName(request), args = toolArguments(request);
+		var source = String(value.sourceFile || args.sourceFile || args.sourcePath || "").replace(/\\/g, "/");
+		var pageRead = (name === "code-get" || name === "frontend-svelte-code-get") &&
+			/(?:^|\/)\+page\.flow\.svelte$/.test(source);
+		if (!pageRead && !isSveltePaletteRequest(request)) return false;
+		var target = { project: args.project || splitAuthoringParentPath(args.parentPath) && splitAuthoringParentPath(args.parentPath).project,
+			projectDir: args.projectDir };
+		try { resolveProjectDir(target); } catch (_unknownEntityGuidanceProject) { return false; }
+		if (!target.projectDir) return false;
+		try {
+			var project = runtimeProjectFromArgs(target);
+			if (project && project.getReferenceList) {
+				var refs = project.getReferenceList().toArray();
+				for (var i = 0; i < refs.length; i++) {
+					if (refs[i].getParser && String(refs[i].getParser().getProjectName() || "") === "lib_flow_entity") return true;
+				}
+			}
+		} catch (_unavailableEntityGuidanceProject) {}
+		var yaml = new File(String(target.projectDir), "c8oProject.yaml");
+		if (!yaml.isFile()) return false;
+		try {
+			return /^\s*projectName:\s*["']?lib_flow_entity["']?\s*(?:#.*)?$/m.test(String(Packages.org.apache.commons.io.FileUtils.readFileToString(yaml, "UTF-8")));
+		} catch (_unreadableEntityGuidanceProject) { return false; }
 	}
 
 	function isSveltePaletteRequest(request) {
