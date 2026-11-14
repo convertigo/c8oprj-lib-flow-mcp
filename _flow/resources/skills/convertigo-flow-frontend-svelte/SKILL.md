@@ -220,6 +220,8 @@ invisible to all of them; a refusal says what to write instead.
   `browser-verify` for one visual check of a page, and the host-managed
   Playwright connection only for one quick DOM or timing evaluation: no
   `browser_snapshot` per step, no long click sequences in your own context.
+  `browser_wait_for` takes `time` in seconds (2, not 2000) and caps it at 30 s;
+  prefer waiting for `text` or `textGone` over a fixed delay.
   Without `subagent-run` and `browser-verify` in your tools (the relay does
   not offer them; `tools-more` does not either), prove with the browser tools
   of your host (Playwright) on the same `url`: a sub-agent of your own host for

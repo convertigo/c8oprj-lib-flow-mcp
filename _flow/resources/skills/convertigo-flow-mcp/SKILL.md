@@ -231,6 +231,8 @@ wait stays in it for the rest of the task.
   context.
 - Use Playwright yourself only for one quick evaluation of DOM state or
   timing; never a `browser_snapshot` per step.
+- `browser_wait_for` takes `time` in seconds (2, not 2000) and caps it at 30 s;
+  prefer waiting for `text` or `textGone` over a fixed delay.
 - Read the schema of the browser tools of your host and use its argument names. With the Playwright MCP, the call form is `browser_click({ element: "Save button", target: "e4" })`, `browser_type({ element: "Name field", target: "e3", text: "Ada" })`; `target` is the `[ref=e4]` of the latest `browser_snapshot` (no `ref` argument, never `null`); on `Ref ... not found`, take a new snapshot.
 - The verifier is read-only: fix what it reports with the Flow tools, then
   run it again on the failed paths only.
