@@ -70,6 +70,10 @@ invisible to all of them; a refusal says what to write instead.
 - For any persisted business data with roles, use the entity route: add the
   `lib_flow_entity` project reference and read `flow://guide/entities` plus
   `flow://guide/multipage-entities` before wiring `EntityTable`/`EntityForm`.
+  Before writing pages that display, create or edit entity data, read
+  `flow://guide/entities-widgets`. Use `EntityTable`, `EntityForm`, `EntityView`,
+  `EntityStat` and `EntityBreakdown`; build custom tables, forms or KPIs only
+  when these widgets cannot cover the need.
   Demonstration sign-in, CSV export, jobs and audit are independent additions;
   their entry point is `flow://guide/start`.
   Use `flow://guide/multipage-roles` only with no persisted business data or

@@ -990,7 +990,7 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |"
  },
  {
   "file": "entities.md",

@@ -6,6 +6,8 @@ For the simplest compliant start with persisted business data and roles, use **S
 
 ## Quick path: contract first, details below
 
+Before writing pages that display, create or edit entity data, read `flow://guide/entities-widgets`. Use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` and `EntityBreakdown`; build custom tables, forms or KPIs only when these widgets cannot cover the need.
+
 1. Bootstrap with `flow-project-bootstrap` and direct references to
    `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when
    a Svelte application is needed. Do not generate CRUD sources.
