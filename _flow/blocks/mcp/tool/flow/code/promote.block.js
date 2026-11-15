@@ -55,6 +55,7 @@ const _meta = {
 		}
 		var write = ctx.flowCodePromote(Object.assign({}, args, { code: saved.code, revision: String(saved.revision) }));
 		if (write.ok === true) {
+			write.revision = ctx.flowGet(missing.name, args).revision;
 			write.note = "No working copy of " + missing.name + ": its saved source (revision " + String(saved.revision) +
 				") was promoted as is. Nothing else was changed.";
 		}
@@ -76,6 +77,7 @@ const _meta = {
 					write = promoteSaved(ctx, args, write);
 				}
 				if (write.ok === true) {
+					write.revision = ctx.flowGet(write.name || args.name, args).revision;
 					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
 				}
 				return write;

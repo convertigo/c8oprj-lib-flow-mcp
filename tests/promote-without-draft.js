@@ -34,6 +34,9 @@ try {
 	assert(set.value.ok === true && set.value.revision, "code-set wrote a working copy: " + JSON.stringify(set.value));
 	var first = tool(3, "code-promote", { name: "Tickets", revision: set.value.revision });
 	assert(first.value.ok === true && first.value.promoted === true, "the working copy is promoted: " + JSON.stringify(first.value));
+	var current = tool(31, "code-get", { name: "Tickets" });
+	assert(first.value.revision === current.value.revision,
+		"promotion returns the current saved revision: " + JSON.stringify(first.value));
 	var file = new java.io.File(target, "_flow/flows/Tickets.flow.js");
 	assert(file.isFile(), "the promoted Flow is a file of _flow/flows");
 
@@ -42,12 +45,16 @@ try {
 	assert(again.value.ok === true && !again.isError && /already saved|no working copy/i.test(String(again.value.note || "")),
 		"a second promotion succeeds with a note: " + JSON.stringify(again.value));
 
+	assert(again.value.revision === current.value.revision,
+		"idempotent promotion returns the current saved revision");
 	// A Flow file on disk that no promotion declared (a project-save wrote the draft): promoted from its saved source.
 	FileUtils.writeStringToFile(new java.io.File(target, "_flow/flows/Orders.flow.js"), flow("Orders"), "UTF-8");
 	var saved = tool(5, "code-promote", { name: "Orders" });
 	assert(saved.value.ok === true && saved.value.promoted === true && /saved source/i.test(String(saved.value.note || "")),
 		"a saved Flow file without working copy is promoted: " + JSON.stringify(saved.value));
 
+	assert(saved.value.revision === tool(51, "code-get", { name: "Orders" }).value.revision,
+		"saved-source promotion returns the current saved revision");
 	// A Flow never written: the refusal stays, and gives the code-set call to make first.
 	var ghost = tool(6, "code-promote", { name: "Ghost" });
 	assert(ghost.isError && ghost.value.error && ghost.value.error.code === "FLOW_CODE_DRAFT_MISSING", "a Flow never written is refused: " + JSON.stringify(ghost.value));

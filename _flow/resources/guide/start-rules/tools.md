@@ -19,7 +19,11 @@ Ordinary clients flag `isError:true`; Vibe returns that error with
   when a complete assessment is requested.
 - A tool a guide names but the list lacks runs through
   `tools-more({name:"flow-resource-patch", arguments:{...}})`; `tools-more({})`
-  lists them, `tools-more({name})` gives one input schema. `browser-verify`
+  lists them, `tools-more({name})` gives one input schema. In particular,
+  `flow-requestable-schema`, `frontend-svelte-tree` and `code-status` remain
+  callable this way when absent from the core `tools/list`: call
+  `tools-more({name:"code-status", arguments:{project:"App", name:"Example"}})`
+  with the arguments of the named tool. `browser-verify`
   and `subagent-run` are not among them: without them in your list, prove
   pages with the browser tools of your host (Playwright).
 - Read block contracts with `flow-block-get({project,name})` (longDescription

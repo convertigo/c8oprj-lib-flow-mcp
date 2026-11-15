@@ -34,6 +34,11 @@ const _meta = {
       "type": "integer",
       "description": "Zero-based offset for continuing a long single-line source; pass the returned revision.",
     },
+    "contractOffset": {
+      "kind": "literal",
+      "type": "integer",
+      "description": "Continue a paginated authoring contract at contractNextOffset with the same revision.",
+    },
     "out": {
       "kind": "path",
       "mode": "write",

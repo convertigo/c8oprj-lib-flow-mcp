@@ -230,6 +230,7 @@ const _meta = {
 			delete internalArgs.query;
 			delete internalArgs.q;
 			var internalRequest = setRequestArgs(request, internalName, internalArgs);
+			internalRequest.__codeOriginal = { name: request.params.name, arguments: args };
 			return ctx.callBlock(internalBlock, {
 				request: internalRequest,
 				reveal: internalArgs.reveal,

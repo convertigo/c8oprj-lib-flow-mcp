@@ -897,6 +897,7 @@
 			(node.children || []).forEach(qualifyNode);
 		}
 		(value.children || []).forEach(qualifyNode);
+		if (!value.error && value.path !== undefined && value.path !== null) value.parentPath = qualifyAuthoringPath(args, value.path);
 		if (value.focus && value.focus.path !== undefined) {
 			value.focus.parentPath = qualifyAuthoringPath(args, value.focus.path);
 		}
@@ -2444,6 +2445,14 @@
 				}
 			}
 			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
+		}
+		if (request && request.method === "tools/call" &&
+			/^(?:code-get|frontend-svelte-code-get|flow-code-get|flow-block-code-get)$/.test(toolName(request)) &&
+			jsonChars(response) >= 16000) {
+			var budgetError = {ok:false,error:{code:"CODE_RESPONSE_BUDGET",message:"The final MCP response exceeds 16000 characters.",
+				hint:"Read a narrower source range or fewer contractBlocks at one time."}};
+			response.result = toolResult(budgetError, toolPathContext(request, ctx));
+			response.result.isError = true;
 		}
 		traceJsonl(ctx, "response", request || {}, response);
 		return response;
@@ -5387,124 +5396,207 @@
 		return out;
 	}
 
+	function codeContinuation(request, changes) {
+		var origin = request && request.__codeOriginal;
+		var args = Object.assign({}, origin ? origin.arguments : toolArguments(request));
+		delete args.unifiedSourceCode;
+		if (changes.startChar !== undefined || changes.startLine !== undefined) {
+			delete args.startLine; delete args.endLine; delete args.startChar;
+		}
+		if (changes.contractOffset !== undefined) delete args.contractOffset;
+		Object.keys(changes).forEach(function (key) { args[key] = changes[key]; });
+		return { tool: origin ? origin.name : toolName(request), arguments: args };
+	}
+
+	function codeResponseFits(request, value) {
+		// Measure both MCP copies of the value (text and structuredContent), with room for finalization.
+		return jsonChars({jsonrpc:"2.0",id:request && request.id,result:toolResult(value,{})}) < 15000;
+	}
+
 	function boundedCodeRead(request, value) {
-		var args = toolArguments(request);
+		if (!value || value.ok === false || typeof value.code !== "string") return value;
+		if (value.partial === true && typeof value.fullCode !== "string") return value;
+		var args = toolArguments(request), source = typeof value.fullCode === "string" ? value.fullCode : value.code;
 		var hasStart = args.startLine !== undefined && args.startLine !== null && String(args.startLine) !== "";
 		var hasEnd = args.endLine !== undefined && args.endLine !== null && String(args.endLine) !== "";
-		if ((!hasStart && !hasEnd) || !value || value.ok === false || typeof value.code !== "string" || value.partial === true) return value;
+		var hasChar = args.startChar !== undefined && args.startChar !== null && String(args.startChar) !== "";
+		var hasContractOffset = args.contractOffset !== undefined && args.contractOffset !== null;
 		function reject(code, message) { var error = new Error(message); error.code = code; throw error; }
 		if (hasStart !== hasEnd) reject("CODE_RANGE_INCOMPLETE", "A bounded code-get requires both startLine and endLine.");
-		if (args.revision !== undefined && args.revision !== null && String(args.revision) !== "" && String(args.revision) !== String(value.revision)) {
+		if (hasChar && hasStart) reject("CODE_RANGE_INVALID", "Use either a line range or startChar, not both.");
+		if ((hasStart || hasChar || hasContractOffset) && args.revision !== undefined && args.revision !== null && String(args.revision) !== "" &&
+			String(args.revision) !== String(value.revision))
 			reject("CODE_STALE_REVISION", "Source changed since the requested revision. Read its current revision before requesting a range.");
+		var starts = [0];
+		for (var i = 0; i < source.length; i++) {
+			if (source.charAt(i) === "\r") {
+				if (source.charAt(i + 1) === "\n") i++;
+				starts.push(i + 1);
+			} else if (source.charAt(i) === "\n") starts.push(i + 1);
 		}
-		var lines = value.code.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-		var start = Number(args.startLine), end = Number(args.endLine), asked = end;
-		// A range past the end of the source reads up to its last line (lines 1-60 of a 37 line source were refused).
-		if (isFinite(end) && end > lines.length && start <= lines.length) end = lines.length;
-		if (!isFinite(start) || !isFinite(end) || Math.floor(start) !== start || Math.floor(end) !== end ||
-			start < 1 || end < start || end > lines.length || end - start + 1 > 500) {
-			reject("CODE_RANGE_INVALID", "Use inclusive one-based bounds inside the " + lines.length + " line source, at most 500 lines.");
+		var out = Object.assign({}, value), start = 1, end = starts.length, asked = end;
+		delete out.fullCode;
+		if (hasStart) {
+			start = Number(args.startLine); end = Number(args.endLine); asked = end;
+			if (isFinite(end) && end > starts.length && start <= starts.length) end = starts.length;
+			if (!isFinite(start) || !isFinite(end) || Math.floor(start) !== start || Math.floor(end) !== end ||
+				start < 1 || end < start || end > starts.length || end - start + 1 > 500)
+				reject("CODE_RANGE_INVALID", "Use inclusive one-based bounds inside the " + starts.length + " line source, at most 500 lines.");
 		}
-		var out = Object.assign({}, value);
-		out.code = lines.slice(start - 1, end).join("\n");
-		out.partial = true;
-		out.startLine = start;
-		out.endLine = end;
-		out.totalLines = lines.length;
-		if (asked !== end) out.note = "endLine " + asked + " is past the end of the source: bounded to " + end + ", its last line.";
-		out.totalContentLength = value.code.length;
+		var charStart = hasChar ? Number(args.startChar) : hasStart ? starts[start - 1] : 0;
+		if (!isFinite(charStart) || Math.floor(charStart) !== charStart || charStart < 0 || charStart >= source.length && (hasChar || source.length > 0))
+			reject("CODE_RANGE_INVALID", "startChar must be a zero-based offset inside the current source.");
+		var charEnd = hasStart ? (end < starts.length ? starts[end] - (source.charAt(starts[end]-1) === "\n" && source.charAt(starts[end]-2) === "\r" ? 2 : 1) : source.length) : source.length;
+		out.code = source.slice(charStart, charEnd);
+		out.totalContentLength = source.length;
 		out.contentLength = out.code.length;
-		delete out.descriptor;
-		delete out.implementationSource;
-		out.next = "Use this revision with code-patch, or request another bounded range.";
+		out.totalLines = starts.length;
+		if (hasStart) {
+			out.partial = true; out.startLine = start; out.endLine = end;
+			out.startChar = charStart; out.endChar = charEnd;
+			if (asked !== end) out.note = "endLine " + asked + " is past the end of the source: bounded to " + end + ", its last line.";
+		} else if (hasChar) {
+			out.partial = true; out.startChar = charStart; out.endChar = charEnd;
+		}
 		return out;
 	}
 
 	function compactCodeGetContract(request, value) {
-		if (!value || value.ok === false || jsonChars(value) <= 6200) return value;
-		var contract = value.authoringContract, out = Object.assign({}, value);
-		if (contract) {
-			var tags = (contract.blocks || []).map(function (block) { return block.tag; });
-			(contract.omittedBlocks || []).forEach(function (tag) { if (tags.indexOf(tag) === -1) tags.push(tag); });
-			var essentials = (contract.blocks || []).map(function (block) {
-				var properties = block.properties || {}, required = {};
-				Object.keys(properties).forEach(function (key) {
-					if (String(properties[key]).indexOf("!") !== -1) required[key] = properties[key];
+		if (!value || value.ok === false) return value;
+		var args = toolArguments(request), out = Object.assign({}, value), source = typeof out.code === "string" ? out.code : "";
+		var targeted = Array.isArray(args.contractBlocks) ? args.contractBlocks.length > 0 :
+			typeof args.contractBlocks === "string" && args.contractBlocks.trim() !== "";
+		var metadataOnly = args.contractOffset !== undefined && args.contractOffset !== null;
+		var contract = out.authoringContract;
+		if (out.partial === true || targeted || metadataOnly || !codeResponseFits(request,out)) {
+			delete out.descriptor; delete out.implementationSource;
+		}
+		var offset = args.contractOffset === undefined ? 0 : Number(args.contractOffset);
+		if (!isFinite(offset) || Math.floor(offset) !== offset || offset < 0) {
+			var bad = new Error("contractOffset must be a non-negative integer."); bad.code = "CODE_RANGE_INVALID"; throw bad;
+		}
+		if (targeted || metadataOnly) { delete out.code; delete out.contentLength; out.sourceOmitted = true; }
+		// Keep the contract before source text. For a general read, the selected contract is an index;
+		// an explicit contractBlocks read retains every property, event and snippet parameter.
+		if (contract && (targeted || metadataOnly || jsonChars(out) > 5800 || offset > 0)) {
+			var units = [], blocks = contract.blocks || [], tags = [];
+			blocks.forEach(function (block) { if (tags.indexOf(block.tag) < 0) tags.push(block.tag); });
+			(contract.omittedBlocks || []).forEach(function (tag) { if (tags.indexOf(tag) < 0) tags.push(tag); });
+			if (contract.root) units.push({kind:"root",value:targeted ? contract.root : {
+				tag:contract.root.tag, properties:contract.root.properties, slots:contract.root.slots
+			}});
+			if (contract.navigation) units.push({kind:"navigation",value:targeted ? contract.navigation : {readParameter:contract.navigation.readParameter}});
+			if (contract.valueSyntax) units.push({kind:"valueSyntax",value:targeted ? contract.valueSyntax : {local:contract.valueSyntax.local}});
+			if (contract.missingBlocks) units.push({kind:"missingBlocks",value:contract.missingBlocks});
+			if (targeted) {
+				(contract.portableBlocks || []).forEach(function (block) { units.push({kind:"portable",value:block}); });
+				blocks.forEach(function (block) {
+					units.push({ kind: "block", tag: block.tag });
+					Object.keys(block.properties || {}).forEach(function (key) { units.push({kind:"property",tag:block.tag,key:key,value:block.properties[key]}); });
+					(block.slots || []).forEach(function (slot) { units.push({kind:"slot",tag:block.tag,value:slot}); });
+					(block.events || []).forEach(function (event) { units.push({kind:"event",tag:block.tag,value:event}); });
+					Object.keys(block.snippets || {}).forEach(function (name) { units.push({kind:"snippet",tag:block.tag,key:name,value:block.snippets[name]}); });
 				});
-				return { tag: block.tag, properties: required, slots: block.slots || [] };
-			});
+			} else {
+				if (Array.isArray(contract.pages)) contract.pages.forEach(function (page) { units.push({kind:"page",value:page}); });
+				else if (contract.pages) units.push({kind:"pagesValue",value:contract.pages});
+				Object.keys(contract.sources || {}).forEach(function (key) { units.push({kind:"source",key:key,value:contract.sources[key]}); });
+				// Portable ids are a small discovery index; keep them on the first contract page.
+				(contract.portableBlocks || []).forEach(function (block) { units.push({kind:"portable",value:{id:block.id,tag:block.tag}}); });
+				tags.forEach(function (tag) { units.push({kind:"tag",value:tag}); });
+				blocks.forEach(function (block) {
+					var required = {}, properties = block.properties || {};
+					Object.keys(properties).forEach(function (key) { if (String(properties[key]).indexOf("!") !== -1) required[key] = properties[key]; });
+					units.push({kind:"blockSummary",value:{tag:block.tag,properties:required,slots:block.slots || []}});
+				});
+			}
+			if (offset > units.length) { var invalid = new Error("contractOffset is beyond the contract."); invalid.code = "CODE_RANGE_INVALID"; throw invalid; }
+			var page = {version:contract.version, detail:targeted ? "blocks" : "index", blocks:[], pages:[], availableBlocks:[], portableBlocks:[], sources:{}, contractOffset:offset, contractTotal:units.length};
+			if (targeted && offset === 0) page.syntax = "Properties are tag attributes. Events are On* handlers in Events; named snippets are child tags, and their listed parameters are values scoped to that snippet.";
+			out.authoringContract = page;
+			var index = offset;
+			function append(unit) {
+				var block, j;
+				if (unit.kind === "root" || unit.kind === "navigation" || unit.kind === "valueSyntax" || unit.kind === "missingBlocks") page[unit.kind]=unit.value;
+				else if (unit.kind === "page") page.pages.push(unit.value);
+				else if (unit.kind === "pagesValue") page.pages = unit.value;
+				else if (unit.kind === "tag") page.availableBlocks.push(unit.value);
+				else if (unit.kind === "portable") page.portableBlocks.push(unit.value);
+				else if (unit.kind === "source") page.sources[unit.key] = unit.value;
+				else if (unit.kind === "blockSummary") page.blocks.push(unit.value);
+				else {
+					for (j=0;j<page.blocks.length;j++) if (page.blocks[j].tag === unit.tag) { block=page.blocks[j]; break; }
+					if (!block) { block={tag:unit.tag,properties:{},slots:[],events:[],snippets:{}}; page.blocks.push(block); }
+					if (unit.kind === "property") block.properties[unit.key]=unit.value;
+					else if (unit.kind === "slot") block.slots.push(unit.value);
+					else if (unit.kind === "event") block.events.push(unit.value);
+					else if (unit.kind === "snippet") block.snippets[unit.key]=unit.value;
+				}
+			}
+			while (index < units.length) {
+				var saved = JSON.stringify(page); append(units[index]);
+				// Leave room for the continuation after the last unit, so it cannot evict a source that already fits.
+				if (jsonChars(out) > (targeted ? 4800 : out.partial ? 3200 : 6000) && index > offset) { out.authoringContract = page = JSON.parse(saved); break; }
+				index++;
+			}
+			if (index < units.length) {
+				page.contractNextOffset = index;
+				page.continuation = codeContinuation(request,{contractOffset:index,revision:out.revision});
+				page.next = "Continue with " + JSON.stringify(page.continuation);
+			}
+			if (targeted && index === units.length) page.complete = true;
+		}
+		if (contract && !targeted && args.contractOffset === undefined && !out.partial &&
+			typeof out.code === "string" && !codeResponseFits(request,out)) {
+			// A source read is primary. Defer its contract to a metadata-only continuation when
+			// even a compact index page would otherwise force a source that fits to be cut.
+			var savedContract = out.authoringContract;
+			var metadataContinuation = codeContinuation(request,{contractOffset:0,revision:out.revision});
 			out.authoringContract = {
-				version: contract.version, detail: "index", availableBlocks: tags,
-				root: contract.root && { tag: contract.root.tag, properties: contract.root.properties, slots: contract.root.slots },
-				blocks: essentials, pages: contract.pages, sources: contract.sources,
-				navigation: contract.navigation && { readParameter: contract.navigation.readParameter },
-				valueSyntax: contract.valueSyntax && { local: contract.valueSyntax.local },
-				portableBlocks: (contract.portableBlocks || []).map(function (block) { return { id: block.id, tag: block.tag }; }),
-				next: "Use code-get({project,sourceFile,contractBlocks:[\"<Tag>\"]}) for a full block contract; use startLine/endLine for the next source page."
+				version:contract.version, detail:"index", contractOffset:0, contractTotal:units.length,
+				contractNextOffset:0, continuation:metadataContinuation,
+				next:"Continue the contract with " + JSON.stringify(metadataContinuation)
 			};
-			if (jsonChars(out) > 6200) {
-				out.authoringContract.blocks = essentials.filter(function (block) {
-					return Object.keys(block.properties).length || block.slots.length;
-				}).slice(0, 8);
-				out.authoringContract.next += " The block summaries are a preview; availableBlocks lists every tag.";
+			if (!codeResponseFits(request,out)) out.authoringContract = savedContract;
+		}
+		if (typeof out.code === "string" && !codeResponseFits(request,out)) {
+			var base = out.startChar || 0, room = Math.max(100, 5700 - (jsonChars(out) - jsonChars(out.code)));
+			var lineEnd = args.startChar === undefined ? source.lastIndexOf("\n", room - 1) : -1;
+			if (lineEnd > 0) {
+				room = lineEnd + 1;
+				out.startLine = out.startLine || 1;
+				out.endLine = out.startLine + source.slice(0,room).split("\n").length - 2;
 			}
-			if (jsonChars(out) > 6200) {
-				delete out.authoringContract.sources;
-				out.authoringContract.next += " Use authoring-tree for related sources.";
+			out.code = source.slice(0, room); out.partial = true;
+			out.startChar = base; out.endChar = base + out.code.length;
+			out.contentLength = out.code.length;
+			if (out.endChar < out.totalContentLength) {
+				out.continuation = out.endLine && args.startChar === undefined
+					? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
+					: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+				out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 			}
-			if (typeof out.code === "string" && jsonChars(out.code) > 6200) {
-				out.authoringContract = {
-					version: contract.version, detail: "index", availableBlocks: tags,
-					pages: contract.pages, blocks: essentials.slice(0, 6),
-					next: "Read the source in bounded chunks; use contractBlocks for a full block contract."
-				};
+			while (jsonChars(out) > 5800 && out.code.length > 100) {
+				out.code = out.code.slice(0,-100);
+				if (args.startChar === undefined) {
+					var lastNewline = out.code.lastIndexOf("\n");
+					if (lastNewline > 0) {
+						out.code = out.code.slice(0,lastNewline+1);
+						out.endLine = (out.startLine || 1) + out.code.split("\n").length - 2;
+					}
+				}
+				out.endChar = base + out.code.length; out.contentLength = out.code.length;
+				out.continuation = out.endLine && args.startChar === undefined
+					? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
+					: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+				out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 			}
 		}
-		delete out.descriptor;
-		delete out.implementationSource;
-		if (typeof out.code === "string" && jsonChars(out) > 6200) {
-			var source = out.code, args = toolArguments(request);
-			if (args.startChar !== undefined && args.revision !== undefined && String(args.revision) !== String(out.revision)) {
-				var stale = new Error("Source changed since the requested revision. Read its current revision before requesting a character range.");
-				stale.code = "CODE_STALE_REVISION";
-				throw stale;
-			}
-			var charOffset = args.startChar === undefined ? 0 : Number(args.startChar);
-			if (!isFinite(charOffset) || charOffset < 0 || Math.floor(charOffset) !== charOffset || charOffset >= source.length) {
-				var invalid = new Error("startChar must be a zero-based offset inside the current source.");
-				invalid.code = "CODE_RANGE_INVALID";
-				throw invalid;
-			}
-			var normalized = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n"), lines = normalized.split("\n");
-			var start = out.startLine || 1, room = Math.max(500, 5900 - (jsonChars(out) - jsonChars(source)));
-			if (args.startChar !== undefined || JSON.stringify(lines[0]).length - 2 > room) {
-				out.code = source.slice(charOffset, charOffset + room);
-				out.partial = true;
-				out.startChar = charOffset;
-				out.endChar = charOffset + out.code.length;
-				out.totalContentLength = source.length;
-				out.contentLength = out.code.length;
-				out.next = out.endChar < source.length ? "Read the next source chunk with code-get({project,sourceFile,startChar:" + out.endChar + ",revision:\"" + out.revision + "\"})." : undefined;
-				while (jsonChars(out) > 6200 && out.code.length > 100) {
-					out.code = out.code.slice(0, out.code.length - 200);
-					out.endChar = charOffset + out.code.length;
-					out.contentLength = out.code.length;
-					out.next = "Read the next source chunk with code-get({project,sourceFile,startChar:" + out.endChar + ",revision:\"" + out.revision + "\"}).";
-				}
-				return out;
-			}
-			var end = 0, used = 0;
-			while (end < lines.length && used + JSON.stringify(lines[end]).length - 1 <= room)
-				used += JSON.stringify(lines[end++]).length - 1;
-			if (!end) { end = 1; lines[0] = lines[0].slice(0, room); }
-			out.code = lines.slice(0, end).join("\n");
-			out.partial = out.partial === true || end < lines.length;
-			out.startLine = start;
-			out.endLine = start + end - 1;
-			out.totalLines = out.totalLines || start + lines.length - 1;
-			out.totalContentLength = out.totalContentLength || source.length;
-			out.contentLength = out.code.length;
-			if (out.endLine < out.totalLines) out.next = "Read the next source page with code-get({project,sourceFile,startLine:" + (out.endLine + 1) + ",endLine:" + Math.min(out.totalLines, out.endLine + 40) + ",revision:\"" + out.revision + "\"}).";
+		if (out.partial && out.endChar < out.totalContentLength && !out.continuation) {
+			out.continuation = out.endLine && args.startChar === undefined
+				? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
+				: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+			out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 		}
 		return out;
 	}

@@ -74,6 +74,10 @@ check(/JavaScript → FlowScript[^\n]*flow:\/\/guide\/start\/syntax/.test(entiti
   'The FlowScript section reference must name start/syntax');
 check(/Your own HTTP contract over entities[^\n]*flow:\/\/guide\/entities\/http/.test(multipageEntry),
   'The HTTP section reference must name entities/http');
+var focusedTree = mcp.qualifyAuthoringResult({project:'App'}, {path:'frontends.svelte.routes.home.Structure',children:[{path:'frontends.svelte.routes.home.Structure.Children'}]});
+check(focusedTree.parentPath==='App::frontends.svelte.routes.home.Structure' &&
+  focusedTree.children[0].parentPath==='App::frontends.svelte.routes.home.Structure.Children',
+  'authoring-tree exposes exact qualified parentPath values for the palette');
 var richBlocks = [];
 for (var n = 0; n < 65; n++) richBlocks.push({tag:'Widget' + n,properties:{id:'identity:literal!',value:'string:literal!',optional:'string:literal'},slots:['Toolbar']});
 var richContract = {ok:true,code:'<FlowComponent />',revision:'r',authoringContract:{version:2,detail:'full',
@@ -81,10 +85,88 @@ var richContract = {ok:true,code:'<FlowComponent />',revision:'r',authoringContr
   pages:new Array(35).join('page/source/'),sources:new Array(35).join('source/path/')}};
 var richReply = mcp.toolResponse({id:1,method:'tools/call',params:{name:'code-get',arguments:{contractDetail:'full'}}},richContract,{}).result;
 check(length(richReply) < 16000, 'Rich full contract exceeds 16000 characters: ' + length(richReply));
-check(richReply.structuredContent.authoringContract.availableBlocks.length === 66 &&
-  richReply.structuredContent.authoringContract.pages === richContract.authoringContract.pages &&
-  richReply.structuredContent.authoringContract.blocks.some(function(block){return block.tag==='Widget0' && block.properties.value && block.slots[0]==='Toolbar';}),
+var richPart = richReply.structuredContent.authoringContract, richTags = [], richExamples = [], richPages = richPart.pages, richPageCount = 0;
+while (true) {
+  richTags = richTags.concat(richPart.availableBlocks || []);
+  richExamples = richExamples.concat(richPart.blocks || []);
+  if (richPart.contractNextOffset === undefined) break;
+  var richNext = mcp.toolResponse({id:1,method:'tools/call',params:{name:'code-get',arguments:{contractDetail:'full',contractOffset:richPart.contractNextOffset,revision:'r'}}},richContract,{}).result;
+  check(length(richNext) < 16000, 'Rich contract continuation exceeds 16000 characters: ' + length(richNext));
+  richPart = richNext.structuredContent.authoringContract;
+  check(++richPageCount < 100, 'Rich contract pagination terminates');
+}
+check(richTags.length === 66 &&
+  richPages === richContract.authoringContract.pages &&
+  richExamples.some(function(block){return block.tag==='Widget0' && block.properties.value && block.slots[0]==='Toolbar';}),
   'Compact contract must keep pages, every tag and essential property and slot examples');
+// A metadata-only response must page every route and block tag in the final MCP envelope.
+var manyPages = [], manyBlocks = [];
+for (var p = 0; p < 120; p++) manyPages.push({id:'page'+p,path:'/page'+p,parameters:[],sourceFile:'src/routes/page'+p+'/+page.flow.svelte'});
+for (var b = 0; b < 80; b++) manyBlocks.push({tag:'Widget'+b,properties:{id:'identity:literal!',optional:'string:literal'},slots:['Children']});
+var metadata = {ok:true,code:'<FlowComponent />',revision:'meta-r',authoringContract:{version:2,detail:'full',pages:manyPages,blocks:manyBlocks}};
+var seenPages = {}, seenTags = {}, metaOffset = 0, metaCount = 0;
+do {
+  var metaRequest = {id:1,method:'tools/call',params:{name:'code-get',arguments:{project:'App',sourceFile:'src/routes/+page.flow.svelte',contractOffset:metaOffset,revision:'meta-r'}}};
+  var metaReply = mcp.toolResponse(metaRequest,metadata,{}).result;
+  check(length(metaReply)<16000,'metadata page exceeds final envelope budget: '+length(metaReply));
+  var metaPart = metaReply.structuredContent.authoringContract;
+  (metaPart.pages||[]).forEach(function(page){seenPages[page.id]=true;});
+  (metaPart.availableBlocks||[]).forEach(function(tag){seenTags[tag]=true;});
+  if (metaPart.contractNextOffset === undefined) break;
+  check(metaPart.continuation.arguments.project==='App' && metaPart.continuation.arguments.sourceFile==='src/routes/+page.flow.svelte' && metaPart.continuation.arguments.revision==='meta-r',
+    'metadata continuation preserves selector and revision');
+  metaOffset=metaPart.contractNextOffset;
+  check(++metaCount<100,'metadata pagination terminates');
+} while (true);
+check(Object.keys(seenPages).length===120 && Object.keys(seenTags).length===80,'metadata pages and available blocks are recoverable');
+// Explicitly requested contracts retain optional properties, events and snippet parameters across pages.
+var requestedBlocks=[];
+for(var t=0;t<5;t++) {
+  var properties={}; for(var j=0;j<60;j++) properties['optional'+j]='string:literal';
+  requestedBlocks.push({tag:'Entity'+t,properties:properties,events:['OnLoaded','OnSelectionChange'],slots:['Toolbar'],snippets:{Toolbar:['row','selected','item']}});
+}
+var targetedValue={ok:true,code:new Array(19000).join('x'),revision:'target-r',authoringContract:{version:2,detail:'blocks',blocks:requestedBlocks}};
+var targetOffset=0, contractPages=0, recovered={};
+do {
+  var targetRequest={id:1,method:'tools/call',params:{name:'code-get',arguments:{project:'App',sourceFile:'src/routes/+page.flow.svelte',contractBlocks:['Entity0','Entity1','Entity2','Entity3','Entity4'],contractOffset:targetOffset,revision:'target-r'}}};
+  var targetReply=mcp.toolResponse(targetRequest,targetedValue,{}).result;
+  check(length(targetReply)<16000,'targeted contract exceeds final envelope budget: '+length(targetReply));
+  var targetPart=targetReply.structuredContent;
+  if (targetOffset===0) check(/Events.*snippets/.test(targetPart.authoringContract.syntax),'targeted contract explains events and snippets');
+  check(targetPart.code===undefined && targetPart.sourceOmitted===true,'targeted contracts omit source body');
+  targetPart.authoringContract.blocks.forEach(function(block){
+    var found=recovered[block.tag]||(recovered[block.tag]={properties:{},events:[],slots:[],snippets:{}});
+    Object.keys(block.properties||{}).forEach(function(key){found.properties[key]=block.properties[key];});
+    found.events=found.events.concat(block.events||[]); found.slots=found.slots.concat(block.slots||[]);
+    Object.keys(block.snippets||{}).forEach(function(key){found.snippets[key]=block.snippets[key];});
+  });
+  if (targetPart.authoringContract.contractNextOffset===undefined) break;
+  targetOffset=targetPart.authoringContract.contractNextOffset;
+  check(++contractPages<100,'targeted contract pagination terminates');
+} while(true);
+check(contractPages>0,'large targeted contract is paginated');
+requestedBlocks.forEach(function(block){var got=recovered[block.tag];check(got && Object.keys(got.properties).length===60 && got.events.length===2 && got.snippets.Toolbar.length===3,
+  'targeted contract complete for '+block.tag);});
+['flow://guide/entities-model/format','flow://guide/authoring/expressions','flow://guide/start-rules/design',
+ 'flow://guide/entities-model/schema','flow://guide/entities-widgets/table'].forEach(function(uri){
+  var doc=read(uri), targets=doc.match(/flow:\/\/guide\/[A-Za-z0-9_.\/-]+/g)||[];
+  check(targets.length>0,uri+' must name an explicit guide destination');
+  targets.forEach(function(target){check(read(target).length>0,uri+' destination '+target+' is served alone');});
+});
+check(read('flow://guide/entities-model/format').indexOf('**Unique fields** below')<0,'format guide has no local-only unique link');
+check(read('flow://guide/entities-widgets/table').indexOf('flow://guide/multipage-entities/operations')>=0,'table export points to operations');
+// The dispatcher can rewrite tool names internally; continuations keep the caller's original selector.
+[{original:{name:'code-get',arguments:{project:'App',qname:'App.LongFlow',revision:'flow-r'}},internal:'flow-code-get',selector:'qname',expected:'App.LongFlow'},
+ {original:{name:'code-get',arguments:{project:'App',block:'app.longBlock',revision:'flow-r'}},internal:'flow-block-code-get',selector:'block',expected:'app.longBlock'},
+ {original:{name:'code-get',arguments:{project:'App',sourceFile:'src/routes/+page.flow.svelte',revision:'flow-r'}},internal:'frontend-svelte-code-get',selector:'sourceFile',expected:'src/routes/+page.flow.svelte'}]
+ .forEach(function(item){
+   var request={id:1,method:'tools/call',params:{name:item.internal,arguments:item.original.arguments},__codeOriginal:item.original};
+   var reply=mcp.toolResponse(request,{ok:true,revision:'flow-r',code:new Array(19000).join('x')},{}).result;
+   check(length(reply)<16000,'backend/source continuation stays under budget');
+   var next=reply.structuredContent.continuation;
+   check(next && next.tool==='code-get' && next.arguments[item.selector]===item.expected && next.arguments.revision==='flow-r' && next.arguments.startChar>0,
+     'continuation preserves original '+item.selector+' selector and revision');
+ });
 var list = call('flow-resource-search', {project:'lib_flow_mcp',projectDir:root,query:'EntityTable business screens',limit:10});
 var found = list.structuredContent && list.structuredContent.matches || list.structuredContent && list.structuredContent.resources || [];
 check(found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }),
@@ -143,6 +225,21 @@ try {
   var picked = call('code-get', {project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,contractBlocks:['Text']}).structuredContent;
   check(picked.authoringContract && picked.authoringContract.blocks.some(function(block) {return block.tag === 'Text' && block.properties.text;}),
     'A targeted code-get must retain the full block contract');
+  check(picked.authoringContract.portableBlocks.some(function(block) {return block.id === 'date.now' && block.tag;}),
+    'A targeted code-get must retain the portable block index');
+  var absoluteSource = 'alpha\nbeta\n' + new Array(19000).join('z') + '\nomega';
+  FU.writeStringToFile(new File(project, page), absoluteSource, 'UTF-8');
+  var lineChunk = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startLine:3,endLine:3});
+  check(length(lineChunk)<16000 && lineChunk.structuredContent.startChar===11 && lineChunk.structuredContent.totalContentLength===absoluteSource.length,
+    'line-range character offsets refer to the full source');
+  var afterLine = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startChar:lineChunk.structuredContent.endChar,revision:lineChunk.structuredContent.revision});
+  check(afterLine.structuredContent.startChar===lineChunk.structuredContent.endChar && afterLine.structuredContent.code===absoluteSource.slice(lineChunk.structuredContent.endChar,afterLine.structuredContent.endChar),
+    'character continuation resumes exactly after a line-range chunk');
+  FU.writeStringToFile(new File(project,page),'short', 'UTF-8');
+  var staleChar = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startChar:1,revision:lineChunk.structuredContent.revision});
+  check(staleChar.isError===true && /STALE_REVISION/.test(staleChar.structuredContent.error.code),
+    'stale character range is rejected after the source becomes short');
+  FU.writeStringToFile(new File(project,page),source,'UTF-8');
   var legacyResponse = call('frontend-svelte-code-get', {projectDir:String(project.getCanonicalPath()),sourceFile:page});
   var legacy = legacyResponse.structuredContent;
   check(legacy.authoringContract && legacy.authoringContract.blocks && legacy.authoringContract.blocks.length,

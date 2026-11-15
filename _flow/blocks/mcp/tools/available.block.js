@@ -473,6 +473,10 @@ const _meta = {
 					items: { type: "string" },
 					description: "Canonical frontend source only: the full contracts of these blocks only (tags such as DataTable, or portable ids), for a block the starter omits; cheaper than contractDetail full."
 				};
+				schema.properties.contractOffset = {
+					type: "integer",
+					description: "Continue a paginated authoring contract at the returned contractNextOffset; pass the same selector, contractBlocks and revision."
+				};
 					schema.properties.revision = {
 						type: "string",
 						description: "For a bounded canonical source read, optionally require this current revision."

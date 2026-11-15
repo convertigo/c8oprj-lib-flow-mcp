@@ -18,6 +18,6 @@ A condition, a value or an expression property is a small JavaScript subset; any
   `padStart`...; lists `includes`, `indexOf`, `slice`, `join`, `at`, `length`; numbers `toFixed`.
 - **Regex:** `text.match({ text, pattern: "^[0-9]+$", flags: "i" })` (then `.matched`, `.groups`),
   `text.replace({ ..., regex: true })` (`$1` in the replacement), `text.split({ ..., regex: true })`.
-- **Refused, with the block to write instead:** a regular expression literal `/x/` (the regex blocks above), a JavaScript `while`, `for` or `do` loop (the `while` and `forEach` blocks,
-  below), `Math.random` (`crypto.random`), `Date.now` (`date.now`), `JSON.*` and `Object.*` (`json.*`, `object.*`),
+- **Refused, with the block to write instead:** a regular expression literal `/x/` (the regex blocks above), a JavaScript `while`, `for` or `do` loop (the `while` and `forEach` blocks in
+  `flow://guide/authoring-collections`), `Math.random` (`crypto.random`), `Date.now` (`date.now`), `JSON.*` and `Object.*` (`json.*`, `object.*`),
   `push` on a list (`json.push`).

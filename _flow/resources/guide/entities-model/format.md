@@ -30,6 +30,8 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
   `Activable` and `Immuable` take no parameter.
   `Échéance: {reference, delay: {months, days}, timeZone, inclusive, upToDate, due}`
   computes `dateEcheance` and `statut` in SQL (filter, sort, `entity.count`);
+  les dates de référence sont publiques : ni `secret: true`, ni `visibleTo`,
+  y compris quand plusieurs dates figurent dans `reference`.
   `upToDate`/`due` rename the codes `aJour`/`aRelancer` (e.g. `A_JOUR`).
 - **Project traits:** `"traits": {"Tagged": {"parameters": {"tag": "tag"}, "fields": {"$tag": {"type": "string", "maxLength": 40}}}}`
   at the model level. `parameters` gives each parameter its default, taken by a
@@ -51,7 +53,7 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
   create needs a `default`, an `auto` rule or the policy create scope (a hook
   cannot fill it); otherwise the model is refused.
 - **Unique:** `"unique": true` keeps one row per value of a field; see
-  **Unique fields** below.
+  **Unique fields** in `flow://guide/entities-model/unique`.
 
 **Natural key.** An entity may declare a natural identity, such as
 `"identity": ["email"]` with a `string` field: `entity.read`, `entity.delete`
@@ -61,6 +63,6 @@ create on such an entity answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` (400),
 after the access policy and before any write; it names only the identity
 fields the actor sees. To create rows today, give the entity the generated
 identity (declare no identity: an int64 `id`) and declare the natural key as
-an ordinary field with `unique: true` (**Unique fields** below), read with
+an ordinary field with `unique: true` (**Unique fields** in `flow://guide/entities-model/unique`), read with
 `entity.list` and a filter. Stay under the access policy: a SQL write beside
 it would be a second access rule, without the audit or the traits.

@@ -39,4 +39,4 @@ opening a local form. Typed URL arrays belong to the separate route change;
 never count the characters of a serialized query parameter. Every business
 command must authorize every key on the server. `exportable` downloads the
 formatted current page only; complete exports use a checked server command
-from Toolbar, as in `flow://guide/multipage-entities/pages`.
+from Toolbar, as in `flow://guide/multipage-entities/operations`.

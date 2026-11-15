@@ -1266,10 +1266,14 @@ const _meta = {
 			if (id.indexOf("flow.block.") !== 0 || !tag || seen[id]) return;
 			var shortId = id.substring("flow.block.".length);
 			var key = lower.indexOf(tag.toLowerCase()) !== -1 ? tag.toLowerCase() : lower.indexOf(shortId.toLowerCase()) !== -1 ? shortId.toLowerCase() : "";
-			if (!key) return;
 			seen[id] = true;
-			found[key] = true;
-			portableBlocks.push({ id: shortId, tag: tag, description: String(item.description || ""), properties: compactProperties(item.properties) });
+			var portable = { id: shortId, tag: tag };
+			if (key) {
+				found[key] = true;
+				portable.description = String(item.description || "");
+				portable.properties = compactProperties(item.properties);
+			}
+			portableBlocks.push(portable);
 		});
 		return {
 			version: 2,
@@ -1477,7 +1481,7 @@ const _meta = {
 			if (askedEnd !== endLine) result.note = "endLine " + askedEnd + " is past the end of the source: bounded to " + endLine + ", its last line.";
 			result.totalContentLength = resource.contentLength;
 			result.partial = true;
-			result.next = "Use this revision with code-patch, or request another bounded range. Escalate to full code-get only when context is ambiguous.";
+			result.fullCode = String(resource.content || ""); // Internal: the MCP response layer needs absolute offsets.
 		}
 		if (includeContract === true && !hasStartLine && !isStylesheet(path)) {
 			var contract = starterContract(ctx, props);

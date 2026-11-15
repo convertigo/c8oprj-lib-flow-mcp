@@ -19,7 +19,7 @@ Read for HTTP/CORS, secrets, configuration and application design.
   `=Origin` or `*` on an application with a session cookie: any site could
   call it in the name of a signed-in user. List the origins (`#`) when a
   separate front end needs them.
-- For sign-in, CSV, jobs and audit, see Authentication and add-ons above.
+- For sign-in, CSV, jobs and audit, see `flow://guide/start-rules/workspace` for authentication and add-ons.
 - Keep a Flow `private` unless a frontend or an external client calls it:
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but

@@ -14,7 +14,7 @@ function fails(args, code) {
 }
 ["flow-block-code-get","flow-code-get","code-get"].forEach(function(name) {
   var value = read(name,{block:"sample.probe",startLine:3,endLine:4,revision:"rev"});
-  assert(value.code === "function probe() {\n  return 17;",name + " ignored the requested lines: " + value.code);
+  assert(value.code === "function probe() {\r\n  return 17;",name + " ignored the requested lines: " + JSON.stringify(value.code));
   assert(value.revision === "rev" && value.partial === true && value.startLine === 3 && value.endLine === 4,name+" lost range/revision metadata");
   assert(value.totalLines === 6 && value.totalContentLength === full.code.length && value.contentLength === value.code.length,name+" lost source dimensions");
   assert(value.descriptor === undefined && value.implementationSource === undefined,name+" leaked full source metadata into bounded read");

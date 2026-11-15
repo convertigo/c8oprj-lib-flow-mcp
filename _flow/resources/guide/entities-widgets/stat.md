@@ -7,10 +7,11 @@ Read for dashboard counts, sums and grouped breakdowns.
 `EntityStat` shows in a StatCard the number of rows the session sees, with one
 `count` request through the gateway (policy, scope and filter as EntityTable),
 without listing rows or writing a Flow. Search the palette for **compteur**.
-`sum="amount"` (or `avg`) totals an int64 or decimal field instead, in one
-`aggregate` request (field listed in `gateway.aggregate`; in a Flow,
+`sum="amount"` (or `avg`) totals an `int64` or `decimal` amount field
+instead, in one `aggregate` request. List the field in `gateway.aggregate`;
+the gateway accepts these numeric measure fields. In a Flow,
 `entity.aggregate({entity, checkAccess: true, sum: "amount", options})` gives
-`{count, sum}`); `currency="USD"` shows an amount, as a model field `currency` does.
+`{count, sum}`; `currency="USD"` shows an amount, as a model field `currency` does.
 
 ```svelte
 <script module>export const _flow = { sourceVersion: 2, page: { id: "myPosts" } };</script>

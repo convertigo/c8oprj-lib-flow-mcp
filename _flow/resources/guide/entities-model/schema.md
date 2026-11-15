@@ -53,7 +53,7 @@ a separate HTTP entry point verifies ADMIN and uses `requestable.call`.
 The configured database account and its
 DDL/DML grants are the production boundary; use a secret password symbol and
 a restricted account, not root. Missing CREATE rights return a clear
-ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.
+ENTITY_SCHEMA_MISSING without the DDL plan; see the backend preview boundary in `flow://guide/entities-actions`.
 
 Declare `demo: {dataFile: "_flow/resources/entities/demo.json"}` in the model.
 The JSON seed maps entity names to rows using **field names**, not SQL columns;
