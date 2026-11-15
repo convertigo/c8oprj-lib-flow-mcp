@@ -84,6 +84,10 @@ transaction. A manual run of a job for the ADMIN is a separate hidden Flow that
 checks the ADMIN role, then calls the private job with `requestable.call`;
 never make the job itself public or hidden.
 
+For entity writes, use `flow://guide/entities/jobs` and
+`flow://guide/entities/jobs-runner`: atomic reminder preparation, bounded paging,
+manual role guard, replay and partial-failure recovery.
+
 ## Audit
 
 `Journalisé` allowlists only the model fields shown in `flow://guide/multipage-entities`. The library writes

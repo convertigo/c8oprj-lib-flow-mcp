@@ -76,3 +76,5 @@ For an imposed HTTP contract, keep entities and put the translation in public Fl
 - `flow://guide/entities-auth` — open for sign-in, session and the actor provider.
 - `flow://guide/entities-widgets` — open before an entity-backed page; it names the exact widget drawers.
 - `flow://guide/entities-actions` — open for atomic business actions and backend preview limits.
+
+- `flow://guide/entities/jobs` — open for private reminder jobs, replay and a shared manual action.
