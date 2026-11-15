@@ -5523,10 +5523,10 @@
 			if (targeted) {
 				(contract.portableBlocks || []).forEach(function (block) { units.push({kind:"portable",value:block}); });
 				blocks.forEach(function (block) {
-					units.push({ kind: "block", tag: block.tag });
+					// The first unit for a block carries its structural contract. A page cut
+					// among properties must not make Children or OnSubmit look absent.
+					units.push({kind:"block",tag:block.tag,slots:block.slots || [],events:block.events || []});
 					Object.keys(block.properties || {}).forEach(function (key) { units.push({kind:"property",tag:block.tag,key:key,value:block.properties[key]}); });
-					(block.slots || []).forEach(function (slot) { units.push({kind:"slot",tag:block.tag,value:slot}); });
-					(block.events || []).forEach(function (event) { units.push({kind:"event",tag:block.tag,value:event}); });
 					Object.keys(block.snippets || {}).forEach(function (name) { units.push({kind:"snippet",tag:block.tag,key:name,value:block.snippets[name]}); });
 				});
 			} else {
@@ -5573,7 +5573,7 @@
 				else if (unit.kind === "blockSummary") page.blocks.push(unit.value);
 				else {
 					for (j=0;j<page.blocks.length;j++) if (page.blocks[j].tag === unit.tag) { block=page.blocks[j]; break; }
-					if (!block) { block={tag:unit.tag,properties:{},slots:[],events:[],snippets:{}}; page.blocks.push(block); }
+					if (!block) { block={tag:unit.tag,properties:{},slots:unit.slots || [],events:unit.events || [],snippets:{}}; page.blocks.push(block); }
 					if (unit.kind === "property") block.properties[unit.key]=unit.value;
 					else if (unit.kind === "slot") block.slots.push(unit.value);
 					else if (unit.kind === "event") block.events.push(unit.value);
@@ -5586,6 +5586,11 @@
 				if (jsonChars(out) > (targeted ? 4800 : out.partial ? 3200 : 6000) && index > offset) { out.authoringContract = page = JSON.parse(saved); break; }
 				index++;
 			}
+			if (targeted) page.blocks.forEach(function(block) {
+				var before = units.slice(0, offset).some(function(unit) { return unit.tag === block.tag; });
+				var after = units.slice(index).some(function(unit) { return unit.tag === block.tag; });
+				if (before || after) block.incomplete = true;
+			});
 			if (index < units.length) {
 				page.contractNextOffset = index;
 				page.continuation = codeContinuation(request,{contractOffset:index,revision:out.revision});

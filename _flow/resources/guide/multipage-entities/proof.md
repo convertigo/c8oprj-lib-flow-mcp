@@ -12,6 +12,15 @@ rollback, and logout with the old cookie. A page guard complements server checks
 Use `frontend-svelte-action` dev.open, then one relayed verifier for the roles;
 a successful build or HTTP 200 alone is not interaction proof. Sign-in errors
 return HTTP 200 with an `error` envelope: show `Status`, not only a result field.
+In that verifier, group visible assertions into one continuous journey:
+fresh-session sign-in and identity, each list with expected rows, a detail
+page, new row appearing after add, changed value after edit, and changed
+aggregate after recalculation. Capture the failure message for an invalid
+login in a separate fresh session. At each transition wait for the expected
+element or response, using the browser tool's documented selector and arguments;
+avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
+checks, and report which visible assertion failed instead of treating an HTTP
+200 or a rendered anonymous page as proof of the authenticated path.
 
 Keep sources in Git and runtime data out. Run `flow-block-mock-list`, build with
 `frontend-svelte-action` build, try the published URL, and run

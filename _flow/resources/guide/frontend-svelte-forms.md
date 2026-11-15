@@ -30,6 +30,44 @@ its `@event.value` keeps the line breaks. `SearchField`, `ChatComposer`,
 `Button type="submit"` in a `Form` and run the save from `Form` > `Events` >
 `OnSubmit`, reading the page states.
 
+For multi-page sign-in, first create skeleton sources for every target Page
+with stable `_flow.page.id` values; then add links and submit navigation; then
+fill the pages with content. This complete login Form keeps both fields in
+State. Its `Children` slot is required, and `Status` belongs in the page
+structure beside the Form, where a failed `.SignIn` remains visible:
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2, page: { id: "home" } };</script>
+<FlowComponent $$id="loginPage">
+  <Variables>
+    <State $$id="email" type="string" value="" />
+    <State $$id="password" type="string" value="" />
+  </Variables>
+  <Structure>
+    <Form $$id="login" ariaLabel="Sign in">
+      <Children>
+        <Input $$id="emailInput" label="Email" type="email" bind:value={page.email} required={true} />
+        <Input $$id="passwordInput" label="Password" type="password" bind:value={page.password} required={true} />
+        <Button $$id="submitLogin" label="Sign in" type="submit" />
+      </Children>
+      <Events><OnSubmit $$id="submit"><Actions>
+        <CallSequence $$id="loginCall" requestable=".SignIn">
+          <Variables>
+            <Variable name="user" value="@page.email" />
+            <Variable name="password" value="@page.password" />
+          </Variables>
+        </CallSequence>
+      </Actions></OnSubmit></Events>
+    </Form>
+    <Status $$id="loginStatus" actionId="loginCall" />
+  </Structure>
+</FlowComponent>
+```
+
+After the destination Page exists, add `Navigate page="mine"` after
+`loginCall` in the same submit chain. Navigate only on success; test a failed
+login and the fresh browser session before treating the page as authenticated.
+
 An `AlertDialog` runs the confirmed command from `OnConfirm` (`@event.value`
 is `"confirm"`) and a refusal from `OnCancel` (`"cancel"`, `"escape"` or
 `"backdrop"`); `OnClose` runs each time it closes (`@event.value.reason`).

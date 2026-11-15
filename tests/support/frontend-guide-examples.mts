@@ -70,6 +70,15 @@ for (const guide of ["frontend-svelte", "multipage-roles"]) {
   });
 }
 
+test("the documented login Form compiles with Children, bound State and visible Status", async t => {
+  const page = await example("frontend-svelte", "loginPage");
+  const f = await layoutPageFixture(t, blankLayout, page, { ".SignIn": { user: "demo@acme.test" } });
+  assert.deepEqual(f.doc.diagnostics.filter((d: any) => d.level === "error"), []);
+  assert.match(page, /<Form[^>]*>[\s\S]*<Children>[\s\S]*bind:value=\{page\.email\}[\s\S]*bind:value=\{page\.password\}/);
+  assert.match(page, /<Status[^>]*actionId="loginCall"/);
+  assert.deepEqual(f.errors, []);
+});
+
 test("the documented server table sends paging, filter and sort parameters to the Flow", async t => {
   const page = await example("frontend-svelte", "serverBookings");
   const rows = (start: number) => Array.from({ length: 10 }, (_, index) => ({ id: start + index, room: `Room ${start + index}` }));

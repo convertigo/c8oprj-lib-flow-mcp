@@ -148,6 +148,32 @@ It runs in Studio; on a server it is refused unless the server symbol
 Neither request input nor project config enables it. The server log records the
 actor, instant and actual number of seeded rows. Database grants still apply.
 
+If that server symbol is disabled, **announce the fallback before running it**:
+"I will add missing demo rows through a private, idempotent `entity.save` seed;
+existing business rows will remain." Run it from Studio/`code-run`, never from
+an HTTP request or page. After `entity.initialize({})`, list by a stable demo
+field and create only when absent; for example, a Room seed:
+
+```javascript
+const _flow = { sourceVersion: 2, accessibility: "private" }
+
+function seed_demo_room({ input, config, result }) {
+  entity.initialize({})
+  local.existing = entity.list({ entity: "Room", options: { filter: { name: "Room A" }, limit: 1 } })
+  if (local.existing.rows.length == 0) {
+    result.room = entity.save({ entity: "Room", values: { name: "Room A" } })
+  } else {
+    result.room = local.existing.rows[0]
+  }
+}
+```
+
+Repeat the lookup/save for each demo row using stable business fields, in
+relation order; retain returned keys for dependent rows. Make seeded labels
+unique in the demo plan and rerun to confirm zero additional rows. This does
+not delete user data or bypass hooks. `demoReset` is still the explicit option
+when a destructive reset is authorized and enabled by the server.
+
 Keep the optional demo-login switch below as an additional application condition.
 For an ADMIN button, use a separate hidden Flow that verifies ADMIN before
 `requestable.call` to this private Flow; a switch alone is never a role check.

@@ -68,6 +68,21 @@ a pending preparation, never an unchanged active viewer.
    Never claim a color, layout, timer, navigation or viewer state that was
    not observed.
 
+For a multi-page build, make the target-Page step above three passes: create
+minimal skeletons for **all** Pages with their final ids, add links only after
+every target exists, then fill each Page with its full content. Validate after
+each pass.
+
+For a multi-page application, group the browser proof by visible assertions:
+open a fresh session, submit login and assert the signed-in identity; visit
+each list and assert its rows; open a record and assert its details; add one
+record and assert it appears; edit it and assert the new value; trigger a
+recalculation and assert the updated total. Also assert a failed login displays
+its error. Wait for the relevant element or backend response at each step,
+using the browser tool's actual selector/target and parameter contract; avoid
+fixed sleeps. One coherent verifier run can collect these assertions and
+screenshots without restarting the viewer between pages.
+
 A French application sets `app: { locale: "fr-FR" }` in the `_flow` header of
 its entry source: `DataTable`, `Select` and the other controls then show French
 texts and dates (the default locale is `en`).

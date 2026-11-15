@@ -94,6 +94,11 @@ supply values through `Params` and `Query`:
 Write the target Page before the Page that navigates to it; a `Navigate` to a
 Page that does not exist yet fails with `FRONTEND_NAVIGATE_PAGE_UNKNOWN`.
 
+For several routes, build in three passes: create a minimal skeleton source
+for **every** Page with its final `_flow.page.id`; then add `LinkButton` and
+`Navigate` references; finally add forms, data and full content. Validate
+each pass.
+
 The generator resolves and encodes the URL. Do not interpolate paths: a
 native `<a href={"/product/" + item.id}>` leaves an application served under
 its base (`DisplayObjects/mobile/`), and a native `<a>` does not resolve `~/`.

@@ -14,6 +14,12 @@ chain `CallSequence requestable=".DemoLogin"` (account only), then `Navigate`;
 do not pass a role. For logout, pass `__disableAutologin=true` so the SDK cannot
 replay sign-in. Navigate only in the successful login/logout action chain.
 
+Make those Pages in three passes: first minimal skeletons with final
+`_flow.page.id` values and visible placeholders, then links to the existing
+Pages, then guarded widgets, forms and data. Validate each pass. For
+account/password sign-in, use the exact `Form` with `<Children>`, bound
+`Input` States and adjacent `Status` in `flow://guide/frontend-svelte-forms`.
+
 <!-- example: session-layout -->
 ```svelte
 <script module>export const _flow = { sourceVersion: 2 };</script>

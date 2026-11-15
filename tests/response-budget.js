@@ -176,6 +176,40 @@ do {
 check(contractPages>0,'large targeted contract is paginated');
 requestedBlocks.forEach(function(block){var got=recovered[block.tag];check(got && Object.keys(got.properties).length===60 && got.events.length===2 && got.snippets.Toolbar.length===3,
   'targeted contract complete for '+block.tag);});
+// It126: EntityStat was cut before sum, and Form appeared with slots=[] although
+// its component has Children and OnSubmit. Each block announces structure on
+// its first page, while a cut block says it is incomplete.
+var statProperties={}; for(var sp=0;sp<400;sp++) statProperties['field'+sp]='string:literal';
+statProperties.sum='decimal:expression';
+var edgeBlocks=[{tag:'EntityStat',properties:statProperties,slots:[],events:['OnLoaded']},
+  {tag:'Form',properties:{ariaLabel:'string:binding'},slots:['Children','Events'],events:['OnSubmit']}];
+var edgeValue={ok:true,revision:'it126-r',authoringContract:{version:2,blocks:edgeBlocks}};
+var edgeOffset=0, edgePages=0, firstSeen={}, edgeRecovered={};
+do {
+  var edgeRequest={id:1,method:'tools/call',params:{name:'code-get',arguments:{project:'App',contractBlocks:['EntityStat','Form'],contractOffset:edgeOffset,revision:'it126-r'}}};
+  var edgeReply=mcp.toolResponse(edgeRequest,edgeValue,{}).result;
+  check(length(edgeReply)<16000,'it126 contract page exceeds budget');
+  var edgePart=edgeReply.structuredContent.authoringContract;
+  edgePart.blocks.forEach(function(block){
+    if(!firstSeen[block.tag]) {
+      firstSeen[block.tag]=block;
+      if(block.tag==='Form') check(block.slots.indexOf('Children')>=0 && block.events.indexOf('OnSubmit')>=0,
+        'Form first page announces Children and OnSubmit');
+      if(block.tag==='EntityStat') check(block.incomplete===true && !block.properties.sum,
+        'EntityStat first page announces that sum may follow: '+JSON.stringify({incomplete:block.incomplete,count:Object.keys(block.properties).length,sum:block.properties.sum,offset:edgeOffset}));
+    }
+    var properties=edgeRecovered[block.tag]||(edgeRecovered[block.tag]={});
+    Object.keys(block.properties||{}).forEach(function(key){properties[key]=block.properties[key];});
+  });
+  if(edgePart.contractNextOffset===undefined) break;
+  check(edgePart.continuation.arguments.contractBlocks.join(',')==='EntityStat,Form' &&
+    edgePart.continuation.arguments.contractOffset===edgePart.contractNextOffset,
+    'it126 cursor retains the selected contractBlocks');
+  edgeOffset=edgePart.contractNextOffset;
+  check(++edgePages<100,'it126 contract pagination terminates');
+} while(true);
+check(firstSeen.Form && edgeRecovered.EntityStat.sum==='decimal:expression' && edgePages>0,
+  'it126 Form structure and EntityStat sum are recoverable');
 var choices=[]; for(var c=0;c<2000;c++) choices.push('choice'+('0000'+c).slice(-4));
 var oversizedContract={ok:true,code:'source',revision:'enum-r',authoringContract:{version:2,
   blocks:[{tag:'Huge',properties:{choice:'enum:'+choices.join('|')},events:['OnChange'],snippets:{Slot:['item']}}],
