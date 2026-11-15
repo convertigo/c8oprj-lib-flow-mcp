@@ -11,7 +11,9 @@ it reloads the active role and ignores client-supplied identity.
 <!-- example: manual-reminder -->
 ```javascript
 const _flow = {
-  sourceVersion: 2, accessibility: "hidden", authenticatedContextRequired: true,
+  sourceVersion: 2,
+  accessibility: "hidden",
+  authenticatedContextRequired: true,
   inputs: { key: { type: "object" } },
 }
 
@@ -56,10 +58,13 @@ function RunReminders({ input, config, result }) {
     error: "local.failure",
     $$try: function () {
       while({
-        condition: local.more && local.pages < 5, maxIterations: 5, timeoutMs: 60000,
+        condition: local.more && local.pages < 5,
+        maxIterations: 5,
+        timeoutMs: 60000,
         $$nodes: function () {
           local.page = entity.list({
-            entity: "Task", checkAccess: false,
+            entity: "Task",
+            checkAccess: false,
             options: { filter: { statut: "aRelancer" }, orderBy: "id", limit: 200, offset: local.offset },
           })
           forEach({
@@ -77,12 +82,17 @@ function RunReminders({ input, config, result }) {
       })
     },
     $$catch: function () {
-      log({ level: "error", message: "REMINDER_JOB_FAILED", data: { scanned: local.scanned, prepared: local.prepared } })
+      log({
+        level: "error",
+        message: "REMINDER_JOB_FAILED",
+        data: { scanned: local.scanned, prepared: local.prepared },
+      })
       throw { code: "REMINDER_FAILED", message: "Operation failed" }
     },
   })
   log({
-    level: "info", message: "REMINDER_JOB_FINISHED",
+    level: "info",
+    message: "REMINDER_JOB_FINISHED",
     data: { scanned: local.scanned, prepared: local.prepared, complete: !local.more },
   })
   return { enabled: true, scanned: local.scanned, prepared: local.prepared, complete: !local.more }

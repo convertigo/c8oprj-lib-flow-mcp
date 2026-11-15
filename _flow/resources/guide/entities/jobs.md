@@ -63,20 +63,27 @@ function PrepareReminder({ input, config, result }) {
     connection: "app",
     $$nodes: function () {
       local.task = entity.read({ entity: "Task", checkAccess: false, key: input.key })
-      if (local.task.values.statut === "aRelancer" && local.task.values.preparedDue !== local.task.values.dateEcheance) {
+      if (local.task.values.statut === "aRelancer" && local.task.values.preparedDue !==
+        local.task.values.dateEcheance) {
         local.replay = String(local.task.key.id) + ":" + local.task.values.dateEcheance
         local.existing = entity.list({
-          entity: "Reminder", checkAccess: false, options: { filter: { replayKey: local.replay }, limit: 1 },
+          entity: "Reminder",
+          checkAccess: false,
+          options: { filter: { replayKey: local.replay }, limit: 1 },
         })
         if (local.existing.rows.length === 0) {
           local.reminder = entity.save({
-            entity: "Reminder", checkAccess: false,
+            entity: "Reminder",
+            checkAccess: false,
             values: { task: local.task.key.id, replayKey: local.replay, due: local.task.values.dateEcheance },
           })
           local.prepared = true
         }
         local.saved = entity.save({
-          entity: "Task", checkAccess: false, key: local.task.key, revision: local.task.revision,
+          entity: "Task",
+          checkAccess: false,
+          key: local.task.key,
+          revision: local.task.revision,
           values: { preparedDue: local.task.values.dateEcheance },
         })
       }
