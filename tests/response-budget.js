@@ -61,12 +61,47 @@ do {
   var skillResult=call('flow-resource-get',skillArgs);
   check(length(skillResult)<16000,'flow-resource-get skill page exceeds budget');
   var skillPage=skillResult.structuredContent;
+  check(skillPage && typeof skillPage.text==='string','flow-resource-get skill text missing: '+JSON.stringify(skillResult).slice(0,1000));
   toolSkill+=skillPage.text;
   skillArgs=skillPage.continuation && skillPage.continuation.arguments;
   check(++toolSkillPages<30,'flow-resource-get skill pagination terminates');
 } while(skillArgs);
 check(toolSkill===String(FU.readFileToString(new File(root,'_flow/resources/skills/convertigo-flow-mcp/SKILL.md'),'UTF-8')),
   'flow-resource-get skill continuation reconstructs the complete skill');
+var cacheUri='flow://skills/convertigo-flow-mcp/SKILL';
+var cacheFullText=String(FU.readFileToString(new File(root,'_flow/resources/skills/convertigo-flow-mcp/SKILL.md'),'UTF-8'));
+function resourceResponse(params) {
+  var request={jsonrpc:'2.0',id:31,method:'resources/read',params:params};
+  var run=JSON.parse(engine.run(JSON.stringify({flowSource:server,includeTrace:false,input:{request:JSON.stringify(request)}})));
+  check(run.ok && run.result && run.result.result && run.result.result.contents,'resources/read cache fixture');
+  return run.result.result;
+}
+function checkBoundedResource() {
+  var result=resourceResponse({uri:cacheUri});
+  check(length(result)<16000 && result.contents[0].text.length<cacheFullText.length &&
+    result.contents[0].continuation && result.contents[0].startChar===0,
+    'ordinary resources/read stays paged across cache variants: '+length(result));
+}
+function checkBoundedTool() {
+  var result=call('flow-resource-get',{uri:cacheUri});
+  check(length(result)<16000 && result.structuredContent.text.length<cacheFullText.length &&
+    result.structuredContent.continuation,
+    'ordinary flow-resource-get stays paged across cache variants: '+length(result));
+}
+['tool-first','resource-first'].forEach(function(order) {
+  mcp._stableClear('resource');
+  for(var pass=0;pass<2;pass++) {
+    if(order==='tool-first') { checkBoundedTool(); checkBoundedResource(); }
+    else { checkBoundedResource(); checkBoundedTool(); }
+  }
+  for(var largePass=0;largePass<2;largePass++) {
+    check(resourceResponse({uri:cacheUri,allowLarge:true}).contents[0].text===cacheFullText,
+      'resources/read allowLarge returns the complete text after bounded reads');
+    check(call('flow-resource-get',{uri:cacheUri,allowLarge:true}).structuredContent.text===cacheFullText,
+      'flow-resource-get allowLarge returns the complete text after bounded reads');
+  }
+  checkBoundedResource(); checkBoundedTool();
+});
 listed.filter(function(item) { return /^flow:\/\/guide\//.test(item.uri); }).forEach(function(item) {
   var response = call('flow-resource-get', {uri:item.uri});
   check(response.structuredContent && response.structuredContent.ok, item.uri + ': ' + JSON.stringify(response).slice(0, 300));
@@ -214,13 +249,21 @@ var choices=[]; for(var c=0;c<2000;c++) choices.push('choice'+('0000'+c).slice(-
 var oversizedContract={ok:true,code:'source',revision:'enum-r',authoringContract:{version:2,
   blocks:[{tag:'Huge',properties:{choice:'enum:'+choices.join('|')},events:['OnChange'],snippets:{Slot:['item']}}],
   portableBlocks:[{id:'huge.portable',tag:'HugePortable',contract:{choices:choices}}]}};
-var pieces={}, largeOffset=0, largePages=0, largeProperties={}, largePortables=[];
+var pieces={}, largeOffset=0, largePages=0, largeProperties={}, largePortables=[], hugeFragmentSeen=false, firstHugeSeen=false;
 do {
   var largeRequest={id:1,method:'tools/call',params:{name:'code-get',arguments:{contractBlocks:['Huge'],contractOffset:largeOffset,revision:'enum-r'}}};
   var largeReply=mcp.toolResponse(largeRequest,oversizedContract,{}).result;
   check(length(largeReply)<16000,'oversized contract page exceeds budget: '+length(largeReply));
   var largePage=largeReply.structuredContent.authoringContract;
   check(largePage.reconstruction && largePage.contractTotal>0,'fragment reconstruction must be documented');
+  largePage.blocks.forEach(function(block){if(block.tag==='Huge' && !firstHugeSeen) {
+    firstHugeSeen=true;
+    check(block.incomplete===true,'fragmented Huge block announces incomplete properties on its first block page');
+  }});
+  largePage.fragments.forEach(function(fragment){if(fragment.data.indexOf('"kind":"property"')>=0) {
+    hugeFragmentSeen=true;
+    check(fragment.tag==='Huge','property fragment retains its block identity');
+  }});
   largePage.fragments.forEach(function(fragment){var group=pieces[fragment.unitIndex]||(pieces[fragment.unitIndex]=[]);group[fragment.part]=fragment.data;});
   largePage.blocks.forEach(function(block){Object.keys(block.properties||{}).forEach(function(key){largeProperties[key]=block.properties[key];});});
   largePortables=largePortables.concat(largePage.portableBlocks);
@@ -230,7 +273,7 @@ do {
 } while(true);
 Object.keys(pieces).forEach(function(key){var unit=JSON.parse(pieces[key].join(''));if(unit.kind==='property') largeProperties[unit.key]=unit.value;
   if(unit.kind==='portable') largePortables.push(unit.value);});
-check(largeProperties.choice===oversizedContract.authoringContract.blocks[0].properties.choice &&
+check(firstHugeSeen && hugeFragmentSeen && largeProperties.choice===oversizedContract.authoringContract.blocks[0].properties.choice &&
   largePortables.some(function(item){return item.id==='huge.portable' && item.contract.choices.length===2000;}),
   'oversized enum and portable contract are reconstructed exactly');
 ['flow://guide/entities-model/format','flow://guide/authoring/expressions','flow://guide/start-rules/design',

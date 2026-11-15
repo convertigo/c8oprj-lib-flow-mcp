@@ -2429,8 +2429,7 @@
 					? response.result.structuredContent : null;
 			var document = resource || viaTool;
 			var resourceArgs = resource ? request.params || {} : toolArguments(request);
-			if (document && typeof document.text === "string" && resourceArgs.allowLarge !== true &&
-				!(viaTool && viaTool.startChar !== undefined)) {
+			if (document && typeof document.text === "string" && resourceArgs.allowLarge !== true) {
 				var resourceStart = resourceArgs.startChar === undefined ? 0 : Number(resourceArgs.startChar);
 				if (!isFinite(resourceStart) || Math.floor(resourceStart) !== resourceStart || resourceStart < 0 || resourceStart >= document.text.length && resourceStart !== 0) {
 					response = jsonRpcError(request.id, -32602, "startChar must be a zero-based offset inside the resource.", {code:"RESOURCE_RANGE_INVALID"});
@@ -2477,7 +2476,7 @@
 			}
 			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
 		}
-		if (request && request.method === "tools/call" && response && response.result &&
+		if (request && request.__flowMcpTraceDeferred !== true && request.method === "tools/call" && response && response.result &&
 			/^(?:code-get|frontend-svelte-code-get|flow-code-get|flow-block-code-get|flow-resource-get)$/.test(toolName(request)) &&
 			!(toolName(request) === "flow-resource-get" && toolArguments(request).allowLarge === true) &&
 			jsonChars(response) >= 16000) {
@@ -5550,7 +5549,7 @@
 				if (serialized.length <= 1800) expanded.push(unit);
 				else {
 					var parts = Math.ceil(serialized.length / 1800);
-					for (var part = 0; part < parts; part++) expanded.push({kind:"fragment",unitIndex:unitIndex,
+					for (var part = 0; part < parts; part++) expanded.push({kind:"fragment",tag:unit.tag,unitIndex:unitIndex,
 						part:part,parts:parts,data:serialized.slice(part*1800,(part+1)*1800)});
 				}
 			});
@@ -6755,6 +6754,9 @@
 	}
 
 	// resources/read of a guide or skill: its uri and the hash of its content, for this caller.
+	// Keep deferred full reads separate from externally paged reads, and keep explicit
+	// allowLarge reads separate from ordinary pages. The response is finalized before
+	// mcp.stable keeps it, so mixing these variants would reuse the wrong shape.
 	function stableResourceKey(ctx, request) {
 		var uri = String(request.params && request.params.uri || "");
 		var file = stableResourceFile(ctx, uri);
@@ -6764,7 +6766,9 @@
 			return null;
 		}
 		var content = sha256Hex(String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)));
-		return stableEntry("resource", [caller, uri, String(request.params && request.params.startChar || 0), canonicalPath(file), content, code], STABLE_TTL_MS.resource);
+		var params = request.params || {};
+		var variant = request.__flowMcpTraceDeferred === true ? "deferred" : params.allowLarge === true ? "allowLarge" : "bounded";
+		return stableEntry("resource", [caller, uri, variant, String(params.startChar || 0), canonicalPath(file), content, code], STABLE_TTL_MS.resource);
 	}
 
 	// The kept answer of a request of the mcp.stable block (tools/list, resources/read), or the key to keep it under,
