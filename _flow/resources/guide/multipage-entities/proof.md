@@ -22,6 +22,15 @@ avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
 checks, and report which visible assertion failed instead of treating an HTTP
 200 or a rendered anonymous page as proof of the authenticated path.
 
+Reuse the current browser context; open at most one additional context per role
+being proved (for example, USER and manager), and keep it until that role's
+checks finish. Sign out through the application (`SignOut`/`Logout`) before
+closing an unused test context: closing it alone leaves its Convertigo session
+alive. The development engine allows only 5 HTTP sessions in Standard Edition;
+each browser context can occupy one for 30 minutes. If all MCP calls suddenly
+fail without a readable response, suspect the session limit: sign out and close
+test contexts, retry once, and report the incident.
+
 Keep sources in Git and runtime data out. Run `flow-block-mock-list`, build with
 `frontend-svelte-action` build, try the published URL, and run
 `flow-app-progress` hardening. Keep CORS same-origin, symbols for credentials,

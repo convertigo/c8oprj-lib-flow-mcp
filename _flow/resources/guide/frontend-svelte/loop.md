@@ -87,6 +87,15 @@ A French application sets `app: { locale: "fr-FR" }` in the `_flow` header of
 its entry source: `DataTable`, `Select` and the other controls then show French
 texts and dates (the default locale is `en`).
 
+For browser proof, reuse the current context. Open at most one additional
+context per role (for example, USER and manager), and keep each until its checks
+finish. Sign out in the application (`SignOut`/`Logout`) before closing an
+unused test context; closing it alone leaves its Convertigo session alive.
+The development engine allows only 5 HTTP sessions in Standard Edition, and
+each browser context can occupy one for 30 minutes. If all MCP calls suddenly
+fail without a readable response, suspect the session limit: sign out and
+close test contexts, retry once, and report it.
+
 On a project loaded in Convertigo, MCP writes are working copies like Studio
 edits (`draft:true`, `dirty:true`): they are previewed and checked at once and
 written to disk by **Save project**. Standalone runs write the files.

@@ -25,6 +25,8 @@ For an entity-backed page, choose `EntityTable`, `EntityForm`, `EntityView`, `En
 
 For browser verification, read `flow://guide/frontend-svelte-proof`. `browser_wait_for.time` is in **seconds**, at most 30: use `2`, never `2000`.
 
+The proof guide covers browser context reuse, sign-out and the development session limit.
+
 ## Drawers
 
 - `flow://guide/frontend-svelte/loop` — open for the write, sync and viewer sequence.

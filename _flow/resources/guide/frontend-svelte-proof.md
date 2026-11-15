@@ -49,6 +49,15 @@ submitted then the list that shows the result) to a verifier sub-agent: its
 clicks, snapshots and waits stay out of your context, and its vision model
 also checks the rendering.
 
+Reuse the current browser context. Open at most one additional context per
+role (for example, USER and manager), and keep it through that role's checks.
+Sign out in the application (`SignOut`/`Logout`) before closing an unused test
+context; closing it alone leaves its Convertigo session alive. The development
+engine allows only 5 HTTP sessions in Standard Edition, and each browser
+context can occupy one for 30 minutes. If all MCP calls suddenly fail without
+a readable response, suspect the session limit: sign out and close test
+contexts, retry once, and report it.
+
 ```text
 subagent-run({ profile:"verifier",
   task:"Prove that a signed-in member submits two requests.",

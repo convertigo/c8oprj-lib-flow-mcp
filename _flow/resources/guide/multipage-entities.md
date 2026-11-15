@@ -64,3 +64,5 @@ A refusal by a policy, model ACL or authorization slot, including on a relation 
 - `flow://guide/multipage-entities/pages` — open for pages and event wiring.
 - `flow://guide/multipage-entities/operations` — open for CSV, jobs and audit.
 - `flow://guide/multipage-entities/proof` — open for final proof and delivery.
+
+The proof guide covers browser context reuse, sign-out and the development session limit.
