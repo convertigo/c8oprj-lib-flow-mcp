@@ -23,6 +23,11 @@ identity data: change it after a session change as well as after a write.
 `caption` names the table (its accessible name and title; the entity label by
 default): a heading above the table does not name it.
 
+`orderBy="dateEcheance" direction="asc"` sets the initial server sort; headers
+remain sortable. Identity refresh restores it; changing either property resets
+paging and selection. For a due queue, counter and alert contract, read
+`flow://guide/entities-widgets/deadlines`.
+
 Default View/Edit actions raise `OnView`/`OnEdit`, plus compatible `OnSelect`.
 Wire them to an editor/record view, or set `viewPage`/`editPage` to the logical
 page id. Dynamic route parameters come from `row.key`; `[id]` also aliases the single

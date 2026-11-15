@@ -26,6 +26,8 @@ The server policy decides visible rows and allowed writes. A hidden or absent fi
 
 ## Drawers
 
+- `flow://guide/entities-widgets/deadlines` — open for échéances, due queues, status badges and the background alert interface.
+
 - `flow://guide/entities-widgets/table` — open for EntityTable lists, columns, toolbar actions and paging.
 - `flow://guide/entities-widgets/form` — open for EntityForm fields, create/edit and validation.
 - `flow://guide/entities-widgets/view` — open for EntityView record routes and inverse history.

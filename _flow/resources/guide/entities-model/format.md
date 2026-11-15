@@ -58,6 +58,10 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
 - **Unique:** `"unique": true` keeps one row per value of a field; see
   **Unique fields** in `flow://guide/entities-model/unique`.
 
+For `Échéance`, months are applied before calendar days; business days are
+unsupported. `inclusive: true` includes the deadline day; no reference means
+already due. Queue and alert recipe: `flow://guide/entities-widgets/deadlines`.
+
 **Natural key.** An entity may declare a natural identity, such as
 `"identity": ["email"]` with a `string` field: `entity.read`, `entity.delete`
 and `entity.save` with `key: {email}` (an update, never an upsert) use it.

@@ -23,7 +23,7 @@ const blankPage = '<script module>export const _flow = {sourceVersion: 2};</scri
 // A guide and its sub-guides (<guide>-*.md), entry first: split guides keep their examples in the family.
 async function family(guide: string) {
   if (guide === 'entities') {
-    const paths = ['entities.md', 'entities-widgets/snippets.md', 'entities-widgets/stat.md', 'entities-widgets/view.md'];
+    const paths = ['entities.md', 'entities-widgets/snippets.md', 'entities-widgets/stat.md', 'entities-widgets/view.md', 'entities-widgets/deadlines.md'];
     return (await Promise.all(paths.map(file => readFile(resolve(guides, file), 'utf8')))).join('\n\n');
   }
   const subs = (await readdir(guides)).filter(file => file.startsWith(guide + "-") && file.endsWith(".md")).sort();
@@ -149,6 +149,7 @@ const entityExamples = [
   { guide: "entities", id: "myPosts", project: "EquipmentApp", route: "mine", layout: false },
   { guide: "entities", id: "kpiDashboard", project: "EquipmentApp", route: "kpis", layout: false },
   { guide: "entities", id: "postView", project: "EquipmentApp", route: "postes/[id]", layout: false },
+  { guide: "entities", id: "deadlineQueue", project: "EquipmentApp", route: "relances", layout: false },
   { guide: "multipage-entities", id: "sessionLayout", project: "BookingApp", route: "", layout: true },
   { guide: "multipage-entities", id: "bookingEditor", project: "BookingApp", route: "mine", layout: false },
 ];
@@ -227,6 +228,11 @@ for (const plan of entityExamples) {
       assert.match(source, /mode:"rolling",days:30/);
       assert.match(source, /<OnSaved>/);assert.match(source, /<OnDeleted>/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityBreakdown/);
+    } else if(plan.id === "deadlineQueue") {
+      assert.match(source, /orderBy="dateEcheance" direction="asc"/);
+      const code=generated.get(plan.route+"/+page.svelte")!;
+      assert.match(code, /EntityTable/);assert.match(code, /EntityStat/);
+      assert.match(code, /orderBy=/);assert.match(code, /dateEcheance/);
     } else if(plan.id === "postView") {
       assert.match(source, /<EntityView/);assert.match(source, /routeId="@route.params.id"/);assert.match(source, /related=/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityView/);

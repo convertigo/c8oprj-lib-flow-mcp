@@ -301,6 +301,11 @@ var found = list.structuredContent && list.structuredContent.matches || list.str
 check(found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }),
   'flow-resource-search must find the table drawer: ' + JSON.stringify(list).slice(0,600));
 var widgetSummary = byUri['flow://guide/entities-widgets'].response.structuredContent.text;
+var deadlineGuide = read('flow://guide/entities-widgets/deadlines');
+check(deadlineGuide.length < 12000 && widgetSummary.length < 6000 &&
+  widgetSummary.indexOf('flow://guide/entities-widgets/deadlines') >= 0 &&
+  deadlineGuide.indexOf('orderBy="dateEcheance"') >= 0,
+  'Due queues must have a short reachable drawer with the server-sorted example');
 check(read('flow://guide/entities-widgets/table').indexOf('EntityTable') >= 0,
   'resources/read must serve nested guide paths');
 check(widgetSummary.indexOf('EntityTable') >= 0 && widgetSummary.indexOf('EntityForm') >= 0 &&
