@@ -2366,6 +2366,12 @@ var frontendSourceGet = callTool(1381, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir,
 	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte"
 });
+var frontendSourceBlocks = callTool(138101, "frontend-svelte-code-get", {
+	projectDir: targetProjectDir,
+	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte",
+	contractBlocks: ["Text", "Image", "ForEach", "PageShell", "Interval", "If", "Navigate"]
+});
+var frontendBlockDetails = frontendSourceBlocks.result.result.structuredContent.authoringContract.blocks;
 var frontendSourceRevision = frontendSourceGet.result.result.structuredContent.revision;
 assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 	frontendSourceGet.result.result.structuredContent.code.indexOf("<FlowComponent") !== -1 &&
@@ -2380,23 +2386,23 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 			page.parameters.length === 1 && page.parameters[0].name === "projectId";
 	}) &&
 	frontendSourceGet.result.result.structuredContent.authoringContract.navigation.readParameter === "@route.params.id" &&
-	frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	frontendBlockDetails.some(function (block) {
 		return block.tag === "Text" && String(block.properties.text).indexOf("literal") !== -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "Image" && block.properties.alt &&
 			String(block.properties.alt).indexOf("source") !== -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "ForEach" && block.slots.indexOf("Children") !== -1 &&
 			block.slots.indexOf("default") === -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "PageShell" && block.properties["class"] &&
 			String(block.properties["class"]).indexOf("literal") !== -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "Interval" && block.properties.milliseconds &&
 			block.slots.indexOf("Actions") !== -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "If" && block.slots.indexOf("Then") !== -1 && block.slots.indexOf("Else") !== -1;
-	}) && frontendSourceGet.result.result.structuredContent.authoringContract.blocks.some(function (block) {
+	}) && frontendBlockDetails.some(function (block) {
 		return block.tag === "Navigate" && block.properties.page &&
 			block.slots.indexOf("Params") !== -1 && block.slots.indexOf("Query") !== -1;
 	}) && ["date.now", "date.format", "duration.format", "number.add", "number.subtract", "number.choose"].every(function (id) {
@@ -2409,11 +2415,18 @@ assertTrue(frontendSourceGet.result.result.structuredContent.ok === true &&
 var frontendRootSourceCheck = callTool(13811, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
 	sourceFile: frontendSourceGet.result.result.structuredContent.sourceFile,
-	code: frontendSourceGet.result.result.structuredContent.code
+	code: callTool(138111, "frontend-svelte-code-get", {
+		projectDir: targetProjectDir,
+		sourceFile: frontendSourceGet.result.result.structuredContent.sourceFile,
+		startLine: 1,
+		endLine: 100
+	}).result.result.structuredContent.code
 });
 var frontendDetailSourceGet = callTool(13812, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir,
-	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/[projectId]/+page.flow.svelte"
+	sourceFile: "_flow/frontbuilder/svelte/model/Smoke/src/routes/[projectId]/+page.flow.svelte",
+	startLine: 1,
+	endLine: 100
 });
 var frontendDetailSourceCheck = callTool(13813, "frontend-svelte-code-check", {
 	projectDir: targetProjectDir,
@@ -2691,9 +2704,7 @@ assertTrue(frontendSourceStale.result.result.structuredContent.error,
 var frontendSourceImplicit = callTool(1386, "frontend-svelte-code-get", {
 	projectDir: targetProjectDir
 });
-var frontendStarterTags = frontendSourceImplicit.result.result.structuredContent.authoringContract.blocks.map(function (block) {
-	return block.tag;
-});
+var frontendStarterTags = frontendSourceImplicit.result.result.structuredContent.authoringContract.availableBlocks;
 assertTrue(frontendSourceImplicit.result.result.structuredContent.ok === true &&
 	frontendSourceImplicit.result.result.structuredContent.sourceFile === "_flow/frontbuilder/svelte/model/Smoke/src/routes/+page.flow.svelte" &&
 	frontendSourceImplicit.result.result.structuredContent.authoringContract.root.tag === "FlowComponent" &&

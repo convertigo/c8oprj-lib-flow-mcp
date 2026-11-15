@@ -6,11 +6,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 
-const guide = name => fs.readFileSync(path.join(__dirname, '../_flow/resources/guide', name + '.md'), 'utf8').replace(/\s+/g, ' ');
+const guide = name => guideFamily(path.join(__dirname, '..'), name).replace(/\s+/g, ' ');
 const policy = guide('entities-policy');
 const access = guide('multipage-entities-access');
-const pages = guide('multipage-entities-pages');
+const pages = guide('multipage-entities');
 const data = guide('authoring-data');
 let checks = 0;
 function check(condition, message) { checks++; assert.ok(condition, message); }

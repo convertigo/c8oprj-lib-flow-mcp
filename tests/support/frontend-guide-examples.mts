@@ -22,8 +22,23 @@ const blankPage = '<script module>export const _flow = {sourceVersion: 2};</scri
 
 // A guide and its sub-guides (<guide>-*.md), entry first: split guides keep their examples in the family.
 async function family(guide: string) {
+  if (guide === 'entities') {
+    const paths = ['entities.md', 'entities-widgets/snippets.md', 'entities-widgets/stat.md', 'entities-widgets/view.md'];
+    return (await Promise.all(paths.map(file => readFile(resolve(guides, file), 'utf8')))).join('\n\n');
+  }
   const subs = (await readdir(guides)).filter(file => file.startsWith(guide + "-") && file.endsWith(".md")).sort();
-  const texts = await Promise.all([guide + ".md", ...subs].map(file => readFile(resolve(guides, file), "utf8")));
+  async function drawers(folder: string): Promise<string[]> {
+    if (!existsSync(folder)) return [];
+    const entries = await readdir(folder, {withFileTypes:true});
+    const nested = await Promise.all(entries.map(entry => entry.isDirectory() ? drawers(join(folder, entry.name))
+      : Promise.resolve(entry.name.endsWith('.md') ? [join(folder, entry.name)] : [])));
+    return nested.flat();
+  }
+  const roots = (await readdir(guides, {withFileTypes:true})).filter(entry => entry.isDirectory() &&
+    (entry.name === guide || entry.name.startsWith(guide + '-')));
+  const files = [guide + '.md', ...subs].map(file => resolve(guides, file)).concat(
+    (await Promise.all(roots.map(entry => drawers(resolve(guides, entry.name))))).flat());
+  const texts = await Promise.all(files.map(file => readFile(file, "utf8")));
   return texts.join("\n\n");
 }
 

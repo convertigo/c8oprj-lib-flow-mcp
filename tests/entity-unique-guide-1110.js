@@ -12,7 +12,8 @@
 var root=String(new java.io.File(arguments[0]).getCanonicalPath()),engineDir=String(new java.io.File(arguments.length>1?arguments[1]:root+'/../lib_flow_engine/_flow').getCanonicalPath());
 var File=java.io.File,FU=Packages.org.apache.commons.io.FileUtils,Files=java.nio.file.Files,checks=0,failed=[];
 function read(p){return String(FU.readFileToString(new File(p),'UTF-8'));}
-function guide(name){return read(root+'/_flow/resources/guide/'+name+'.md').replace(/\s+/g,' ');}
+load(new File(root, 'tests/support/guide-family.js'));
+function guide(name){return guideFamily(root,name).replace(/\s+/g,' ');}
 function check(v,m,detail){checks++;if(!v)failed.push(m);print((v?'PASS ':'FAIL ')+m+(v?'':' '+String(JSON.stringify(detail)).substring(0,600)));}
 var model=guide('entities-model'),entities=guide('entities');
 var at=model.indexOf('## Unique fields'),section=at>=0?model.substring(at):'';
@@ -33,7 +34,8 @@ var natural=model.substring(model.indexOf('**Natural key.**'),at>=0?at:model.len
 check(model.indexOf('**Natural key.**')>=0&&/`unique: true`/.test(natural)&&!/declares no unique constraint/.test(natural)&&!/sql\.write|config\.sql\.writes/.test(model.substring(model.indexOf('**Natural key.**'))),
  'natural key paragraph proposes a unique field and no SQL write',natural);
 // 3. The entities guide and the tool contract.
-check(/`relation` or `unique`/.test(entities)&&/\*\*Unique fields\*\* in `flow:\/\/guide\/entities-model`/.test(entities),'entities lists the rule unique and points to the section',null);
+check(/flow:\/\/guide\/entities-model/.test(entities)&&/flow:\/\/guide\/entities-model\/unique/.test(model)&&
+ /## Unique fields/.test(guide('entities-model')),'entities links the model family that serves the unique rule',null);
 var contract=/var ENTITY_MODEL_FORMAT = ([\s\S]*?);\n/.exec(read(root+'/_flow/blocks/mcp/tools/available.block.js'));
 check(contract&&/unique \(true/.test(contract[1]),'the model contract of the tools names unique',null);
 // 4. flow-entity-model-check end to end.

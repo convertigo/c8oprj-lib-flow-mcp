@@ -7,11 +7,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 
 const resources = path.join(__dirname, '../_flow/resources');
 const read = file => fs.readFileSync(path.join(resources, file), 'utf8').replace(/\s+/g, ' ');
 const proof = read('guide/frontend-svelte-proof.md');
-const entry = read('guide/frontend-svelte.md');
+const entry = guideFamily(path.join(__dirname, '..'), 'frontend-svelte').replace(/\s+/g, ' ');
 const mcpSkill = read('skills/convertigo-flow-mcp/SKILL.md');
 const frontendSkill = read('skills/convertigo-flow-frontend-svelte/SKILL.md');
 let checks = 0;

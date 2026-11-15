@@ -485,6 +485,10 @@ const _meta = {
 						type: "integer",
 						description: "Last inclusive line of a Flow, block implementation or canonical frontend source; requires startLine, maximum 500 lines."
 					};
+					schema.properties.startChar = {
+						type: "integer",
+						description: "Zero-based source character offset for continuing a long single-line code-get response; pass the returned revision."
+					};
 					schema.properties.pattern = {
 						type: "string",
 						description: "Optional text/regex search pattern. When present, code-get returns small extracts like code-rg instead of full code."

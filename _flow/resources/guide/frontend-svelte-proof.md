@@ -64,6 +64,9 @@ visual check of the current page, otherwise one screenshot through the
 Playwright of your host, and a Playwright evaluation only for one DOM or
 timing measure.
 
+In browser tools, `browser_wait_for.time` is in **seconds**, at most 30:
+use `2`, never `2000`.
+
 Before handing a frontend over, when your tool list offers it, have the
 verifier or `browser-verify` apply the visual checklist, passed as `checks`,
 otherwise one screenshot through the Playwright of your host per case (light

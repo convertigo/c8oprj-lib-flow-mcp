@@ -19,7 +19,7 @@ var routerSkillSource = String(Packages.org.apache.commons.io.FileUtils.readFile
 var frontendSkillSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
   new java.io.File(projectDir, "_flow/resources/skills/convertigo-flow-frontend-svelte/SKILL.md"), "UTF-8"));
 var frontendGuideSource = String(Packages.org.apache.commons.io.FileUtils.readFileToString(
-  new java.io.File(projectDir, "_flow/resources/guide/frontend-svelte.md"), "UTF-8"));
+  new java.io.File(projectDir, "_flow/resources/guide/frontend-svelte/loop.md"), "UTF-8"));
 assertTrue(setupBlockSource.indexOf('bearer_token_env_var: "CONVERTIGO_MCP_TOKEN"') >= 0,
   "Flow Codex setup omitted the bearer token environment variable");
 var codexHome = new java.io.File(java.lang.System.getProperty("java.io.tmpdir"),

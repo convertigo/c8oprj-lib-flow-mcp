@@ -1,4 +1,4 @@
-function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
+load(new java.io.File(arguments[0], 'tests/support/guide-family.js'));
 // entity.list returns one page: code-set, code-patch and code-check warn when a Flow keeps its rows
 // without an offset and never reads hasMore, nextOffset or total. Real engine results through the MCP response.
 // FLOW_MCP_EXPECT_BASELINE=true runs it against an older MCP root: every regression check fails, every contract check passes.

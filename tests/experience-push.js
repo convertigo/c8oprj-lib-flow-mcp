@@ -94,7 +94,13 @@ var noBookOn = tool('code-get', {projectDir:empty}, 'on', sessionId+'-empty-on')
 var noBookOff = tool('code-get', {projectDir:empty}, 'off', sessionId+'-empty-off');
 assert(JSON.stringify(noBookOn.result) === JSON.stringify(noBookOff.result), 'No-playbook result must be byte-for-byte unchanged');
 
-var listed = call('resources/list', {projectDir:app}).result.resources;
+var listed = [], resourceCursor = null, resourcePages = 0;
+do {
+  var resourcePage = call('resources/list', resourceCursor ? {projectDir:app,cursor:resourceCursor} : {projectDir:app}).result;
+  listed = listed.concat(resourcePage.resources);
+  resourceCursor = resourcePage.nextCursor;
+  assert(++resourcePages < 30, 'resources/list cursor must terminate');
+} while (resourceCursor);
 assert(listed.some(function(r) { return r.uri === 'flow://ace'; }), 'ACE index missing from resources/list');
 assert(listed.some(function(r) { return r.uri === 'flow://ace/lib_orders/sql'; }), 'Library drawer missing from resources/list');
 var uri = 'flow://ace/lib_orders/sql';

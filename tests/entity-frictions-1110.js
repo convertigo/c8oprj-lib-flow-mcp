@@ -12,7 +12,8 @@ var root=String(new java.io.File(arguments[0]).getCanonicalPath()),engineDir=Str
 var File=java.io.File,FU=Packages.org.apache.commons.io.FileUtils,Files=java.nio.file.Files,checks=0,results=[];
 var negative=String(java.lang.System.getenv('FLOW_MCP_EXPECT_BASELINE')||'')==='true';
 function read(p){return String(FU.readFileToString(new File(p),'UTF-8'));}
-function guide(name){return read(root+'/_flow/resources/guide/'+name+'.md').replace(/\s+/g,' ');}
+load(new File(root, 'tests/support/guide-family.js'));
+function guide(name){return guideFamily(root,name).replace(/\s+/g,' ');}
 function check(v,m,detail,regression){checks++;results.push({name:m,passed:!!v,regression:regression!==false});print((v?'PASS ':'FAIL ')+m+(v?'':' '+String(JSON.stringify(detail)).substring(0,600)));}
 var mcp=eval(read(root+'/_flow/lib/mcp.js'));
 function respond(tool,args,value){return mcp.toolResponse({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:tool,arguments:args}},value,{}).result;}

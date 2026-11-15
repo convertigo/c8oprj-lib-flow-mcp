@@ -2,14 +2,7 @@
 
 Start here: which guide to read next, the source contract in five rules and the default backend loop; project rules are in `flow://guide/start-rules`.
 
-> **JavaScript → FlowScript** (before the first `code-set`; details in `flow://guide/authoring-data`)
-> `for (const item of items)` → `forEach({ items: input.items, $$nodes() { ... } })`; use `current` inside.
-> `try { JSON.parse(x) }` → `local.parsed = json.safeParse({ text: input.text })`; check `local.parsed.ok`, then use `.value`.
-> `/re/.test(x)` → `local.match = text.match({ text: input.code, pattern: "re" })`; check `local.match.matched`.
-> `arr.push(x)` → declare `json.array({ path: "local.arr", itemType: { type: "number" } })` (items' type), then `json.push({ path: "local.arr", value: input.value })`.
-> `arr.map/filter/some(cb)` → `list.map({ items: input.items, select: { id: current.id } })` / `list.filter({ items: input.items, where: current.ok })`; for `some`, test the filtered list's `.length`.
-> `JSON.*` calls → catalogued `json.*` blocks; for example `JSON.stringify(x)` → `json.stringify({ value: input.value })`.
-> `if (block.name({ ... }))` → assign `local.value = block.name({ ... })` first, then test `if (local.value)`.
+For browser verification, `browser_wait_for.time` is in **seconds**, at most 30: use `2`, never `2000`.
 
 ## Which guide next
 
@@ -19,21 +12,18 @@ Direct SQL and generated CRUD require one.
 
 | Task | Read |
 | --- | --- |
-| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring` (16.0 KB) |
-| Unclear syntax: two real samples | `flow://guide/samples` (2.1 KB) |
-| Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` (8.5 KB) |
-| Java/JVM primitive in Rhino | `flow://guide/rhino-block-api` (4.0 KB) |
-| One pure block for backend and frontend | `flow://guide/portable-blocks` (4.4 KB) |
-| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB). Read `flow://guide/entities-widgets` before writing pages. |
-| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.8 KB) |
-| No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles` (14.1 KB) |
-| Svelte-only frontend | `flow://guide/frontend-svelte` (8.0 KB) |
-| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (7.2 KB) |
-| FullSync server DBOs and client actions | `flow://guide/fullsync` (7.6 KB) |
-| Locate and patch existing code | `flow://guide/search-and-edit` (9.5 KB) |
-| MCP JSONL tracing | `flow://guide/tracing` (1.1 KB) |
-| Ordered tags and named project configurations | `flow://guide/tags` (4.5 KB) |
-| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start-rules` (12.4 KB) |
+| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring`; collections and loops: `flow://guide/authoring-collections` |
+| Unclear syntax: two real samples | `flow://guide/samples` |
+| Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
+| One pure block for backend and frontend | `flow://guide/portable-blocks` |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`. Read `flow://guide/entities-widgets` before writing pages; `flow://guide/entities-widgets/stat` covers dashboards; `flow://guide/entities-widgets/view` covers records. |
+| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard/contract`, then `flow://guide/fullstack-paperboard/path` |
+| No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles/data` |
+| Svelte-only frontend | `flow://guide/frontend-svelte/loop` |
+| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |
+| FullSync server DBOs and client actions | `flow://guide/fullsync` |
+| Locate and patch existing code | `flow://guide/search-and-edit` |
+| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start-rules/tools`; secrets/config: `flow://guide/start-rules/design`; Save: `flow://guide/start-rules/workspace` |
 
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
@@ -84,3 +74,8 @@ Accounts, sign-in and roles: reference `lib_UserManager` and read
    are private `sample_*` Flows.
 6. Use `flow-requestable-list` / `flow-requestable-schema` only when a legacy
    sequence or transaction shape is needed.
+
+## Drawers
+
+- `flow://guide/start/syntax` — open for JavaScript to FlowScript conversions.
+- `flow://guide/start-rules` — open for tool hygiene, config, drafts and project layout.

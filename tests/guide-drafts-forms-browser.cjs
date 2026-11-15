@@ -4,11 +4,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\s+/g, ' ');
 
-const rules = read('_flow/resources/guide/start-rules.md');
+const rules = guideFamily(root, 'start-rules').replace(/\s+/g, ' ');
 assert.match(rules, /A test Flow never promoted is only a working copy: `code-discard\(\{project,name\}\)` deletes it; `flow-object-remove` deletes saved objects only\./,
   'a test draft is deleted with code-discard');
 assert.match(rules, /`PROJECT_HAS_UNSAVED_CHANGES`, retry with `saveProject:false` and ask for \*\*Save project\*\*/,

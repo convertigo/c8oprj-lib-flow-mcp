@@ -5,9 +5,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 
 const resources = path.join(__dirname, '../_flow/resources');
-const read = file => fs.readFileSync(path.join(resources, file), 'utf8').replace(/\s+/g, ' ');
+const read = file => file.startsWith('guide/') && file.endsWith('.md')
+  ? guideFamily(path.join(__dirname, '..'), path.basename(file, '.md')).replace(/\s+/g, ' ')
+  : fs.readFileSync(path.join(resources, file), 'utf8').replace(/\s+/g, ' ');
 const guides = fs.readdirSync(path.join(resources, 'guide')).filter(n => n.endsWith('.md')).map(n => [n, read('guide/' + n)]);
 const skills = fs.readdirSync(path.join(resources, 'skills')).map(n => [n, read('skills/' + n + '/SKILL.md')]);
 const mcp = fs.readFileSync(path.join(__dirname, '../_flow/lib/mcp.js'), 'utf8');

@@ -2,8 +2,9 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 const root = path.resolve(__dirname, '..');
-const guide = fs.readFileSync(path.join(root, '_flow/resources/guide/frontend-svelte.md'), 'utf8');
+const guide = guideFamily(root, 'frontend-svelte');
 const tool = fs.readFileSync(path.join(root, '_flow/blocks/project/bootstrap.block.js'), 'utf8');
 assert.match(guide, /existing backend\s+included/);
 assert.match(guide, /first `dev\.ensure` then answers at once/);

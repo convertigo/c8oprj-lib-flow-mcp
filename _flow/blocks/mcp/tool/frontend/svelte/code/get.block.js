@@ -29,6 +29,11 @@ const _meta = {
       "type": "integer",
       "description": "Last inclusive one-based line for a bounded read; requires startLine, maximum 500 lines.",
     },
+    "startChar": {
+      "kind": "literal",
+      "type": "integer",
+      "description": "Zero-based offset for continuing a long single-line source; pass the returned revision.",
+    },
     "out": {
       "kind": "path",
       "mode": "write",

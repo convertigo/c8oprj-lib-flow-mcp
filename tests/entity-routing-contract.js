@@ -2,13 +2,11 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const guideFamily = require('./support/guide-family.cjs');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 // A guide and its sub-guides (<name>-*.md; start-rules for start), entry first, size annotations removed.
-const guide = name => fs.readdirSync(path.join(root, '_flow/resources/guide'))
-  .filter(file => file.startsWith(name + '-') && file.endsWith('.md')).sort()
-  .reduce((text, file) => text + '\n\n' + read('_flow/resources/guide/' + file), read('_flow/resources/guide/' + name + '.md'))
-  .replace(/ \(\d+\.\d KB\)/g, '');
+const guide = name => guideFamily(root, name);
 const skill = name => read('_flow/resources/skills/convertigo-flow-' + name + '/SKILL.md');
 const start = guide('start');
 const router = skill('mcp');
@@ -18,8 +16,8 @@ const alternative = guide('multipage-roles');
 const bootstrap = read('_flow/blocks/project/bootstrap.block.js');
 const tools = read('_flow/blocks/mcp/tools/available.block.js');
 
-assert.match(start, /\| Any persisted business data with roles: add the `lib_flow_entity` project reference \| `flow:\/\/guide\/entities`, then `flow:\/\/guide\/multipage-entities`\. Read `flow:\/\/guide\/entities-widgets` before writing pages\. \|/);
-assert.match(start, /## Authentication and add-ons/);
+assert.match(start, /\| Any persisted business data with roles: add the `lib_flow_entity` project reference \| `flow:\/\/guide\/entities`, then `flow:\/\/guide\/multipage-entities`\. Read `flow:\/\/guide\/entities-widgets` before writing pages;/);
+assert.match(guideFamily(root, 'start-rules'), /## Authentication and add-ons/);
 for (const anchor of ['authentication', 'demo-login', 'export-csv', 'scheduled-jobs', 'audit']) {
   const resource = anchor === 'authentication' ? 'entities' : 'multipage-entities';
   assert.ok(start.includes('flow://guide/' + resource), anchor + ' stays independent of direct SQL');
@@ -54,8 +52,9 @@ assert.ok(entityGet.includes('lib_flow_entity') && entityGet.includes('flow://gu
 assert.match(start, /imposed HTTP contract[\s\S]*?Your own HTTP contract over entities/);
 assert.match(backend, /Imposed HTTP names, error codes and JSON keys also keep entities/);
 const entities = guide('entities');
-assert.ok(entities.indexOf('## Your own HTTP contract over entities') < entities.indexOf('## Authentication'));
-assert.ok(entities.indexOf('<!-- example: http-save-reservation -->') < entities.indexOf('## Authentication'));
+assert.ok(read('_flow/resources/guide/entities.md').includes('flow://guide/entities/http'));
+assert.ok(read('_flow/resources/guide/entities/http.md').includes('## Your own HTTP contract over entities'));
+assert.ok(read('_flow/resources/guide/entities/http.md').includes('<!-- example: http-save-reservation -->'));
 for (const code of ['ENTITY_UNAUTHENTICATED', 'ENTITY_FORBIDDEN', 'ENTITY_NOT_FOUND', 'ENTITY_VALIDATION', 'ENTITY_CONFLICT', 'BOOKING_WINDOW_CONFLICT']) assert.ok(entities.includes('| ' + (code === 'BOOKING_WINDOW_CONFLICT' ? "Your hook's code" : code)), code + ' has an adaptation policy');
 const multi = guide('multipage-entities');
 const quick = multi.slice(multi.indexOf('## Quick path'), multi.indexOf('Use this route'));

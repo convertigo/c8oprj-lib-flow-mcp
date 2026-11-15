@@ -88,7 +88,9 @@ server (rights, perimeters, state rules), never only in the page.
 - Any persisted business data with roles: use entities by default. Add the
   `lib_flow_entity` project reference (`flow-project-reference`), then read
   `flow://guide/entities` and `flow://guide/multipage-entities` once before
-  coding. Read `flow://guide/entities-widgets` before writing pages.
+  coding. Read `flow://guide/entities-widgets` before choosing a widget, then
+  `flow://guide/entities-widgets/table` for lists, `flow://guide/entities-widgets/form` for edits,
+  `flow://guide/entities-widgets/view` for records or `flow://guide/entities-widgets/stat` for dashboards.
   This rule still applies when sign-in is a demonstration picker,
   or the application also needs a CSV export, scheduled job or audit journal.
   These additions do not select direct SQL; use

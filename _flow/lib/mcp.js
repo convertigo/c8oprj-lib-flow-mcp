@@ -2484,7 +2484,11 @@
 		});
 		value = compactToolValue(request, value);
 		if (value && value.ok !== false && !value.error && entityPageGuidanceApplies(request, value)) {
-			value.entityPages = "Entity pages: EntityTable/EntityForm/EntityView/EntityStat/EntityBreakdown (flow://guide/entities-widgets)";
+			value.entityPages = "Entity pages: EntityTable → flow://guide/entities-widgets/table; EntityForm → flow://guide/entities-widgets/form; EntityView → flow://guide/entities-widgets/view; EntityStat/EntityBreakdown → flow://guide/entities-widgets/stat.";
+			// Keep the decision before the verbose frontend contract in structuredContent.
+			var early = { entityPages: value.entityPages };
+			Object.keys(value).forEach(function (key) { if (key !== "entityPages") early[key] = value[key]; });
+			value = early;
 		}
 		if (value && typeof value === "object") {
 			Object.keys(notices).forEach(function (key) { value[key] = notices[key]; });
@@ -2557,9 +2561,12 @@
 			args = Object.assign({}, args, { project: project });
 		}
 		value.items.forEach(function (item) {
-			if (!item || typeof item !== "object" || item.apply) {
+			if (!item || typeof item !== "object") {
 				return;
 			}
+			var guide = entityWidgetGuide(String(item.tag || item.insert && item.insert.tag || ""));
+			if (guide) item.guide = guide;
+			if (item.apply) return;
 			var slot = item.targetSlot || {};
 			if (item.authoringAction) {
 				var action = {
@@ -2745,7 +2752,7 @@
 			if (widgetContract) {
 				return finalizeResponse(ctx, request, jsonRpcResult(request.id, toolResult({
 					ok: true, name: widget.tag, kind: "frontendWidget", frontendWidget: widgetContract,
-					next: widget.tag + " is a Svelte widget, not a backend Flow block: write it in a page source (code-set, code-patch) " +
+					next: widget.tag + " is a Svelte widget; read " + (entityWidgetGuide(widget.tag) || "its palette contract") + ". Write it in a page source (code-set, code-patch) " +
 						"with these properties, its events in <Events> and its slots as child tags (<Cell2>, <Toolbar>); " +
 						"code-get with contractBlocks: [\"" + widget.tag + "\"] gives the same contract for several widgets at once."
 				}, toolPathContext(request, ctx))));
@@ -4352,8 +4359,8 @@
 	}
 	// The guide a path of a project names (_flow/resources/guide/<name>.md), for a project that does not hold it.
 	function guidePathUri(path) {
-		var match = /^\/?_flow\/resources\/guides?\/([A-Za-z0-9_.-]+?)(?:\.md)?$/i.exec(String(path || "").trim());
-		return match ? "flow://guide/" + match[1] : "";
+		var match = /^\/?_flow\/resources\/guides?\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*)$/i.exec(String(path || "").trim());
+		return match ? "flow://guide/" + match[1].replace(/\.md$/i, "") : "";
 	}
 	function coreGuideNames(ctx) {
 		var names = [];
@@ -4361,10 +4368,15 @@
 			var root = knownProjectDir(ctx);
 			var dir = root ? new File(new File(String(root)), "_flow/resources/guide") : null;
 			var files = dir && dir.isDirectory() ? dir.listFiles() : null;
-			for (var i = 0; files && i < files.length; i++) {
-				var match = /^([A-Za-z0-9_.-]+)\.md$/.exec(String(files[i].getName()));
-				if (match) names.push(match[1]);
+			function visit(entries, prefix) {
+				for (var i = 0; entries && i < entries.length; i++) {
+					var match = /^([A-Za-z0-9_.-]+)\.md$/.exec(String(entries[i].getName()));
+					if (match) names.push(prefix + match[1]);
+					else if (entries[i].isDirectory() && /^[A-Za-z0-9_.-]+$/.test(String(entries[i].getName())))
+						visit(entries[i].listFiles(), prefix + entries[i].getName() + "/");
+				}
 			}
+			visit(files, "");
 		} catch (e) {
 		}
 		return names;
@@ -4523,8 +4535,13 @@
 
 	function frontendWidgetHint(project, widget) {
 		return widget.tag + " is the Svelte widget " + widget.id + (widget.label ? " (" + widget.label + ")" : "") +
+			(entityWidgetGuide(widget.tag) ? "; read " + entityWidgetGuide(widget.tag) : "") +
 			", not a backend Flow block: read its contract with authoring-palette({ project: \"" + (project || "<project>") +
 			"\", parentPath: \"<the Structure parentPath of the page, from code-get or authoring-tree>\", query: \"" + widget.tag + "\" }).";
+	}
+	function entityWidgetGuide(tag) {
+		var topics = { EntityTable: "table", EntityForm: "form", EntityView: "view", EntityStat: "stat", EntityBreakdown: "stat" };
+		return topics[tag] ? "flow://guide/entities-widgets/" + topics[tag] : "";
 	}
 
 	function withBlockContract(request, diagnostic) {
@@ -4652,7 +4669,7 @@
 			out.push({ severity: "warning", code: "ENTITY_LIST_PAGE_UNCHECKED", block: "entity.list", path: target,
 				line: text.substring(0, match.index).split("\n").length,
 				message: "entity.list returns one page (limit 25 by default, 200 at most): " + target + ".rows is not the whole list when " + target + ".hasMore is true.",
-				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. See flow://guide/entities-model, Lists: filters and pages." });
+				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. Read flow://guide/entities-model/lists." });
 		}
 		return out;
 	}
@@ -5403,9 +5420,98 @@
 		return out;
 	}
 
+	function compactCodeGetContract(request, value) {
+		if (!value || value.ok === false || jsonChars(value) <= 6200) return value;
+		var contract = value.authoringContract, out = Object.assign({}, value);
+		if (contract) {
+			var tags = (contract.blocks || []).map(function (block) { return block.tag; });
+			(contract.omittedBlocks || []).forEach(function (tag) { if (tags.indexOf(tag) === -1) tags.push(tag); });
+			var essentials = (contract.blocks || []).map(function (block) {
+				var properties = block.properties || {}, required = {};
+				Object.keys(properties).forEach(function (key) {
+					if (String(properties[key]).indexOf("!") !== -1) required[key] = properties[key];
+				});
+				return { tag: block.tag, properties: required, slots: block.slots || [] };
+			});
+			out.authoringContract = {
+				version: contract.version, detail: "index", availableBlocks: tags,
+				root: contract.root && { tag: contract.root.tag, properties: contract.root.properties, slots: contract.root.slots },
+				blocks: essentials, pages: contract.pages, sources: contract.sources,
+				navigation: contract.navigation && { readParameter: contract.navigation.readParameter },
+				valueSyntax: contract.valueSyntax && { local: contract.valueSyntax.local },
+				portableBlocks: (contract.portableBlocks || []).map(function (block) { return { id: block.id, tag: block.tag }; }),
+				next: "Use code-get({project,sourceFile,contractBlocks:[\"<Tag>\"]}) for a full block contract; use startLine/endLine for the next source page."
+			};
+			if (jsonChars(out) > 6200) {
+				out.authoringContract.blocks = essentials.filter(function (block) {
+					return Object.keys(block.properties).length || block.slots.length;
+				}).slice(0, 8);
+				out.authoringContract.next += " The block summaries are a preview; availableBlocks lists every tag.";
+			}
+			if (jsonChars(out) > 6200) {
+				delete out.authoringContract.sources;
+				out.authoringContract.next += " Use authoring-tree for related sources.";
+			}
+			if (typeof out.code === "string" && jsonChars(out.code) > 6200) {
+				out.authoringContract = {
+					version: contract.version, detail: "index", availableBlocks: tags,
+					pages: contract.pages, blocks: essentials.slice(0, 6),
+					next: "Read the source in bounded chunks; use contractBlocks for a full block contract."
+				};
+			}
+		}
+		delete out.descriptor;
+		delete out.implementationSource;
+		if (typeof out.code === "string" && jsonChars(out) > 6200) {
+			var source = out.code, args = toolArguments(request);
+			if (args.startChar !== undefined && args.revision !== undefined && String(args.revision) !== String(out.revision)) {
+				var stale = new Error("Source changed since the requested revision. Read its current revision before requesting a character range.");
+				stale.code = "CODE_STALE_REVISION";
+				throw stale;
+			}
+			var charOffset = args.startChar === undefined ? 0 : Number(args.startChar);
+			if (!isFinite(charOffset) || charOffset < 0 || Math.floor(charOffset) !== charOffset || charOffset >= source.length) {
+				var invalid = new Error("startChar must be a zero-based offset inside the current source.");
+				invalid.code = "CODE_RANGE_INVALID";
+				throw invalid;
+			}
+			var normalized = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n"), lines = normalized.split("\n");
+			var start = out.startLine || 1, room = Math.max(500, 5900 - (jsonChars(out) - jsonChars(source)));
+			if (args.startChar !== undefined || JSON.stringify(lines[0]).length - 2 > room) {
+				out.code = source.slice(charOffset, charOffset + room);
+				out.partial = true;
+				out.startChar = charOffset;
+				out.endChar = charOffset + out.code.length;
+				out.totalContentLength = source.length;
+				out.contentLength = out.code.length;
+				out.next = out.endChar < source.length ? "Read the next source chunk with code-get({project,sourceFile,startChar:" + out.endChar + ",revision:\"" + out.revision + "\"})." : undefined;
+				while (jsonChars(out) > 6200 && out.code.length > 100) {
+					out.code = out.code.slice(0, out.code.length - 200);
+					out.endChar = charOffset + out.code.length;
+					out.contentLength = out.code.length;
+					out.next = "Read the next source chunk with code-get({project,sourceFile,startChar:" + out.endChar + ",revision:\"" + out.revision + "\"}).";
+				}
+				return out;
+			}
+			var end = 0, used = 0;
+			while (end < lines.length && used + JSON.stringify(lines[end]).length - 1 <= room)
+				used += JSON.stringify(lines[end++]).length - 1;
+			if (!end) { end = 1; lines[0] = lines[0].slice(0, room); }
+			out.code = lines.slice(0, end).join("\n");
+			out.partial = out.partial === true || end < lines.length;
+			out.startLine = start;
+			out.endLine = start + end - 1;
+			out.totalLines = out.totalLines || start + lines.length - 1;
+			out.totalContentLength = out.totalContentLength || source.length;
+			out.contentLength = out.code.length;
+			if (out.endLine < out.totalLines) out.next = "Read the next source page with code-get({project,sourceFile,startLine:" + (out.endLine + 1) + ",endLine:" + Math.min(out.totalLines, out.endLine + 40) + ",revision:\"" + out.revision + "\"}).";
+		}
+		return out;
+	}
+
 	function compactToolValue(request, value) {
 		var name = toolName(request);
-		if (name === "code-get" || name === "flow-code-get" || name === "flow-block-code-get") return boundedCodeRead(request, value);
+		if (name === "code-get" || name === "frontend-svelte-code-get" || name === "flow-code-get" || name === "flow-block-code-get") return compactCodeGetContract(request, boundedCodeRead(request, value));
 		if ((name === "frontend-svelte-tree" || name === "authoring-tree") && value && typeof value === "object") {
 			var treeArgs = toolArguments(request);
 			var boundedTreeRequest = treeArgs.allowLarge !== true &&
@@ -5446,6 +5552,8 @@
 				["id", "label", "category", "kind", "description", "provider", "apply"].forEach(function (key) {
 					if (item[key] !== undefined && item[key] !== null && item[key] !== "") out[key] = item[key];
 				});
+				var widgetGuide = item && item.guide || entityWidgetGuide(String(item && (item.tag || item.insert && item.insert.tag) || ""));
+				if (widgetGuide) out.guide = widgetGuide;
 				var names = Object.keys(properties).filter(function (key) {
 					var property = properties[key] || {};
 					return key !== "id" && property.hidden !== true && property.category !== "Information";

@@ -33,7 +33,7 @@ try {
 		"LinkButton answers its widget contract: " + JSON.stringify(widget).substring(0, 600));
 	assert(widget.frontendWidget.properties.page && widget.frontendWidget.properties.page.type && widget.frontendWidget.properties.label,
 		"the properties carry their type: " + JSON.stringify(widget.frontendWidget.properties).substring(0, 600));
-	assert(/not a backend Flow block/.test(widget.next) && /contractBlocks/.test(widget.next) && widget.next.indexOf("crypto.hmac") < 0,
+	assert(/Svelte widget/.test(widget.next) && /page source/.test(widget.next) && /contractBlocks/.test(widget.next) && widget.next.indexOf("crypto.hmac") < 0,
 		"the next step writes it in a page source: " + widget.next);
 	// The named snippets are slots, with the values they receive (EntityTable Cell2 and Toolbar were missing).
 	var table = call("flow-block-get", Object.assign({ name: "DataTable" }, base)).frontendWidget;

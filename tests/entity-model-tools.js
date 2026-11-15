@@ -1,4 +1,4 @@
-function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
+load(new java.io.File(arguments[1], 'tests/support/guide-family.js'));
 // Run under the same Rhino/JVM classpath as mcp-resources-contract.js.
 var engineDir = arguments.length > 0 ? arguments[0] : "../lib_flow_engine/_flow";
 var projectDir = arguments.length > 1 ? arguments[1] : ".";

@@ -11,7 +11,8 @@ var root=String(new java.io.File(arguments[0]).getCanonicalPath());
 var File=java.io.File,FU=Packages.org.apache.commons.io.FileUtils,Files=java.nio.file.Files,results=[];
 var negative=String(java.lang.System.getenv('FLOW_MCP_EXPECT_BASELINE')||'')==='true';
 function read(p){return String(FU.readFileToString(new File(p),'UTF-8'));}
-function guide(name){return read(root+'/_flow/resources/guide/'+name+'.md').replace(/\s+/g,' ');}
+load(new File(root, 'tests/support/guide-family.js'));
+function guide(name){return guideFamily(root,name).replace(/\s+/g,' ');}
 function check(v,m,detail,regression){results.push({name:m,passed:!!v,regression:regression!==false});print((v?'PASS ':'FAIL ')+m+(v?'':' '+String(JSON.stringify(detail)).substring(0,600)));}
 var cache=new File(root,'../.cache/entity-tests').getCanonicalFile();cache.mkdirs();
 var workspace=Files.createTempDirectory(cache.toPath(),'entity-read-active-').toFile(),target=new File(workspace,'ReadApp');

@@ -133,12 +133,44 @@ function mcp_resources_list({ input, config, result }) {
     items: local.resources,
     out: "local.resources",
   })
+  local.entryGuides = [
+    "flow://guide/start",
+    "flow://guide/start-rules",
+    "flow://guide/authoring",
+    "flow://guide/samples",
+    "flow://guide/frontend-svelte",
+    "flow://guide/frontend-svelte-routing",
+    "flow://guide/fullstack-paperboard",
+    "flow://guide/portable-blocks",
+  ]
+  local.resources = list.sort({
+    items: local.resources,
+    by: (local.entryGuides.indexOf(current.uri) >= 0
+      ? "0" + local.entryGuides.indexOf(current.uri)
+      : current.uri.startsWith("flow://guide/")
+        ? current.uri.substring("flow://guide/".length).includes("/") ? "2" : "1"
+        : "3") + current.uri,
+    direction: "asc",
+  })
+  // MCP cursors are offsets into the stable, ordered resource list. A small
+  // page leaves room for library metadata and the JSON-RPC envelope.
+  local.cursor = Number(input.request.params && input.request.params.cursor || 0)
+  if({
+    condition: !Number.isFinite(local.cursor) || local.cursor < 0 || Math.floor(local.cursor) !== local.cursor,
+    $$then: function () { local.cursor = 0 },
+  })
+  local.nextCursor = local.cursor + 20 < local.resources.length ? String(local.cursor + 20) : null
+  local.resources = local.resources.slice(local.cursor, local.cursor + 20)
   local.payload = json.object({
     $$id: "payload",
     $$fields: function () {
       json.field({
         key: "resources",
         value: local.resources,
+      })
+      json.field({
+        key: "nextCursor",
+        value: local.nextCursor,
       })
     },
   })

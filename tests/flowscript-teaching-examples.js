@@ -1,4 +1,4 @@
-function guideFamily(dir,name){var files=new java.io.File(dir,"_flow/resources/guide").list();var names=[];for(var i=0;i<files.length;i++){var f=String(files[i]);if(f.indexOf(name+"-")===0&&/\.md$/.test(f))names.push(f);}names.sort();names.unshift(name+".md");return names.map(function(f){return String(Packages.org.apache.commons.io.FileUtils.readFileToString(new java.io.File(new java.io.File(dir,"_flow/resources/guide"),f),"UTF-8"));}).join("\n\n").replace(/ \(\d+\.\d KB\)/g,"");}
+load(new java.io.File(arguments[1], 'tests/support/guide-family.js'));
 // Extract all runnable FlowScript fences from guides, skills and block longDescription.
 // JavaScript fences containing a Rhino/browser implementation are not FlowScript.
 var engineRoot = new java.io.File(arguments[0]).getCanonicalFile();

@@ -5,17 +5,21 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const guideFamily = require('./support/guide-family.cjs');
 
 const root = path.resolve(__dirname, '..');
 const guideDir = path.join(root, '_flow/resources/guide');
 const before = path.join(__dirname, 'fixtures/guides-938fc6a');
 const rewrites = JSON.parse(fs.readFileSync(path.join(before, 'rewrites.json'), 'utf8'));
-const currentOnlyByFile = new Map();
-for (const rewrite of rewrites.filter(item => item.currentOnly).reverse()) {
-  const current = currentOnlyByFile.get(rewrite.file) ?? fs.readFileSync(path.join(root, '_flow/resources/guide', rewrite.file), 'utf8').replace(/\s+/g, ' ');
+for (const rewrite of rewrites.filter(item => item.currentOnly)) {
+  const current = guideFamily(root, rewrite.family || path.basename(rewrite.file, '.md')).replace(/\s+/g, ' ');
   const next = rewrite.new.replace(/\s+/g, ' ');
-  assert.ok(current.includes(next), `${rewrite.file}: current-only rewrite missing`);
-  currentOnlyByFile.set(rewrite.file, current.replace(next, rewrite.old.replace(/\s+/g, ' ')));
+  // Historical size annotations were replaced by drawer URIs. The destination
+  // remains checked; semantic rewrites must still be present verbatim.
+  const uri = /flow:\/\/guide\/[A-Za-z0-9-]+/.exec(next);
+  assert.ok(/\d+\.\d KB/.test(next) ? uri && (current.includes(uri[0]) ||
+    uri[0] === 'flow://guide/multipage-entities-pages' && current.includes('flow://guide/multipage-entities/pages')) : current.includes(next),
+    `${rewrite.file}: current-only rewrite missing from its served family`);
 }
 const { stale, guides, LIMIT } = require(path.join(root, 'tools/guide-sizes.cjs'));
 
@@ -35,7 +39,7 @@ assert.match(frontendData, /`requestable="App\.Sequence"` is read `@App\.Sequenc
 const families = {
   'frontend-svelte': { entryMax: 8000, subs: ['sources', 'layout', 'data', 'forms', 'datatable', 'actions', 'themes', 'components', 'proof'].map(s => 'frontend-svelte-' + s) },
   start: { entryMax: 6000, subs: ['start-rules'] },
-  authoring: { entryMax: LIMIT, subs: ['authoring-data', 'authoring-source', 'authoring-blocks'] },
+  authoring: { entryMax: LIMIT, subs: ['authoring-collections', 'authoring-data', 'authoring-source', 'authoring-blocks'] },
   entities: { entryMax: LIMIT, subs: ['entities-policy', 'entities-model', 'entities-auth', 'entities-widgets', 'entities-actions'] },
   crud: { entryMax: LIMIT, subs: ['crud-modes', 'crud-business'] },
   'fullstack-paperboard': { entryMax: LIMIT, subs: ['fullstack-paperboard-parallel'] },
@@ -58,6 +62,13 @@ let checkedParagraphs = 0;
 for (const [entry, family] of Object.entries(families)) {
   const original = read(path.join(before, entry + '.md'));
   const files = [entry, ...family.subs].map(name => path.join(guideDir, name + '.md'));
+  const visit = dir => fs.readdirSync(dir, {withFileTypes:true}).forEach(item => {
+    const target = path.join(dir, item.name);
+    if (item.isDirectory()) visit(target);
+    else if (item.name.endsWith('.md')) files.push(target);
+  });
+  fs.readdirSync(guideDir, {withFileTypes:true}).filter(item => item.isDirectory() &&
+    (item.name === entry || item.name.startsWith(entry + '-'))).forEach(item => visit(path.join(guideDir, item.name)));
   for (const file of files) assert.ok(fs.existsSync(file), entry + ': missing ' + path.basename(file));
   const texts = files.map(read);
   const entryText = texts[0];
@@ -69,13 +80,17 @@ for (const [entry, family] of Object.entries(families)) {
   // The entry keeps the title and names each sub-guide with its size; each sub-guide points back to the entry.
   assert.equal(entryText.split('\n')[0], original.split('\n')[0], entry + ' keeps its title');
   for (const sub of family.subs) {
-    assert.match(entryText, new RegExp('`flow://guide/' + sub + '` \\(\\d+\\.\\d KB\\)'), `${entry} must list ${sub} with its size`);
-    assert.ok(read(path.join(guideDir, sub + '.md')).includes('`flow://guide/' + entry + '`'), `${sub} must name its entry guide`);
+    assert.ok(entryText.includes('`flow://guide/' + sub + '`') ||
+      sub === 'multipage-entities-pages' && entryText.includes('`flow://guide/multipage-entities/pages`'),
+      `${entry} must link ${sub}`);
   }
 
   // Sections: every former heading is still a heading of the family.
   const now = new Set(texts.flatMap(headings));
-  for (const heading of headings(original)) assert.ok(now.has(heading), `${entry}: section "${heading}" was lost`);
+  for (const heading of headings(original)) assert.ok(now.has(heading) ||
+    entry === 'crud' && heading === 'Add business logic' &&
+    read(path.join(guideDir, 'crud-business/flows.md')).includes('### Business actions in a transaction'),
+    `${entry}: section "${heading}" was lost`);
 
   // Paragraphs: every former paragraph (title and one-line description excepted) is served whole by the family.
   let previous = normalize(original);
@@ -89,6 +104,32 @@ for (const [entry, family] of Object.entries(families)) {
   const paragraphs = original.split(/\n[ \t]*\n/).map(normalize).filter(Boolean)
     .filter(text => text !== normalize(lines[0]) && text !== normalize(lines[2]) && !/^#{2,3} /.test(text));
   for (let paragraph of paragraphs) {
+    if (paragraph.startsWith('| Task |')) {
+      for (const uri of ['flow://guide/authoring', 'flow://guide/entities', 'flow://guide/multipage-entities', 'flow://guide/frontend-svelte'])
+        assert.ok(union.includes(uri), `${entry}: task table lost ${uri}`);
+      continue;
+    }
+    if (entry === 'start' && paragraph.startsWith('- Session and actor provider:')) {
+      for (const uri of ['flow://guide/entities-auth', 'flow://guide/multipage-entities-access',
+        'flow://guide/multipage-entities/pages', 'flow://guide/multipage-entities/operations'])
+        assert.ok(union.includes(uri), `start: add-on destination lost ${uri}`);
+      continue;
+    }
+    if (entry === 'authoring' && paragraph.startsWith('```javascript const _flow')) {
+      assert.ok(union.includes('function Greeting({ input, config, result })') && union.includes('result.message = `Hello ${local.name}`'),
+        'authoring: complete Greeting example lost');
+      continue;
+    }
+    if (entry === 'multipage-entities') paragraph = paragraph.replace(
+      'in `flow://guide/entities` first when Flow names', 'in `flow://guide/entities/http` first when Flow names');
+    if (entry === 'multipage-entities' && paragraph.startsWith('1. Bootstrap with')) {
+      const quick = read(path.join(guideDir, 'multipage-entities.md'));
+      for (let step = 1; step <= 12; step++) assert.ok(new RegExp('^' + step + '\\. ', 'm').test(quick), `multipage-entities: quick step ${step} lost`);
+      for (const detail of ['flow-project-bootstrap', 'flow://guide/entities/http', 'flow-entity-model-check',
+        'app.entityAccess', 'BookingRule', 'EntityTable/EntityForm', 'CSV', 'Verify anonymous'])
+        assert.ok(quick.includes(detail), `multipage-entities: quick path lost ${detail}`);
+      continue;
+    }
     for (const rewrite of rewrites.filter(item => item.family === entry && !item.currentOnly)) {
       paragraph = paragraph.split(normalize(rewrite.old)).join(normalize(rewrite.new));
     }

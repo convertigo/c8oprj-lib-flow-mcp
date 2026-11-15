@@ -34,7 +34,13 @@ var guideFiles = guideDir.list().filter(function (name) {
 assertTrue(guideFiles.length >= 12, "Expected the Flow guides, found " + guideFiles.length);
 
 // resources/list: every guide, with its H1 as name and its one-line summary as description.
-var listed = call(1, "resources/list").result.resources;
+var listed = [], cursor = null, pages = 0;
+do {
+  var page = call(1, "resources/list", cursor ? {cursor:cursor} : {}).result;
+  listed = listed.concat(page.resources);
+  cursor = page.nextCursor;
+  assertTrue(++pages < 30, "resources/list cursor must terminate");
+} while (cursor);
 guideFiles.forEach(function (file) {
   var slug = file.replace(/\.md$/, "");
   var resource = listed.filter(function (entry) { return entry.uri === "flow://guide/" + slug; })[0];
