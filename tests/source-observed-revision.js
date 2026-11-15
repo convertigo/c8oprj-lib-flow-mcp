@@ -10,13 +10,13 @@ Packages.com.twinsoft.convertigo.engine.Engine.initServletContext(new Packages.j
 var engine=eval(String(FU.readFileToString(new File(engineDir,'Engine.js'),'UTF-8')));
 var router='function Test({input,result}) { result.response = mcp.tools.call({request:input.request}) }';
 function assert(v,m){checks++;if(!v)throw new Error(m);}
-function actor(id,sub,caller){context={httpServletRequest:{getHeader:function(n){return n==='X-Convertigo-Conversation-Id'?id:n==='X-Convertigo-Subagent-Run'?sub:null;},getAttribute:function(n){return n==='com.convertigo.flow.mcp.caller'?(caller||'agent'):null;},getSession:function(){return null;}}};}
+function actor(id,sub,caller){var user=caller||'agent';context={httpServletRequest:{getHeader:function(n){return n==='X-Convertigo-Conversation-Id'?id:n==='X-Convertigo-Subagent-Run'?sub:null;},getAttribute:function(n){return n==='com.convertigo.flow.principal'?'mcp:'+user:n==='com.convertigo.flow.mcp.caller'?JSON.stringify({kind:'token',scope:'mcp:full',user:user,tokenId:user}):null;},getSession:function(){return null;}}};}
 function call(name,args){args.projectDir=String(temp);args.responseDetail='full';var r=JSON.parse(engine.run(JSON.stringify({flowSource:router,includeTrace:false,input:{request:{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:name,arguments:args}}}})));assert(r.ok,'route '+JSON.stringify(r));return r.result.response.result.structuredContent;}
 function source(n){return 'function Example({input,result}) { result.n = '+n+' }';}
 try {
  FU.writeStringToFile(new File(temp,'c8oProject.yaml'),'↑convertigo: 8.5.0\nproject: RevisionTest\n','UTF-8');
  var file=new File(temp,'_flow/flows/Example.flow.js');FU.writeStringToFile(file,source(1),'UTF-8');
- actor('A');var a=call('code-get',{name:'Example'});assert(a.ok && a.revision,'read A');
+ actor('A');var a=call('code-get',{name:'Example'});assert(a.ok && a.revision,'read A '+JSON.stringify(a));
  actor('B');var b=call('code-get',{name:'Example'});assert(b.revision===a.revision,'read B');
  actor('A');var r=call('code-set',{name:'Example',code:source(2)});assert(r.ok && r.revisionInferred,'A replaces observed source '+JSON.stringify(r));
  actor('B');r=call('code-set',{name:'Example',code:source(3)});assert(r.ok===false && /REVISION_MISMATCH/.test(r.error.code),'stale B refused '+JSON.stringify(r));
