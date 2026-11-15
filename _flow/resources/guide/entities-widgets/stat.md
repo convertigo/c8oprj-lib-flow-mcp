@@ -61,3 +61,56 @@ counted and filtered in SQL; "the oldest due first" is an EntityTable with a
 one row ordered by date, descending. Store an immutable fact when it is
 written (the number of items of a sent notice), and a job summary in its own
 entity, rather than recounting them on each display.
+
+## Combined filters and calendar periods
+
+Both widgets accept `period` on a **date** field, combined with `filter` by
+AND. `filter` may combine several fields or nested `and`/`or` groups. The
+widget produces an ordinary `between` predicate: the gateway and business
+Flows receive `options.filter`, and apply their usual read policy. Every
+filter, group and measure field must be visible; a hidden input cannot be
+inferred with a count or a difference between periods. `gateway.aggregate`
+enables a field but never makes it visible.
+
+- `{field:"bookedOn", from:"2026-11-01", to:"2026-11-15"}` includes both days.
+- `{field:"bookedOn", mode:"month", timeZone:"Europe/Paris"}` covers the whole
+  current calendar month, including future dated rows.
+- `{field:"bookedOn", mode:"rolling", days:30, timeZone:"Europe/Paris"}` covers
+  30 calendar days including today. UTC is the default zone; 1–3660 days.
+
+For timestamp fields, supply explicit timestamp bounds in `filter` instead;
+`period` is a calendar-date convenience, not an end-of-day timestamp converter.
+Periods are recomputed on refresh, not by a midnight timer.
+
+`EntityStat compare={true}` requires `period`. It makes two requests with the
+same base filters: previous calendar month for `month`, otherwise the adjacent
+preceding range with the same number of days. The hint shows the previous
+value; `OnLoaded` includes `previous` and `period: {current, previous}` bounds.
+Either refusal clears both figures. The two reads do not share a database
+snapshot. Amounts and averages stay decimal strings, including in events;
+averages are rounded by SQL to six fractional places. Avoid `Number(amount)`
+and client-side arithmetic on money. Currency display uses currency rounding.
+
+`EntityBreakdown sum="amount"` or `avg="amount"` displays the measured value
+per group; enable both `groupBy` and the measured field in `gateway.aggregate`.
+Use `orderBy="value"`, optionally `direction="asc"`. Cards use `currency`;
+table mode shows exact text without bars for measures. `OnLoaded.groups`
+retains decimal strings; `series` continues to contain row counts for charts.
+
+This example assumes a `Deal` with public `bookedOn` (date), `stage` (enum),
+`site` and `amount` (decimal), and `gateway: {aggregate: [stage, amount]}`.
+The application's policy decides the allowed sites and roles independently.
+Increment the shared refresh state on **both** saved and deleted events and
+on session changes; widgets clear old values and ignore obsolete responses.
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2, page: { id: "kpiDashboard" } };</script>
+<FlowComponent $$id="kpiDashboard"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>
+  <EntityStat $$id="pipeline" entity="Deal" label="Montant ouvert" sum="amount" currency="EUR" filter={{stage:["OPEN","LATE"],site:"A"}} period={{field:"bookedOn",mode:"month",timeZone:"Europe/Paris"}} compare={true} refreshKey="@page.refresh" />
+  <EntityBreakdown $$id="byStage" entity="Deal" groupBy="stage" sum="amount" currency="EUR" orderBy="value" filter={{site:"A"}} period={{field:"bookedOn",mode:"rolling",days:30,timeZone:"Europe/Paris"}} refreshKey="@page.refresh" />
+  <EntityForm $$id="dealEditor" entity="Deal" fields={["bookedOn","stage","site","amount"]}><Events>
+    <OnSaved><Actions><UpdateNumber $$id="refreshSaved" target="page.refresh" operation="increment" step={1} /></Actions></OnSaved>
+    <OnDeleted><Actions><UpdateNumber $$id="refreshDeleted" target="page.refresh" operation="increment" step={1} /></Actions></OnDeleted>
+  </Events></EntityForm>
+</Structure></FlowComponent>
+```

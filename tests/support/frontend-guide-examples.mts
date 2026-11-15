@@ -147,6 +147,7 @@ test('the documented layout containers keep their slots, properties and rendered
 const entityExamples = [
   { guide: "entities", id: "selectionExample", project: "EquipmentApp", route: "", layout: false },
   { guide: "entities", id: "myPosts", project: "EquipmentApp", route: "mine", layout: false },
+  { guide: "entities", id: "kpiDashboard", project: "EquipmentApp", route: "kpis", layout: false },
   { guide: "entities", id: "postView", project: "EquipmentApp", route: "postes/[id]", layout: false },
   { guide: "multipage-entities", id: "sessionLayout", project: "BookingApp", route: "", layout: true },
   { guide: "multipage-entities", id: "bookingEditor", project: "BookingApp", route: "mine", layout: false },
@@ -185,6 +186,7 @@ async function entityGuideFixture(t: test.TestContext, plan: typeof entityExampl
   const doc = await loadDocument(join(routes, "+page.flow.svelte"), {}, config);
   assert.deepEqual(doc.diagnostics.filter((d: any) => d.level === "error"), [], `${plan.guide}/${plan.id} must load with all route and library contracts`);
   const built = await generateSvelteProject(root, doc.model, { resourceRoot: provider });
+  if(plan.id === "kpiDashboard") assert.ok(built.written.some(name => name.endsWith("/entity-kpi.js")), "KPI resource is copied with the native components");
   const generated = new Map<string, string>();
   for (const page of ["home", "mine", "manage", "journal"]) {
     const route = page === "home" ? "" : page + "/";
@@ -220,6 +222,11 @@ for (const plan of entityExamples) {
       assert.equal((source.match(/<EntityStat\b/g) || []).length, 2, "The counter example keeps its two entity counters");
       assert.match(source, /filter=\{\{statut:"aRelancer"\}\}/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityStat/);
+    } else if(plan.id === "kpiDashboard") {
+      assert.match(source, /compare=\{true\}/);
+      assert.match(source, /mode:"rolling",days:30/);
+      assert.match(source, /<OnSaved>/);assert.match(source, /<OnDeleted>/);
+      assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityBreakdown/);
     } else if(plan.id === "postView") {
       assert.match(source, /<EntityView/);assert.match(source, /routeId="@route.params.id"/);assert.match(source, /related=/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityView/);
