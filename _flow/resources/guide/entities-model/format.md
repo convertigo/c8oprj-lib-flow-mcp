@@ -41,8 +41,11 @@ same `format` and the exact `example` shown in **Short path** of `flow://guide/e
   as `"Tagged"` or `{"Tagged": {"tag": "genre"}}`.
 - **Source:** `"source": {"provider": "app.directory"}` on a `"readOnly": true`
   entity: the named block lists its rows; it receives `ids`, `search`, `offset`
-  and `limit` and returns `{users, hasMore}`. `provider` is the only key, and
-  the entity is never written.
+  and `limit` and returns `{users, hasMore}`. The entity is never written.
+  Declare `"scoped": true` only if the provider enforces the actor's row scope
+  before its 200-row limit. Otherwise, an actor with a row scope can list this
+  directory only with an identity-bounded filter; an unbounded list is refused
+  with `ENTITY_DIRECTORY_SCOPE_UNSUPPORTED`.
 - **Outputs:** with a literal entity name, `entity.list`, `entity.read`,
   `entity.describe` and `entity.options` declare the fields of that entity, so
   pickers and binding diagnostics offer them. `labels.<relation>` is the text

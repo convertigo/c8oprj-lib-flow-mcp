@@ -33,8 +33,13 @@ absent or a hidden row), then update it with `key: {id}`. An inactive row
 Before declaring it:
 - **Owners.** Uniqueness is global to the table. On a `Possédé` entity, a unique
   personal field (an email, a phone) tells each creator that a value exists among
-  the rows of other owners. When owners are third parties to each other
-  (different customers), wait for uniqueness per owner.
+  the rows of other owners. The same cost applies when the access policy declares
+  row scope fields: an actor limited to a scope learns that the value exists
+  elsewhere, although no row is revealed. `model.check` and `model.set` warn in
+  these cases. When owners are third parties to each other (different customers),
+  wait for uniqueness per owner. If that disclosure matters for scoped actors,
+  wait for per-scope uniqueness via `unique: {per: [...]}`; this form is planned
+  and is not accepted yet.
 - **Open sign-up.** A create open to anonymous users or self sign-up on a unique
   field lets anyone test which accounts exist: use the sign-up of
   lib_UserManager (the same answer either way, a mail to the address), not a

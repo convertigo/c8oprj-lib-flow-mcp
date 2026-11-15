@@ -844,6 +844,11 @@
  },
  {
   "family": "entities",
+  "old": "`provider` is the only key, and the entity is never written.",
+  "new": "The entity is never written. Declare `\"scoped\": true` only if the provider enforces the actor's row scope before its 200-row limit. Otherwise, an actor with a row scope can list this directory only with an identity-bounded filter; an unbounded list is refused with `ENTITY_DIRECTORY_SCOPE_UNSUPPORTED`."
+ },
+ {
+  "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
