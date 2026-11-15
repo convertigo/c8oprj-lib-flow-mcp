@@ -83,6 +83,23 @@ assert(!exp(gesture(sessionId + '-errors-domain', 'errors-only')), 'errors-only 
 assert(exp(gesture(sessionId + '-other')), 'Independent session needs its own first push');
 assert(!exp(tool('code-set', {projectDir:empty, name:'Orders', code:'function Orders({result}) {\n result.rows = sql.table({name:"orders"})\n}\n'})), 'Project without drawers must remain unchanged');
 assert(!exp(gesture(sessionId + '-literal', 'on', 'function Orders({result}) {\n // sql.table({})\n result.label = "sql.table({})"\n}\n')), 'Comments/string literals must not trigger a domain');
+// Exercise the push boundary with an otherwise valid response close to Vibe's limit.
+var budgetFlow='function Budget({input,result}) { result.reply = mcp.experience({request:input.request,response:input.response,operation:"push"}) }';
+function budgetPush(body, session) {
+  var request={jsonrpc:'2.0',id:993,method:'tools/call',params:{name:'code-set',arguments:{projectDir:app,name:'Orders',code:'result.rows = sql.table({name:"orders"})'}}};
+  var response={jsonrpc:'2.0',id:993,result:{content:[{type:'text',text:body}],structuredContent:{ok:true,code:'result.rows = sql.table({name:"orders"})'}}};
+  var run=JSON.parse(engine.run(JSON.stringify({flowSource:budgetFlow,includeTrace:false,
+    config:{mcp:{experience:'on',experienceSession:session}},input:{request:request,response:response}})));
+  assert(run.ok===true,'Budget push Flow executes: '+JSON.stringify(run).slice(0,300));
+  return run.result.reply;
+}
+var budgetSession=sessionId+'-budget';
+var nearLimit=budgetPush(Array(15701).join('x'),budgetSession);
+assert(JSON.stringify(nearLimit).length<16000 && !exp({result:nearLimit.result}),
+  'ACE advice must not push a near-limit final response over 16000 characters');
+var laterAdvice=budgetPush('small response',budgetSession);
+assert(laterAdvice.result.structuredContent.experience,
+  'Advice skipped for the budget remains eligible on a smaller response');
 assert(ace.sourceBlocks('result.label = input.customer.trim()\nresult.rows = local.orders.filter(Boolean)\nresult.amount = Math.round(4.2)').length === 0,
   'Expression methods must not be mistaken for block domains');
 assert(exp(tool('code-check', {projectDir:app, name:'Orders'}, 'on', sessionId + '-check')), 'check must detect domains in the saved source');

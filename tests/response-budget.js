@@ -38,6 +38,35 @@ function read(uri) {
   check(run.ok && run.result && run.result.result && run.result.result.contents, 'resources/read ' + uri);
   return run.result.result.contents[0].text;
 }
+function readPages(uri) {
+  var params={uri:uri}, joined='', count=0;
+  do {
+    var request={jsonrpc:'2.0',id:3,method:'resources/read',params:params};
+    var run=JSON.parse(engine.run(JSON.stringify({flowSource:server,includeTrace:false,input:{request:JSON.stringify(request)}})));
+    var page=run.result.result.contents[0];
+    check(length(run.result.result)<16000,uri+' resource page exceeds budget');
+    joined+=page.text;
+    params=page.continuation && page.continuation.params;
+    check(++count<30,uri+' resource pagination terminates');
+  } while(params);
+  return joined;
+}
+['convertigo-flow-mcp','convertigo-flow-backend','convertigo-flow-frontend-svelte'].forEach(function(name){
+  var uri='flow://skills/'+name+'/SKILL';
+  check(readPages(uri)===String(FU.readFileToString(new File(root,'_flow/resources/skills/'+name+'/SKILL.md'),'UTF-8')),
+    uri+' must be recoverable from returned continuations');
+});
+var skillArgs={uri:'flow://skills/convertigo-flow-mcp/SKILL'}, toolSkill='', toolSkillPages=0;
+do {
+  var skillResult=call('flow-resource-get',skillArgs);
+  check(length(skillResult)<16000,'flow-resource-get skill page exceeds budget');
+  var skillPage=skillResult.structuredContent;
+  toolSkill+=skillPage.text;
+  skillArgs=skillPage.continuation && skillPage.continuation.arguments;
+  check(++toolSkillPages<30,'flow-resource-get skill pagination terminates');
+} while(skillArgs);
+check(toolSkill===String(FU.readFileToString(new File(root,'_flow/resources/skills/convertigo-flow-mcp/SKILL.md'),'UTF-8')),
+  'flow-resource-get skill continuation reconstructs the complete skill');
 listed.filter(function(item) { return /^flow:\/\/guide\//.test(item.uri); }).forEach(function(item) {
   var response = call('flow-resource-get', {uri:item.uri});
   check(response.structuredContent && response.structuredContent.ok, item.uri + ': ' + JSON.stringify(response).slice(0, 300));
@@ -147,6 +176,29 @@ do {
 check(contractPages>0,'large targeted contract is paginated');
 requestedBlocks.forEach(function(block){var got=recovered[block.tag];check(got && Object.keys(got.properties).length===60 && got.events.length===2 && got.snippets.Toolbar.length===3,
   'targeted contract complete for '+block.tag);});
+var choices=[]; for(var c=0;c<2000;c++) choices.push('choice'+('0000'+c).slice(-4));
+var oversizedContract={ok:true,code:'source',revision:'enum-r',authoringContract:{version:2,
+  blocks:[{tag:'Huge',properties:{choice:'enum:'+choices.join('|')},events:['OnChange'],snippets:{Slot:['item']}}],
+  portableBlocks:[{id:'huge.portable',tag:'HugePortable',contract:{choices:choices}}]}};
+var pieces={}, largeOffset=0, largePages=0, largeProperties={}, largePortables=[];
+do {
+  var largeRequest={id:1,method:'tools/call',params:{name:'code-get',arguments:{contractBlocks:['Huge'],contractOffset:largeOffset,revision:'enum-r'}}};
+  var largeReply=mcp.toolResponse(largeRequest,oversizedContract,{}).result;
+  check(length(largeReply)<16000,'oversized contract page exceeds budget: '+length(largeReply));
+  var largePage=largeReply.structuredContent.authoringContract;
+  check(largePage.reconstruction && largePage.contractTotal>0,'fragment reconstruction must be documented');
+  largePage.fragments.forEach(function(fragment){var group=pieces[fragment.unitIndex]||(pieces[fragment.unitIndex]=[]);group[fragment.part]=fragment.data;});
+  largePage.blocks.forEach(function(block){Object.keys(block.properties||{}).forEach(function(key){largeProperties[key]=block.properties[key];});});
+  largePortables=largePortables.concat(largePage.portableBlocks);
+  if(largePage.contractNextOffset===undefined) break;
+  largeOffset=largePage.continuation.arguments.contractOffset;
+  check(++largePages<100,'oversized contract pagination terminates');
+} while(true);
+Object.keys(pieces).forEach(function(key){var unit=JSON.parse(pieces[key].join(''));if(unit.kind==='property') largeProperties[unit.key]=unit.value;
+  if(unit.kind==='portable') largePortables.push(unit.value);});
+check(largeProperties.choice===oversizedContract.authoringContract.blocks[0].properties.choice &&
+  largePortables.some(function(item){return item.id==='huge.portable' && item.contract.choices.length===2000;}),
+  'oversized enum and portable contract are reconstructed exactly');
 ['flow://guide/entities-model/format','flow://guide/authoring/expressions','flow://guide/start-rules/design',
  'flow://guide/entities-model/schema','flow://guide/entities-widgets/table'].forEach(function(uri){
   var doc=read(uri), targets=doc.match(/flow:\/\/guide\/[A-Za-z0-9_.\/-]+/g)||[];
@@ -232,9 +284,20 @@ try {
   var lineChunk = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startLine:3,endLine:3});
   check(length(lineChunk)<16000 && lineChunk.structuredContent.startChar===11 && lineChunk.structuredContent.totalContentLength===absoluteSource.length,
     'line-range character offsets refer to the full source');
-  var afterLine = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startChar:lineChunk.structuredContent.endChar,revision:lineChunk.structuredContent.revision});
+  var lineNext=lineChunk.structuredContent.continuation;
+  check(lineNext && lineNext.arguments.startChar===lineChunk.structuredContent.endChar && lineNext.arguments.startLine===undefined &&
+    lineChunk.structuredContent.endLine===undefined,'a cut line has a character continuation and no stale endLine');
+  var afterLine = call(lineNext.tool,Object.assign({},lineNext.arguments,{projectDir:String(project.getCanonicalPath())}));
   check(afterLine.structuredContent.startChar===lineChunk.structuredContent.endChar && afterLine.structuredContent.code===absoluteSource.slice(lineChunk.structuredContent.endChar,afterLine.structuredContent.endChar),
     'character continuation resumes exactly after a line-range chunk');
+  var rebuilt=lineChunk.structuredContent.code, nextLine= lineNext, followed=0;
+  while(nextLine) {
+    var followedPage=call(nextLine.tool,Object.assign({},nextLine.arguments,{projectDir:String(project.getCanonicalPath())}));
+    rebuilt+=followedPage.structuredContent.code;
+    nextLine=followedPage.structuredContent.continuation;
+    check(++followed<30,'returned line continuation terminates');
+  }
+  check(rebuilt===absoluteSource.slice(11),'returned continuations recover the entire long line and subsequent source');
   FU.writeStringToFile(new File(project,page),'short', 'UTF-8');
   var staleChar = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startChar:1,revision:lineChunk.structuredContent.revision});
   check(staleChar.isError===true && /STALE_REVISION/.test(staleChar.structuredContent.error.code),
@@ -253,7 +316,7 @@ try {
   FU.writeStringToFile(new File(project, page), source + new Array(320).join('<Text $$id="row" text="A line of long page source" />\n'), 'UTF-8');
   var longResponse = call('code-get', {project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,kind:'source'});
   check(length(longResponse) < 16000 && longResponse.structuredContent.partial === true &&
-    /startLine/.test(longResponse.structuredContent.next || ''), 'long code-get must page below 16000: ' + length(longResponse));
+    /startChar/.test(longResponse.structuredContent.next || ''), 'long code-get must page below 16000: ' + length(longResponse));
   var longLegacy = call('frontend-svelte-code-get', {projectDir:String(project.getCanonicalPath()),sourceFile:page});
   check(length(longLegacy) < 16000 && longLegacy.structuredContent.partial === true,
     'long legacy frontend-svelte-code-get must page below 16000: ' + length(longLegacy));

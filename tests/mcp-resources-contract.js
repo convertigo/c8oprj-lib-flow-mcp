@@ -66,7 +66,7 @@ guideFiles.forEach(function (file) {
   assertTrue(characters < 16000, file + " has " + characters + " characters, not under 16 000: split it into sub-guides");
 });
 
-// resources/read: guides and skills are served whole, never truncated.
+// Short guides are served whole; long skills are paged with an exact continuation.
 guideFiles.forEach(function (file, index) {
   var uri = "flow://guide/" + file.replace(/\.md$/, "");
   var response = call(10 + index, "resources/read", { uri: uri });
@@ -83,8 +83,9 @@ assertTrue(/FLOW_INPUT_REQUIRED/.test(inputGuide.result.contents[0].text) &&
   /throw \{ code, message \}/.test(inputGuide.result.contents[0].text) &&
   /requester \(\.json, SDK, frontbuilder\)[\s\S]*200 and the `error` envelope/.test(inputGuide.result.contents[0].text),
   "authoring data guide must explain application-owned input errors");
-assertTrue(skill.result.contents[0].text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md"),
-  "Skills must be returned whole by resources/read");
+assertTrue(skill.result.contents[0].text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md").slice(0,6000) &&
+  skill.result.contents[0].continuation.params.startChar === 6000,
+  "Long skills must offer a resource continuation");
 var unknown = call(41, "resources/read", { uri: "flow://guide/does-not-exist" });
 assertTrue(unknown.error && unknown.error.data && unknown.error.data.code === "FLOW_MCP_RESOURCE_ERROR",
   "Unknown resources must return FLOW_MCP_RESOURCE_ERROR");
@@ -99,7 +100,8 @@ var startGuide = tool(42, "flow-resource-get", { uri: "flow://guide/start" });
 assertTrue(startGuide.ok === true && startGuide.text === readText("_flow/resources/guide/start.md") && startGuide.source === "resources/read",
   "flow-resource-get must read flow://guide/start whole without project: " + JSON.stringify(startGuide).substring(0, 400));
 var routerSkill = tool(43, "flow-resource-get", { uri: "flow://skills/convertigo-flow-mcp/SKILL" });
-assertTrue(routerSkill.text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md"), "flow-resource-get must read a skill without project");
+assertTrue(routerSkill.text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md").slice(0,6000) &&
+  routerSkill.continuation.arguments.startChar === 6000, "flow-resource-get must page a long skill without project");
 var missingGuide = tool(44, "flow-resource-get", { uri: "flow://guide/does-not-exist" });
 assertTrue(missingGuide.error && missingGuide.error.code === "UNKNOWN_RESOURCE", "an unknown guide is UNKNOWN_RESOURCE: " + JSON.stringify(missingGuide));
 var projectPath = tool(45, "flow-resource-get", { path: "_flow/engine.yaml" });

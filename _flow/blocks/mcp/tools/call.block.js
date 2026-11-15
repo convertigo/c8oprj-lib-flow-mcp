@@ -284,7 +284,8 @@ const _meta = {
 			return ctx.callBlock("mcp.resources.read", {
 				request: { jsonrpc: "2.0", id: request.id === undefined ? null : request.id, method: "resources/read", params: {
 					uri: target, project: request.params.arguments && request.params.arguments.project,
-					projectDir: request.params.arguments && request.params.arguments.projectDir
+					projectDir: request.params.arguments && request.params.arguments.projectDir,
+					startChar: args.startChar
 				}, __flowMcpTraceDeferred: true },
 				out: "local.mcpResourceRead"
 			}, { trace: false });
@@ -317,6 +318,7 @@ const _meta = {
 			texts.push(String(contents[i] && contents[i].text || ""));
 		}
 		var text = texts.join("\n");
+		var range = contents[0] && contents[0].startChar !== undefined ? contents[0] : null;
 		return mcp.finalizeResponse(ctx, request, mcp.jsonRpcResult(request.id, {
 			content: [{ type: "text", text: "Resource text is in text (structuredContent.text in the MCP envelope). Read this response, not the URI again. For plain Markdown, request format: text." }],
 			structuredContent: {
@@ -325,7 +327,12 @@ const _meta = {
 				mimeType: String(contents[0].mimeType || "text/markdown"),
 				source: "resources/read",
 				note: note || undefined,
-				text: text
+				text: text,
+				startChar: range ? range.startChar : undefined,
+				endChar: range ? range.endChar : undefined,
+				totalContentLength: range ? range.totalContentLength : undefined,
+				continuation: range && range.continuation ? {tool:"flow-resource-get",arguments:Object.assign({},args,{uri:uri,startChar:range.endChar})} : undefined,
+				next: range && range.continuation ? "Continue with flow-resource-get at startChar " + range.endChar + "; concatenate text in startChar order." : undefined
 			}
 		}));
 	}

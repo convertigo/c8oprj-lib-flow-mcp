@@ -174,22 +174,28 @@ const _meta = {
     var data = response.result.structuredContent || {}, codes = ace.diagnosticCodes(data);
     var blocks = ace.domains(request, data, "");
     var isBackendCode = /^(?:code|flow-(?:block-)?code)-(set|patch|check)$/.test(String(request.params.name)) && !blocks.length;
-    var advice = null;
+    var advice = null, candidateState = JSON.parse(JSON.stringify(state));
     if ((String(host.setting) !== "errors-only" && (blocks.length || isBackendCode)) || Object.keys(codes).length) {
       var drawers = catalog(host, request, ace, false), entries = [];
       drawers.forEach(function (drawer) { entries = entries.concat(drawer.entries); });
       if (entries.length) {
         if (isBackendCode && String(host.setting) !== "errors-only") blocks = ace.domains(request, data, source(host, mcp, request, data));
-        advice = ace.select(entries, blocks, codes, state, String(host.setting) === "errors-only" ? "errors-only" : "on");
+        advice = ace.select(entries, blocks, codes, candidateState, String(host.setting) === "errors-only" ? "errors-only" : "on");
       }
     }
-    sessions.put(key, new Packages.java.lang.String(JSON.stringify(state)));
-    if (!advice) return response;
+    if (!advice) { sessions.put(key, new Packages.java.lang.String(JSON.stringify(state))); return response; }
     // Copy: stable caches and provider results must never acquire advice belonging to one session.
     var answer = JSON.parse(JSON.stringify(response));
     answer.result.structuredContent = answer.result.structuredContent || {};
     answer.result.structuredContent.experience = advice.experience;
     answer.result.content = (answer.result.content || []).concat([{ type: "text", text: advice.text }]);
+    // The final envelope includes both copies of the result and the ACE addition.
+    // Keep an undelivered suggestion eligible for a later, smaller response.
+    if (JSON.stringify(answer).length >= 16000) {
+      sessions.put(key, new Packages.java.lang.String(JSON.stringify(state)));
+      return response;
+    }
+    sessions.put(key, new Packages.java.lang.String(JSON.stringify(candidateState)));
     try { log(host, key, request, advice); }
     catch (e) { try { Packages.com.twinsoft.convertigo.engine.Engine.logEngine.warn("Flow ACE push log unavailable: " + String(e)); } catch (ignored) {} }
     return answer;

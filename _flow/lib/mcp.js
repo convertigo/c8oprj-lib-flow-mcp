@@ -2420,6 +2420,33 @@
 				if (schemas[index].outputSchema !== undefined) tool.outputSchema = schemas[index].outputSchema;
 			});
 		}
+		// Page complete resource sources at the outer boundary. Internal resources/read relays
+		// keep the full text until flow-resource-get has selected its own response shape.
+		if (request && request.__flowMcpTraceDeferred !== true && response && response.result) {
+			var resource = request.method === "resources/read" && response.result.contents && response.result.contents[0];
+			var viaTool = request.method === "tools/call" && toolName(request) === "flow-resource-get" &&
+				response.result.structuredContent && response.result.structuredContent.source === "resources/read"
+					? response.result.structuredContent : null;
+			var document = resource || viaTool;
+			var resourceArgs = resource ? request.params || {} : toolArguments(request);
+			if (document && typeof document.text === "string" && resourceArgs.allowLarge !== true &&
+				!(viaTool && viaTool.startChar !== undefined)) {
+				var resourceStart = resourceArgs.startChar === undefined ? 0 : Number(resourceArgs.startChar);
+				if (!isFinite(resourceStart) || Math.floor(resourceStart) !== resourceStart || resourceStart < 0 || resourceStart >= document.text.length && resourceStart !== 0) {
+					response = jsonRpcError(request.id, -32602, "startChar must be a zero-based offset inside the resource.", {code:"RESOURCE_RANGE_INVALID"});
+				} else if (resourceStart || jsonChars(response) >= 15000) {
+					var fullText = document.text, resourceEnd = Math.min(fullText.length, resourceStart + 6000);
+					document.text = fullText.slice(resourceStart, resourceEnd);
+					document.startChar = resourceStart; document.endChar = resourceEnd; document.totalContentLength = fullText.length;
+					if (resourceEnd < fullText.length) {
+						document.continuation = resource ? {method:"resources/read",params:Object.assign({},resourceArgs,{startChar:resourceEnd})}
+							: {tool:"flow-resource-get",arguments:Object.assign({},resourceArgs,{startChar:resourceEnd})};
+						document.next = "Continue with " + JSON.stringify(document.continuation) + "; concatenate text in startChar order.";
+					}
+					if (viaTool) response.result.content = [{type:"text",text:"Resource text is in structuredContent.text; concatenate pages in startChar order."}];
+				}
+			}
+		}
 		if (request && request.method === "tools/call" && response && response.result) {
 			var structured = response.result.structuredContent;
 			if (toolName(request) === "flow-resource-get" && structured && !structured.error && structured.ok !== false) {
@@ -2435,7 +2462,11 @@
 						});
 						// Guides are complete documents. Project previews also need their hash,
 						// truncation flag and notices, separate from the source text.
-						var prefix = structured.source === "resources/read" ? (structured.note ? "Note: " + structured.note + "\n\n" : "") : "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
+						var prefix = structured.source === "resources/read"
+							? (structured.note ? "Note: " + structured.note + "\n\n" : "") +
+								(structured.continuation ? "Resource range " + structured.startChar + ":" + structured.endChar +
+									" of " + structured.totalContentLength + "; " + structured.next + "\n\n" : "")
+							: "Resource metadata: " + JSON.stringify(metadata) + "\n\n";
 						response.result.content = [{ type: "text", text: prefix + resourceText }];
 						delete response.result.structuredContent;
 					} else {
@@ -2446,8 +2477,9 @@
 			}
 			if (structured && (structured.error || structured.ok === false)) response.result.isError = true;
 		}
-		if (request && request.method === "tools/call" &&
-			/^(?:code-get|frontend-svelte-code-get|flow-code-get|flow-block-code-get)$/.test(toolName(request)) &&
+		if (request && request.method === "tools/call" && response && response.result &&
+			/^(?:code-get|frontend-svelte-code-get|flow-code-get|flow-block-code-get|flow-resource-get)$/.test(toolName(request)) &&
+			!(toolName(request) === "flow-resource-get" && toolArguments(request).allowLarge === true) &&
 			jsonChars(response) >= 16000) {
 			var budgetError = {ok:false,error:{code:"CODE_RESPONSE_BUDGET",message:"The final MCP response exceeds 16000 characters.",
 				hint:"Read a narrower source range or fewer contractBlocks at one time."}};
@@ -5510,14 +5542,29 @@
 					units.push({kind:"blockSummary",value:{tag:block.tag,properties:required,slots:block.slots || []}});
 				});
 			}
+			// Split any indivisible contract unit into JSON fragments. The original unit is
+			// reconstructed by joining its parts and JSON.parse, then merged by kind/tag/key.
+			var expanded = [];
+			units.forEach(function (unit, unitIndex) {
+				var serialized = JSON.stringify(unit);
+				if (serialized.length <= 1800) expanded.push(unit);
+				else {
+					var parts = Math.ceil(serialized.length / 1800);
+					for (var part = 0; part < parts; part++) expanded.push({kind:"fragment",unitIndex:unitIndex,
+						part:part,parts:parts,data:serialized.slice(part*1800,(part+1)*1800)});
+				}
+			});
+			units = expanded;
 			if (offset > units.length) { var invalid = new Error("contractOffset is beyond the contract."); invalid.code = "CODE_RANGE_INVALID"; throw invalid; }
-			var page = {version:contract.version, detail:targeted ? "blocks" : "index", blocks:[], pages:[], availableBlocks:[], portableBlocks:[], sources:{}, contractOffset:offset, contractTotal:units.length};
+			var page = {version:contract.version, detail:targeted ? "blocks" : "index", blocks:[], pages:[], availableBlocks:[], portableBlocks:[], fragments:[], sources:{}, contractOffset:offset, contractTotal:units.length};
 			if (targeted && offset === 0) page.syntax = "Properties are tag attributes. Events are On* handlers in Events; named snippets are child tags, and their listed parameters are values scoped to that snippet.";
+			if (units.some(function(unit) { return unit.kind === "fragment"; })) page.reconstruction = "Collect fragments by unitIndex across contractOffset pages, sort by part, concatenate data, JSON.parse the result, then merge the resulting kind/tag/key unit with the ordinary blocks, properties, slots, events and snippets.";
 			out.authoringContract = page;
 			var index = offset;
 			function append(unit) {
 				var block, j;
-				if (unit.kind === "root" || unit.kind === "navigation" || unit.kind === "valueSyntax" || unit.kind === "missingBlocks") page[unit.kind]=unit.value;
+				if (unit.kind === "fragment") page.fragments.push(unit);
+				else if (unit.kind === "root" || unit.kind === "navigation" || unit.kind === "valueSyntax" || unit.kind === "missingBlocks") page[unit.kind]=unit.value;
 				else if (unit.kind === "page") page.pages.push(unit.value);
 				else if (unit.kind === "pagesValue") page.pages = unit.value;
 				else if (unit.kind === "tag") page.availableBlocks.push(unit.value);
@@ -5571,9 +5618,7 @@
 			out.startChar = base; out.endChar = base + out.code.length;
 			out.contentLength = out.code.length;
 			if (out.endChar < out.totalContentLength) {
-				out.continuation = out.endLine && args.startChar === undefined
-					? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
-					: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+				out.continuation = codeContinuation(request,{startChar:out.endChar,revision:out.revision});
 				out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 			}
 			while (jsonChars(out) > 5800 && out.code.length > 100) {
@@ -5586,16 +5631,15 @@
 					}
 				}
 				out.endChar = base + out.code.length; out.contentLength = out.code.length;
-				out.continuation = out.endLine && args.startChar === undefined
-					? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
-					: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+				out.continuation = codeContinuation(request,{startChar:out.endChar,revision:out.revision});
 				out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 			}
+			// A character cut can stop inside the requested line; its former inclusive
+			// endLine no longer describes this response.
+			delete out.endLine;
 		}
 		if (out.partial && out.endChar < out.totalContentLength && !out.continuation) {
-			out.continuation = out.endLine && args.startChar === undefined
-				? codeContinuation(request,{startLine:out.endLine+1,endLine:Math.min(out.totalLines,out.endLine+40),revision:out.revision})
-				: codeContinuation(request,{startChar:out.endChar,revision:out.revision});
+			out.continuation = codeContinuation(request,{startChar:out.endChar,revision:out.revision});
 			out.next = "Read the next source chunk with " + JSON.stringify(out.continuation);
 		}
 		return out;
@@ -6715,7 +6759,7 @@
 			return null;
 		}
 		var content = sha256Hex(String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)));
-		return stableEntry("resource", [caller, uri, canonicalPath(file), content, code], STABLE_TTL_MS.resource);
+		return stableEntry("resource", [caller, uri, String(request.params && request.params.startChar || 0), canonicalPath(file), content, code], STABLE_TTL_MS.resource);
 	}
 
 	// The kept answer of a request of the mcp.stable block (tools/list, resources/read), or the key to keep it under,
