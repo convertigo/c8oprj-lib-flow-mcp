@@ -43,6 +43,9 @@ expose the array of exact object keys. Keep it as an array in page state when
 opening a local form. Typed URL arrays belong to the separate route change;
 never count the characters of a serialized query parameter. Every business
 command must authorize every key on the server. `exportable` downloads the
-formatted current page only. For a complete filtered CSV, set `exportFlow` to an
-application Flow calling `entity.exportCsv`; read `flow://guide/entities-exports`
-for the server limits, list policy and a page with a real download button.
+formatted current page only; complete exports use a checked server command
+from Toolbar, as in `flow://guide/multipage-entities/operations`.
+
+For a complete filtered CSV, set `exportFlow` to an application Flow calling
+`entity.exportCsv`; read `flow://guide/entities-exports` for the server limits,
+list policy and a page with a real download button.
