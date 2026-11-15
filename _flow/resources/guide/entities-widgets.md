@@ -2,7 +2,7 @@
 
 Choose the entity widget before writing an entity-backed page.
 
-For a model entity served through the application's `EntityGateway` (`gateway: true`), use `EntityTable` for a list, `EntityForm` for create/edit, `EntityView` for one record, `EntityStat` for a policy-aware count, sum or average, and `EntityBreakdown` for counts or measures grouped by a field. Both accept combined filters and calendar periods. Use `DataTable`, `Form` or `StatCard` for data that is not a Flow entity or when an entity widget cannot meet the page contract. Do not rebuild gateway access policy, paging or validation in a page. Read the exact widget drawer before configuring it.
+For a model entity served through the application's `EntityGateway` (`gateway: true`), use `EntityTable` for a list, `EntityForm` for create/edit, `EntityView` for one record, `EntityStat` for a policy-aware count, sum or average, and `EntityBreakdown` for counts or measures grouped by a field. Both accept combined filters and calendar periods. Use `DataTable`, `Form` or `StatCard` for data that is not a Flow entity or when an entity widget cannot meet the page contract. Do not rebuild gateway access policy, paging or validation in a page. Read the exact widget drawer before configuring it. For a complete filtered CSV download, read `flow://guide/entities-exports`.
 
 Smallest entity list page (a `Book` entity exists):
 

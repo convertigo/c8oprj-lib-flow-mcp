@@ -8,7 +8,8 @@ The export reuses `entity.list` with `checkAccess:true`, so forged users and rol
 perimeter. This minimal export has no client filter and is explicitly complete
 up to 200 rows: if more exist, refuse rather than silently export one page.
 When adding screen filters, validate and pass the **same** filters here. For
-larger exports use a bounded paging loop, not a client-side CSV encoder.
+larger filtered exports, use `entity.exportCsv` and `EntityTable.exportFlow` as in
+`flow://guide/entities-exports`: the server pages the list and refuses overflow.
 
 <!-- example: export-bookings -->
 ```javascript
