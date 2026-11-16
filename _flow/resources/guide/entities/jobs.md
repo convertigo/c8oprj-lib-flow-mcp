@@ -6,7 +6,9 @@ Use the installed `entity.read`, `entity.save` and `sql.transaction` contracts;
 reference `lib_flow_entity`, `lib_flow_sql` and `lib_flow_crud_data`, with
 `config.entities.connection: app` and the same SQL connection for both entities.
 No new job framework or generated CRUD is needed. See
-`flow://guide/entities/jobs-runner` for the scheduler and manual entry points.
+`flow://guide/entities/jobs-runner` for the worker and manual entry points.
+For scheduling, the contract below supersedes the scheduler paragraph of that
+recipe (which assumes the optional Flow fallback).
 
 Merge this model into the application. The due date and status of `Échéance`
 are calculated on the server; never write `statut` or `dateEcheance`.
@@ -100,3 +102,24 @@ when a task returns to an older deadline. A concurrent unique/revision conflict
 must abort the entire unit; retry it in a fresh transaction, never catch a SQL
 failure inside that transaction. Keep both entities on `app`.
 Do not delete prepared records or alter their replay keys through another route.
+
+## Schedule with the advertised tool contract
+
+Inspect `tools/list`, then `scheduler-list` (the relayed legacy operation is
+`scheduler_list`) for the project before changing a job. The relayed legacy
+`scheduler-apply` schema has no preview flag: do not send undocumented arguments.
+The optional Flow fallback has a different schema; use only the one actually
+advertised by this server.
+
+For the legacy relay, create the project-owned definition **disabled**, with
+`project`, `sequence:"RunReminders"`, `name`, `cron:"0 0 9 * * ?"`,
+`enabled:false`. List again and verify the target, cron and disabled state.
+After isolated execution and replay tests, enable the schedule and the
+application symbol separately. Keep scheduler output recording off.
+
+Neither the relayed Flow tool contract nor the Flow fallback list exposes the
+scheduler's effective time zone; there is no documented Flow operation to read
+it. `Échéance.timeZone:"Europe/Paris"` controls deadline evaluation only, not the
+Quartz trigger. Have the runtime operator verify the effective scheduler zone
+before enabling a wall-clock schedule; do not infer it from the browser, cron
+expression or entity trait.
