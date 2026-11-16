@@ -87,7 +87,7 @@ function fixture(count = 2) {
     ctx.canContinue = () => true;
     ctx.throwFlow = e => {throw e;}; ctx.raise = raise;
     ctx.flowGet = name => ({source: name});
-    ctx.runFlowSource = (name, config, options) => ({result: execute(flows[name], options.input, config)});
+    ctx.runFlowSource = (name, config, options) => ({result: execute(flows[options.namedFlowName || name], options.input, config)});
     ctx.runLoopBody = ns => ctx.runNodes(ns);
     ctx.runNodes = ns => {
       for (const n of ns) {
