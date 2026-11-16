@@ -66,3 +66,5 @@ A refusal by a policy, model ACL or authorization slot, including on a relation 
 - `flow://guide/multipage-entities/proof` — open for final proof and delivery.
 
 The proof guide covers browser context reuse, sign-out and the development session limit.
+
+For dashboard **répartition par statut**, use `EntityBreakdown allValues={true}` for every labelled enum state, including zeros; read `flow://guide/entities-widgets/stat`.

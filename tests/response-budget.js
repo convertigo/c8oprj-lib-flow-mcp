@@ -296,11 +296,20 @@ check(read('flow://guide/entities-widgets/table').indexOf('flow://guide/multipag
    check(next && next.tool==='code-get' && next.arguments[item.selector]===item.expected && next.arguments.revision==='flow-r' && next.arguments.startChar>0,
      'continuation preserves original '+item.selector+' selector and revision');
  });
-var list = call('flow-resource-search', {project:'lib_flow_mcp',projectDir:root,query:'EntityTable business screens',limit:10});
-var found = list.structuredContent && list.structuredContent.matches || list.structuredContent && list.structuredContent.resources || [];
+// Resource discovery may return a deadline continuation before reaching a matching drawer.
+var searchCursor = null, found = [], searchPages = 0;
+do {
+  var list = call('flow-resource-search', {project:'lib_flow_mcp',projectDir:root,query:'EntityTable business screens',limit:10,cursor:searchCursor || undefined});
+  check(length(list)<16000, 'flow-resource-search page exceeds the response budget');
+  var searchResult = list.structuredContent || {};
+  found = found.concat(searchResult.matches || searchResult.resources || []);
+  searchCursor = searchResult.nextCursor;
+  check(++searchPages<30, 'flow-resource-search drawer continuation terminates');
+} while(searchCursor && !found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }));
 check(found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }),
   'flow-resource-search must find the table drawer: ' + JSON.stringify(list).slice(0,600));
 var widgetSummary = byUri['flow://guide/entities-widgets'].response.structuredContent.text;
+check(/répartition par statut/.test(widgetSummary) && /allValues=\{true\}/.test(widgetSummary), 'served widget summary selects all enum states for status dashboards');
 var deadlineGuide = read('flow://guide/entities-widgets/deadlines');
 check(deadlineGuide.length < 12000 && widgetSummary.length < 6000 &&
   widgetSummary.indexOf('flow://guide/entities-widgets/deadlines') >= 0 &&

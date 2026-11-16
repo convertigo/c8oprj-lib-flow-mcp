@@ -30,5 +30,13 @@ try {
   check(/lib_flow_entity[^\n]*Read `flow:\/\/guide\/entities-widgets` before writing pages/.test(start), 'start routes entity pages imperatively');
   check(/flow:\/\/guide\/entities-widgets\/table/.test(routing) && /flow:\/\/guide\/entities-widgets\/form/.test(routing), 'start skill routes entity pages to exact drawers');
   check(/flow:\/\/guide\/entities-widgets\/table/.test(frontend) && /flow:\/\/guide\/entities-widgets\/form/.test(frontend), 'frontend skill routes entity pages to exact drawers');
+  var summary = String(FU.readFileToString(new File(root, '_flow/resources/guide/entities-widgets.md'), 'UTF-8'));
+  var stat = String(FU.readFileToString(new File(root, '_flow/resources/guide/entities-widgets/stat.md'), 'UTF-8'));
+  var multipage = String(FU.readFileToString(new File(root, '_flow/resources/guide/multipage-entities.md'), 'UTF-8'));
+  [summary, stat, multipage].forEach(function(text) {
+    check(/répartition par statut/.test(text) && /EntityBreakdown[\s\S]*allValues=\{true\}/.test(text), 'status dashboards lead to allValues');
+  });
+  check(summary.length < 6000, 'widget summary remains below 6000 characters');
+  check(/declaration order/.test(stat) && /restricted field/.test(stat) && /nonblocking/.test(stat), 'allValues explains ordering, visibility and non-enum fallback');
 } finally { FU.deleteDirectory(dir); }
 print('entity-page-guidance OK');

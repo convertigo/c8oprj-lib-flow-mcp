@@ -51,9 +51,31 @@ entity is an error. `entity.list` takes the same
 A breakdown (counts per value: postes per RPCA, rows per status) is an
 `EntityBreakdown` (search **répartition**): `entity`, `groupBy`, `filter`,
 `display="cards"` or `"table"` (proportional bars), `limit` up to 50, `tones`
-per key. It sends one `aggregate` request, never a list. For a bar or donut
+per key. By default it sends one `aggregate` request, never a list. For a bar or donut
 chart, handle its `OnLoaded` and pass `@event.value.categories` and
 `@event.value.series` to a `Chart` of `lib_flow_frontend_charts_svelte`.
+
+For a dashboard **répartition par statut**, set `allValues={true}` on
+`EntityBreakdown` with the status enum as `groupBy`. Every declared value is
+shown in declaration order with its model label (or key) and count `0` when
+absent from the rows this session sees. This overrides `limit`, `orderBy` and
+`direction`; only declared values are shown (no null/undeclared group). The
+default remains present groups only, with the usual bounds and sorting.
+
+The widget reads the session's `describe` then authorized `aggregate` results;
+business `flows` must provide both operations. It never reads a private model
+or lists records. Aggregates use batches of at most 199 enum values with the
+same filters, period and active setting, ANDed with the batch predicate; the
+server still applies scope, roles, visible fields and `gateway.aggregate`.
+A restricted field or any refused request clears the entire breakdown: no
+labels or fabricated zeros. Zeros mean no matching visible rows, never a
+count of hidden rows. With `sum`, absent groups have exact `"0"`; with `avg`,
+they have `null` (displayed `—`), since no average exists. `OnLoaded` includes
+the completed groups, labels and zero counts for charts. A non-enum field
+keeps normal grouping and displays a nonblocking `allValues ignored`
+diagnostic. Refresh `refreshKey` after writes and session changes to reload
+both description and data; obsolete responses are ignored. Large enum
+batches are separate reads, without a shared database snapshot.
 
 Other figures of a dashboard: a status computed by a trait (`Échéance`) is
 counted and filtered in SQL; "the oldest due first" is an EntityTable with a
@@ -107,7 +129,7 @@ on session changes; widgets clear old values and ignore obsolete responses.
 <script module>export const _flow = { sourceVersion: 2, page: { id: "kpiDashboard" } };</script>
 <FlowComponent $$id="kpiDashboard"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>
   <EntityStat $$id="pipeline" entity="Deal" label="Montant ouvert" sum="amount" currency="EUR" filter={{stage:["OPEN","LATE"],site:"A"}} period={{field:"bookedOn",mode:"month",timeZone:"Europe/Paris"}} compare={true} refreshKey="@page.refresh" />
-  <EntityBreakdown $$id="byStage" entity="Deal" groupBy="stage" sum="amount" currency="EUR" orderBy="value" filter={{site:"A"}} period={{field:"bookedOn",mode:"rolling",days:30,timeZone:"Europe/Paris"}} refreshKey="@page.refresh" />
+  <EntityBreakdown $$id="byStage" entity="Deal" groupBy="stage" allValues={true} label="Répartition par statut" sum="amount" currency="EUR" filter={{site:"A"}} period={{field:"bookedOn",mode:"rolling",days:30,timeZone:"Europe/Paris"}} refreshKey="@page.refresh" />
   <EntityForm $$id="dealEditor" entity="Deal" fields={["bookedOn","stage","site","amount"]}><Events>
     <OnSaved><Actions><UpdateNumber $$id="refreshSaved" target="page.refresh" operation="increment" step={1} /></Actions></OnSaved>
     <OnDeleted><Actions><UpdateNumber $$id="refreshDeleted" target="page.refresh" operation="increment" step={1} /></Actions></OnDeleted>

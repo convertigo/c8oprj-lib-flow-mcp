@@ -225,6 +225,8 @@ for (const plan of entityExamples) {
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityStat/);
     } else if(plan.id === "kpiDashboard") {
       assert.match(source, /compare=\{true\}/);
+      assert.match(source, /allValues=\{true\}/);
+      assert.match(generated.get(plan.route+"/+page.svelte")!, /allValues=\{true\}/);
       assert.match(source, /mode:"rolling",days:30/);
       assert.match(source, /<OnSaved>/);assert.match(source, /<OnDeleted>/);
       assert.match(generated.get(plan.route+"/+page.svelte")!, /EntityBreakdown/);
