@@ -107,12 +107,11 @@ Company list (place inside the same shell's Children):
 <script module>export const _flow = { sourceVersion: 2, page: { id: "companies" } };</script>
 <FlowComponent $$id="companies"><Structure>
   <PageHeader $$id="heading" title="Companies"><Tools><LinkButton $$id="addCompany" page="newCompany" label="Add company" variant="primary" /></Tools></PageHeader>
-  <Text $$id="searchHelp" text="Search company names" />
   <EntityTable $$id="list" entity="Company" caption="Companies" labels={{search:"Search company names"}} columns={[{path:"companyName",label:"Company",secondary:{path:"domain",monospace:true}},{path:"industry"},{path:"city",label:"Location",secondary:"country"},{path:"employees",format:"number"}]} counts={[{as:"contacts",label:"Contacts",entity:"Contact",via:"companyId"}]} sums={[{as:"pipeline",label:"Open pipeline",entity:"Deal",via:"companyId",sum:"amount",currency:"USD",filter:{stage:["Lead","Qualified","Proposal"]}}]} viewPage="company" />
 </Structure></FlowComponent>
 ```
 
-Search uses the model title by default, hence this help names company names.
+Search uses the model title by default. Its single label is supplied by labels.search; do not add a separate search-help text.
 Use the authorized list total for the header subtitle "13 companies"; never
 count a downloaded page. All examples use the application's gateway, without
 targetProject. Wire refreshKey to session changes and completed writes.
@@ -130,3 +129,5 @@ Both via and sum must be enabled; an unreadable or
 refused sum is omitted, never shown as zero. `layout="compact"` uses authorized
 relation labels, viewPage record links, server sorting and a bounded pageSize
 (1..50). Without orderBy it uses updatedAt descending.
+
+Bar counts use the current public model label, with optional `labelSingular` and `labelPlural` for explicit grammatical forms (for example `label: "Deal", labelPlural: "Deals"`). Common English/French statuses receive semantic tones before the stable fallback; explicit tones win. Sidebar layout keeps a full-height rail on mobile.

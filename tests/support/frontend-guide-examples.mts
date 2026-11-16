@@ -298,6 +298,7 @@ test('CRM dashboard and company list recipes compile with entity options and ico
       const file=join(routes,'+page.flow.svelte');await writeFile(file,match[1]);
       // The recipe's home id is also supplied by a placeholder route; omit that placeholder for this load.
       const pageId=/page:\s*\{\s*id:\s*"([^"]+)"/.exec(match[1])?.[1];
+      if(pageId==='companies' || pageId==='crmCompanies'){assert.equal((match[1].match(/Search company names/g) || []).length,1);assert.doesNotMatch(match[1],/searchHelp/);}
       const placeholder=pageId && join(routes,pageId,'+page.flow.svelte');
       const saved=placeholder && existsSync(placeholder)?await readFile(placeholder,'utf8'):undefined;
       if(saved)await rm(placeholder!);
