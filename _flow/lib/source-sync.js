@@ -2,10 +2,12 @@
 (function () {
 	var ACCEPTED = ["_flow/flows/*.flow.js", "_flow/blocks/**/*.block.js",
 		"_flow/frontbuilder/svelte/model/<App>/src/**/*.flow.svelte", "*.flow.css (under the same src)",
-		"_flow/data/model.yaml", "_flow/schemas/**"];
+		"_flow/data/model.yaml"];
 	var HIDDEN = ["code-set", "code-patch", "authoring-mutate", "frontend-svelte-mutate",
 		"flow-block-mock", "flow-object-remove", "flow-project-remove", "flow-resource-patch", "flow-resource-delete",
-		"flow-entity-model-set", "flow-crud-upsert", "flow-fullsync-scaffold", "frontend-svelte-fullsync-schema"];
+		"flow-entity-model-set", "flow-crud-upsert", "flow-fullsync-scaffold", "frontend-svelte-fullsync-schema",
+		"flow-code-set", "flow-code-patch", "flow-block-code-set", "flow-block-code-patch",
+		"frontend-svelte-code-set", "frontend-svelte-code-patch"];
 	function sources(ctx) {
 		var c = ctx && typeof ctx.convertigoContext === "function" ? ctx.convertigoContext() : null;
 		var http = c && c.httpServletRequest;
@@ -20,7 +22,7 @@
 		if ((m = /^_flow\/flows\/([A-Za-z_$][\w$]*)\.flow\.js$/.exec(path))) return {name:m[1]};
 		if ((m = /^_flow\/blocks\/(.+)\.block\.js$/.exec(path))) return {block:m[1].replace(/\//g,".")};
 		if (/^_flow\/frontbuilder\/svelte\/model\/[^/]+\/src\/.+\.flow\.(svelte|css)$/.test(path)) return {sourceFile:path};
-		if (path === "_flow/data/model.yaml" || /^_flow\/schemas\/.+/.test(path)) return {path:path};
+		if (path === "_flow/data/model.yaml") return {modelFile:path};
 		return null;
 	}
 	function failed(r) {
@@ -47,7 +49,7 @@
 				var f=files[i], path=String(root.toPath().relativize(f.toPath())).replace(/\\/g,"/");
 				if (Files.isSymbolicLink(f.toPath())) continue;
 				if (f.isDirectory()) scan(f,found);
-				else if (target(path)) found[path]=read(confined(path));
+				else if (target(path) || /^_flow\/schemas\//.test(path)) found[path]=read(confined(path));
 			}
 		}
 		var servlet = Packages.com.twinsoft.convertigo.engine.Engine.getServletContext();
@@ -60,9 +62,9 @@
 			["_flow/flows","_flow/blocks","_flow/frontbuilder/svelte/model","_flow/data","_flow/schemas"].forEach(function(p){scan(confined(p),disk);});
 			var kept=servlet.getAttribute(key), known=kept ? JSON.parse(String(kept)) : {};
 			// The first call snapshots the engine view, before the harness starts the source editor.
-			if (!kept) {
+			if (!kept && Array.isArray(args.paths) && args.paths.length === 0) {
 				var store=mcp.sourceStore(args);
-				Object.keys(disk).forEach(function(p){var f=confined(p); if(store.exists(f)) known[p]=store.read(f);});
+				Object.keys(disk).forEach(function(p){var f=confined(p); if(target(p) && store.exists(f)) known[p]=store.read(f); else if(/^_flow\/schemas\//.test(p)) known[p]=disk[p];});
 				servlet.setAttribute(key,JSON.stringify(known));
 			}
 			var paths=args.paths;
@@ -73,8 +75,8 @@
 			if (!Array.isArray(paths)) throw {code:"INVALID_ARGUMENT",message:"paths must be an array of project-relative paths."};
 			var results=[], count={checked:0,applied:0,refused:0}, dry=args.dryRun===true;
 			function inner(name, a, op) {
-				var req={jsonrpc:"2.0",id:request.id,method:"tools/call",params:{name:name,arguments:Object.assign({},args,a)}};
-				delete req.params.arguments.paths; delete req.params.arguments.dryRun;
+				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun;
+				var req={jsonrpc:"2.0",id:request.id,method:"tools/call",__flowMcpTraceDeferred:true,params:{name:name,arguments:Object.assign(clean,a)}};
 				return ctx.callBlock(op ? "mcp.tool.code.dispatch" : "mcp.tool."+name.replace(/^flow-/,"flow.").replace(/-/g,"."),
 					{request:req,operation:op,out:"local.sourceSyncInner"},{trace:false});
 			}
@@ -85,16 +87,12 @@
 					if (!t) throw {code:"SOURCE_TYPE_UNSUPPORTED",message:"Unsupported author source: "+path,details:{accepted:ACCEPTED}};
 					if (!file.isFile()) throw {code:"SOURCE_FILE_DELETED",message:"Source is missing on disk; no engine deletion was applied: "+path,details:{accepted:ACCEPTED}};
 					var text=read(file);
-					if (t.path) {
-						// The resource writer owns data/schema validation too. baseContent bypasses no validator.
-						var preview={path:path,baseContent:text,edits:[{oldText:text,newText:text}],dryRun:true};
-						response=inner("flow-resource-patch",preview);
+					if (t.modelFile) {
+						var model=ctx.parseYaml(text);
+						response=inner("flow-entity-model-check",{model:model});
 						if (!dry && !failed(response)) {
-							// Request the same resource engine application even when disk already holds these bytes.
-							response=mcp.runToolBlock(ctx,{id:request.id,params:{name:"flow-source-sync",arguments:args}}, {},function(){
-								return ctx.resourcePatch({project:args.project,projectDir:args.projectDir,path:path,
-									edits:[{oldText:text,newText:text}]});
-							});
+							var checked=response.result.structuredContent;
+							response=inner("flow-entity-model-set",{model:model,expectedRevision:checked.revision});
 						}
 					} else {
 						response=inner("code-check",Object.assign({},t,{code:text}),"check");
@@ -106,7 +104,10 @@
 					}
 					count.checked++;
 					if (failed(response)) count.refused++;
-					else if (!dry) {known[path]=text;count.applied++;entry.applied=true;entry.diskApplied=true;}
+					else if (!dry) {
+						known[path]=read(file);count.applied++;entry.applied=true;entry.diskApplied=true;
+						mcp.stableToolCalled(t.modelFile ? "flow-entity-model-set" : "code-set");
+					}
 				} catch(e) {response=mcp.toolError(request,e,ctx);count.refused++;}
 				// Preserve the complete code-check/code-set envelope, including text, hints and guide drawers.
 				entry.response=response;

@@ -15,7 +15,7 @@ const _meta = {
   try {
     var args=mcp.prepareToolArguments(ctx,request,{});
     if (!args.project && !args.projectDir) throw {code:"PROJECT_REQUIRED",message:"flow-source-sync requires project."};
-    response=ctx.lib("source-sync").sync(ctx,request,args);
+    response=mcp.finalizeResponse(ctx,request,ctx.lib("source-sync").sync(ctx,request,args));
   } catch(e) {response=mcp.toolError(request,e,ctx);}
   ctx.write(p.out || "local.response",response);return response;
 }};}())

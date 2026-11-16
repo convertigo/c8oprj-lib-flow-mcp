@@ -2992,6 +2992,7 @@
 
 	// Tools that write into their target project: the target must be explicit and never the MCP project itself.
 	var projectWritingTools = {
+		"flow-source-sync": true,
 		"authoring-mutate": true,
 		"code-discard": true,
 		"code-patch": true,
