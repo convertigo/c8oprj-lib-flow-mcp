@@ -7134,7 +7134,7 @@
 		}
 		var params = request.params && typeof request.params === "object" ? request.params : {};
 		return stableEntry("tools/list", [caller, code, relay, String(params.cursor || ""), String(params.limit || ""),
-			"profile=" + toolProfile(ctx)].concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS["tools/list"]);
+			"profile=" + toolProfile(ctx), "sourceMode=" + String((stableServletRequest(ctx) && stableServletRequest(ctx).getHeader("X-Convertigo-Source-Mode")) || "")].concat(stableHeaderValues(ctx, STABLE_HEADERS)), STABLE_TTL_MS["tools/list"]);
 	}
 
 	// The file of a guide or skill: flow://guide/<name> and flow://skills/<skill>/SKILL in this project

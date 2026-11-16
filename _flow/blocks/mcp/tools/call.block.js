@@ -3,6 +3,7 @@ const _meta = {
   "version": 1,
   "uses": [
     "mcp",
+    "source-sync",
   ],
   "private": true,
   "icon": "mdi:tools",
@@ -345,6 +346,7 @@ const _meta = {
 			var out = props.out || "local.response";
 			var response;
 			try {
+				if (!ctx.lib("source-sync").visible(ctx,name)) throw {code:"TOOL_DISABLED_IN_MODE",message:name+" is unavailable in this authoring mode.",hint:"In sources mode, edit project files and call flow-source-sync."};
 				// An expired leased MCP token was let through to read why it is refused (jwt.guardRequest): no tool runs.
 				if (request.__flowMcpTokenExpired) {
 					response = mcp.toolError(request, request.__flowMcpTokenExpired, ctx);

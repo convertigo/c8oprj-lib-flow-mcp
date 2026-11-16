@@ -3,6 +3,7 @@ const _meta = {
   "version": 1,
   "uses": [
     "mcp",
+    "source-sync",
   ],
   "description": "Returns the Flow MCP tool descriptors.",
   "icon": "mdi:format-list-checks",
@@ -52,6 +53,7 @@ const _meta = {
 	var FRONTEND_TOOL_PREFIX = "mcp.tool.frontend.";
 	var TAG_TOOL_PREFIX = "mcp.tool.tags.";
 	var PUBLIC_TOOLS = {
+		"flow-source-sync": true,
 		"tags-get": true,
 		"tags-apply": true,
 		"authoring-mutate": true,
@@ -762,7 +764,7 @@ const _meta = {
 			var mcp = ctx.lib("mcp");
 			var profile = String(props.profile || "").trim().toLowerCase() === "more" ? "more" : mcp.toolProfile(ctx, props.profile);
 			function listed(name) {
-				return profile === "all" || (profile === "core" ? mcp.coreTool(name) : !mcp.coreTool(name));
+				return ctx.lib("source-sync").visible(ctx,name) && (name === "flow-source-sync" || profile === "all" || (profile === "core" ? mcp.coreTool(name) : !mcp.coreTool(name)));
 			}
 			var names;
 			var byName;
@@ -820,7 +822,7 @@ const _meta = {
 			// The relayed tools belong to the Convertigo MCP and its own visibility rules: listed as before.
 			if (profile !== "more") {
 				mcp.legacyRelayTools(ctx).forEach(function (tool) {
-					if (!own[tool.name]) {
+					if (!own[tool.name] && ctx.lib("source-sync").visible(ctx,tool.name)) {
 						tools.push(tool);
 					}
 				});
