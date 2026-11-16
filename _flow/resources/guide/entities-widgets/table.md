@@ -13,7 +13,7 @@ stay strings; `describe` adds label/tone maps and `timeZone`. Dates use
 `dd/MM/yyyy`; table and record view share formatting. A timestamp without an
 offset is already local time in the model's zone.
 
-Use `filters={[{field:"statut"},{field:"rpcaId"},{field:"actif"}]}` for enum,
+Use `filters={[{field:"statut"},{field:"responsableId"},{field:"actif"}]}` for enum,
 searchable relation and boolean controls; dates and text also work. An optional
 base `filter` is ANDed with all controls on the server. Admin lists offering
 inactive rows set `active="all"`; neither control grants that access. Search,

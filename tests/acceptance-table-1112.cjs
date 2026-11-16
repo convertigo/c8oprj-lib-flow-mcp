@@ -1,4 +1,4 @@
-// L26F (12/11, it87): with a specification that states its criteria without the walk of the grader, as in the PCA, ML4
+// L26F (12/11, it87): with a specification that states its criteria without the walk of the grader, as in the scenario, ML4
 // walked the screen at length and still missed a refusal not shown and a save that did not return to the list: the
 // rule to walk each criterion at the end was not enough. The agent now writes its acceptance table from the
 // specification before building (criterion, path, seen), fills the seen column during the walk and gives the table in

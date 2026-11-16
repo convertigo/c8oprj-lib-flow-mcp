@@ -21,9 +21,9 @@ spontané d'une page ouverte.
   Ne pas inventer `businessDays` ; un calendrier métier demande un autre contrat.
 - `timeZone` : jour courant de la comparaison, `Europe/Paris` par défaut.
   Donner aussi le `timeZone` du modèle pour les horodatages automatiques.
-- `inclusive: true` : à relancer dès le jour de l'échéance ; `false`, le défaut,
+- `inclusive: true` : à suivre dès le jour de l'échéance ; `false`, le défaut,
   à partir du lendemain. Sans aucune référence renseignée, `dateEcheance` vaut
-  null et le statut est déjà « À relancer » : ce n'est pas un retard daté.
+  null et le statut est déjà « À suivre » : ce n'est pas un retard daté.
 - Codes par défaut : `aJour` et `aRelancer`. `upToDate` et `due` les remplacent
   par deux identifiants distincts ; labels et tons suivent dans `describe`.
 
@@ -69,18 +69,18 @@ réservées à `MANAGER`. Ne pas exposer l'initialisation comme commande publiqu
 ```
 
 Cette page ouvre les contrôles actifs par échéance croissante ; le filtre de
-statut est initialisé sur « À relancer », et « Tous » permet de voir aussi les
-contrôles à jour. Le compteur conserve son sens « À relancer » indépendamment
+statut est initialisé sur « À suivre », et « Tous » permet de voir aussi les
+contrôles à jour. Le compteur conserve son sens « À suivre » indépendamment
 du choix du filtre. Pour une liste fixe, remplacer `filters` par
 `filter={{statut:"aRelancer"}}`. Avec des codes renommés, adapter les deux filtres.
 
 <!-- example: deadline-queue -->
 ```svelte
-<script module>export const _flow = { sourceVersion: 2, page: { id: "relances", title: "À relancer" } };</script>
+<script module>export const _flow = { sourceVersion: 2, page: { id: "relances", title: "À suivre" } };</script>
 <FlowComponent $$id="deadlineQueue">
   <Variables><State $$id="refresh" type="number" value={0} /></Variables>
   <Structure><ColumnLayout $$id="queue"><Children>
-    <EntityStat $$id="dueCount" entity="Controle" label="À relancer" tone="warning"
+    <EntityStat $$id="dueCount" entity="Controle" label="À suivre" tone="warning"
       filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
     <EntityTable $$id="dueRows" entity="Controle" caption="Contrôles à suivre"
       columns={["libelle","siteId","dateEcheance","statut"]}
@@ -121,7 +121,7 @@ par la bibliothèque :
    le retard à la prochaine lecture. Aucun champ d'alerte ni état « déjà envoyé »
    n'est ajouté implicitement par `Échéance`.
 3. **Message optionnel** : avant envoi, relire la clé sous la politique du job,
-   vérifier qu'elle est toujours à relancer et que l'échéance est inchangée.
+   vérifier qu'elle est toujours à suivre et que l'échéance est inchangée.
    L'application conserve une occurrence identifiée par `(entity, key,
    dateEcheance, statut)` ; une référence manquante est une occurrence explicite
    à date nulle. Une nouvelle échéance peut produire une nouvelle occurrence.

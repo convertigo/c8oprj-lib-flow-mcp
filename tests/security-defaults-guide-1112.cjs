@@ -1,4 +1,4 @@
-// In the PCA of 11/11 the application of the agent had an entity gateway no page called, whose policy opened reads and
+// In the scenario of 11/11 the application of the agent had an entity gateway no page called, whose policy opened reads and
 // writes without a scope for the non-ADMIN role (one person read and wrote the rows of another), a daily job and a
 // demo reset any anonymous caller could run, and a notification HTML built by concatenation. The security review of
 // 12/11 (00h13) asked for these rules in the guides; each one is stated where an agent reads it.

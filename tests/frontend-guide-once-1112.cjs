@@ -1,5 +1,5 @@
 // The guide said that `OnMount once={true}` "survives route round trips": an agent loaded the data of a page under
-// once, and the page was empty after each return to it (the PCA of 11/11, "My items"). The frontbuilder witness
+// once, and the page was empty after each return to it (the scenario of 11/11, "My items"). The frontbuilder witness
 // (actionChainRegressions.test.ts, "OnMount once does not run again on a new mount") shows what is true: the chain
 // is not run again, the State of the page mounted again starts from its initial value. The guide now says that, and
 // tells where a page loads its data.

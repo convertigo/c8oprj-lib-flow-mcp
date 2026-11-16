@@ -14,11 +14,11 @@ the gateway accepts these numeric measure fields. In a Flow,
 `{count, sum}`; `currency="USD"` shows an amount, as a model field `currency` does.
 
 ```svelte
-<script module>export const _flow = { sourceVersion: 2, page: { id: "myPosts" } };</script>
-<FlowComponent $$id="myPosts"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>
+<script module>export const _flow = { sourceVersion: 2, page: { id: "myDossiers" } };</script>
+<FlowComponent $$id="myDossiers"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>
   <GridLayout $$id="kpis" minColumnWidth="180px"><Children>
-    <EntityStat $$id="assigned" entity="Poste" label="Postes affectés" tone="primary" refreshKey="@page.refresh" />
-    <EntityStat $$id="due" entity="Poste" label="À relancer" tone="warning" filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
+    <EntityStat $$id="assigned" entity="Dossier" label="Dossiers affectés" tone="primary" refreshKey="@page.refresh" />
+    <EntityStat $$id="due" entity="Dossier" label="À suivre" tone="warning" filter={{statut:"aRelancer"}} refreshKey="@page.refresh" />
   </Children></GridLayout>
 </Structure></FlowComponent>
 ```
@@ -36,9 +36,9 @@ grouped by an enum, a boolean or a relation (most first; at most 200 groups,
 and `hasMore` may be true at exactly 200).
 A relation label is read under the target's own policy. Through the gateway a
 grouped count is enabled per entity and field by the model:
-`"gateway": {"aggregate": ["statut", "rpcaId"]}` (none by default).
+`"gateway": {"aggregate": ["statut", "responsableId"]}` (none by default).
 
-A column "how many related rows" (the active postes of each RPCA) is an
+A column "how many related rows" (the active dossiers of each responsable) is an
 EntityTable `counts` entry, `[{as, label, entity, via, filter, active}]`: the
 server counts, for the rows of the page it read, the rows of `entity` whose
 `via` holds their key, in one query under that entity's policy (the rows this
@@ -48,7 +48,7 @@ session sees). A refused count has no column, never zeros. Through the gateway,
 entity is an error. `entity.list` takes the same
 `options.counts` (at most 4) and answers `row.counts`.
 
-A breakdown (counts per value: postes per RPCA, rows per status) is an
+A breakdown (counts per value: dossiers per responsable, rows per status) is an
 `EntityBreakdown` (search **répartition**): `entity`, `groupBy`, `filter`,
 `display="cards"` or `"table"` (proportional bars), `limit` up to 50, `tones`
 per key. By default it sends one `aggregate` request, never a list. For a bar or donut

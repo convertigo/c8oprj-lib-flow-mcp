@@ -1,4 +1,4 @@
-// In the PCA of 11/11 the agent had a browser and used it 123 times, but clicked 3 times and typed nothing: it looked
+// In the scenario of 11/11 the agent had a browser and used it 123 times, but clicked 3 times and typed nothing: it looked
 // at its pages and never walked a workflow. The declaration could not be saved from its form, every refusal was silent,
 // a list was empty after a return; a person found each of them. The guides asked for "one browser proof" and "one
 // compact browser pass". An application built from a specification is now done only when each of its acceptance

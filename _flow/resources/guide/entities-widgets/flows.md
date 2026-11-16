@@ -11,7 +11,7 @@ options}`, `{values}`, `{key, revision, values}`, `{key, revision}`) and answeri
 as it does. An operation without a Flow is unavailable: a widget never falls back
 on the gateway, and an inverse list of EntityView needs its own `flows`. Each Flow
 is `hidden`, checks the session, and only passes the options on:
-`return entity.list({entity: "Poste", checkAccess: true, options: input.options})`
+`return entity.list({entity: "Dossier", checkAccess: true, options: input.options})`
 (`entity.save` with `key`, `revision`, `values`; never an actor or an owner from
 the input). In the same change, close the gateway for these writes with
 `"gateway": {"writes": false}` on the entity; `code-check` says

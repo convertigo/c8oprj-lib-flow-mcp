@@ -4,14 +4,14 @@ Read for a route record, sections and related history.
 
 ## A record by route, sections and inverse history
 
-Create the route `postes/[id]` and bind its parameter directly:
+Create the route `dossiers/[id]` and bind its parameter directly:
 
 ```svelte
-<script module>export const _flow = { sourceVersion: 2, page: { id: "postView" } };</script>
-<FlowComponent $$id="postView"><Structure>
-  <EntityView $$id="post" entity="Poste" routeId="@route.params.id"
-    sections={[{label:"Identification",fields:["libelle","rpcaId"]},{label:"Suivi",fields:["dateEcheance","statut"]}]}
-    related={[{entity:"Declaration",field:"posteId",label:"Historique",columns:[{path:"date",format:"dd/MM/yyyy"},{path:"commentaire"}]}]} />
+<script module>export const _flow = { sourceVersion: 2, page: { id: "dossierView" } };</script>
+<FlowComponent $$id="dossierView"><Structure>
+  <EntityView $$id="dossier" entity="Dossier" routeId="@route.params.id"
+    sections={[{label:"Identification",fields:["libelle","responsableId"]},{label:"Suivi",fields:["dateEcheance","statut"]}]}
+    related={[{entity:"Declaration",field:"dossierId",label:"Historique",columns:[{path:"date",format:"dd/MM/yyyy"},{path:"commentaire"}]}]} />
 </Structure></FlowComponent>
 ```
 
@@ -31,9 +31,9 @@ inverse entity applies its own policy. Options include `columns`, `filters`,
 Related2 for a custom list. Wire page actions for linked records as needed.
 
 The six verified integration page sources are shipped by lib_flow_entity at
-`_flow/resources/examples/entity-front`. They cover posts, RPCA, history,
+`_flow/resources/examples/entity-front`. They cover dossiers, responsible users, history,
 notifications and a bulk declaration form. Authoritative counters and the
-DeclarePosts command remain application services; displaying a returned count
+DeclareDossiers command remain application services; displaying a returned count
 does not compute or validate it. This kit does not implement E5 listFlow/saveFlow,
 and never falls back to a different source after failure.
 

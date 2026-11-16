@@ -28,16 +28,16 @@ var ENGINE_YAML = [
 	"config:",
 	"  data:",
 	"    sources:",
-	"      postes:",
+	"      dossiers:",
 	"        provider: sql",
-	"        table: POSTE",
+	"        table: DOSSIER",
 	"",
 	"  sql:",
 	"    connections:",
 	"      app:",
 	"        url: jdbc:hsqldb:file:_flow/resources/sql/app",
 	"    writes:",
-	"      posteInsert:",
+	"      dossierInsert:",
 	"        operation: insert",
 	""
 ].join("\n");
@@ -49,20 +49,20 @@ var trialPatch = [
 	"+++ b/_flow/engine.yaml",
 	"@@ -8,5 +8,6 @@",
 	"         provider: sql",
-	"         table: POSTE",
+	"         table: DOSSIER",
 	"+        versionColumn: REVISION",
 	"",
 	"   sql:",
 	"     connections:",
 	"@@ -16,2 +17,3 @@",
-	"       posteInsert:",
+	"       dossierInsert:",
 	"         operation: insert",
 	"+        maxAffectedRows: 1",
 	""
 ].join("\n");
 assert(engineApply(ENGINE_YAML, trialPatch) === patchLib.applyUnifiedPatch(ENGINE_YAML, trialPatch).content, "engine applies the trial patch");
 var trial = patchLib.applyUnifiedPatch(ENGINE_YAML, trialPatch);
-var expectedTrial = ENGINE_YAML.replace("        table: POSTE\n", "        table: POSTE\n        versionColumn: REVISION\n")
+var expectedTrial = ENGINE_YAML.replace("        table: DOSSIER\n", "        table: DOSSIER\n        versionColumn: REVISION\n")
 	.replace("        operation: insert\n", "        operation: insert\n        maxAffectedRows: 1\n");
 assert(trial.content === expectedTrial, "both hunks applied in order: " + JSON.stringify(trial.content));
 assert(trial.hunks.length === 2 && trial.hunks[0].line === 8 && trial.hunks[0].match === "exact" && trial.hunks[1].line === 16 && trial.hunks[1].match === "exact",
@@ -75,7 +75,7 @@ var renumbered = patchLib.applyUnifiedPatch(ENGINE_YAML, [
 	" engineQName: lib_flow_engine.Engine",
 	"+configVisibility: {}",
 	"@@ -17,2 +18,3 @@",
-	"       posteInsert:",
+	"       dossierInsert:",
 	"         operation: insert",
 	"+        minAffectedRows: 1",
 	""
@@ -87,8 +87,8 @@ assert(renumbered.hunks[1].line === 16 && renumbered.hunks[1].offset === -1 && r
 // 3. Line numbers off, lines matching once: applied there. Hunks given bottom first are applied too.
 var shifted = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -40,2 +40,2 @@\n       app:\n-        url: jdbc:hsqldb:file:_flow/resources/sql/app\n+        url: jdbc:hsqldb:file:_flow/resources/sql/app;hsqldb.tx=mvcc\n");
 assert(/app;hsqldb\.tx=mvcc\n/.test(shifted.content) && shifted.hunks[0].line === 13 && /instead of line 40/.test(shifted.notes[0]), "unique match despite wrong numbers: " + JSON.stringify(shifted));
-var reversed = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -16,1 +16,1 @@\n-      posteInsert:\n+      posteCreate:\n@@ -1,1 +1,1 @@\n-version: 1\n+version: 2\n");
-assert(/^version: 2\n/.test(reversed.content) && reversed.content.indexOf("      posteCreate:\n") !== -1, "hunks in reverse order: " + reversed.content);
+var reversed = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -16,1 +16,1 @@\n-      dossierInsert:\n+      dossierCreate:\n@@ -1,1 +1,1 @@\n-version: 1\n+version: 2\n");
+assert(/^version: 2\n/.test(reversed.content) && reversed.content.indexOf("      dossierCreate:\n") !== -1, "hunks in reverse order: " + reversed.content);
 var bare = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@\n   sql:\n+    defaultConnection: app\n");
 assert(bare.content.indexOf("  sql:\n    defaultConnection: app\n    connections:") !== -1 && bare.hunks[0].match === "context", "a bare @@ hunk is placed by its unique lines");
 
@@ -111,8 +111,8 @@ assert(outside && outside.code === "PATCH_INSERT_AMBIGUOUS" && outside.details.o
 	"disagreeing insertion numbers are refused: " + JSON.stringify(outside && outside.details));
 assert(failure(function () { engineApply(ENGINE_YAML, "@@ -10,0 +10,1 @@\n+        readOnly: false\n"); }).code === "PATCH_INSERT_AMBIGUOUS", "engine refuses it too");
 var inserted = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -9,0 +10,1 @@\n+        readOnly: false\n");
-assert(inserted.content.indexOf("        table: POSTE\n        readOnly: false\n\n  sql:") !== -1 && inserted.hunks[0].afterLine === 9, "agreeing numbers insert after the line");
-var withContext = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -10,0 +10,1 @@\n         table: POSTE\n+        readOnly: false\n");
+assert(inserted.content.indexOf("        table: DOSSIER\n        readOnly: false\n\n  sql:") !== -1 && inserted.hunks[0].afterLine === 9, "agreeing numbers insert after the line");
+var withContext = patchLib.applyUnifiedPatch(ENGINE_YAML, "@@ -10,0 +10,1 @@\n         table: DOSSIER\n+        readOnly: false\n");
 assert(withContext.content === inserted.content, "one context line places the insertion whatever the numbers");
 assert(failure(function () { patchLib.applyUnifiedPatch(ENGINE_YAML, "@@\n+x: 1\n"); }).code === "PATCH_INSERT_WITHOUT_CONTEXT", "a bare insertion is refused");
 
