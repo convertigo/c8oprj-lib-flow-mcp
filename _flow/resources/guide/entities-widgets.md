@@ -38,3 +38,5 @@ The server policy decides visible rows and allowed writes. A hidden or absent fi
 - `flow://guide/entities-widgets/stat` — open for EntityStat and EntityBreakdown dashboards.
 - `flow://guide/entities-widgets/flows` — open when widgets use business operation Flows.
 - `flow://guide/entities-widgets/snippets` — open for named slots and widget customization.
+
+Dashboard and list: `flow://guide/entities-widgets/table` covers sidebar icons, metric icons, automatic enum tones, two-line cells, related sums and recent compact lists.

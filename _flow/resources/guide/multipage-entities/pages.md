@@ -113,3 +113,35 @@ The widgets clear old rows while reloading after a permission/session change.
 Add `EntityTable entity="Audit"` to the manager-guarded journal page. For a
 custom cell, preserve the generic lexical snippet arguments described in
 `flow://guide/entities`; do not copy widget internals or add browser scripts.
+
+## Dashboard and list
+
+For a CRM with Company, Contact and Deal, use the complete **Dashboard and list**
+recipe in `flow://guide/entities-widgets/table`: AppShell sidebar with icon
+links, four EntityStat cards, summed EntityBreakdown bars, a recent compact
+EntityTable and company cells with a secondary domain, related contacts counts
+and filtered pipeline sums. Keep the same session, create capability guards,
+record routes and refreshKey wiring as the pages here. Read that drawer before
+writing the dashboard or list; it includes the model gateway allowlists.
+
+
+Dashboard and list page structures, after declaring the CRM model and routes
+of that recipe (place each in the shared AppShell's Children):
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2, page: { id: "crmDashboard" } };</script>
+<FlowComponent $$id="crmDashboard"><Structure>
+  <PageHeader $$id="header" title="Dashboard" description="Your pipeline at a glance"><Tools><LinkButton $$id="add" page="newDeal" label="Add deal" variant="primary" /></Tools></PageHeader>
+  <EntityStat $$id="pipeline" entity="Deal" label="Open pipeline" icon="trending-up-outline" sum="amount" currency="USD" filter={{stage:["Lead","Qualified","Proposal"]}} />
+  <EntityBreakdown $$id="stages" entity="Deal" label="Deals by stage" groupBy="stage" sum="amount" currency="USD" allValues={true} />
+  <EntityTable $$id="recent" entity="Deal" caption="Recently updated deals" layout="compact" subtitleFields={["companyId","contactId"]} badgeField="stage" amountField="amount" currency="USD" pageSize={5} viewPage="deal" />
+</Structure></FlowComponent>
+```
+
+```svelte
+<script module>export const _flow = { sourceVersion: 2, page: { id: "crmCompanies" } };</script>
+<FlowComponent $$id="crmCompanies"><Structure>
+  <PageHeader $$id="header" title="Companies"><Tools><LinkButton $$id="add" page="newCompany" label="Add company" variant="primary" /></Tools></PageHeader>
+  <EntityTable $$id="companies" entity="Company" labels={{search:"Search company names"}} columns={[{path:"companyName",label:"Company",secondary:{path:"domain",monospace:true}},{path:"industry"},{path:"city",label:"Location",secondary:"country"},{path:"employees",format:"number"}]} counts={[{as:"contacts",entity:"Contact",via:"companyId"}]} sums={[{as:"openPipeline",entity:"Deal",via:"companyId",sum:"amount",currency:"USD",filter:{stage:["Lead","Qualified","Proposal"]}}]} viewPage="company" />
+</Structure></FlowComponent>
+```

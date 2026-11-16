@@ -68,3 +68,5 @@ A refusal by a policy, model ACL or authorization slot, including on a relation 
 The proof guide covers browser context reuse, sign-out and the development session limit.
 
 For dashboard **répartition par statut**, use `EntityBreakdown allValues={true}` for every labelled enum state, including zeros; read `flow://guide/entities-widgets/stat`.
+
+Dashboard and list: `flow://guide/entities-widgets/table` covers sidebar icons, metric icons, automatic enum tones, two-line cells, related sums and recent compact lists.

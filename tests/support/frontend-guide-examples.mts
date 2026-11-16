@@ -212,7 +212,9 @@ test("all Svelte fences in both entity guides have an explicit compilation proof
     const fences = Array.from(text.matchAll(/```svelte\n([\s\S]*?)```/g), match => match[1]);
     const ids = fences.map(source => source.match(/<FlowComponent\b[^>]*\$\$id="([^"]+)"/)?.[1]);
     assert.ok(ids.every(Boolean), `${guide}: each fence must remain a complete Flow component`);
-    assert.deepEqual(ids, entityExamples.filter(plan => plan.guide === guide).map(plan => plan.id), `${guide}: add a compilation plan whenever a Svelte fence is added`);
+    // CRM fences are compiled by the dedicated dashboard/list test below.
+    const crmIds=guide==="multipage-entities"?["crmDashboard","crmCompanies"]:[];
+    assert.deepEqual(ids, [...entityExamples.filter(plan => plan.guide === guide).map(plan => plan.id),...crmIds], `${guide}: add a compilation plan whenever a Svelte fence is added`);
   }
 });
 
@@ -279,3 +281,37 @@ for (const plan of entityExamples) {
     }
   });
 }
+
+test('CRM dashboard and company list recipes compile with entity options and icon dependencies',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'flow-crm-guide-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const routes=join(root,'model/App/src/routes');await mkdir(routes,{recursive:true});
+  for(const id of ['dashboard','companies','contacts','deals','company','deal','newCompany','newDeal']){
+    const folder=join(routes,id);await mkdir(folder,{recursive:true});
+    await writeFile(join(folder,'+page.flow.svelte'),`<script module>export const _flow={sourceVersion:2,page:{id:"${id}"}};</script><FlowComponent $$id="${id}"><Structure><Text text="${id}" /></Structure></FlowComponent>`);
+  }
+  const {generateFixtureProject}=await import(pathToFileURL(resolve(provider,'src-builder/testGeneration.ts')).href);
+  let count=0;
+  for(const guide of ['entities-widgets/table','multipage-entities/pages']){
+    const text=await readFile(resolve(guides,guide+'.md'),'utf8');
+    const recipe=text.split('## Dashboard and list')[1];assert.ok(recipe);
+    for(const match of recipe.matchAll(/```svelte\n([\s\S]*?)```/g)){
+      const file=join(routes,'+page.flow.svelte');await writeFile(file,match[1]);
+      // The recipe's home id is also supplied by a placeholder route; omit that placeholder for this load.
+      const pageId=/page:\s*\{\s*id:\s*"([^"]+)"/.exec(match[1])?.[1];
+      const placeholder=pageId && join(routes,pageId,'+page.flow.svelte');
+      const saved=placeholder && existsSync(placeholder)?await readFile(placeholder,'utf8'):undefined;
+      if(saved)await rm(placeholder!);
+      try{
+        const doc=await loadDocument(file,{}, {projectRoot:root,projectName:'App',resourceRoot:provider,referenceRoots:[resolve(engine,'..'),entity!],discoverImplicitProviders:false});
+        assert.deepEqual(doc.diagnostics.filter((d:any)=>d.level==='error'),[],guide);
+        const generated=await generateFixtureProject(root,doc.model,{resourceRoot:provider});
+        for(const name of ['EntityTable','EntityBreakdown','EntityStat','Icon']){
+          const source=generated.written.find((f:string)=>f.endsWith('/'+name+'.svelte'));
+          if(source){const code=await readFile(join(generated.generatedRoot,source),'utf8');assert.doesNotThrow(()=>compile(code,{filename:name+'.svelte',generate:'client'}));}
+        }
+        count++;
+      }finally{if(saved)await writeFile(placeholder!,saved);}
+    }
+  }
+  assert.equal(count,4);
+});
