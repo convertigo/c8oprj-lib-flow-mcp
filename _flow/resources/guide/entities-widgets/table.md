@@ -125,7 +125,8 @@ label, amount, row count and proportional track; `display="cards"` restores
 cards. Table `secondary` supports a field name or `{path,format,monospace}`;
 a field absent from describe cannot appear. `sums` is computed by one server
 grouped query per column for this page's keys, under the related entity policy
-and gateway authorization. Both via and sum must be enabled; an unreadable or
+and gateway authorization. Related summaries support SQL entities; provider-backed entities are omitted.
+Both via and sum must be enabled; an unreadable or
 refused sum is omitted, never shown as zero. `layout="compact"` uses authorized
 relation labels, viewPage record links, server sorting and a bounded pageSize
 (1..50). Without orderBy it uses updatedAt descending.
