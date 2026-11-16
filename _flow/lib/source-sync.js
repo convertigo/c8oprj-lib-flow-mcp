@@ -108,7 +108,7 @@
 						known[path]=read(file);count.applied++;entry.applied=true;entry.diskApplied=true;
 						mcp.stableToolCalled(t.modelFile ? "flow-entity-model-set" : "code-set");
 					}
-				} catch(e) {response=mcp.toolError(request,e,ctx);count.refused++;}
+				} catch(e) {response=mcp.toolError(Object.assign({},request,{__flowMcpTraceDeferred:true}),e,ctx);count.refused++;}
 				// Preserve the complete code-check/code-set envelope, including text, hints and guide drawers.
 				entry.response=response;
 				if (failed(response)) entry.note="Disk file was not applied. Direct runtime disk reads can still observe it; repair and sync before running.";
