@@ -43,6 +43,12 @@ need a portable block.
 Create navigation target Pages first; use their Page ids and the actual schemas
 from `code-get`. An action `If` puts actions directly in `Then`/`Else`.
 
+`code-set` and `code-patch` validate, then atomically save canonical `.flow.svelte`, `app.flow.css`
+and `theme.flow.css` files, also in Studio. No promotion; `code-check` is the dry-run. Backend Flows
+keep `code-run` → `code-promote`. Before declaring a batch finished, check `unsavedSources.count` in
+`dev.sync`, build or `flow-app-progress`: it must be `0`. Resolve each draft with `code-promote`
+(Flow), a direct Svelte save, or `code-discard` to abandon it.
+
 A refused frontend write is not saved. Apply `error.details.proposedPatch.edits`
 to the text you submitted, then retry `code-set` with the previous revision.
 Use the returned revision after success; an identified MCP conversation can

@@ -8,7 +8,7 @@ const _meta = {
     "flowscript",
     "code",
   ],
-  "description": "Executable Flow only: promotes a checked FlowScript working copy. Project-local blocks are saved directly by code-set/code-patch.",
+  "description": "Executable Flow only: promotes a checked FlowScript working copy. Project-local blocks and Svelte sources are saved directly by code-set/code-patch.",
   "display": "tool code-promote -> ${input.out}",
   "properties": {
     "request": {

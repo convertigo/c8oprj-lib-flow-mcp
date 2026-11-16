@@ -70,6 +70,7 @@ cases.forEach(function (item) {
 	var compact = answer(item.action, item.raw);
 	var full = answer(item.action, item.raw, "full");
 	var expected = copy(item.expected);
+	if (item.action === "dev.sync") expected.unsavedSources = { count: 0, items: [] };
 	if (item.action === "dev.sync" || item.action === "dev.open") {
 		expected.browserProof = full.browserProof;
 		expected.handoff = full.handoff;

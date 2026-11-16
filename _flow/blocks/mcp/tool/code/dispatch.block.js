@@ -185,6 +185,11 @@ const _meta = {
 						" If the application project does not exist yet, create it first with flow-project-bootstrap({ project:\"<NewProject>\" })."
 				}, ctx);
 			}
+			if (kind === "source" && operation === "promote") {
+				return mcp.toolResponse(request, { ok: true, promoted: false,
+					sourceFile: String(args.sourceFile || args.sourcePath || ""),
+					next: "Svelte sources have no draft/promote step: code-set/code-patch validate and write the canonical file directly. Nothing to promote; use code-check for a dry-run." }, ctx);
+			}
 			if (kind === "block" && operation === "promote") {
 				var blockArgs = normalizeBlockArgs(args);
 				var blockName = String(blockArgs.name || "");

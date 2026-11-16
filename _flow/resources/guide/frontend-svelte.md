@@ -27,6 +27,10 @@ For browser verification, read `flow://guide/frontend-svelte-proof`. `browser_wa
 
 The proof guide covers browser context reuse, sign-out and the development session limit.
 
+Svelte source writes save directly, with no promotion. Before handover, require
+`unsavedSources.count: 0` in `dev.sync`, build or `flow-app-progress`; resolve
+remaining Flow drafts with `code-promote`, or `code-discard` to abandon them.
+
 ## Drawers
 
 - `flow://guide/frontend-svelte/loop` — open for the write, sync and viewer sequence.

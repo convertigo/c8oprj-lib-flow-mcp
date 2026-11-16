@@ -2523,6 +2523,7 @@
 			if (value && value[key] !== undefined && value[key] !== null && value[key].length) notices[key] = value[key];
 		});
 		value = compactToolValue(request, value);
+		value = withUnsavedSources(request, value, ctx);
 		if (value && value.ok !== false && !value.error && entityPageGuidanceApplies(request, value)) {
 			value.entityPages = "Entity pages: EntityTable → flow://guide/entities-widgets/table; EntityForm → flow://guide/entities-widgets/form; EntityView → flow://guide/entities-widgets/view; EntityStat/EntityBreakdown → flow://guide/entities-widgets/stat.";
 			// Keep the decision before the verbose frontend contract in structuredContent.
@@ -3501,9 +3502,8 @@
 
 
 	// The FlowEngine of a project loaded in this Convertigo owns the working copies
-	// of its sources, as in the Studio: reads see the drafts, writes become drafts,
-	// and only the project Save writes them. Without a loaded project (standalone
-	// runtime, projectDir only), sources are read and written on disk.
+	// of its sources, as in the Studio. Svelte writes save canonical files directly;
+	// other sources keep their Studio working copies. Reads still expose existing drafts.
 	function loadedFlowEngineProject(args) {
 		args = args || {};
 		if (typeof Packages === "undefined") {
@@ -3558,6 +3558,32 @@
 		return drafts;
 	}
 
+	// Replace a canonical source beside its temporary file, preserving its permissions.
+	function writeCanonicalSource(file, content) {
+		var parent = file.getParentFile();
+		if (parent != null) parent.mkdirs();
+		var temporary = Files.createTempFile(parent.toPath(), "." + file.getName() + ".", ".tmp");
+		try {
+			writeUtf8(temporary.toFile(), content);
+			if (file.isFile()) {
+				try { Files.setPosixFilePermissions(temporary, Files.getPosixFilePermissions(file.toPath())); }
+				catch (_nonPosix) { }
+			} else {
+				temporary.toFile().setReadable(true, false);
+				temporary.toFile().setWritable(true, true);
+			}
+			try {
+				Files.move(temporary, file.toPath(), Packages.java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+					Packages.java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			} catch (error) {
+				if (!(error instanceof Packages.java.nio.file.AtomicMoveNotSupportedException)) throw error;
+				Files.move(temporary, file.toPath(), Packages.java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			}
+		} finally {
+			Files.deleteIfExists(temporary);
+		}
+	}
+
 	function sourceStore(args) {
 		var project = loadedFlowEngineProject(args);
 		var flowEngine = project == null ? null : project.getFlowEngine();
@@ -3587,21 +3613,91 @@
 			// the projects using it: those of every other project, their authoring answers and source snapshots, stay.
 			write: function (sources) {
 				var paths = Object.keys(sources || {});
-				if (flowEngine == null) {
-					paths.forEach(function (path) {
-						writeUtf8(new File(path), sources[path]);
-					});
-					return { paths: paths, draft: false };
-				}
 				var map = new Packages.java.util.LinkedHashMap();
 				paths.forEach(function (path) {
-					map.put(path, String(sources[path]));
+					if (/\.flow\.(?:svelte|css)$/.test(path)) {
+						writeCanonicalSource(new File(path), sources[path]);
+						if (flowEngine != null) flowEngine.discardSource(path);
+					} else if (flowEngine == null) {
+						writeUtf8(new File(path), sources[path]);
+					} else {
+						map.put(path, String(sources[path]));
+					}
 				});
-				flowEngine.setSources(map);
-				Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(flowEngine);
-				return { paths: paths, draft: true };
+				if (!map.isEmpty()) {
+					flowEngine.setSources(map);
+					Packages.com.twinsoft.convertigo.engine.flow.FlowStudioSupport.clearCatalogCache(flowEngine);
+				}
+				return { paths: paths, draft: !map.isEmpty() };
 			}
 		};
+	}
+
+	function unsavedSources(args, ctx, value) {
+		args = Object.assign({}, args || {});
+		if (!args.project && String(args.qname || "").indexOf(".") > 0) args.project = String(args.qname).split(".")[0];
+		var items = [], seen = {};
+		function add(item) {
+			var key = item.qname || item.path;
+			if (!key || seen[key]) return;
+			seen[key] = true;
+			items.push(item);
+		}
+		var project = loadedFlowEngineProject(args), visited = {};
+		function visit(current) {
+			if (current == null || visited[String(current.getName())]) return;
+			visited[String(current.getName())] = true;
+			pendingStudioDrafts(current, "").forEach(function (entry) {
+				if (entry.indexOf("flow ") === 0) add({ kind: "flow", qname: String(current.getName()) + "." + entry.substring(5) });
+				else if (/^_flow\/flows\/.+\.flow\.js$/.test(entry)) add({ kind: "flow", qname: String(current.getName()) + "." + entry.substring(12).replace(/\.flow\.js$/, "") });
+				else add({ kind: /\.block\.js$/.test(entry) ? "block" : /\.flow\.svelte$/.test(entry) ? "page" : "source",
+					path: current === project ? entry : String(new File(String(current.getDirPath()), entry).getCanonicalPath()) });
+			});
+			if (typeof current.getReferenceList !== "function") return;
+			var references = current.getReferenceList().toArray();
+			for (var i = 0; i < references.length; i++) {
+				var reference = references[i];
+				var name = reference.getParser ? String(reference.getParser().getProjectName() || "") : "";
+				if (name) visit(Packages.com.twinsoft.convertigo.engine.Engine.theApp.databaseObjectsManager.getLoadedProjectByName(name));
+			}
+		}
+		visit(project);
+		if (ctx && typeof ctx.callBlock === "function" && (args.project || args.projectDir)) {
+			var target = { project: args.project, projectDir: args.projectDir || (project && String(project.getDirPath())) };
+			if (!target.projectDir) resolveProjectDir(target);
+			var listed = ctx.callBlock("flow.list", target, { trace: false });
+			((listed && listed.unsavedSources && listed.unsavedSources.items) || []).forEach(add);
+		}
+		if (value && (value.draft === true || value.unsaved === true || value.workingCopy === true)) {
+			add({ kind: "flow", qname: value.qname || args.qname || (args.project ? args.project + "." : "") + (value.name || args.name || "") });
+		}
+		items.sort(function (a, b) { return String(a.qname || a.path).localeCompare(String(b.qname || b.path)); });
+		return { count: items.length, items: items };
+	}
+
+	function withUnsavedSources(request, value, ctx) {
+		var name = toolName(request), args = toolArguments(request);
+		var action = String(args.actionId || (args.action && args.action.id) || args.action || args.id || "");
+		if (!value || typeof value !== "object" || !(name === "flow-app-progress" || /^(?:flow-)?code-run$/.test(name)
+				|| name === "frontend-svelte-action" && /(?:^|\.)(?:dev\.sync|build)$/.test(action))) return value;
+		value.unsavedSources = unsavedSources(args, ctx, value);
+		if (value.unsavedSources.count > 0) {
+			value.next = "UNSAVED SOURCES: code-promote each Flow; save Studio pages/blocks with Save project, or code-get then code-set to save Svelte sources directly. Use code-discard to abandon a draft." +
+				(value.next && name !== "flow-app-progress" ? " " + value.next : "");
+			if (name === "flow-app-progress") {
+				value.complete = false;
+				value.pocReady = false;
+				if (value.hardeningComplete !== null) value.hardeningComplete = false;
+				value.progressPhase = "action-required";
+				if (value.tasks && value.progress) {
+					value.tasks.push({ id: "savedSources", label: "All sources saved", done: false, next: "Resolve unsavedSources." });
+					value.progress.total = value.tasks.length;
+					value.progress.percent = Math.min(99, Math.round(100 * Number(value.progress.completed || 0) / value.progress.total));
+				}
+				value.nextActions = ["Resolve unsavedSources before declaring the application ready."].concat(value.nextActions || []);
+			}
+		}
+		return value;
 	}
 
 	// Resource tools write files: never under a Studio working copy of the same source.
@@ -4053,7 +4149,7 @@
 				keep("setupKind", value);
 				if (devOut.setupKind === undefined && details && hasContent(details.setupKind)) keep("setupKind", details);
 			} else if (devAction[1] === "sync") {
-				["openUrl", "generated", "refresh", "dependenciesChanged", "browserProof", "handoff"].forEach(function (key) { keep(key, value); });
+				["openUrl", "generated", "pending", "status", "stopReason", "next", "refresh", "dependenciesChanged", "browserProof", "handoff"].forEach(function (key) { keep(key, value); });
 				if (value.smoke && typeof value.smoke === "object") {
 					devOut.smoke = {};
 					["ok", "complete", "routes"].forEach(function (key) {
@@ -5744,6 +5840,7 @@
 			codeArgs.sourceFile || codeArgs.sourcePath ||
 			String(codeArgs.kind || codeArgs.type || "").toLowerCase() === "source" ||
 			(String(codeArgs.target || "").toLowerCase() === "frontend" && !codeArgs.block && !codeArgs.blockName));
+		if (sourceCodeRequest && name === "code-promote") return value;
 		if (sourceCodeRequest && (name === "code-set" || name === "code-patch" || name === "code-check")) {
 			return compactFrontendWriteToolValue(request, value);
 		}
@@ -6928,6 +7025,7 @@
 		toolResult: toolResult,
 		persistSourceMutationResult: persistSourceMutationResult,
 		sourceStore: sourceStore,
+		unsavedSources: unsavedSources,
 		queueSourceNotifications: queueSourceNotifications,
 		withSourceDrafts: withSourceDrafts,
 		pendingStudioDrafts: pendingStudioDrafts,

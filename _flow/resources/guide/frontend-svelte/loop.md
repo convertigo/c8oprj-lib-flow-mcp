@@ -96,6 +96,11 @@ each browser context can occupy one for 30 minutes. If all MCP calls suddenly
 fail without a readable response, suspect the session limit: sign out and
 close test contexts, retry once, and report it.
 
-On a project loaded in Convertigo, MCP writes are working copies like Studio
-edits (`draft:true`, `dirty:true`): they are previewed and checked at once and
-written to disk by **Save project**. Standalone runs write the files.
+`code-set` and `code-patch` validate, then atomically save canonical `.flow.svelte`, `app.flow.css`
+and `theme.flow.css` files, also in Studio. No promotion; `code-check` is the dry-run. Backend Flows
+keep `code-run` → `code-promote`. Before declaring a batch finished, check `unsavedSources.count` in
+`dev.sync`, build or `flow-app-progress`: it must be `0`. Resolve each draft with `code-promote`
+(Flow), a direct Svelte save, or `code-discard` to abandon it.
+
+`dev.sync` on a stopped server reports `status`, `stopReason` and `next: dev.ensure(wait:true)`.
+During preparation, `dev.sync(wait:true)` waits for readiness or reports its deadline.
