@@ -17,7 +17,7 @@ spontané d'une page ouverte.
   sa partie date sert de référence.
 - `referenceMode: "first"` : retient la première référence non nulle dans l’ordre
   donné, même si elle est antérieure aux suivantes. Exemple :
-  `reference: ["dateDerniereMiseAJour", "dateRemiseMateriel"]`.
+  `reference: ["lastReview", "deliveredOn"]`.
   Sans valeur non nulle, la date reste nulle.
 - `delay` : mois entiers de 0 à 120, puis jours **calendaires** de 0 à 3660.
   Les mois ajustent une fin de mois au dernier jour disponible. Pas de jours
