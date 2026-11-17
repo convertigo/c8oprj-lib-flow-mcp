@@ -1,0 +1,10 @@
+var File=java.io.File,IO=Packages.org.apache.commons.io.FileUtils;
+var root=new File(arguments[0]);
+var mcp=eval(String(IO.readFileToString(new File(root,'_flow/lib/mcp.js'),'UTF-8')));
+var source=String(IO.readFileToString(new File(root,'_flow/blocks/mcp/tool/code/dispatch.block.js'),'UTF-8'));
+var dispatch=eval(source.substring(source.indexOf('(function')));
+var request={id:1,params:{name:'code-promote',arguments:{project:'App',sourceFile:'_flow/frontbuilder/svelte/model/App/src/routes/+page.flow.svelte'}}};
+var ctx={props:function(node){return node;},lib:function(){return mcp;},write:function(){},expr:function(value){return value;},template:function(value){return value;},callBlock:function(){throw Error('Source promote must not route to a backend Flow');}};
+var out=dispatch.run(ctx,{operation:'promote',request:request}).result.structuredContent;
+if(out.ok!==true || out.promoted!==false || !/no draft\/promote step/.test(out.next) || !/Nothing to promote/.test(out.next))throw Error(JSON.stringify(out));
+print('frontend-source-promote OK');

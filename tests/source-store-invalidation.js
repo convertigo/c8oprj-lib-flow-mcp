@@ -15,6 +15,7 @@ var root = java.nio.file.Files.createTempDirectory("flow-source-store-invalidati
 var calls = [];
 var written = [];
 var flowEngine = {
+	discardSource: function () { calls.push("discardSource"); return true; },
 	setSources: function (sources) { written.push(String(sources.toString())); },
 	hasSource: function () { return false; },
 	isSourceDirty: function () { return false; },
@@ -55,8 +56,11 @@ var page = String(new java.io.File(root, "_flow/frontbuilder/svelte/model/App/sr
 var sources = {};
 sources[page] = "<FlowComponent $$id=\"page\"><Structure /></FlowComponent>\n";
 var result = store.write(sources);
-assert(result.draft === true && written.length === 1 && written[0].indexOf(page) >= 0,
-	"the working copy is handed to the FlowEngine of the project: " + JSON.stringify(written));
+assert(result.draft === false && written.length === 0 && read(root, page.substring(String(root).length + 1)) === sources[page],
+	"Svelte saves to the canonical file without a working copy");
+assert(calls.indexOf("discardSource") >= 0, "an old Svelte working copy is cleared after the write");
+var backend = {}; backend[String(new java.io.File(root, "_flow/blocks/app/demo.block.js"))] = "backend block";
+assert(store.write(backend).draft === true && written.length === 1, "other Studio source writes retain their working copy");
 assert(calls.indexOf("invalidateDataCaches") < 0,
 	"a working copy must not invalidate the data caches of every project: " + JSON.stringify(calls));
 assert(calls.indexOf("clearCatalogCache") >= 0, "the palette caches of the FlowEngine follow its working copy");

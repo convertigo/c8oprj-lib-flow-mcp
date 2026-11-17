@@ -1041,5 +1041,10 @@
  {"family": "start", "old": "For sign-in, CSV, jobs and audit, see Authentication and add-ons above.", "new": "For sign-in, CSV, jobs and audit, see `flow://guide/start-rules/workspace` for authentication and add-ons."},
  {"family": "start", "old": "lists them, `tools-more({name})` gives one input schema. `browser-verify`", "new": "lists them, `tools-more({name})` gives one input schema. In particular, `flow-requestable-schema`, `frontend-svelte-tree` and `code-status` remain callable this way when absent from the core `tools/list`: call `tools-more({name:\"code-status\", arguments:{project:\"App\", name:\"Example\"}})` with the arguments of the named tool. `browser-verify`"},
  {"family": "authoring", "old": "the `while` and `forEach` blocks, below", "new": "the `while` and `forEach` blocks in `flow://guide/authoring-collections`"},
- {"family": "entities", "old": "ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.", "new": "ENTITY_SCHEMA_MISSING without the DDL plan; see the backend preview boundary in `flow://guide/entities-actions`."}
+ {"family": "entities", "old": "ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.", "new": "ENTITY_SCHEMA_MISSING without the DDL plan; see the backend preview boundary in `flow://guide/entities-actions`."},
+ {
+  "family": "frontend-svelte",
+  "old": "On a project loaded in Convertigo, MCP writes are working copies like Studio edits (`draft:true`, `dirty:true`): they are previewed and checked at once and written to disk by **Save project**. Standalone runs write the files.",
+  "new": "`code-set` and `code-patch` validate, then atomically save canonical `.flow.svelte`, `app.flow.css`\nand `theme.flow.css` files, also in Studio. No promotion; `code-check` is the dry-run. Backend Flows\nkeep `code-run` → `code-promote`. Before declaring a batch finished, check `unsavedSources.count` in\n`dev.sync`, build or `flow-app-progress`: it must be `0`. Resolve each draft with `code-promote`\n(Flow), a direct Svelte save, or `code-discard` to abandon it."
+ }
 ]

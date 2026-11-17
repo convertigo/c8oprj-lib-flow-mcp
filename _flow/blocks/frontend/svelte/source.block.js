@@ -1584,14 +1584,13 @@ const _meta = {
 		}
 	}
 
-	// Returns true when the source became a working copy of the loaded project.
+	// Svelte sources save directly, including in a loaded Studio project.
 	function persist(ctx, props, path, source) {
 		var sources = sourceStore(ctx, props);
 		if (sources.drafts) {
 			var update = {};
 			update[String(path.file.getAbsolutePath())] = source;
-			sources.write(update);
-			return true;
+			return sources.write(update).draft === true;
 		}
 		atomicWrite(path, source);
 		return false;
