@@ -245,3 +245,10 @@ test('changed guide envelopes stay within summary/drawer budgets through the MCP
     console.log('MCP envelope ' + name + ': ' + size + ' characters');
   }
 });
+
+test('runner uses the advertised scheduler contract and creates a disabled job',()=>{
+  const text=read(path.join(__dirname,'../_flow/resources/guide/entities/jobs-runner.md'));
+  assert(!text.includes('dryRun'));
+  assert(text.includes('flow://guide/entities/jobs'));
+  assert(text.includes('scheduler-list')&&text.includes('enabled:false'));
+});
