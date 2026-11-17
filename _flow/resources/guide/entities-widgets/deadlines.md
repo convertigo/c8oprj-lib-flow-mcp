@@ -12,9 +12,13 @@ Le passage du temps ne déclenche ni événement, ni message, ni rafraîchisseme
 spontané d'une page ouverte.
 
 - `reference` : une ou plusieurs dates stockées (`date` ou `timestamp`), toutes
-  publiques, sans `secret`, sans `visibleTo`, sans calcul. La plus récente des
-  valeurs non nulles est retenue. Un timestamp est une heure locale stockée ;
+  publiques, sans `secret`, sans `visibleTo`, sans calcul. Par défaut
+  (`referenceMode: "latest"`), la plus récente des valeurs non nulles est retenue. Un timestamp est une heure locale stockée ;
   sa partie date sert de référence.
+- `referenceMode: "first"` : retient la première référence non nulle dans l’ordre
+  donné, même si elle est antérieure aux suivantes. Exemple :
+  `reference: ["dateDerniereMiseAJour", "dateRemiseMateriel"]`.
+  Sans valeur non nulle, la date reste nulle.
 - `delay` : mois entiers de 0 à 120, puis jours **calendaires** de 0 à 3660.
   Les mois ajustent une fin de mois au dernier jour disponible. Pas de jours
   ouvrés, de week-ends exclus ou de calendrier de jours fériés dans ce trait.

@@ -31,3 +31,10 @@ test('deadline guidance is reachable and respects summary and drawer character b
  assert.match(read('entities-widgets/table'),/flow:\/\/guide\/entities-widgets\/deadlines/);
  assert.match(doc,/pas une nouvelle API/);
 });
+
+test('the explicit first-reference option in the recipe passes authoring and runtime resolution',()=>{
+ const definition=example();definition.entities.Controle.traits[2]['Échéance'].referenceMode='first';
+ assert.equal(format.check(definition,traits).length,0);
+ assert.equal(model.rule(model.resolve(definition,traits).entities.Controle,'deadline').referenceMode,'first');
+ assert.match(doc,/referenceMode: "latest"/);assert.match(doc,/referenceMode: "first"/);
+});
