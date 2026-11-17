@@ -256,3 +256,5 @@ exercise its visible behavior. This workflow adapts the MIT-licensed official
 Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte-sources` for the
 source and bundled permission notices. Read its tested layout examples before
 inventing widget properties or variants.
+
+Project `docs/` is not published over HTTP; keep notes and handoffs in `docs/generated/`.

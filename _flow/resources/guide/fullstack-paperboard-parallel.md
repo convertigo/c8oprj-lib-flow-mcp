@@ -57,3 +57,10 @@ Stay sequential for a small application (one or two Flows, one or two pages),
 on a host with neither, or when the constructor call is refused (no agent key,
 no Vibe home): one agent then alternates lots, a page bound to the contracts
 while the next backend lot fills them.
+
+Keep project regression scripts and proof data in `tests/` (text extensions only:
+`md`, `txt`, `json`, `yaml`, `yml`, `csv`, `js`, `mjs`, `cjs`, `ts`, `py`, `sh`).
+Tests stay in Git; the deployment host must exclude `tests/` from the `.car`.
+No secrets in tests: read credentials from the environment or a local file outside
+the repository; create the cookie jar at runtime and never commit it.
+`docs/` is not published over HTTP; keep the existing `docs/generated/` handoff paths.

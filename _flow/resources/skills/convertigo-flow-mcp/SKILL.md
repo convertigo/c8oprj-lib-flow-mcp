@@ -400,3 +400,5 @@ prefers the session, else an explicit owner. describe is metadata-only, with an
 explicit UI projection and no unreadable relation metadata. SQL names/DDL stay
 out of public errors; the authenticated MCP author can use code-run with
 entity.initialize({dryRun:true}) for the additive plan. See Backend preview boundary.
+
+Project `docs/` is not published over HTTP; keep notes and handoffs in `docs/generated/`.
