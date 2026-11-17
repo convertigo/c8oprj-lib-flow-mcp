@@ -3681,7 +3681,13 @@
 		if (!value || typeof value !== "object" || !(name === "flow-app-progress" || /^(?:flow-)?code-run$/.test(name)
 				|| name === "frontend-svelte-action" && /(?:^|\.)(?:dev\.sync|build)$/.test(action))) return value;
 		value.unsavedSources = unsavedSources(args, ctx, value);
-		if (value.unsavedSources.count > 0) {
+		var runQname = value.qname || args.qname || "";
+		// a draft run already says to promote the Flow it ran: repeat the general advice only for other sources
+		var onlyThisRun = /^(?:flow-)?code-run$/.test(name) && runQname && value.unsavedSources.items.every(function (item) {
+			return item.kind === "flow" && item.qname === runQname;
+		});
+		if (onlyThisRun) value.unsavedSources = { count: value.unsavedSources.count }; // unsaved:true names it already
+		if (value.unsavedSources.count > 0 && !onlyThisRun) {
 			value.next = "UNSAVED SOURCES: code-promote each Flow; save Studio pages/blocks with Save project, or code-get then code-set to save Svelte sources directly. Use code-discard to abandon a draft." +
 				(value.next && name !== "flow-app-progress" ? " " + value.next : "");
 			if (name === "flow-app-progress") {
