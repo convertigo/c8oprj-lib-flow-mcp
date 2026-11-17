@@ -229,3 +229,5 @@ use a JavaScript label for an explicit name, and $$id only for explicitly named 
 Attached comments are // lines; separated or trailing comments are comment nodes, removed before execution. Preserve one
 blank line before a node with model metadata, hidden from properties. Backend print width is 120. Natural loops are phase 2.
 These backend rules take precedence over older backend examples above; frontend naming and component syntax are unchanged.
+
+Project `docs/` is not published over HTTP; keep notes and handoffs in `docs/generated/`.
