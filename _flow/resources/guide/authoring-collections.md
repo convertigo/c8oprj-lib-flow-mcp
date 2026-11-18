@@ -48,15 +48,22 @@ maxIterations: 100000, $$nodes() { ... } })` (1 to 1000000, `timeoutMs` at most
 600000). `for (let i = 0; i < n; i++)` is accepted in that form only. There is no
 `break` (use a local tested by the `while` condition, or `find`/`filter`), no
 `return` inside a loop (use `continue`, or a local and a `return` after the loop),
-no `do`, `for…in` or labelled loop (`FLOWSCRIPT_V3_LOOP_FORM`). An inner loop does not read the variable of an
-outer loop: copy it first (`const order = item`).
+no `do`, `for…in` or labelled loop (`FLOWSCRIPT_V3_LOOP_FORM`). An inner loop can
+read the variable of an outer loop: the bridge copies an outer `for…of` item
+automatically when an inner loop or list callback rebinds `current` and reads it.
+Locals declared in a loop body remain readable in nested loops.
 
 **List methods** are blocks written as JavaScript, in a declaration, an assignment
 or a `return`: `xs.filter(x => x.ok)` (`list.filter`), `xs.map(x => ({ id: x.id }))`
 (`list.map`), `xs.find(x => …)`, `xs.some(…)`, `xs.every(…)`, and
 `xs.toSorted((a, b) => a.score - b.score)` (`list.sort`; `b - a` sorts down,
-`a.name.localeCompare(b.name)` sorts text). The function is an arrow with one
-parameter and an expression body without block call. They chain:
+`a.name.localeCompare(b.name)` sorts text). To sort the items themselves, use
+`xs.toSorted((a, b) => a - b)` or `b - a` for numbers, and
+`xs.toSorted((a, b) => a.localeCompare(b))` or
+`String(a).localeCompare(String(b))` for text; reversing the operands sorts down.
+The identity forms use `list.sort({ items, compare })` without `by`. List method
+arrows use one parameter (two for `toSorted`) and an expression body without a
+block call. They chain:
 `rows.filter(r => r.ok).map(r => r.name).join(", ")`. `xs.sort` (in place),
 `reduce`, an index parameter and other comparators are refused with a rewrite.
 
