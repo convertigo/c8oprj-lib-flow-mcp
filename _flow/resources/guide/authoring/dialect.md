@@ -45,8 +45,9 @@ Read for metadata, slots, values, dates or input conversion.
   `outputs`, `config` (an object), `tests`.
 - **Language statements** are JavaScript: declarations and assignments,
   `if (...) { ... } else if (...) { ... } else { ... }`, `while (...) { ... }`,
-  `for (const item of items) { ... }`, `continue`, `switch` (literal cases ending
-  with `break`, `return` or `throw`), `try { ... } catch (e) { ... }`,
+  `for (const item of items) { ... }`, `for (let i = 0; i < n; i++) { ... }`,
+  `continue`, `switch` (literal cases ending with `break`, `return` or
+  `throw`), `try { ... } catch (e) { ... }`,
   `return { answer: input.value }`, bare `return`, and
   `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.

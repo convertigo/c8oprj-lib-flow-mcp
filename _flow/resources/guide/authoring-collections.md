@@ -45,7 +45,8 @@ goes to the next item. `while (condition) { ... }` is the `while` block: it stop
 the run with `WHILE_ITERATION_LIMIT` after 1000 passes and after 60000 ms; for
 another bound write its call form, `flow.while({ condition: d * d <= n,
 maxIterations: 100000, $$nodes() { ... } })` (1 to 1000000, `timeoutMs` at most
-600000). `for (let i = 0; i < n; i++)` is accepted in that form only. There is no
+600000). `for (let i = 0; i < n; i++)` (or `<=`) is accepted in that form only,
+`continue` included, with a body that does not assign `i`. There is no
 `break` (use a local tested by the `while` condition, or `find`/`filter`), no
 `return` inside a loop (use `continue`, or a local and a `return` after the loop),
 no `do`, `for…in` or labelled loop (`FLOWSCRIPT_V3_LOOP_FORM`). An inner loop can
@@ -57,7 +58,10 @@ Locals declared in a loop body remain readable in nested loops.
 or a `return`: `xs.filter(x => x.ok)` (`list.filter`), `xs.map(x => ({ id: x.id }))`
 (`list.map`), `xs.find(x => …)`, `xs.some(…)`, `xs.every(…)`, and
 `xs.toSorted((a, b) => a.score - b.score)` (`list.sort`; `b - a` sorts down,
-`a.name.localeCompare(b.name)` sorts text). To sort the items themselves, use
+`a.name.localeCompare(b.name)` sorts text, `a.code < b.code ? -1 : a.code > b.code ? 1 : 0`
+sorts with JavaScript's `<`). Several keys join with `||`:
+`(b.total - a.total) || a.name.localeCompare(b.name)`; the next key decides when
+the previous one gives `0` or `NaN`. To sort the items themselves, use
 `xs.toSorted((a, b) => a - b)` or `b - a` for numbers, and
 `xs.toSorted((a, b) => a.localeCompare(b))` or
 `String(a).localeCompare(String(b))` for text; reversing the operands sorts down.
@@ -65,14 +69,16 @@ The identity forms use `list.sort({ items, compare })` without `by`. List method
 arrows use one parameter (two for `toSorted`) and an expression body without a
 block call. They chain:
 `rows.filter(r => r.ok).map(r => r.name).join(", ")`. `xs.sort` (in place),
-`reduce`, an index parameter and other comparators are refused with a rewrite.
+`reduce`, an index parameter and other comparators (`a.k === b.k ? 0 : …`,
+`a.k < b.k ? -1 : 1`, which differ on absent keys) are refused with a rewrite.
 
 `Array.isArray(value)` and `typeof value` are expressions. A block in an
 assignment's comparison/arithmetic or `&&`, `||`, `??`, `?:` is evaluated once,
 left to right, only in the branch that needs it. For example:
 `const overdue = open && date.compare({left: item.dueDate, right: today}) < 0`.
 A list method or another block inside a branch of `?:`, `&&`, `||` or `??` is
-refused: declare it first.
+refused: declare it first. A declaration or an assignment that is entirely
+`c ? a : b` is the exception: it becomes `if (c) { x = a } else { x = b }`.
 
 `throw.code` is a **literal public code**, for example `"INVALID_INPUT"`.
 Keep dynamic data in `message` or `details`. `throw new Error(m)` is refused with
@@ -83,8 +89,10 @@ replace that placeholder with the intended public contract before applying it.
 `const rows = json.array({ itemType })` then `rows.push(value)`;
 `const byId = json.map({ valueType })` then `byId[key] = value`. A value that
 does not match the declared type is refused with `VALUE_TYPE_MISMATCH`.
-`const rows = []` followed by `push` is refused: the proposal gives the
-`json.array` with the item type of the pushed values.
+`const rows = []` followed by `rows.push(v)` becomes that `json.array` when every
+pushed value shows its type: text, template and number literals, `true`, `false`,
+comparisons, `null`, object and list literals (`rows.push({ label: "x", ok: n > 0 })`).
+A pushed name, path or computed number is refused with the `json.array` to write.
 
 **Call forms.** A block with slots keeps its call form (`flow.poll({ …,
 $$nodes() { ... } })`); a slot takes a function body (`$$nodes() { ... }`, or
