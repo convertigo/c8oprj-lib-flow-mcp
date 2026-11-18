@@ -108,7 +108,7 @@ An inner loop can read the variable of an outer loop:
 
 <!-- generated:v3-fragment id=nested-loops -->
 **Nested loops.** Locals declared in a loop body remain available in nested loops. When an inner `for…of`, a list
-method arrow, or a `flow.forEach`/`list.*` call rebinds `current` and reads the outer `for…of` item, the bridge
+method arrow, or a `flow.forEach`/`list.*` call rebinds `current` and reads the outer `for…of` item, the reader
 automatically copies that item to `local.<name>` at the start of the outer body. Destructured fields are already
 copied from `current.<field>` there. Other reads of the item continue to use `current`.
 <!-- /generated -->

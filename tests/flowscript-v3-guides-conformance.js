@@ -6,10 +6,10 @@ var root = new java.io.File(String(arguments[0])).getCanonicalFile(), engineDir 
 var __flowEngineDir = String(engineDir.getAbsolutePath());
 var __flowProjectDir = String(java.nio.file.Files.createTempDirectory("flow-v3-guides-conformance-").toFile().getAbsolutePath());
 var files = Packages.org.apache.commons.io.FileUtils;
-var bridge = eval(String(files.readFileToString(new java.io.File(engineDir, "modules/flowscript-v3-prototype.js"), "UTF-8")));
+var reader = Packages.com.convertigo.libflowengine.FlowScriptV3Reader;
 var engineRoot = engineDir.getParentFile();
 load(new java.io.File(engineRoot, "tests/support/flowscript-v3-conformance.js"));
-var v3 = flowscriptV3Conformance({ bridge: bridge, waitingFile: new java.io.File(engineRoot, "tests/support/flowscript-v3-waiting.json") });
+var v3 = flowscriptV3Conformance({ reader: reader, waitingFile: new java.io.File(engineRoot, "tests/support/flowscript-v3-waiting.json") });
 
 var waiting = {};
 v3.waiting.waiting.forEach(function (item) { waiting[item.id] = item.reason; });
