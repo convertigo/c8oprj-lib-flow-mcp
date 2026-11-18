@@ -36,7 +36,9 @@ Read for metadata, slots, values, dates or input conversion.
   $$nodes() { … } })`) only for properties its JavaScript form cannot carry.
   Unknown `$$` names are errors. Plain names such as `id`,
   `disabled`, `out` or `comment` are business properties; `$$$name` spells a
-  business property whose name starts with `$$`.
+  business property whose name starts with `$$`. To build source text with
+  JavaScript, use `split(oldText).join(newText)` or a replacement callback: a
+  replacement string reads `$$` as one `$`.
 - **Headers** `const _flow = {...}` hold static literals only (no expressions,
   spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
   `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (3), `inputs`,

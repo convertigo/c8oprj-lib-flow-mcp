@@ -1,7 +1,7 @@
 // The light bench showed agents learning the expression subset from refusals: parseInt, Number.isInteger, Math.sqrt
 // and a regular expression literal refused, the while block found only in a diagnostic. The authoring guide now opens
 // with the expressions in short, aligned with the functions of the engine, and describes the while block and its
-// iteration limit.
+// iteration limit. FlowScript v3: the same checks, in the JavaScript forms of the guide (rows.push, flow.while).
 var root = String(arguments[0]), engineDir = String(arguments[1]);
 var files = Packages.org.apache.commons.io.FileUtils, checks = 0;
 function assert(value, message) { checks++; if (!value) throw new Error(message); }
@@ -18,7 +18,7 @@ Object.keys(utils.expressionFunctions({})).filter(function (name) {
 }).forEach(function (name) {
 	assert(head.indexOf("`" + name) !== -1, "the reminder names " + name);
 });
-["`Math.*`", "`sqrt`", "`pow`", "`Infinity`", "`text.match(", "`crypto.random`", "`json.push`", "`while`", "`forEach`"].forEach(function (part) {
+["`Math.*`", "`sqrt`", "`pow`", "`Infinity`", "`text.match(", "`crypto.random`", "`rows.push(v)`", "`while`", "`forEach`"].forEach(function (part) {
 	assert(head.indexOf(part) !== -1, "the reminder names " + part);
 });
 
@@ -28,7 +28,7 @@ Object.keys(utils.expressionFunctions({})).filter(function (name) {
 });
 
 // The while block, its default limit and how to raise it
-["`while({ condition:", "maxIterations", "1000 when omitted", "WHILE_ITERATION_LIMIT", "timeoutMs", "FLOWSCRIPT_LOOP_UNSUPPORTED"].forEach(function (part) {
+["`flow.while({ condition:", "maxIterations", "after 1000 passes", "WHILE_ITERATION_LIMIT", "timeoutMs", "FLOWSCRIPT_V3_LOOP_FORM"].forEach(function (part) {
 	assert(family.indexOf(part) !== -1, "the authoring family describes the while block: " + part);
 });
 print("authoring-guide-expressions OK (" + checks + " checks)");

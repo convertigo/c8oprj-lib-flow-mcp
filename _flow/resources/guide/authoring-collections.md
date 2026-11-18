@@ -48,7 +48,7 @@ maxIterations: 100000, $$nodes() { ... } })` (1 to 1000000, `timeoutMs` at most
 600000). `for (let i = 0; i < n; i++)` is accepted in that form only. There is no
 `break` (use a local tested by the `while` condition, or `find`/`filter`), no
 `return` inside a loop (use `continue`, or a local and a `return` after the loop),
-no `do`, `for…in` or labelled loop. An inner loop does not read the variable of an
+no `do`, `for…in` or labelled loop (`FLOWSCRIPT_V3_LOOP_FORM`). An inner loop does not read the variable of an
 outer loop: copy it first (`const order = item`).
 
 **List methods** are blocks written as JavaScript, in a declaration, an assignment

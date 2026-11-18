@@ -29,7 +29,7 @@ check(!/Set `target` only to an existing `page\.name`/.test(read('guide/portable
 check(/To write an existing State, use `\$\$out="page\.name"`/.test(read('guide/portable-blocks.md')), 'portable blocks: $$out');
 // 6. a typed collection may be assigned (json.array, json.map contracts, parser)
 check(!/Create them with `path:` \(not with an assignment\)/.test(read('guide/authoring.md')), 'authoring: assignment allowed');
-check(/or assign the call \(it gives the `path`\)/.test(read('guide/authoring.md')), 'authoring: assignment gives the path');
+check(/`const rows = json\.array\(\{ itemType \}\)` then `rows\.push\(value\)`/.test(read('guide/authoring.md')), 'authoring: a typed collection is declared by assignment');
 // 7. the browser tools are those of the host: their own schema first; the Playwright form of the bench (target, the
 // guide-drafts-forms-browser.cjs witness of a bench friction) stays as its example, and the MCP no longer says ref
 check(/Read the schema of the browser tools of your host and use its argument names/.test(read('skills/convertigo-flow-mcp/SKILL.md')), 'skill: host schema');

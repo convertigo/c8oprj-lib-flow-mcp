@@ -11,6 +11,8 @@ const root = path.resolve(__dirname, '..');
 const guideDir = path.join(root, '_flow/resources/guide');
 const before = path.join(__dirname, 'fixtures/guides-938fc6a');
 const rewrites = JSON.parse(fs.readFileSync(path.join(before, 'rewrites.json'), 'utf8'));
+// FlowScript v3 (B line): paragraphs rewritten in the JavaScript forms keep the rules they carried, checked phrase by phrase.
+const v3Rewrites = JSON.parse(fs.readFileSync(path.join(before, 'v3-rewrites.json'), 'utf8'));
 for (const rewrite of rewrites.filter(item => item.currentOnly)) {
   const current = guideFamily(root, rewrite.family || path.basename(rewrite.file, '.md')).replace(/\s+/g, ' ');
   const next = rewrite.new.replace(/\s+/g, ' ');
@@ -27,7 +29,7 @@ const authoringData = fs.readFileSync(path.join(guideDir, 'authoring-data.md'), 
 assert.match(authoringData, /physical line numbers/i, 'authoring data explains physical line numbering');
 assert.match(authoringData, /text\.split\(\{[^\n]*removeEmpty: false[^\n]*\}\)/,
   'the split example retains blank lines before numbering');
-assert.match(authoringData, /local\.index \+ 1/, 'the guide uses the original zero-based index');
+assert.match(authoringData, /`index \+ 1`/, 'the guide uses the original zero-based index');
 assert.match(authoringData, /top-level `throw\.line`/, 'the physical line is a top-level error field');
 assert.match(authoringData, /filter only after numbering/i, 'filtering cannot discard the original line index');
 
@@ -88,6 +90,7 @@ for (const [entry, family] of Object.entries(families)) {
   // Sections: every former heading is still a heading of the family.
   const now = new Set(texts.flatMap(headings));
   for (const heading of headings(original)) assert.ok(now.has(heading) ||
+    v3Rewrites.some(item => item.family === entry && item.heading === heading && now.has(item.newHeading)) ||
     entry === 'crud' && heading === 'Add business logic' &&
     read(path.join(guideDir, 'crud-business/flows.md')).includes('### Business actions in a transaction'),
     `${entry}: section "${heading}" was lost`);
@@ -116,8 +119,14 @@ for (const [entry, family] of Object.entries(families)) {
       continue;
     }
     if (entry === 'authoring' && paragraph.startsWith('```javascript const _flow')) {
-      assert.ok(union.includes('function Greeting({ input, config, result })') && union.includes('result.message = `Hello ${local.name}`'),
+      assert.ok(union.includes('function Greeting({ input, config, result })') && union.includes('`Hello ${name}`'),
         'authoring: complete Greeting example lost');
+      continue;
+    }
+    const v3 = v3Rewrites.find(item => item.family === entry && item.oldStart && paragraph.startsWith(normalize(item.oldStart)));
+    if (v3) {
+      for (const phrase of v3.keep) assert.ok(union.includes(normalize(phrase)), `${entry}: v3 rewrite lost "${phrase}"`);
+      checkedParagraphs++;
       continue;
     }
     if (entry === 'multipage-entities') paragraph = paragraph.replace(

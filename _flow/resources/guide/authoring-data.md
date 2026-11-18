@@ -21,18 +21,19 @@ const codes = Object.keys(rates)
 return { rows, codes, usd: rates.USD }
 ```
 
-Filter each item with an unquoted expression: `local.tagged = list.filter({ items: input.rows, where: current.doc.tag == local.tag })`.
-Read a field of the current item with `current.<field>`, for example `local.names = list.map({ items: local.tagged, select: current.name })`; a bare field name such as `name` is not in scope.
+Filter with an arrow: `const tagged = input.rows.filter(row => row.doc.tag == tag)`.
+Read a field of each item through the arrow parameter, for example `const names = tagged.map(row => row.name)`; a bare field name such as `name` is not the field of the item.
 
-- Never hard-code `items[0]`, `items[1]` for a dynamic list. `list.map`
-  `select` takes an expression, object literal or named block call evaluated
-  for each item. A block nested there can use `$$id` for an explicit name.
+- Never hard-code `items[0]`, `items[1]` for a dynamic list. The arrow of
+  `map` or `filter` takes an expression without block call; to call a block for
+  each item, write the call form `list.map({ items: rows, select: text.trim({ text: current.name }) })`,
+  where `current` is the item. A block nested there can use `$$id` for an explicit name.
 - For physical line numbers, split before skipping blanks:
-  `local.lines = text.split({ text: input.csv, separator: "\\r?\\n", regex: true, trim: false, removeEmpty: false })`.
-  Iterate `local.lines` with `while` and a zero-based `local.index`; report
-  `local.index + 1` as top-level `throw.line`, and filter only after numbering.
+  `const lines = text.split({ text: input.csv, separator: "\\r?\\n", regex: true, trim: false, removeEmpty: false })`.
+  Iterate with `for (let index = 0; index < lines.length; index++)` (zero-based); report
+  `index + 1` as top-level `throw.line`, and filter only after numbering.
   `text.split` and `text.lines` otherwise drop empty items by default, shifting
-  later line numbers; `list.map` and `forEach` do not expose an index.
+  later line numbers; `for…of` and `map` do not expose an index.
 - `object.firstEntry({ source })` returns one `{ key, value }`.
 - For repeated external work, model one item and iterate: store rows in
   `config.*` or a small data block and call one per-item FlowScript block.

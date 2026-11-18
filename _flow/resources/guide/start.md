@@ -36,7 +36,7 @@ Accounts, sign-in and roles: reference `lib_UserManager` and read
 1. Every block call is `block.name({ key: value })` with one object argument.
    Positional calls such as `http.get(url)` or `requestable.call(".GetFeed")`
    are invalid; diagnostics show the accepted keys.
-2. Capture a block result with an assignment: `local.feed = requestable.call({
+2. Capture a block result in a declaration: `const feed = requestable.call({
    requestable: ".GetFeed" })`. Write one statement per line; never join two
    Flow statements with `;` on one line.
 3. Names are implicit; a JavaScript label names an instruction explicitly.
@@ -47,10 +47,11 @@ Accounts, sign-in and roles: reference `lib_UserManager` and read
    Flow, a Page, a Layout or a Flow component; `_meta` describes a block or a
    Svelte UI block. Backend Flow sources declare `sourceVersion: 3` (FlowScript
    v3, JavaScript); every `.flow.svelte` file must declare `sourceVersion: 2`.
-5. `input.*` holds Flow or block inputs, `local.*` scratch data, `result.*`
-   the response, `config.*` configuration. In backend FlowScript `flow.*` and
-   `props.*` are not expression scopes (in Flow Svelte, `@props.<name>` reads
-   component inputs).
+5. `input.*` holds Flow or block inputs, `const`/`let` locals (stored in
+   `local.*`) scratch data, `return { … }` or `result.*` the response,
+   `config.*` configuration. In backend FlowScript `flow` only offers
+   `flow.import`, `flow.default` and the call forms, and `props.*` is not an
+   expression scope (in Flow Svelte, `@props.<name>` reads component inputs).
 
 ## Default backend loop
 

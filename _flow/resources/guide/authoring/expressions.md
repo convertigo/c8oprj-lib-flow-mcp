@@ -24,6 +24,8 @@ A condition, a value or an expression property is a small JavaScript subset; any
   `toSorted`), `Object.keys(o)`, `Object.values(o)`, `JSON.parse(t)`, `JSON.stringify(v)` and `rows.push(v)` are blocks
   written as JavaScript: use them in a declaration, an assignment or a `return`, chained if needed
   (`rows.filter(r => r.ok).map(r => r.id).join(",")`), not inside a branch of `?:`, `&&`, `||` or `??`.
+- **Loops and collections:** `for (const x of xs)` is the `forEach` block and `while (condition)` the `while` block;
+  typed lists and maps, loop bounds and refusals: `flow://guide/authoring-collections`.
 - **Refused, with the replacement:** a regular expression literal `/x/` (the regex blocks above), `Math.random`
   (`crypto.random`), `Date.now` and `new Date` (`date.now`, `date.format`), `Object.entries`
   (`for (const key of Object.keys(o))`), `reduce` (`list.sum`, `list.map` or a loop), `xs.sort` in place (`toSorted`).

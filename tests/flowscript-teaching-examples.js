@@ -46,9 +46,13 @@ try {
   if(!complete)output=output.substring(output.indexOf('{\n')+2,output.lastIndexOf('\n}')).split('\n').map(function(line){return line.replace(/^  /,'');}).join('\n')+'\n';
   return meta+output;
  }
+ // FlowScript v3 (B line): the backend authoring family and the backend skills teach v3. Their examples are translated
+ // and run by tests/flowscript-v3-guide-examples.js of lib_flow_engine; a v3 text is never formatted from its tree.
+ var v3Sources=/\/(guide\/(authoring[^\/]*|authoring\/[^\/]+|start|start\/syntax)\.md|skills\/convertigo-flow-(backend|mcp)\/SKILL\.md)$/;
  function transform(document,where) {
   return document.replace(/```(flowscript|javascript|js)\n([\s\S]*?)```/g,function(fence,lang,text,offset){
    if(/\(function\s*\(|^function\s*\(input\)/.test(text))return fence; // Explicit native implementation.
+   if(v3Sources.test(String(where).replace(/\\/g,'/'))||/sourceVersion\s*:\s*3/.test(text))return fence;
    examples++;
    var result=canonical(text,where+':'+(document.substring(0,offset).split('\n').length));
    if(!update)assert(result===text,where+': example is not formatted:\n'+result);

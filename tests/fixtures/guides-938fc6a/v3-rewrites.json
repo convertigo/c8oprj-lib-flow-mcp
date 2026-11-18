@@ -1,0 +1,143 @@
+[
+ {
+  "family": "start",
+  "oldStart": "1. Every block call is `block.name({ key: value })`",
+  "keep": [
+   "diagnostics show the accepted keys",
+   "Capture a block result in a declaration",
+   "never join two Flow statements with `;` on one line",
+   "a JavaScript label names an instruction explicitly",
+   "Backend Flow sources declare `sourceVersion: 3`",
+   "`props.*` is not an expression scope"
+  ]
+ },
+ {
+  "family": "authoring",
+  "heading": "Slots, loops and typed collections",
+  "newHeading": "Loops, list methods and typed collections"
+ },
+ {
+  "family": "authoring",
+  "oldStart": "- **Values:** `input.*`",
+  "keep": [
+   "**Values:** `input.*`, `config.*`, `local.*`, `result.*`, `current`",
+   "**Operators:**",
+   "**Regex:**",
+   "**Refused, with the replacement:**"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "function Greeting({ input, config, result }) {",
+  "keep": [
+   "function Greeting({ input, config, result })",
+   "`Hello ${name}`"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "- **Block calls** take exactly one object",
+  "keep": [
+   "- **Block calls** take exactly one object of named properties: `block.name({ key: value })`. A catalog name is a block before a JS method:",
+   "write one statement per line"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "For row processing, filter/project before the loop",
+  "keep": [
+   "avoid copying the growing array",
+   "Metadata and external reads belong outside the cell loop whenever they are independent of the cell. Keep business block calls visible in FlowScript."
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "```javascript json.array({ path: \"local.rows\"",
+  "keep": [
+   "const rows = json.array({",
+   "rows.push("
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "A loop that is not over a list is the `while` block",
+  "keep": [
+   "`WHILE_ITERATION_LIMIT` after 1000 passes",
+   "maxIterations: 100000",
+   "`timeoutMs` at most 600000"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "A slot (`$$then`, `$$else`, `$$nodes`, `$$try`, `$$catch`) takes a function body.",
+  "keep": [
+   "a slot takes a function body"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "Keep **two** dollar signs on engine attributes and slots",
+  "keep": [
+   "**Engine attributes use exactly two `$`:**",
+   "use `split(oldText).join(newText)` or a replacement callback"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "`Array.isArray(value)` and `typeof value` are expressions.",
+  "keep": [
+   "left to right, only in the branch that needs it"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "`throw.code` is a **literal public code**",
+  "keep": [
+   "`throw.code` is a **literal public code**, for example `\"INVALID_INPUT\"`. Keep dynamic data in `message` or `details`.",
+   "`\"CHOOSE_ERROR_CODE\"` and `requiresChoice:true`"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "Collections are created typed, then mutated explicitly",
+  "keep": [
+   "**Collections are created typed,** then changed as in JavaScript",
+   "is refused with `VALUE_TYPE_MISMATCH`"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "```javascript local.rows = list.map(",
+  "keep": [
+   "const codes = Object.keys(rates)"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "Only `code-promote` and Studio tree edits format.",
+  "keep": [
+   "`changedLines` and the text-hash `revision`"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "- Never hard-code `items[0]`, `items[1]` for a dynamic list.",
+  "keep": [
+   "Never hard-code `items[0]`, `items[1]` for a dynamic list.",
+   "A block nested there can use `$$id` for an explicit name.",
+   "split before skipping blanks",
+   "report `index + 1` as top-level `throw.line`, and filter only after numbering.",
+   "`text.split` and `text.lines` otherwise drop empty items by default, shifting later line numbers",
+   "`object.firstEntry({ source })` returns one `{ key, value }`.",
+   "For repeated external work, model one item and iterate"
+  ]
+ },
+ {
+  "family": "authoring",
+  "oldStart": "Filter each item with an unquoted expression",
+  "keep": [
+   "Filter with an arrow:",
+   "a bare field name such as `name` is not the field of the item"
+  ]
+ }
+]
