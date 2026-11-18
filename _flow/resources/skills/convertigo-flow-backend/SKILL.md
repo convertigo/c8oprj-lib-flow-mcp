@@ -26,7 +26,7 @@ implicitly, or explicitly by a JavaScript label. Imports:
 - `finally`: the statements after the `try`;
 - `throw new Error(m)`: `throw { code: "LITERAL", message: m }`;
 - a `while` with another bound: `flow.while({ condition, maxIterations, $$nodes() {...} })`;
-- a free function or a closure: inline it, or a project block.
+- a nested function or closure: inline it, use a top-level helper after the Flow function with one object parameter, or a project block.
 
 **An expression is evaluated by the engine, not by JavaScript:** literals,
 scope paths (`input`, `config`, `local`, `result`, `current`), `+ - * / %`,
@@ -71,7 +71,7 @@ of named properties. `code-set` and `code-patch` compile your exact text. Guesse
 names, keys and positional calls produce a suggested patch with line, before
 and after. Review and send the edits with their revision; they are never
 applied automatically, except `$nodes`/`$id` written for `$$nodes`/`$$id`,
-corrected with a warning. Promotion formats once, checks the same tree and returns
+corrected with a warning. For v3, promotion preserves the source text and returns
 `linted`, `changedLines` and the text revision. If unchanged, keep that revision.
 A refused write with `written:true` has become the working copy: patch its new
 revision, not the previous successful one. An identified MCP conversation may

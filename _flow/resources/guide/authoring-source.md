@@ -38,7 +38,7 @@ symbol, whose default may be a test or development value:
 ## Accessibility
 
 ```javascript
-const _flow = { accessibility: "private" }
+const _flow = { sourceVersion: 3, accessibility: "private" }
 
 function Internal({ input, config, result }) {
   result.ok = true
@@ -79,11 +79,11 @@ One correction is written: a slot or an engine attribute with one dollar
 `fixes` with a `FLOWSCRIPT_SLOT_SIGIL_CORRECTED` warning; a plain key such as
 `nodes:` stays refused, as it may be a business property.
 
-Only `code-promote` and Studio tree edits format. Promotion checks the tree
-before and after formatting and saves nothing if the program changes. Its
+For a v3 source, `code-promote` keeps the submitted text unchanged. Studio tree
+edits cannot render a v3 source through the prototype bridge. Its
 answer includes `linted`, `changedLines` and the text-hash `revision`. An
 unchanged text keeps its revision; continue with it without another `code-get`.
-The formatter is idempotent, with code width 120.
+The v2 formatter is idempotent, with code width 120.
 
 Names are implicit: the assignment destination (`answer`), the instruction
 (`if`, `throw`, `return`) or the local block name (`trim`). Repetitions use

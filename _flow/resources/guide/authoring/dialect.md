@@ -49,7 +49,7 @@ Read for metadata, slots, values, dates or input conversion.
   `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.
   Refused at their line, with the rewrite: `break`, `finally`, `return` inside a
-  loop, `do`/`for…in`, labelled loops, `throw new Error`, free functions.
+  loop, `do`/`for…in`, labelled loops, `throw new Error`, nested functions and closures. A top-level helper after the Flow function is accepted with one object parameter.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its

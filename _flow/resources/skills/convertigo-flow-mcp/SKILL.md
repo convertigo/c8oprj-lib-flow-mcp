@@ -38,7 +38,7 @@ palette. That is why:
   string methods, `rows.filter(r => …)`/`map`/`find`/`some`/`every`/`toSorted`,
   `rows.push(v)` on a typed list, `rows[i]`. Imports: `const { get } =
   flow.import("http")`. Each step stays a node of the tree, so `break`,
-  `finally`, `return` inside a loop, `throw new Error` and free functions are
+  `finally`, `return` inside a loop, `throw new Error` and nested functions are
   refused with their replacement.
   When a construct is outside the subset, the refusal names it and the
   equivalent to write (for a call, a ready `proposedPatch` edit: Backend
@@ -267,8 +267,8 @@ backend statements documented in `flow://guide/authoring`. `code-set` and
 `code-patch` keep exact text and its diagnostic line numbers. A refused call
 can return `proposedPatch.edits` with line, before/after and exact replacement
 text. Review then apply the edits explicitly with `code-patch` and its revision.
-`autoCorrect` never applies guesses. `code-promote` formats, verifies the same
-tree and returns `linted`, `changedLines`, `revision`; unchanged text keeps its
+`autoCorrect` never applies guesses. For v3, `code-promote` keeps the submitted
+text and returns `linted`, `changedLines`, `revision`; unchanged text keeps its
 revision. Names are implicit unless a JavaScript label names the instruction.
 
 Project-local blocks are saved directly by `code-set`/`code-patch`; they have

@@ -15,18 +15,10 @@ Only when the refusal array is empty, make one `sql.transaction({ steps: [{ stat
 ## Lists, maps and config
 
 ```javascript
-local.rows = list.map({ items: input.items, select: { label: current.label } })
-result.rows = local.rows
-local.rates = json.object({
-  $$fields: function () {
-    json.field({ key: "EUR", value: 1 })
-    json.field({ key: "USD", value: 1.1 })
-  },
-})
-local.codes = object.keys({ source: local.rates })
-local.usd = object.get({ source: local.rates, key: "USD" })
-result.codes = local.codes
-result.usd = local.usd
+const rows = input.items.map(item => ({ label: item.label }))
+const rates = { EUR: 1, USD: 1.1 }
+const codes = Object.keys(rates)
+return { rows, codes, usd: rates.USD }
 ```
 
 Filter each item with an unquoted expression: `local.tagged = list.filter({ items: input.rows, where: current.doc.tag == local.tag })`.

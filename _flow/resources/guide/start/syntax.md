@@ -11,4 +11,4 @@ Read before the first code-set when translating JavaScript idioms.
 > `finally` → the statements after the `try`; `return` inside a loop → `continue`, or a local and a `return` after it;
 > `throw new Error(m)` → `throw { code: "LITERAL_CODE", message: m }`; `/re/.test(x)` → `text.match({ text: x, pattern: "re" })`;
 > `const rows = []` then `push` → `const rows = json.array({ itemType: { … } })` then `rows.push(v)`;
-> a free function or a closure → write it inline, or a project block.
+> a nested function or closure → write it inline, a top-level helper after the Flow function with one object parameter, or a project block.
