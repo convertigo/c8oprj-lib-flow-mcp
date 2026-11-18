@@ -55,8 +55,9 @@ Read for metadata, slots, values, dates or input conversion.
   password, nothing found): `result.ok = false` with its reason, never a
   result made of an `error` object alone. To go on after a block that may
   fail (an email, a call to another Flow or service), wrap it in
-  `try { ... } catch (failure) { ... }`; the catch reads `failure.code` /
-  `failure.message`, and `throw failure` raises it again unchanged.
+  `try { ... } catch (failure) { ... }`; the catch reads `failure.code`,
+  `failure.message` and `failure.details` (the details of the thrown error),
+  and `throw failure` raises it again unchanged.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), on a property of kind expression too (`day:
   "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
