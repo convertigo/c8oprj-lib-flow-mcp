@@ -25,10 +25,10 @@ Sub-guide of `flow://guide/authoring`: read that guide first. This text is gener
 | `for (let i = a; i < b; i++) {…}` | `set + while` | local.i = a; while (i < b) { body; local.i = Number(local.i) + 1 }. < or <=, step ++, i not assigned in the body; maxIterations 1000000 |
 | `for (let i = a; i < b; i++) { … continue … }` | `set + while + next` | a hidden counter local.__count<N> steps before the body, continue is next, the bound is read at every test. i not assigned in the body |
 | `switch (x) { case LITERAL: …; break; default: … }` | `if chain` | literal labels, every case ends with break/return/throw, default last |
-| `try {…} catch (e) {…}` | `try` | error = local.e (local.error without parameter); e read inside catch only |
+| `try {…} catch (e) {…}` | `try` | error = local.e, read as e inside the catch only; catch {…} declares no name: local.error, or a hidden local.__caught<N> when the Flow has its own error |
 | `continue` | `next` | while, for…of or counted for, no label |
 | `throw { code: "LITERAL", message, details }` | `throw` |  |
-| `throw e` | `throw` | e is the parameter of the enclosing catch, not assigned |
+| `throw e` | `throw` | throw({ error: "local.e" }): the caught error again, unchanged (application or failure). e is the parameter of an enclosing catch (a const) |
 | `a?.b`, `a?.[k]` |  | same as a.b (paths are null-safe) |
 | `xs.filter(x => c)` | `list.filter` | properties: items = xs; where = c with x as current |
 | `xs.map(x => e)` | `list.map` | properties: items = xs; select = e with x as current |
@@ -85,6 +85,6 @@ A refusal names its line, its `FLOWSCRIPT_V3_*` code and the rewrite; the source
 | const rows = [] then a push of no certain type, or of different types | `FLOWSCRIPT_V3_UNTYPED_LIST` | json.array({ itemType }) with the type of the pushed values |
 | Object.* or JSON.* elsewhere or with other arguments, Object.entries, Date.now, new Date | `FLOWSCRIPT_V3_GLOBAL_CALL` | the block (object.*, json.*, date.*) |
 | throw new Error(m) | `FLOWSCRIPT_V3_ERROR_CODE_CHOICE` | throw { code: "CHOOSE_ERROR_CODE", message: m } |
-| async, await, generators, classes, this, new, const without a value, o.f++ on a loop item or input | `FLOWSCRIPT_V3_UNSUPPORTED` | blocks |
+| async, await, generators, classes, this, new, const without a value, o.f++ on a loop item or input, throw of a name that is not a catch parameter, a thrown object with an error field | `FLOWSCRIPT_V3_UNSUPPORTED` | blocks |
 | if or while whose condition is an object literal | `FLOWSCRIPT_V3_OBJECT_CONDITION` | flow.if({ … }) or flow.while({ … }) |
 <!-- /generated -->

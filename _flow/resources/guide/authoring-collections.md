@@ -50,7 +50,7 @@ return { status, rows }
 | `for (const item of items) {…}` | `forEach` | `item` reads the current element. One level of object destructuring: `for (const { id } of rows)`. `items` may be `Object.keys(o)`, `Object.values(o)` or a list method chain, computed once before the loop. |
 | `for (let i = a; i < b; i++) {…}` | `set` and `while` | Only this form, `<` or `<=`, step `++`; `i` is not assigned in the body. `continue` is accepted, even when `b` changes in the body: the counter steps before the body, on a hidden local. `maxIterations` 1000000. |
 | `switch (x) { case "a": …; break; default: … }` | chain of `if` | Literal labels; every case ends with `break`, `return` or `throw`; `default` last. |
-| `try {…} catch (e) {…}` | `try` | The error is `local.e`, read as `e` inside the catch only. Without a parameter: `local.error`. |
+| `try {…} catch (e) {…}` | `try` | The error is `local.e`, read as `e` inside the catch only. `catch {…}` declares no name: the error goes to `local.error`, or to a hidden local when the Flow has its own `error`. |
 | `continue` | `next` | In a `while`, a `for…of` or a counted `for`, without a label. |
 | `return`, `return value`, `return {…}` | `return` | Leaves the Flow. Refused inside a loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`). |
 | `throw { code: "LITERAL", message }` | `throw` | `code` is a literal public code. |
