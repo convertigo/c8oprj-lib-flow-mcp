@@ -79,6 +79,9 @@ left to right, only in the branch that needs it. For example:
 A list method or another block inside a branch of `?:`, `&&`, `||` or `??` is
 refused: declare it first. A declaration or an assignment that is entirely
 `c ? a : b` is the exception: it becomes `if (c) { x = a } else { x = b }`.
+An `if` condition runs its list methods first (`if (!roles.some(r => r == "OWNER"))`);
+a `while` condition, evaluated before every pass, cannot: test a `let` updated at
+the end of the body. `for (const key of Object.keys(o))` computes the keys once.
 
 `throw.code` is a **literal public code**, for example `"INVALID_INPUT"`.
 Keep dynamic data in `message` or `details`. `throw new Error(m)` is refused with
@@ -89,14 +92,18 @@ replace that placeholder with the intended public contract before applying it.
 `const rows = json.array({ itemType })` then `rows.push(value)`;
 `const byId = json.map({ valueType })` then `byId[key] = value`. A value that
 does not match the declared type is refused with `VALUE_TYPE_MISMATCH`.
+An object read from a map is that object, as in JavaScript: after
+`const g = byCat[c]`, `g.count++` and `g.total += x` change the map.
 `const rows = []` followed by `rows.push(v)` becomes that `json.array` when every
 pushed value shows its type: text, template and number literals, `true`, `false`,
 comparisons, `null`, object and list literals (`rows.push({ label: "x", ok: n > 0 })`).
 A pushed name, path or computed number is refused with the `json.array` to write.
 
 **Call forms.** A block with slots keeps its call form (`flow.poll({ …,
-$$nodes() { ... } })`); a slot takes a function body (`$$nodes() { ... }`, or
-`$$nodes: () => { ... }`). Keep **two** dollar signs on engine attributes and
+$$nodes() { ... } })`); a slot takes a function body (`$$nodes() { ... }`,
+`$$nodes: function () { ... }` or `$$nodes: () => { ... }`), also in a call that
+is assigned: `const tx = sql.transaction({ …, $$nodes() { ... } })` (its output
+goes to `tx`). Keep **two** dollar signs on engine attributes and
 slots. Close both the slot body and the argument object: `$$nodes() { ... } })`.
 
 ## Loop

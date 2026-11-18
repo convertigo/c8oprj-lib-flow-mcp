@@ -25,9 +25,11 @@ A condition, a value or an expression property is a small JavaScript subset; any
   `a.includes(b)`, `x.length`) to the older functions `lower`, `contains`, `length`.
 - **Statements, not expressions:** list methods with an arrow (`xs.filter(x => …)`, `map`, `find`, `some`, `every`,
   `toSorted`), `Object.keys(o)`, `Object.values(o)`, `JSON.parse(t)`, `JSON.stringify(v)` and `rows.push(v)` are blocks
-  written as JavaScript: use them in a declaration, an assignment or a `return`, chained if needed
+  written as JavaScript: use them in a declaration, an assignment, a `return`, the list of a `for…of`
+  (`for (const key of Object.keys(o))`) or an `if` condition (`if (!roles.some(r => r == "OWNER"))`), chained if needed
   (`rows.filter(r => r.ok).map(r => r.id).join(",")`), not inside a branch of `?:`, `&&`, `||` or `??`, except a
   value that is entirely `c ? a : b` (`const post = id ? posts.find(p => p.id === id) : undefined`, an `if`/`else`).
+  Not in a `while` condition, evaluated before every pass: keep the value in a `let` updated at the end of the body.
   `xs.concat(ys)` is JavaScript's `concat` and may take a chain (`items.concat(page.rows.map(r => ({ id: r.id })))`).
 - **Loops and collections:** `for (const x of xs)` is the `forEach` block and `while (condition)` the `while` block;
   typed lists and maps, loop bounds and refusals: `flow://guide/authoring-collections`.
