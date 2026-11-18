@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "description": "Applies a revision-checked unified patch or exact text edits to one Flow Svelte source.",
   "icon": "mdi:source-branch-sync",
@@ -69,21 +69,12 @@ const _meta = {
   ],
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_frontend_svelte_code_patch({ input, config, result }) {
-  mcp.tool.run({
-    $$id: "frontendSvelteCodePatch",
+  frontendSvelteCodePatch: mcp.tool.run({
     request: input.request,
     target: "frontend.svelte.source",
-    args: {
-      operation: "patch",
-      reveal: input.reveal,
-    },
+    args: { operation: "patch", reveal: input.reveal },
   })
 }

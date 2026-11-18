@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "private": true,
   "icon": "mdi:delete-sweep-outline",
@@ -25,17 +25,8 @@ const _meta = {
   },
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_flow_cache_clear({ input, config, result }) {
-  mcp.tool.run({
-    $$id: "runCacheClear",
-    request: input.request,
-    target: "cache.clear",
-  })
+  runCacheClear: mcp.tool.run({ request: input.request, target: "cache.clear" })
 }

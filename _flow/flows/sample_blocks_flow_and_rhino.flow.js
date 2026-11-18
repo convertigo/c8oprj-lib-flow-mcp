@@ -1,91 +1,27 @@
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
 const _flow = {
-  "inputs": {
-    "name": {
-      "type": "string",
-      "description": "Person name used by the FlowScript sample block.",
-      "default": "Nicolas",
-    },
-    "city": {
-      "type": "string",
-      "description": "City name used by the FlowScript sample block.",
-      "default": "Paris",
-    },
-    "minTemperature": {
-      "type": "number",
-      "description": "Keep only cities at or above this temperature.",
-      "default": 30,
-    },
+  sourceVersion: 3,
+  inputs: {
+    name: { type: "string", description: "Person name used by the FlowScript sample block.", default: "Nicolas" },
+    city: { type: "string", description: "City name used by the FlowScript sample block.", default: "Paris" },
+    minTemperature: { type: "number", description: "Keep only cities at or above this temperature.", default: 30 },
   },
-  "tests": {
-    "checkParis": {
-      "input": {
-        "name": "Nicolas",
-        "city": "Paris",
-        "minTemperature": 30,
-      },
-    },
-  },
-  "sourceVersion": 2,
+  tests: { checkParis: { input: { name: "Nicolas", city: "Paris", minTemperature: 30 } } },
 }
 
 function sample_blocks_flow_and_rhino({ input, config, result }) {
-  local.greeting = sample.formatGreeting({
-    $$comment: "Only call Flow blocks with one object containing named parameters.",
-    name: input.name,
-    city: input.city,
-    prefix: "Hello",
-  })
-  local.hash = sample.sha256({
-    $$id: "hash",
-    $$comment: "Rhino is reserved for one small Java bridge or primitive, not a full feature.",
-    text: local.greeting,
-  })
-  set({
-    $$id: "cities",
-    path: "local.cities",
-    value: [
-      {
-        name: "Paris",
-        temperature: 38,
-      },
-      {
-        name: "Lyon",
-        temperature: 31,
-      },
-      {
-        name: "Brest",
-        temperature: 22,
-      },
-    ],
-  })
-  local.hotCities = list.filter({
-    items: local.cities,
-    where: current.temperature >= input.minTemperature,
-  })
-  local.hotCityNames = list.map({
-    $$id: "hotCityNames",
-    items: local.hotCities,
-    select: current.name,
-  })
-  set({
-    path: "result.greeting",
-    value: local.greeting,
-  })
-  set({
-    $$id: "digest",
-    path: "result.digest",
-    value: local.hash.digest,
-  })
-  set({
-    path: "result.hotCities",
-    value: local.hotCityNames,
-  })
-  set({
-    $$id: "count",
-    path: "result.count",
-    value: local.hotCityNames.length,
-  })
+  // Only call Flow blocks with one object containing named parameters.
+  local.greeting = sample.formatGreeting({ name: input.name, city: input.city, prefix: "Hello" })
+  // Rhino is reserved for one small Java bridge or primitive, not a full feature.
+  local.hash = sample.sha256({ text: local.greeting })
+  local.cities = [
+    { name: "Paris", temperature: 38 },
+    { name: "Lyon", temperature: 31 },
+    { name: "Brest", temperature: 22 },
+  ]
+  local.hotCities = local.cities.filter(item => item.temperature >= input.minTemperature)
+  local.hotCityNames = local.hotCities.map(item => item.name)
+  result.greeting = local.greeting
+  result.digest = local.hash.digest
+  result.hotCities = local.hotCityNames
+  result.count = local.hotCityNames.length
 }

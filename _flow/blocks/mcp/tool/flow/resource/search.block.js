@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "description": "Runs the flow-resource-search MCP tool.",
   "icon": "mdi:file-search-outline",
@@ -29,17 +29,8 @@ const _meta = {
   "display": "tool flow-resource-search -> ${input.out}",
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_flow_resource_search({ input, config, result }) {
-  mcp.tool.run({
-    $$id: "runResourceSearch",
-    request: input.request,
-    target: "resource.search",
-  })
+  runResourceSearch: mcp.tool.run({ request: input.request, target: "resource.search" })
 }

@@ -1,5 +1,5 @@
 const _meta = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   version: 1,
   private: true,
   icon: "mdi:tag-search-outline",
@@ -13,7 +13,7 @@ const _meta = {
   },
 }
 
-const _flow = { sourceVersion: 2 }
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_tags_get({ input, config, result }) {
   mcp.tags.dispatch({ request: input.request, operation: "get" })

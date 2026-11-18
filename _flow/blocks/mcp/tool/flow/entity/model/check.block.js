@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "private": true,
   "description": "Validates an interpreted entity model without writing, with structured diagnostics. Use after flow-entity-model-get and before revisioned flow-entity-model-set; creates no CRUD code. The model property gives the format and an example; an unknown key is refused with its full path and the accepted values.",
@@ -35,7 +35,7 @@ const _meta = {
   }
 }
 
-const _flow = { sourceVersion: 2 }
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_flow_entity_model_check({ input, config, result }) {
   mcp.tool.run({ request: input.request, target: "entity.model.check", jsonArguments: { modelJson: "model" } })

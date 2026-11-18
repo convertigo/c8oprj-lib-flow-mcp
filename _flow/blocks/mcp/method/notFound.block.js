@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "description": "Builds a JSON-RPC method-not-found error.",
   "summary": [
@@ -33,23 +33,14 @@ const _meta = {
   "display": "method.notFound",
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_method_notFound({ input, config, result }) {
-  local.response = mcp.response.error({
-    $$id: "error",
+  error: local.response = mcp.response.error({
     request: input.request,
     code: -32601,
     message: "Method not found: " + (input.request.method || ""),
     out: "local.response",
   })
-  return({
-    $$id: "returnValue",
-    value: local.response,
-  })
+  returnValue: return local.response
 }

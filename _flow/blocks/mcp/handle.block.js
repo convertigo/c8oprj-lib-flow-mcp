@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "description": "Handles one MCP JSON-RPC request object.",
   "summary": [
@@ -33,176 +33,66 @@ const _meta = {
   "display": "handle request -> ${input.out}",
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_handle({ input, config, result }) {
-  if ({
-    $$id: "ifProtocolError",
-    condition: input.request.__flowMcpProtocolError,
-    $$then: function () {
-      local.protocolResponse = mcp.response.error({
-        request: input.request,
-        code: input.request.__flowMcpProtocolError.code,
-        message: input.request.__flowMcpProtocolError.message,
-      })
-      return({ value: local.protocolResponse })
-    },
-  })
-  if({
-    $$id: "if2",
-    condition: input.request.__flowMcpAuthenticationError,
-    $$then: function () {
-      local.response = mcp.response.error({
-        $$id: "authenticationError",
-        request: input.request,
-        code: -32001,
-        message: input.request.__flowMcpAuthenticationError.message,
-        data: input.request.__flowMcpAuthenticationError,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "ifPing",
-    condition: input.request.method == "ping",
-    $$then: function () {
-      local.response = mcp.response.result({
-        $$id: "handlePing",
-        request: input.request,
-        result: {},
-      })
-      return({
-        $$id: "returnPing",
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if8",
-    condition: input.request.method == "initialize",
-    $$then: function () {
-      local.response = mcp.initialize({
-        $$id: "handleInitialize",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if12",
-    condition: input.request.method == "tools/list",
-    $$then: function () {
-      local.response = mcp.tools.list({
-        $$id: "handleToolsList",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if16",
-    condition: input.request.method == "tools/call",
-    $$then: function () {
-      local.response = mcp.tools.call({
-        $$id: "handleToolsCall",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if20",
-    condition: input.request.method == "resources/list",
-    $$then: function () {
-      local.response = mcp.resources.list({
-        $$id: "handleResourcesList",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if24",
-    condition: input.request.method == "resources/templates/list",
-    $$then: function () {
-      local.response = mcp.resources.templates.list({
-        $$id: "handleResourceTemplatesList",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if28",
-    condition: input.request.method == "resources/read",
-    $$then: function () {
-      local.response = mcp.resources.read({
-        $$id: "handleResourcesRead",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if32",
-    condition: input.request.method == "notifications/initialized",
-    $$then: function () {
-      local.response = mcp.notification({
-        $$id: "handleInitializedNotification",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  if({
-    $$id: "if36",
-    condition: startsWith(input.request.method, "notifications/"),
-    $$then: function () {
-      local.response = mcp.notification({
-        $$id: "handleNotification",
-        request: input.request,
-        out: "local.response",
-      })
-      return({
-        value: local.response,
-      })
-    },
-  })
-  local.response = mcp.method.notFound({
-    $$id: "methodNotFound",
-    request: input.request,
-    out: "local.response",
-  })
-  return({
-    value: local.response,
-  })
+  ifProtocolError: if (input.request.__flowMcpProtocolError) {
+    local.protocolResponse = mcp.response.error({
+      request: input.request,
+      code: input.request.__flowMcpProtocolError.code,
+      message: input.request.__flowMcpProtocolError.message,
+    })
+    return local.protocolResponse
+  }
+  if (input.request.__flowMcpAuthenticationError) {
+    authenticationError: local.response = mcp.response.error({
+      request: input.request,
+      code: -32001,
+      message: input.request.__flowMcpAuthenticationError.message,
+      data: input.request.__flowMcpAuthenticationError,
+      out: "local.response",
+    })
+    return local.response
+  }
+  ifPing: if (input.request.method == "ping") {
+    handlePing: local.response = mcp.response.result({ request: input.request, result: {} })
+    returnPing: return local.response
+  }
+  if8: if (input.request.method == "initialize") {
+    handleInitialize: local.response = mcp.initialize({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if12: if (input.request.method == "tools/list") {
+    handleToolsList: local.response = mcp.tools.list({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if16: if (input.request.method == "tools/call") {
+    handleToolsCall: local.response = mcp.tools.call({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if20: if (input.request.method == "resources/list") {
+    handleResourcesList: local.response = mcp.resources.list({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if24: if (input.request.method == "resources/templates/list") {
+    handleResourceTemplatesList: local.response = mcp.resources.templates.list({
+      request: input.request,
+      out: "local.response",
+    })
+    return local.response
+  }
+  if28: if (input.request.method == "resources/read") {
+    handleResourcesRead: local.response = mcp.resources.read({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if32: if (input.request.method == "notifications/initialized") {
+    handleInitializedNotification: local.response = mcp.notification({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  if36: if (startsWith(input.request.method, "notifications/")) {
+    handleNotification: local.response = mcp.notification({ request: input.request, out: "local.response" })
+    return local.response
+  }
+  methodNotFound: local.response = mcp.method.notFound({ request: input.request, out: "local.response" })
+  return local.response
 }

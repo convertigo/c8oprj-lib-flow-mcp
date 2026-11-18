@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "private": true,
   "icon": "mdi:file-check-outline",
@@ -26,17 +26,8 @@ const _meta = {
   },
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_code_set({ input, config, result }) {
-  mcp.tool.code.dispatch({
-    $$id: "dispatchCodeSet",
-    request: input.request,
-    operation: "set",
-  })
+  dispatchCodeSet: mcp.tool.code.dispatch({ request: input.request, operation: "set" })
 }

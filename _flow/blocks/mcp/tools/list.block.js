@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "description": "Builds the MCP tools/list response.",
   "summary": [
@@ -33,44 +33,28 @@ const _meta = {
   "display": "tools.list -> ${input.out}",
 }
 
-// c8o: Flow source (FlowScript, sourceVersion 2). Calls are Flow blocks; plain keys are business properties, $$ keys are engine attributes and slots.
-// c8o: Edit in the Studio or with the Flow MCP code tools; patch with the returned revision.
-
-const _flow = {
-  "sourceVersion": 2,
-}
+const _flow = { sourceVersion: 3 }
 
 function mcp_tools_list({ input, config, result }) {
-  local.response = mcp.stable({
-    $$id: "keptToolsList",
-    $$comment: "The descriptors change with the blocks, the MCP library and the relayed catalog of the caller only.",
+  // The descriptors change with the blocks, the MCP library and the relayed catalog of the caller only.
+  keptToolsList: mcp.stable({
+    $$out: "local.response",
     request: input.request,
     out: "local.response",
     $$nodes: function () {
-      local.tools = mcp.tools.available({
-        $$id: "availableTools",
-        out: "local.tools",
-      })
-      local.payload = json.object({
-        $$id: "payload",
+      availableTools: local.tools = mcp.tools.available({ out: "local.tools" })
+      json.object({
+        $$out: "local.payload",
         $$fields: function () {
-          json.field({
-            $$id: "tools",
-            key: "tools",
-            value: local.tools,
-          })
+          tools: json.field({ key: "tools", value: local.tools })
         },
       })
-      local.response = mcp.response.result({
-        $$id: "response",
+      response: local.response = mcp.response.result({
         request: input.request,
         result: local.payload,
         out: "local.response",
       })
     },
   })
-  return({
-    $$id: "returnResponse",
-    value: local.response,
-  })
+  returnResponse: return local.response
 }

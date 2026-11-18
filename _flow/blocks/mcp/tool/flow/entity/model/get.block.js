@@ -1,5 +1,5 @@
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "version": 1,
   "private": true,
   "description": "Reads the interpreted entity model and its SHA-256 revision. Default data route for persisted business data with roles: reference lib_flow_entity and follow flow://guide/entities then flow://guide/multipage-entities. An empty model (revision missing) also returns format, the accepted keys, and example, a complete model to adapt.",
@@ -30,7 +30,7 @@ const _meta = {
   }
 }
 
-const _flow = { sourceVersion: 2 }
+const _flow = { sourceVersion: 3 }
 
 function mcp_tool_flow_entity_model_get({ input, config, result }) {
   mcp.tool.run({ request: input.request, target: "entity.model.get" })
