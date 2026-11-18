@@ -15,11 +15,7 @@ Read for metadata, slots, values, dates or input conversion.
 - **Locals are declarations:** `const total = list.sum({ items })`, `let count = 0`,
   `let found` (`undefined`), one level of destructuring `const { name, email } = input`.
   The value lives in `local.<name>`; `local.x = …` stays valid, but never name the
-  same local both ways. Scope rules as in JavaScript: a name is read only in the
-  block that declares it, is not declared again in an inner block, a `const` is
-  not reassigned (its list or object may change), and a local never takes the name
-  of a scope, of `flow`, of a name starting with `__`, or of a block namespace the
-  Flow uses (`text`, `list`, `json`…). `x += e`, `x++` are statements.
+  same local both ways (scope rules below). `x += e`, `x++` are statements.
 - **Outputs:** `return { total, items: rows }` writes the output fields and leaves
   the Flow; `result.x = …` writes one field. Use one style per Flow.
 - **`$$out`** (call form only) is the explicit capture metadata, only for destinations an
@@ -51,8 +47,7 @@ Read for metadata, slots, values, dates or input conversion.
   `return { answer: input.value }`, bare `return`, and
   `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.
-  Refused at their line, with the rewrite: `break`, `finally`, `return` inside a
-  loop, `do`/`for…in`, labelled loops, `throw new Error`, nested functions and closures. A top-level helper after the Flow function is accepted with one object parameter.
+  Everything outside this list is refused at its line, with the rewrite (`flow://guide/authoring/forms`). A top-level helper after the Flow function is accepted with one object parameter.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its
@@ -130,5 +125,33 @@ Read for metadata, slots, values, dates or input conversion.
   needs `required: true`.
 - **Business `id`, `disabled`, `out` are free** for project block properties;
   core blocks declare no business `out` (`UNKNOWN_BLOCK_PROPERTY`).
+
+## Scope rules
+
+<!-- generated:v3-fragment id=scope-rules -->
+**Scope rules** (refused otherwise):
+- a name is read only inside the block that declares it (`FLOWSCRIPT_V3_OUT_OF_SCOPE`);
+- a name is not declared again in an enclosed block, and does not hide an import or a loop variable
+  (`FLOWSCRIPT_V3_SHADOWING`);
+- a `const` is not assigned again; its object or list may still change (`FLOWSCRIPT_V3_CONST_ASSIGN`);
+- a local takes neither the name of a scope (`input`, `config`, `local`, `result`, `request`, `current`, `parent`,
+  `trace`), nor `flow`, nor a name starting with `__`, nor the name of a block namespace the Flow uses
+  (`text`, `list`, `json`, `http`…): after `let text = …`, `text.trim({…})` would be a method call in JavaScript
+  (`FLOWSCRIPT_V3_RESERVED_NAME`, `FLOWSCRIPT_V3_NAME_SHADOWS_BLOCK`).
+<!-- /generated -->
+
+## Value rules
+
+Same meaning as JavaScript, with the value rules of the FlowScript expression evaluator:
+
+<!-- generated:v3-fragment id=value-rules -->
+- paths are null-safe: `local.a.b` is `undefined` when `local.a` is `null`, where JavaScript would throw
+  (likewise `Object.keys(null)` is `[]`);
+- `<`, `<=`, `>`, `>=` compare two numeric texts as numbers: `"10" < "9"` is `false` (JavaScript compares the
+  texts and says `true`); inputs often arrive as text;
+- a template literal writes `null` and `undefined` as `""`, and an object or a list as JSON;
+- loops have an execution budget: a `while` stops the run with `WHILE_ITERATION_LIMIT` after 1000 passes or
+  60 s unless `flow.while` sets other bounds; a counted `for` gets the largest bound (1000000 passes, 60 s).
+<!-- /generated -->
 
 Continue with `flow://guide/authoring-collections` for the remaining recipes.

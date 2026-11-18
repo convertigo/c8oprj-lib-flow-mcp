@@ -119,3 +119,40 @@ Otherwise read only that range with `code-get({ qname, revision, startLine,
 endLine })`; read the whole source only for ambiguous or broad changes. To
 skip a node without deleting it, patch `$$disabled: true` into its call and
 remove the line to restore it.
+
+## Names, comments and disabled statements
+
+<!-- generated:v3-fragment id=names -->
+- A JavaScript label gives an explicit node name: `checkStock: if (…) { … }`. Without a label, names are computed.
+- A comment directly above a statement, without a blank line, is its comment; a `/* … */` comment is read the same
+  way, and the formatter writes it as `//` lines. Separated by a blank line, it is
+  a standalone comment node.
+- `// @disabled` in that comment disables the statement.
+<!-- /generated -->
+
+## Nodes without an author form
+
+A node created in Studio or by a tool, or read from a v2 source, is rendered in its natural JavaScript form wherever the meaning is identical, and in its call form otherwise. The author's own writing is kept (`const` or `let`, loop variable name, call form, `+=`, `return { … }`, chains).
+
+<!-- generated:v3-fragment id=rendering-natural -->
+| Node | Rendering |
+|---|---|
+| `set` of a `local.`/`result.` path | `local.x = value`, `result.x = value` (no declaration is inferred) |
+| `if` | `if (c) { … } else { … }`, an `if` alone in `else` as `else if` |
+| `while` with default bounds | `while (c) { … }` |
+| `forEach` | `for (const item of items) { … }`, `current` renamed in its own body |
+| `next`, and a v2 bare `return` in a loop body | `continue` |
+| `try` | `try { … } catch (failure) { … }`, named after its error local |
+| `throw`, `return` | `throw { … }`, `return`, `return value` |
+| `list.filter`, `list.map`, `list.find`, `list.some`, `list.every` | `items.filter(item => c)`… |
+| `list.sort` with `compare` | `items.toSorted((a, b) => a.k - b.k)`, `… localeCompare …`, `a.k < b.k ? -1 : a.k > b.k ? 1 : 0`; `then` keys joined by `\|\|` |
+| `json.push`, `json.put` | `local.rows.push(v)`, `local.byId[key] = v` |
+| `object.keys`, `object.values`, `json.parse`, `json.stringify` | `Object.keys(o)`, `Object.values(o)`, `JSON.parse(t)`, `JSON.stringify(v)` / `JSON.stringify(v, null, 2)` |
+| a disabled statement | its natural form with `// @disabled` in its comment |
+<!-- /generated -->
+
+<!-- generated:v3-fragment id=rendering-names -->
+**Names.** The variable of a `for…of` and the parameter of a list arrow are `item`; when that name is visible
+already, the first free of `item2`, `item3`… The parameter of `catch` is the name of the error local
+(`error: "local.failure"` gives `catch (failure)`).
+<!-- /generated -->

@@ -11,22 +11,22 @@ Keep this role across backend lots instead of spawning a replacement agent.
 ## How the Backend Works (the rules below follow from it)
 
 **A Flow body is JavaScript statements turned into block nodes**
-(FlowScript v3, `sourceVersion: 3`). Accepted: `const`/`let` declarations
-(stored in `local.<name>`), assignments, `x += e`, `x++`, `if`/`else`,
-`while (c) {...}`, `for (const item of items) {...}`, `continue`, simple
-`switch`, `try {...} catch (e) {...}`, `return`, `return { … }`,
-`throw { code, message }`, `throw e` in its catch, list methods with an arrow
-(`filter`, `map`, `find`, `some`, `every`, `toSorted`, chained), `rows.push(v)`
-and `byId[k] = v` on typed collections, `Object.keys`/`values`,
-`JSON.parse`/`stringify`, and block calls `name({ ... })`, each node named
-implicitly, or explicitly by a JavaScript label. Imports:
-`const { get: httpGet } = flow.import("http")`. Outside the subset, write instead:
-- `break`: a local tested by the `while` condition, or `find`/`filter`;
-- `return` inside a loop: `continue`, or a local and a `return` after the loop;
-- `finally`: the statements after the `try`;
-- `throw new Error(m)`: `throw { code: "LITERAL", message: m }`;
-- a `while` with another bound: `flow.while({ condition, maxIterations, $$nodes() {...} })`;
-- a nested function or closure: inline it, use a top-level helper after the Flow function with one object parameter, or a project block.
+(FlowScript v3, `sourceVersion: 3`). Accepted forms:
+<!-- generated:v3-forms format=inline ids=declare,declare-destructuring,assign-compound,return-object,if,while,for-of,for-counted,switch,try-catch,continue,throw-object,throw-rethrow,list-filter,list-map,list-find,list-some,list-every,list-sort,chain,push,put,object-keys,object-values,json-parse,json-stringify,import-named,import-namespace,label -->`const x = e`, `let x = e`, `let x`, `const { a, b: c } = o`, `x += e`, `x -= e`, `x *= e`, `x /= e`, `x++`, `x--`, `o.f++`, `o.f += e`, `return { a, b: e }`, `if (c) {…} else if (d) {…} else {…}`, `while (c) {…}`, `for (const item of items) {…}`, `for (let i = a; i < b; i++) {…}`, `switch (x) { case LITERAL: …; break; default: … }`, `try {…} catch (e) {…}`, `continue`, `throw { code: "LITERAL", message, details }`, `throw e`, `xs.filter(x => c)`, `xs.map(x => e)`, `xs.find(x => c)`, `xs.some(x => c)`, `xs.every(x => c)`, `xs.toSorted((a, b) => a.k - b.k)`, `xs.toSorted((a, b) => a - b)`, `xs.toSorted((a, b) => a.k.localeCompare(b.k))`, `xs.toSorted((a, b) => a.localeCompare(b))`, `[...xs].sort((a, b) => b.k - a.k)`, `xs.filter(…).map(…).join(", ")`, `rows.push(v)`, `byId[key] = v`, `Object.keys(o)`, `Object.values(o)`, `JSON.parse(t)`, `JSON.stringify(v)`, `JSON.stringify(v, null, 2)`, `const { name, name: alias } = flow.import("module")`, `const ns = flow.import("module")`, `name: statement`<!-- /generated -->,
+and block calls `name({ ... })`, each node named implicitly, or explicitly by a JavaScript label.
+The complete table: `flow://guide/authoring/forms`. Outside the subset, write instead:
+
+<!-- generated:v3-refusals format=bullets codes=BREAK,RETURN_IN_LOOP,FINALLY,ERROR_CODE_CHOICE,FUNCTION,UNTYPED_LIST,RESERVED_WORD,IMPORT_SYNTAX -->
+- `break`: a local tested by the while condition, or find / filter (`FLOWSCRIPT_V3_BREAK`)
+- return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
+- `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
+- throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
+- a function other than a top-level helper, a list arrow or a slot (nested, in an expression, a closure); a slot with a parameter or an expression body: inline, a top-level helper, or a project block; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
+- const rows = [] then a push of no certain type, or of different types: json.array({ itemType }) with the type of the pushed values (`FLOWSCRIPT_V3_UNTYPED_LIST`)
+- default(x, y) outside a switch: default is a reserved word, so this is not JavaScript: flow.default(x, y), with the same arguments (`FLOWSCRIPT_V3_RESERVED_WORD`)
+- import … from "…": const { … } = flow.import("…") (`FLOWSCRIPT_V3_IMPORT_SYNTAX`)
+<!-- /generated -->
+- a `while` with another bound: `flow.while({ condition, maxIterations, $$nodes() {...} })`.
 
 **An expression is evaluated by the engine, not by JavaScript:** literals,
 scope paths (`input`, `config`, `local`, `result`, `current`), `+ - * / %`,

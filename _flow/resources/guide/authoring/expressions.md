@@ -12,7 +12,7 @@ A condition, a value or an expression property is a small JavaScript subset; any
 - **Functions:** `round(x, digits)`, `floor`, `ceil`, `abs`, `min`, `max`, `parseInt(text, 10)`, `parseFloat`,
   `isNaN`, `isFinite`, `Number(x)`, `String(x)`, `Number.isInteger`, `Number.isFinite`, `Number.isNaN`, the pure
   `Math.*` functions (`sqrt`, `pow`, `trunc`, `sign`, `hypot`, `log`, `log2`, `log10`, `exp`, `sin`, `atan2`...),
-  `lower`, `upper`, `trim`, `contains`, `startsWith`, `endsWith`, `length`, `json(x)`,
+  `lower`, `upper`, `trim`, `contains`, `startsWith`, `endsWith`, `length`, `flow.default(x, fallback)`, `json(x)`,
   `oneOf`, `overlaps`, `Array.isArray`, `text.repeat(text, n)`.
 - **Absent values:** `x ?? fallback` replaces `null` and `undefined` and keeps `0`, `false` and `""`; write
   `flow.default(x, fallback)` when `""` must count as absent too. `default(…)` alone is refused: `default` is a reserved
