@@ -87,6 +87,8 @@ Rhino runs ES6 inside the Convertigo JVM. Java classes are available through
 `Packages`, for example `Packages.java.security.MessageDigest`; coerce Java
 values before JS operations (`var s = String(javaString);`). Node.js APIs
 (`require`, npm modules) and browser globals are not available.
+Inside a Rhino block loop, write `let`: a `const` there is corrected to `let`
+with the `RHINO_CONST_IN_LOOP_CORRECTED` warning.
 
 Do not implement a full backend feature in one Rhino block. Use standard blocks
 for HTTP (`http.get`, `http.request`), requestables (`requestable.call`),
