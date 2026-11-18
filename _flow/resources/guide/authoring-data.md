@@ -9,6 +9,21 @@ A list grows when it is typed: `const errors = json.array({ itemType: { type: "s
 `JSON.parse(input.itemsJson)` raises an error on invalid text: catch it with `try { … } catch (e) { … }`, or use `json.safeParse({ text: input.itemsJson })` and check its `ok` and `value`; iterate with `for (const item of items) { … }`.
 List methods are blocks written as JavaScript: `input.items.filter(item => item.valid)`, `input.items.map(item => item.id)`; check `.matched` of `text.match({ text: input.code, pattern: "^[0-9]+$" })` instead of a regex literal.
 
+JSON and object functions are blocks written as JavaScript, in a declaration, an assignment or a `return`:
+
+<!-- generated:v3-fragment id=globals -->
+| JavaScript | Block |
+|---|---|
+| `Object.keys(o)`, `Object.values(o)` | `object.keys({ source: o })`, `object.values({ source: o })` |
+| `JSON.parse(t)` | `json.parse({ text: t })` |
+| `JSON.stringify(v)`, `JSON.stringify(v, null, 2)` | `json.stringify({ value: v })`, with `pretty: true` |
+
+- Elsewhere, and with other arguments (replacer, reviver, other indent), they are refused (`FLOWSCRIPT_V3_GLOBAL_CALL`).
+- `Object.entries` is refused: `for (const key of Object.keys(o)) { const value = o[key] … }`.
+- `Date.now()` and `new Date()` are refused: use `date.now`, `date.format`… (time zone and format).
+- `JSON.*` and `Object.*` remain refused inside other expressions, as in v2.
+<!-- /generated -->
+
 For an all-or-nothing batch, parse first, then validate every item in a `for…of`; push refusals and valid items to separate typed arrays. Do not write during validation.
 Only when the refusal array is empty, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call; `statement` names a configured write and `items` repeats it within the same transaction.
 

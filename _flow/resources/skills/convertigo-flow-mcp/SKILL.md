@@ -37,9 +37,17 @@ palette. That is why:
   template literals, ternaries, `%`, `Math.round`/`floor`/`ceil`/`min`/`max`,
   string methods, `rows.filter(r => …)`/`map`/`find`/`some`/`every`/`toSorted`,
   `rows.push(v)` on a typed list, `rows[i]`. Imports: `const { get } =
-  flow.import("http")`. Each step stays a node of the tree, so `break`,
-  `finally`, `return` inside a loop, `throw new Error` and nested functions are
-  refused with their replacement.
+  flow.import("http")`. Each step stays a node of the tree, so these are
+  refused with their replacement (`flow://guide/authoring/forms` lists every form and refusal):
+
+<!-- generated:v3-refusals format=bullets codes=BREAK,FINALLY,RETURN_IN_LOOP,ERROR_CODE_CHOICE,FUNCTION -->
+- `break`: a local tested by the while condition, or find / filter (`FLOWSCRIPT_V3_BREAK`)
+- `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
+- return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
+- throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
+- a function other than a top-level helper, a list arrow or a slot: nested, in an expression, a closure: inline, a top-level helper, or a project block (`FLOWSCRIPT_V3_FUNCTION`)
+<!-- /generated -->
+
   When a construct is outside the subset, the refusal names it and the
   equivalent to write (for a call, a ready `proposedPatch` edit: Backend
   Source Loop): apply it, do not delete code;

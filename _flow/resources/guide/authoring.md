@@ -28,12 +28,23 @@ function Greeting({ input, config, result }) {
 
 Write a first draft with `code-set`; use `code-run` diagnostics, then `code-promote` when clean. `unsaved:true` or `workingCopy:true` requires promotion. For an existing source, use `code-rg`, `code-get`, then the smallest `code-patch` with its revision. A missing reusable domain block may be mocked explicitly, but a Flow calling a mock is unfinished.
 
-A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` code and the rewrite to apply (for example `break`, `finally`, `return` inside a loop, `throw new Error`). The source is never rewritten for you.
+A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` code and the rewrite to apply; the source is never rewritten for you. The common ones (all of them: `flow://guide/authoring/forms`):
+
+<!-- generated:v3-refusals format=bullets codes=BREAK,FINALLY,RETURN_IN_LOOP,ERROR_CODE_CHOICE,FUNCTION,LOOP_FORM,RESERVED_WORD -->
+- `break`: a local tested by the while condition, or find / filter (`FLOWSCRIPT_V3_BREAK`)
+- `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
+- return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
+- throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
+- a function other than a top-level helper, a list arrow or a slot: nested, in an expression, a closure: inline, a top-level helper, or a project block (`FLOWSCRIPT_V3_FUNCTION`)
+- do … while, for … in, labelled loop, labelled break or continue: while, for (const key of Object.keys(o)) (`FLOWSCRIPT_V3_LOOP_FORM`)
+- a bare default( call: default is a reserved word of JavaScript: flow.default(x, y), or x ?? y (`FLOWSCRIPT_V3_RESERVED_WORD`)
+<!-- /generated -->
 
 ## Drawers
 
 - `flow://guide/authoring/expressions` — open for expression operators, functions and JavaScript replacements.
 - `flow://guide/authoring/dialect` — open for declarations, scope rules, metadata, values, dates and input conversion.
+- `flow://guide/authoring/forms` — open for the table of every accepted JavaScript form and its block, and every refusal with its code.
 - `flow://guide/authoring-collections` — open for loops, list methods and typed collections.
 - `flow://guide/authoring-data` — open for JSON, text, HTTP and requestable data operations.
 - `flow://guide/authoring-source` — open for source revisions, run and promotion details.
