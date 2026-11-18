@@ -45,8 +45,8 @@ Accounts, sign-in and roles: reference `lib_UserManager` and read
    ordinary business properties.
 4. Source headers hold static literals only: `_flow` describes an executable
    Flow, a Page, a Layout or a Flow component; `_meta` describes a block or a
-   Svelte UI block. Backend sources default to `sourceVersion: 2`; every
-   `.flow.svelte` file must declare `sourceVersion: 2`.
+   Svelte UI block. Backend Flow sources declare `sourceVersion: 3` (FlowScript
+   v3, JavaScript); every `.flow.svelte` file must declare `sourceVersion: 2`.
 5. `input.*` holds Flow or block inputs, `local.*` scratch data, `result.*`
    the response, `config.*` configuration. In backend FlowScript `flow.*` and
    `props.*` are not expression scopes (in Flow Svelte, `@props.<name>` reads

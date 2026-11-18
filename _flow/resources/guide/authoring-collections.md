@@ -1,15 +1,15 @@
 # FlowScript Slots And Collections
 
-Typed collections, slots and loop syntax for backend FlowScript.
+Loops, list methods and typed collections for backend FlowScript v3.
 
 Continue after `flow://guide/authoring` when writing typed collections or loops.
 
-## Slots, loops and typed collections
+## Loops, list methods and typed collections
 
-For row processing, filter/project before the loop, capture `current` before a
-nested loop, and append to a typed array with `json.push`; avoid copying the
-growing array. Metadata and external reads belong outside the cell loop whenever
-they are independent of the cell. Keep business block calls visible in FlowScript.
+For row processing, filter/project before the loop, copy the item before a
+nested loop, and push to a typed array; avoid copying the growing array.
+Metadata and external reads belong outside the cell loop whenever they are
+independent of the cell. Keep business block calls visible in FlowScript.
 The detailed examples and reproducible benchmark are in
 `flow://lib/lib_flow_engine/runtime-performance`.
 
@@ -22,65 +22,67 @@ or profiling. Automatic checks do not build a whole legacy project's XSD to
 discover one output; use `flow-requestable-schema` explicitly if needed.
 
 ```javascript
-json.array({
-  path: "local.rows",
+const rows = json.array({
   itemType: { "type": "object", "properties": { "label": { "type": "string" }, "size": { "type": "number" } } },
 })
-forEach({
-  items: input.items,
-  $$nodes: function () {
-    json.push({ path: "local.rows", value: { label: current.label, size: current.field } })
-  },
-})
-if (local.rows.length == 0) {
-  result.status = "empty"
-} else {
-  if (local.rows.length == 1) {
-    result.status = "single"
-  } else {
-    result.status = "many"
+for (const item of input.items) {
+  if (item.field == null) {
+    continue
   }
+  rows.push({ label: item.label, size: item.field })
 }
-result.rows = local.rows
+let status = "many"
+if (rows.length == 0) {
+  status = "empty"
+} else if (rows.length == 1) {
+  status = "single"
+}
+return { status, rows }
 ```
 
-A loop that is not over a list is the `while` block:
-`while({ condition: local.d * local.d <= local.n, maxIterations: 100000, $$nodes() { ... } })`.
-`maxIterations` is 1000 when omitted (1 to 1000000): a condition still true after it stops the run with
-`WHILE_ITERATION_LIMIT`, so set it to the largest count the input allows; `timeoutMs` is 60000 (at most 600000).
-A JavaScript `while`, `for` or `do` loop is refused at its line (`FLOWSCRIPT_LOOP_UNSUPPORTED`).
+**Loops.** `for (const item of items) { ... }` is the `forEach` block; `continue`
+goes to the next item. `while (condition) { ... }` is the `while` block: it stops
+the run with `WHILE_ITERATION_LIMIT` after 1000 passes and after 60000 ms; for
+another bound write its call form, `flow.while({ condition: d * d <= n,
+maxIterations: 100000, $$nodes() { ... } })` (1 to 1000000, `timeoutMs` at most
+600000). `for (let i = 0; i < n; i++)` is accepted in that form only. There is no
+`break` (use a local tested by the `while` condition, or `find`/`filter`), no
+`return` inside a loop (use `continue`, or a local and a `return` after the loop),
+no `do`, `for…in` or labelled loop. An inner loop does not read the variable of an
+outer loop: copy it first (`const order = item`).
 
-A slot (`$$then`, `$$else`, `$$nodes`, `$$try`, `$$catch`) takes a function
-body. The method form `$$then() { ... }` and an arrow function with a block
-body `$$then: () => { ... }` are the same slot; an arrow with an expression
-body, an async function or a function under a name the block does not declare
-as a slot is refused, and the refusal names the slots of the block.
-
-Keep **two** dollar signs on engine attributes and slots (`$$id`, `$$nodes`).
-When building text with JavaScript, use `split(oldText).join(newText)` or a
-replacement callback: a replacement string interprets `$$` as one dollar.
-Close both the slot body and the argument object: `$$nodes() { ... } })`.
-The diagnostic supplies an exact edit for a mistaken prefix or an unambiguous
-missing argument brace; source is never silently rewritten.
+**List methods** are blocks written as JavaScript, in a declaration, an assignment
+or a `return`: `xs.filter(x => x.ok)` (`list.filter`), `xs.map(x => ({ id: x.id }))`
+(`list.map`), `xs.find(x => …)`, `xs.some(…)`, `xs.every(…)`, and
+`xs.toSorted((a, b) => a.score - b.score)` (`list.sort`; `b - a` sorts down,
+`a.name.localeCompare(b.name)` sorts text). The function is an arrow with one
+parameter and an expression body without block call. They chain:
+`rows.filter(r => r.ok).map(r => r.name).join(", ")`. `xs.sort` (in place),
+`reduce`, an index parameter and other comparators are refused with a rewrite.
 
 `Array.isArray(value)` and `typeof value` are expressions. A block in an
 assignment's comparison/arithmetic or `&&`, `||`, `??`, `?:` is evaluated once,
 left to right, only in the branch that needs it. For example:
-`local.overdue = local.open && date.compare({left: current.dueDate, right: local.today}) < 0`.
-Inside a `list.map` projection, use a named per-item block for multi-step work;
-do not move work on `current` before the iterator. Block calls under arbitrary
-JavaScript methods still require explicit intermediates in the same branch.
+`const overdue = open && date.compare({left: item.dueDate, right: today}) < 0`.
+A list method or another block inside a branch of `?:`, `&&`, `||` or `??` is
+refused: declare it first.
 
 `throw.code` is a **literal public code**, for example `"INVALID_INPUT"`.
-Keep dynamic data in `message` or `details`. Its proposed edit contains
-`"CHOOSE_ERROR_CODE"` and `requiresChoice:true`: replace that placeholder with
-the intended public contract before applying it.
+Keep dynamic data in `message` or `details`. `throw new Error(m)` is refused with
+a proposed edit containing `"CHOOSE_ERROR_CODE"` and `requiresChoice:true`:
+replace that placeholder with the intended public contract before applying it.
 
-Collections are created typed, then mutated explicitly: `json.array({ path,
-itemType })`, `json.map({ path, valueType })`, `json.push({ path, value })`,
-`json.put({ path, key, value })`. Destinations are static `local.`/`result.`
-names; a value that does not match the declared type is refused with
-`VALUE_TYPE_MISMATCH`. Create them with `path:`, or assign the call (it gives the `path`).
+**Collections are created typed,** then changed as in JavaScript:
+`const rows = json.array({ itemType })` then `rows.push(value)`;
+`const byId = json.map({ valueType })` then `byId[key] = value`. A value that
+does not match the declared type is refused with `VALUE_TYPE_MISMATCH`.
+`const rows = []` followed by `push` is refused: the proposal gives the
+`json.array` with the item type of the pushed values.
+
+**Call forms.** A block with slots keeps its call form (`flow.poll({ …,
+$$nodes() { ... } })`); a slot takes a function body (`$$nodes() { ... }`, or
+`$$nodes: () => { ... }`). Keep **two** dollar signs on engine attributes and
+slots. Close both the slot body and the argument object: `$$nodes() { ... } })`.
 
 ## Loop
 

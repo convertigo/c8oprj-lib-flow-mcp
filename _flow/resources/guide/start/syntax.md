@@ -2,11 +2,13 @@
 
 Read before the first code-set when translating JavaScript idioms.
 
-> **JavaScript → FlowScript** (before the first `code-set`; details in `flow://guide/authoring-data`)
-> `for (const item of items)` → `forEach({ items: input.items, $$nodes() { ... } })`; use `current` inside.
-> `try { JSON.parse(x) }` → `local.parsed = json.safeParse({ text: input.text })`; check `local.parsed.ok`, then use `.value`.
-> `/re/.test(x)` → `local.match = text.match({ text: input.code, pattern: "re" })`; check `local.match.matched`.
-> `arr.push(x)` → declare `json.array({ path: "local.arr", itemType: { type: "number" } })` (items' type), then `json.push({ path: "local.arr", value: input.value })`.
-> `arr.map/filter/some(cb)` → `list.map({ items: input.items, select: { id: current.id } })` / `list.filter({ items: input.items, where: current.ok })`; for `some`, test the filtered list's `.length`.
-> `JSON.*` calls → catalogued `json.*` blocks; for example `JSON.stringify(x)` → `json.stringify({ value: input.value })`.
-> `if (block.name({ ... }))` → assign `local.value = block.name({ ... })` first, then test `if (local.value)`.
+> **FlowScript v3 is JavaScript** (`const _flow = { sourceVersion: 3 }`; details in `flow://guide/authoring`).
+> Write `const`/`let`, `if`/`else`, `while`, `for (const item of items)`, `continue`, `try`/`catch (e)`, `switch`,
+> `return { … }`, `rows.filter(r => …)`, `.map`, `.find`, `.some`, `.every`, `.toSorted((a, b) => a.k - b.k)`,
+> `Object.keys(o)`, `JSON.parse(t)`, `JSON.stringify(v)` as in JavaScript.
+> Imports: `const { get: httpGet } = flow.import("http")`, never `import … from`.
+> Not available, with the replacement: `break` → a local tested by the `while` condition, or `find`/`filter`;
+> `finally` → the statements after the `try`; `return` inside a loop → `continue`, or a local and a `return` after it;
+> `throw new Error(m)` → `throw { code: "LITERAL_CODE", message: m }`; `/re/.test(x)` → `text.match({ text: x, pattern: "re" })`;
+> `const rows = []` then `push` → `const rows = json.array({ itemType: { … } })` then `rows.push(v)`;
+> a free function or a closure → write it inline, or a project block.

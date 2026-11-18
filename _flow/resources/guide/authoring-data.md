@@ -4,13 +4,13 @@ Lists, maps and config in FlowScript, output schemas, native inputs and backend 
 
 Sub-guide of `flow://guide/authoring`: read that guide first.
 
-Run a block as a statement, then test its result: `local.m = text.match({ text: input.id, pattern: "^[0-9]+$" })`, then `if (local.m.matched) { ... }`.
-`Array.push` is not a block: create `json.array({ path: "local.errors", itemType: { type: "string" } })`, then append with `json.push({ path: "local.errors", value: "Invalid ID" })`.
-JavaScript `try` and `for` do not exist in FlowScript: capture `json.safeParse({ text: input.itemsJson })`, check its `ok` and `value`, then use `forEach` with `items`, `$$nodes` and `current` for iteration.
-Use `list.filter({ items: input.items, where: current.valid })` or `list.map({ items: input.items, select: current.id })` instead of JavaScript callbacks; capture `text.match({ text: input.code, pattern: "^[0-9]+$" })` and check `.matched` instead of using a regex literal.
+Run a block as a statement, then test its result: `const m = text.match({ text: input.id, pattern: "^[0-9]+$" })`, then `if (m.matched) { ... }`.
+A list grows when it is typed: `const errors = json.array({ itemType: { type: "string" } })`, then `errors.push("Invalid ID")`.
+`JSON.parse(input.itemsJson)` raises an error on invalid text: catch it with `try { … } catch (e) { … }`, or use `json.safeParse({ text: input.itemsJson })` and check its `ok` and `value`; iterate with `for (const item of items) { … }`.
+List methods are blocks written as JavaScript: `input.items.filter(item => item.valid)`, `input.items.map(item => item.id)`; check `.matched` of `text.match({ text: input.code, pattern: "^[0-9]+$" })` instead of a regex literal.
 
-For an all-or-nothing batch, parse first, then validate every `current` in `forEach`; append refusals and valid items to separate arrays with `json.push({ path, value })`. Do not write during validation.
-Only when the refusal array is empty, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: local.valid }] })` call; `statement` names a configured write and `items` repeats it within the same transaction.
+For an all-or-nothing batch, parse first, then validate every item in a `for…of`; push refusals and valid items to separate typed arrays. Do not write during validation.
+Only when the refusal array is empty, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call; `statement` names a configured write and `items` repeats it within the same transaction.
 
 ## Lists, maps and config
 

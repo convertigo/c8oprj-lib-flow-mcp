@@ -10,21 +10,23 @@ Keep this role across backend lots instead of spawning a replacement agent.
 
 ## How the Backend Works (the rules below follow from it)
 
-**A Flow body is statements turned into block nodes.** Accepted: `const`,
-`let`, `local.x =` and `result.x =` assignments, `if (...) { } else { }`,
-`return`, and block calls `name({ ... })` whose `$$then`, `$$else`,
-`$$nodes`, `$$try`, `$$catch` functions are slots of child nodes, each node
-named implicitly, or explicitly by a JavaScript label. Outside the subset, write instead:
-- a loop: `forEach({ items, $$nodes() {...} })` (the item is `current`) or
-  `while({ condition, maxIterations, $$nodes() {...} })`; as in a JavaScript
-  forEach callback, a bare `return` in the body goes on with the next item
-  (`return` with a value there would leave the whole Flow: code-set refuses it);
-- `try {} catch {}`: `try({ error: "local.failure", $$try() {...},
-  $$catch() {...} })`, the error (`code`, `message`) at that path;
-- `throw new Error()`: `throw({ code, message, details })`;
-- a block call under a method or inside a per-item projection: use an explicit
-  intermediate in that same branch/iterator or a named per-item block;
-- a nested function: a helper function at top level.
+**A Flow body is JavaScript statements turned into block nodes**
+(FlowScript v3, `sourceVersion: 3`). Accepted: `const`/`let` declarations
+(stored in `local.<name>`), assignments, `x += e`, `x++`, `if`/`else`,
+`while (c) {...}`, `for (const item of items) {...}`, `continue`, simple
+`switch`, `try {...} catch (e) {...}`, `return`, `return { … }`,
+`throw { code, message }`, `throw e` in its catch, list methods with an arrow
+(`filter`, `map`, `find`, `some`, `every`, `toSorted`, chained), `rows.push(v)`
+and `byId[k] = v` on typed collections, `Object.keys`/`values`,
+`JSON.parse`/`stringify`, and block calls `name({ ... })`, each node named
+implicitly, or explicitly by a JavaScript label. Imports:
+`const { get: httpGet } = flow.import("http")`. Outside the subset, write instead:
+- `break`: a local tested by the `while` condition, or `find`/`filter`;
+- `return` inside a loop: `continue`, or a local and a `return` after the loop;
+- `finally`: the statements after the `try`;
+- `throw new Error(m)`: `throw { code: "LITERAL", message: m }`;
+- a `while` with another bound: `flow.while({ condition, maxIterations, $$nodes() {...} })`;
+- a free function or a closure: inline it, or a project block.
 
 **An expression is evaluated by the engine, not by JavaScript:** literals,
 scope paths (`input`, `config`, `local`, `result`, `current`), `+ - * / %`,
@@ -34,13 +36,15 @@ literals, computed index (`rows[i]`, `byId[input.id]`), `round(x, digits)`,
 `Array.isArray`, `typeof`,
 and methods from a fixed list (text `trim`, `toLowerCase`, `includes`,
 `slice`, `split`, `replace`, `padStart`...; lists `includes`, `slice`,
-`join`, `at`, `length`; numbers `toFixed`). Anything else is a block
-(`list.filter`, `list.map`, `list.sort`, `date.*`, `json.*`); a regex
-literal is refused for `text.match({ text, pattern })` and its `.matched`.
+`join`, `at`, `length`; numbers `toFixed`), and `?.`. List methods with an
+arrow, `Object.*`, `JSON.*` and `push` are blocks written as JavaScript, in a
+declaration, an assignment or a `return`; `date.*` and the rest of the catalog
+are block calls; a regex literal is refused for `text.match({ text, pattern })`
+and its `.matched`.
 
 Assignment expressions can contain block calls in arithmetic, comparisons and
 `&&`, `||`, `??`, `?:`: the compiler preserves evaluation order and lazy branches.
-Slots accept `$$nodes() { ... }`, `$$nodes: () => { ... }` and
+Slots of call forms accept `$$nodes() { ... }`, `$$nodes: () => { ... }` and
 `$$nodes: function () { ... }`; close both braces of `... } })`. Always two
 `$` signs: JavaScript replacement strings consume `$$`; use a callback or
 `split(oldText).join(newText)` to build source. `throw.code` must be a literal;
@@ -182,9 +186,9 @@ for Svelte actions. Business rules stay in Flows.
   server refuses a private Flow over HTTP to anyone but an administrator; the
   Studio runs it anyway (Studio mode), so an anonymous call answering in the
   Studio is not a defect to guard against in the Flow.
-- `throw({ code, message })` what must interrupt the caller; return
+- `throw { code, message }` what must interrupt the caller; return
   a normal result (`ok: false` and a reason) for an outcome it handles. Catch
-  a block that may fail with `try` (`$$try`, `$$catch`, error path), never
+  a block that may fail with `try { ... } catch (e) { ... }`, never
   with a Rhino block.
   On the requester (.json, SDK, frontbuilder), an application error answers with
   200 and the `error` envelope; do not set `status` by habit, only when a client

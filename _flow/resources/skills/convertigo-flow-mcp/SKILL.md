@@ -21,21 +21,25 @@ secrets live in project config and global symbols (`${name=default}`), never
 in code. The Studio is the development mode of the same server; a deployed
 server runs the same project with its production build.
 
-**FlowScript is a subset of JavaScript, not JavaScript.** The source is parsed
-(Rhino parser) into an AST and turned into a tree of *blocks*: the `_flow`
-header gives inputs, accessibility and config; each call such as
-`sql.query({...})` or `if({ condition, $$then() {...} })` is one block node
+**FlowScript v3 is JavaScript, lowered to blocks.** The source
+(`sourceVersion: 3`) is parsed (Rhino parser) into an AST and turned into a tree
+of *blocks*: the `_flow` header gives inputs, accessibility and config; each
+statement such as `const rows = sql.query({...})`, `if (...) {...}` or
+`for (const row of rows) {...}` is one block node
 with its properties, identified by its source line and implicit name; property values are literals or
 expressions over the scopes `input`, `config`, `local`, `result`. The engine
 runs that tree step by step, not your text: it can trace each step, learn the
 schema of each output (so later blocks, pickers and the frontend see real
 fields), pause and resume, and the Studio shows and edits the same tree with a
 palette. That is why:
-- write what you would write in plain JavaScript first: assignments,
-  `if`/`else`, `return`, template literals, ternaries, `%`, `Math.round`/`floor`/
-  `ceil`/`min`/`max`, string and array methods, `rows[i]`. A loop is the block
-  `forEach` (or `while` with `maxIterations`) and error handling the block
-  `try` (`$$try`/`$$catch`), because each step must stay a node of the tree.
+- write what you would write in plain JavaScript first: `const`/`let`,
+  `if`/`else`, `while`, `for…of`, `continue`, `try`/`catch`, `return { … }`,
+  template literals, ternaries, `%`, `Math.round`/`floor`/`ceil`/`min`/`max`,
+  string methods, `rows.filter(r => …)`/`map`/`find`/`some`/`every`/`toSorted`,
+  `rows.push(v)` on a typed list, `rows[i]`. Imports: `const { get } =
+  flow.import("http")`. Each step stays a node of the tree, so `break`,
+  `finally`, `return` inside a loop, `throw new Error` and free functions are
+  refused with their replacement.
   When a construct is outside the subset, the refusal names it and the
   equivalent to write (for a call, a ready `proposedPatch` edit: Backend
   Source Loop): apply it, do not delete code;

@@ -4,17 +4,25 @@ Read for metadata, slots, values, dates or input conversion.
 
 ## Dialect rules
 
+- **FlowScript v3 is JavaScript** (`sourceVersion: 3`): the reader lowers each
+  statement to a block node. Semicolons are optional; write one statement per line.
 - **Block calls** take exactly one object of named properties:
   `block.name({ key: value })`. A catalog name is a block before a JS method:
-  `text.trim({...})` is a block, `local.word.trim()` stays JavaScript.
-- **One statement per line.** Never join two Flow statements with `;` on one
-  line.
-- **Captures are assignments:** `local.x = block({...})` or
-  `result.x = block({...})`. `const x = block({...})` is accepted and stored
-  as `local.x`, but the writer emits `local.x = …`, so write that form.
-  A plain value assignment such as `result.message = "Hello"` is stored as a
-  `set` node and stays an assignment when formatted.
-- **`$$out`** is the explicit capture metadata, only for destinations an
+  `text.trim({...})` is a block, `word.trim()` stays JavaScript.
+- **Imports** are JavaScript: `const { get: httpGet, post } = flow.import("http")`
+  (named blocks) or `const requestable = flow.import("requestable")` (namespace),
+  at the top of the file. `import … from` is refused; `flow` is reserved.
+- **Locals are declarations:** `const total = list.sum({ items })`, `let count = 0`,
+  `let found` (`undefined`), one level of destructuring `const { name, email } = input`.
+  The value lives in `local.<name>`; `local.x = …` stays valid, but never name the
+  same local both ways. Scope rules as in JavaScript: a name is read only in the
+  block that declares it, is not declared again in an inner block, a `const` is
+  not reassigned (its list or object may change), and a local never takes the name
+  of a scope, of `flow`, of a name starting with `__`, or of a block namespace the
+  Flow uses (`text`, `list`, `json`…). `x += e`, `x++` are statements.
+- **Outputs:** `return { total, items: rows }` writes the output fields and leaves
+  the Flow; `result.x = …` writes one field. Use one style per Flow.
+- **`$$out`** (call form only) is the explicit capture metadata, only for destinations an
   assignment cannot express. An assignment and a disagreeing `$$out` give
   `FLOW_SOURCE_OUTPUT_CONFLICT`; chained or bodied assignments give
   `FLOWSCRIPT_UNSUPPORTED_ASSIGNMENT`.
@@ -23,27 +31,34 @@ Read for metadata, slots, values, dates or input conversion.
   `$$disabled: true` (Is active = false: the node and its subtree are skipped
   by execution and analysis; omit it when enabled), `$$out` (Output), and the
   slots `$$then`, `$$else`, `$$nodes`, `$$fields` (any declared slot is
-  `$$<slot>`). Unknown `$$` names are errors. Plain names such as `id`,
+  `$$<slot>`). They belong to the call form of a block: control flow is written
+  natively, and a control block keeps a call form (`flow.while({ …, maxIterations,
+  $$nodes() { … } })`) only for properties its JavaScript form cannot carry.
+  Unknown `$$` names are errors. Plain names such as `id`,
   `disabled`, `out` or `comment` are business properties; `$$$name` spells a
   business property whose name starts with `$$`.
 - **Headers** `const _flow = {...}` hold static literals only (no expressions,
   spreads, computed keys or duplicates: `FLOWSCRIPT_METADATA_LITERAL_REQUIRED`,
-  `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (optional, 2 is the
-  only value), `inputs`, `outputs`, `config` (an object), `tests`.
-- **Language statements** stay script: assignments, `if (...) { ... } else { ... }`,
+  `FLOWSCRIPT_DUPLICATE_PROPERTY`). Keys: `sourceVersion` (3), `inputs`,
+  `outputs`, `config` (an object), `tests`.
+- **Language statements** are JavaScript: declarations and assignments,
+  `if (...) { ... } else if (...) { ... } else { ... }`, `while (...) { ... }`,
+  `for (const item of items) { ... }`, `continue`, `switch` (literal cases ending
+  with `break`, `return` or `throw`), `try { ... } catch (e) { ... }`,
   `return { answer: input.value }`, bare `return`, and
   `throw { code: "INVALID", message: "Invalid input" }`.
-  Catalog blocks stay calls, including captures `local.rows = sql.query({ ... })`.
-  Loops keep their block calls in phase 1; natural loops are a later phase.
+  Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.
+  Refused at their line, with the rewrite: `break`, `finally`, `return` inside a
+  loop, `do`/`for…in`, labelled loops, `throw new Error`, free functions.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its
   chain. Return a normal result for an outcome the caller handles (wrong
   password, nothing found): `result.ok = false` with its reason, never a
   result made of an `error` object alone. To go on after a block that may
-  fail (an email, a call to another Flow or service), wrap it in `try`:
-  `try({ error: "local.failure", $$try: function () { ... }, $$catch: function () { ... } })`;
-  catch reads `local.failure.code` / `.message`.
+  fail (an email, a call to another Flow or service), wrap it in
+  `try { ... } catch (failure) { ... }`; the catch reads `failure.code` /
+  `failure.message`, and `throw failure` raises it again unchanged.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), on a property of kind expression too (`day:
   "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
