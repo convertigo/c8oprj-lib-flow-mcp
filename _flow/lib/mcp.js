@@ -4471,6 +4471,15 @@
 		coreNames = coreNames || [];
 		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
 		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
+		// A split guide has sub-guides <family>-<topic> and drawers <family>/<topic>: agents swap the two forms
+		// (it156: the drawer form frontend-svelte/data for the sub-guide frontend-svelte-data, on four front exercises). Either form
+		// reads the one guide of the other; flow://guide/ alone reads the entry guide.
+		var nested = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
+		var flat = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
+		var swapped = nested ? coreNames.filter(function (name) { return name.indexOf("/") < 0 && guideKey(name) === guideKey(nested[1] + "-" + nested[2]); })
+			: flat ? coreNames.filter(function (name) { return name.indexOf("/") > 0 && guideKey(name.replace(/\//g, "-")) === guideKey(flat[1]); }) : [];
+		if (swapped.length === 1) return { uri: "flow://guide/" + swapped[0] };
+		if (/^flow:\/\/guides?\/?$/i.test(text) && coreNames.indexOf("start") !== -1) return { uri: "flow://guide/start" };
 		// One guide spelled differently (case, "_" for "-", ".md", a final "/", "guides" for "guide"): that guide.
 		var spelled = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text), spelledLib = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
 		var same = spelled ? coreNames.filter(function (name) { return guideKey(name) === guideKey(spelled[1]); }).map(function (name) { return "flow://guide/" + name; })
