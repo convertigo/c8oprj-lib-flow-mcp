@@ -1,5 +1,6 @@
 const _flow = {
   sourceVersion: 3,
+  accessibility: "private",
   inputs: { request: { type: "string", description: "MCP JSON-RPC request body.", default: "{}" } },
   tests: { ping: { input: { request: "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}" } } },
 }
