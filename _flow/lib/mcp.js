@@ -628,7 +628,7 @@
 	// value: sanitized already (toolResult), the structuredContent the text summarizes.
 	function textContent(value) {
 		var notices = [];
-		["operatorNote", "argumentWarning"].forEach(function (key) {
+		["accessibilityNote", "operatorNote", "argumentWarning"].forEach(function (key) {
 			if (value && value[key]) {
 				var text = String(value[key]);
 				notices.push(key + ": " + (text.length > 2000 ? text.substring(0, 2000) + "… (see structuredContent)" : text));
@@ -1500,6 +1500,38 @@
 
 	var STUDIO_PRIVATE_NOTE = "Private Flow: refused over HTTP to anyone but an administrator, as on a server; an older Studio still ran " +
 		"it over HTTP for an anonymous call (Studio mode), so prove the refusal with a session that is not an administrator.";
+
+	// The runs of the MCP (code-run, requestable-execute) execute a private Flow too. Agents proved their API that way
+	// and handed private Flows to an HTTP client, the note of code-promote read and ignored (it150 L2, it155 L5): the
+	// answer of the run itself says so, where the agent believes it tested the HTTP API.
+	// resolve(projectName, flowName): the Flow DBO, the engine's by default.
+	function runAccessibilityNote(request, resolve) {
+		var tool = toolName(request), args = toolArguments(request) || {};
+		if (tool !== "code-run" && tool !== "flow-code-run" && tool !== "requestable-execute") return "";
+		try {
+			var projectName = String(args.project || "").trim();
+			var flowName = String(args.name || "").trim();
+			if (!flowName && args.qname) flowName = String(args.qname).split(".").pop();
+			var requestable = String(args.requestable || "").trim();
+			if (requestable) {
+				var dot = requestable.lastIndexOf(".");
+				flowName = requestable.substring(dot + 1);
+				if (dot > 0) projectName = requestable.substring(0, dot);
+			}
+			if (!projectName || !flowName || args.sourceFile) return "";
+			var flow = (resolve || function (projectName, flowName) {
+				var project = runtimeProjectFromArgs({ project: projectName });
+				return project ? projectSequenceByName(project, flowName) : null;
+			})(projectName, flowName);
+			if (!flow || typeof flow.isPrivateAccessibility !== "function" || flow.isPrivateAccessibility() !== true) return "";
+			return flowName + " is private: this run proves nothing over HTTP, where an anonymous or non-administrator call " +
+				"(POST /convertigo/projects/" + projectName + "/.json, __sequence=" + flowName + ") is refused (\"Unable to execute " +
+				"the requested requestable\"). If a frontend or an external client calls it, declare accessibility: \"public\" " +
+				"(listed) or \"hidden\" (not listed) in its _flow header, then code-promote.";
+		} catch (_unresolvedFlow) {
+			return "";
+		}
+	}
 
 	var UNDECLARED_PRIVATE_NOTE = "No accessibility declared: this Flow is private (the default), refused over HTTP to anyone but an " +
 		"administrator, while code-run and requestable-execute run it. If a frontend or an external client calls it, declare " +
@@ -2536,8 +2568,10 @@
 			value.normalizations=(value.normalizations||[]).concat(checked.normalizations);
 		}
 		value = enrichSveltePaletteMutations(request, value);
+		var privateRun = value && typeof value === "object" ? runAccessibilityNote(request) : "";
+		if (privateRun) value.accessibilityNote = privateRun;
 		var notices = {};
-		["normalizations", "argumentWarning", "operatorNote"].forEach(function (key) {
+		["normalizations", "argumentWarning", "operatorNote", "accessibilityNote"].forEach(function (key) {
 			if (value && value[key] !== undefined && value[key] !== null && value[key].length) notices[key] = value[key];
 		});
 		value = compactToolValue(request, value);
@@ -7040,6 +7074,8 @@
 		registerFlowDbo: registerFlowDbo,
 		_sessionReport: sessionReport,
 		_accessibilityReport: accessibilityReport,
+		_runAccessibilityNote: runAccessibilityNote,
+		_textContent: textContent,
 		syncFlowInputsDbo: syncFlowInputsDbo,
 		_markFastSavedClean: markFastSavedClean,
 		applyNamedFlowMutation: applyNamedFlowMutation,

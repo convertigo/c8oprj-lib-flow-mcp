@@ -87,6 +87,25 @@ try {
 		{ ok: true, name: "book_create", promoted: true, registration: Object.assign({ requested: true, registered: true, qname: "Books.book_create" }, onServer) }, {}).result;
 	assert(promotedUndeclared.content[0].text.indexOf("No accessibility declared") !== -1, "The text of code-promote says it: " + promotedUndeclared.content[0].text);
 
+	// The runs of the MCP execute a private Flow anyway: their answer says that this proves nothing over HTTP, where
+	// the agent believes it tested its API (it155 L5: the note of code-promote read four times and ignored).
+	function run(name, args) { return { params: { name: name, arguments: args } }; }
+	function resolver(isPrivate) { return function () { return dbo(isPrivate); }; }
+	var codeRun = mcp._runAccessibilityNote(run("code-run", { project: "Books", name: "book_create" }), resolver(true));
+	assert(/^book_create is private: this run proves nothing over HTTP/.test(codeRun)
+		&& codeRun.indexOf("POST /convertigo/projects/Books/.json, __sequence=book_create") !== -1
+		&& /accessibility: "public" \(listed\) or "hidden"/.test(codeRun), "code-run of a private Flow says it: " + codeRun);
+	var relative = mcp._runAccessibilityNote(run("requestable-execute", { project: "Books", requestable: ".book_create" }), resolver(true));
+	var qualified = mcp._runAccessibilityNote(run("requestable-execute", { requestable: "Books.book_create" }), resolver(true));
+	assert(relative === codeRun && qualified === codeRun, "requestable-execute too, .Flow or Project.Flow: " + JSON.stringify([relative, qualified]));
+	assert(mcp._runAccessibilityNote(run("code-run", { project: "Books", name: "book_create" }), resolver(false)) === ""
+		&& mcp._runAccessibilityNote(run("code-run", { project: "Books", name: "book_create" }), function () { return null; }) === ""
+		&& mcp._runAccessibilityNote(run("code-promote", { project: "Books", name: "book_create" }), resolver(true)) === ""
+		&& mcp._runAccessibilityNote(run("code-run", { project: "Books", sourceFile: "src/routes/+page.flow.svelte" }), resolver(true)) === "",
+		"No note for a public or unknown Flow, another tool, or a page");
+	var text = mcp._textContent({ ok: true, result: { id: "1" }, accessibilityNote: codeRun })[0].text;
+	assert(text.indexOf("accessibilityNote: book_create is private") === 0, "The note opens the text of the answer: " + text);
+
 	print("promote-session-report OK (" + count + " checks)");
 } finally {
 	FileUtils.deleteDirectory(target);
