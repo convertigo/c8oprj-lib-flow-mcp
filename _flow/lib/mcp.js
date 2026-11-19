@@ -1443,7 +1443,7 @@
 		}
 		result.flagsAfterFastSaveClean = flowDboFlags(project, flow);
 		sessionReport(project, result);
-		accessibilityReport(Engine, writeResult, result);
+		accessibilityReport(Engine, writeResult, result, flow);
 		try {
 			Engine.theApp.schemaManager.clearCache(String(project.getName()));
 			result.schemaCacheCleared = true;
@@ -1481,8 +1481,17 @@
 	// where a server refuses a private requestable to anyone but an administrator: an anonymous HTTP call to a private
 	// Flow answers in the Studio, which an agent read as a security defect of the Flow. The promotion of a private Flow
 	// in the Studio says so.
-	function accessibilityReport(Engine, writeResult, result) {
+	// A Flow whose source declares no accessibility takes its property, private by default since 8.5.0: a server refuses
+	// it over HTTP to anyone but an administrator, while code-run and requestable-execute run it. An agent proved its API
+	// through the MCP only and handed private Flows to an HTTP client (it150, L2). The promotion says so.
+	function accessibilityReport(Engine, writeResult, result, flow) {
 		try {
+			var header = sourceHeader(writeResult);
+			if (header !== null && !/(^|[\s{,])["']?accessibility["']?\s*:/i.test(header) && flow
+					&& typeof flow.isPrivateAccessibility === "function" && flow.isPrivateAccessibility() === true) {
+				result.accessibilityNote = UNDECLARED_PRIVATE_NOTE;
+				return;
+			}
 			if (Engine.isStudioMode() !== true || !declaresPrivateAccessibility(writeResult)) return;
 			result.accessibilityNote = STUDIO_PRIVATE_NOTE;
 		} catch (_ignoreAccessibility) {
@@ -1492,14 +1501,23 @@
 	var STUDIO_PRIVATE_NOTE = "Private Flow: refused over HTTP to anyone but an administrator, as on a server; an older Studio still ran " +
 		"it over HTTP for an anonymous call (Studio mode), so prove the refusal with a session that is not an administrator.";
 
-	// @return whether the saved source declares _flow.accessibility private (its header, before the function)
-	function declaresPrivateAccessibility(writeResult) {
+	var UNDECLARED_PRIVATE_NOTE = "No accessibility declared: this Flow is private (the default), refused over HTTP to anyone but an " +
+		"administrator, while code-run and requestable-execute run it. If a frontend or an external client calls it, declare " +
+		"accessibility: \"public\" (listed) or \"hidden\" (not listed) in its _flow header.";
+
+	// @return the header of the saved source (before the function), null when the answer has no source
+	function sourceHeader(writeResult) {
 		var code = writeResult && (writeResult.code !== undefined && writeResult.code !== null ? writeResult.code : writeResult.source);
-		if (code === undefined || code === null) return false;
+		if (code === undefined || code === null) return null;
 		var text = String(code);
 		var body = text.search(/(^|\n)\s*(?:async\s+)?(?:function|flow)\s+[A-Za-z_$]/);
-		var header = body < 0 ? text : text.substring(0, body);
-		return /(^|[\s{,])["']?accessibility["']?\s*:\s*["']private["']/i.test(header);
+		return body < 0 ? text : text.substring(0, body);
+	}
+
+	// @return whether the saved source declares _flow.accessibility private (its header, before the function)
+	function declaresPrivateAccessibility(writeResult) {
+		var header = sourceHeader(writeResult);
+		return header !== null && /(^|[\s{,])["']?accessibility["']?\s*:\s*["']private["']/i.test(header);
 	}
 
 	function saveFlowDeclaration(project, flow, name, args, writeResult) {

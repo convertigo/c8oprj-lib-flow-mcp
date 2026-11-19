@@ -47,7 +47,8 @@ function Internal({ input, config, result }) {
 
 `private` Flows run only for Flow→Flow calls, the MCP and administrators;
 `hidden` Flows are callable over HTTP but not listed; `public` Flows are
-listed. Without `accessibility`, the Flow property applies. Keep internal,
+listed. Without `accessibility`, the Flow property applies: private since
+8.5.0. Keep internal,
 exploration, authoring, test and qualification Flows private; make `public`
 or `hidden` only what a frontend or an external client calls, and validate
 its inputs there.
@@ -59,7 +60,9 @@ Studio does the same, an older one still ran it for an anonymous call (Studio
 mode). Prove the refusal with a session that is not an administrator, and do
 not add guards to the Flow for it. A URL Mapper
 operation (`/api/...`) publishes its target whatever its accessibility, and
-`requestable.call`, the scheduler and the MCP run `private` Flows by design.
+`requestable.call`, the scheduler and the MCP run `private` Flows by design:
+`code-run` and `requestable-execute` never prove that an HTTP client can call
+a Flow.
 
 For JSON HTTP APIs: `local.response = http.get({ url: config.api.url })`,
 then read `local.response.body`; parse `local.response.text` only when the

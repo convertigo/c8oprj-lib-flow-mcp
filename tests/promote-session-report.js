@@ -64,6 +64,29 @@ try {
 	assert(promotedPrivate.structuredContent.registration.accessibilityNote === studioPrivate.accessibilityNote &&
 		promotedPrivate.content[0].text.indexOf("Studio mode") !== -1, "The compact registration and its text keep the note: " + JSON.stringify(promotedPrivate));
 
+	// A Flow without accessibility is private on 8.5.0 (its property): code-run and requestable-execute run it, an HTTP
+	// client is refused. An agent proved its API through the MCP only (it150, L2): the promotion says so, Studio or server.
+	function dbo(isPrivate) { return { isPrivateAccessibility: function () { return isPrivate; } }; }
+	var undeclared = { code: 'const _flow = { sourceVersion: 3, inputs: { title: { type: "string" } } }\n\nfunction book_create({ input, result }) {\n  result.ok = true\n}\n' };
+	var publicSource = { code: undeclared.code.replace("sourceVersion: 3,", 'sourceVersion: 3, accessibility: "public",') };
+	var onServer = {}, inStudio = {}, olderEngine = {}, declaredPublic = {}, declaredPrivate = {}, noSource = {};
+	mcp._accessibilityReport(engineMode(false), undeclared, onServer, dbo(true));
+	mcp._accessibilityReport(engineMode(true), undeclared, inStudio, dbo(true));
+	mcp._accessibilityReport(engineMode(false), undeclared, olderEngine, dbo(false));
+	mcp._accessibilityReport(engineMode(false), publicSource, declaredPublic, dbo(false));
+	mcp._accessibilityReport(engineMode(false), privateSource, declaredPrivate, dbo(true));
+	mcp._accessibilityReport(engineMode(false), {}, noSource, dbo(true));
+	assert(/No accessibility declared/.test(onServer.accessibilityNote || "") && /requestable-execute run it/.test(onServer.accessibilityNote)
+		&& /accessibility: "public"/.test(onServer.accessibilityNote) && inStudio.accessibilityNote === onServer.accessibilityNote,
+		"A Flow private for want of a declaration says how to open it, on a server and in the Studio: " + JSON.stringify([onServer, inStudio]));
+	assert(olderEngine.accessibilityNote === undefined && declaredPublic.accessibilityNote === undefined
+		&& declaredPrivate.accessibilityNote === undefined && noSource.accessibilityNote === undefined,
+		"No note when the property is public, when the source declares it, or without a source: " +
+		JSON.stringify([olderEngine, declaredPublic, declaredPrivate, noSource]));
+	var promotedUndeclared = mcp.toolResponse({ id: 9, params: { name: "code-promote", arguments: { name: "book_create" } } },
+		{ ok: true, name: "book_create", promoted: true, registration: Object.assign({ requested: true, registered: true, qname: "Books.book_create" }, onServer) }, {}).result;
+	assert(promotedUndeclared.content[0].text.indexOf("No accessibility declared") !== -1, "The text of code-promote says it: " + promotedUndeclared.content[0].text);
+
 	print("promote-session-report OK (" + count + " checks)");
 } finally {
 	FileUtils.deleteDirectory(target);

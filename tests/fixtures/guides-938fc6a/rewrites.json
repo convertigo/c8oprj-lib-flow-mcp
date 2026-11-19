@@ -1056,5 +1056,15 @@
   "family": "fullstack-paperboard",
   "old": "`dev.sync`, prove the paths with the verifier, `project-save`, and update",
   "new": "`dev.sync`, prove the paths within the verifier budget, `project-save`, and update"
+ },
+ {
+  "family": "authoring",
+  "old": "Without `accessibility`, the Flow property applies.",
+  "new": "Without `accessibility`, the Flow property applies: private since 8.5.0."
+ },
+ {
+  "family": "authoring",
+  "old": "`requestable.call`, the scheduler and the MCP run `private` Flows by design.",
+  "new": "`requestable.call`, the scheduler and the MCP run `private` Flows by design: `code-run` and `requestable-execute` never prove that an HTTP client can call a Flow."
  }
 ]

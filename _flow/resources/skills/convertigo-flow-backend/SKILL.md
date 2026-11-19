@@ -181,8 +181,9 @@ for Svelte actions. Business rules stay in Flows.
 - Put service URLs and structural constants in project `config.*`. Secrets
   are Convertigo global symbols ending with `.secret`, referenced with a
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
-- Declare `accessibility: "private"` in `_flow` for every Flow a frontend or
-  external client does not call; `public` or `hidden` only for those. A
+- Declare `accessibility` in `_flow`: `public` or `hidden` for every Flow a
+  frontend or external client calls (without it, a Flow is private), `private`
+  for the others; the MCP runs private Flows, so its runs prove nothing. A
   server refuses a private Flow over HTTP to anyone but an administrator; the
   Studio runs it anyway (Studio mode), so an anonymous call answering in the
   Studio is not a defect to guard against in the Flow.
