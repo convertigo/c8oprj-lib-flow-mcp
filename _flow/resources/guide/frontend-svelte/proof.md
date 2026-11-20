@@ -24,7 +24,10 @@ screen showed. A simple page without a specification keeps the single proof.
 Walk on the development database or the demo data, signed in with the test
 accounts of the project seed; a path that sends an email or calls an outside
 service uses the development settings; never walk against a production
-connection or with the account of a real person.
+connection or with the account of a real person. To sign in from the browser
+without a page, call the sign-in Flow with form fields or query parameters
+(`fetch(url, { method: "POST", body: new URLSearchParams({ user }) })`): a
+requestable called by its URL reads them, not a JSON body.
 
 ## POC Acceptance
 
