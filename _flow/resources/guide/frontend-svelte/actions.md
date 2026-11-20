@@ -22,6 +22,12 @@ chain stops at the first error. A Flow that fails answers its error alone,
 message and the chain stops, while `@.Flow.error.message` stays readable; a
 result with an `error` field among others is a business answer.
 
+A `CallSequence` result is the whole response of its requestable, the object
+its Flow returns (`{ message }` for `result.message = …`): read a field with
+`@.hello.message`, or keep the object with `$$out="page.reply"` in an object
+State (`value={{}}`) and read `@page.reply.message`. A `string` State never
+receives a Flow response.
+
 An `If` in `Actions` is one step of the chain: its `test` (a source or a
 Compose, JavaScript truthiness) picks the actions of its `Then` or of its
 `Else`, which run in order with the same event and variables; the first
