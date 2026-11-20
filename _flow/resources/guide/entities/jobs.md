@@ -6,7 +6,7 @@ Use the installed `entity.read`, `entity.save` and `sql.transaction` contracts;
 reference `lib_flow_entity`, `lib_flow_sql` and `lib_flow_crud_data`, with
 `config.entities.connection: app` and the same SQL connection for both entities.
 No new job framework or generated CRUD is needed. See
-`flow://guide/entities/jobs-runner` for the worker and manual entry points.
+`flow://guide/entities/jobs/runner` for the worker and manual entry points.
 For scheduling, the contract below supersedes the scheduler paragraph of that
 recipe (which assumes the optional Flow fallback).
 

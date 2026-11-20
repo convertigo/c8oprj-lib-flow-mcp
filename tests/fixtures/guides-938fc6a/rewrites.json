@@ -7,17 +7,17 @@
  {
   "family": "entities",
   "old": "actor block (**Authentication** below); without it, nobody gets the MANAGER scope.",
-  "new": "actor block (**Authentication** in `flow://guide/entities-auth`); without it, nobody gets the MANAGER scope."
+  "new": "actor block (**Authentication** in `flow://guide/entities/auth`); without it, nobody gets the MANAGER scope."
  },
  {
   "family": "entities",
   "old": "use the project actor in **Authentication** below and",
-  "new": "use the project actor in **Authentication** of `flow://guide/entities-auth` and"
+  "new": "use the project actor in **Authentication** of `flow://guide/entities/auth` and"
  },
  {
   "family": "entities",
   "old": "actor block (**Authentication** below); without it, `roles.includes(...)` is false",
-  "new": "actor block (**Authentication** in `flow://guide/entities-auth`); without it, `roles.includes(...)` is false"
+  "new": "actor block (**Authentication** in `flow://guide/entities/auth`); without it, `roles.includes(...)` is false"
  },
  {
   "family": "entities",
@@ -27,22 +27,22 @@
  {
   "family": "multipage-entities",
   "old": "`CurrentUser` (`me`) and `Logout` below.",
-  "new": "`CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`."
+  "new": "`CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities/access`."
  },
  {
   "family": "multipage-entities",
   "old": "Edit scaffolded `app.entityAccess` with the policy below:",
-  "new": "Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`:"
+  "new": "Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities/access`:"
  },
  {
   "family": "multipage-entities",
   "old": "Add the private BookingRule hook below.",
-  "new": "Add the private BookingRule hook of `flow://guide/multipage-entities-access`."
+  "new": "Add the private BookingRule hook of `flow://guide/multipage-entities/access`."
  },
  {
   "family": "multipage-entities",
   "old": "wire select to the form and saved/deleted to refresh, as below.",
-  "new": "wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`."
+  "new": "wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities/pages`."
  },
  {
   "family": "multipage-entities",
@@ -57,22 +57,22 @@
  {
   "family": "crud",
   "old": "write the audit row in the same transaction (below).",
-  "new": "write the audit row in the same transaction (`flow://guide/crud-business`)."
+  "new": "write the audit row in the same transaction (`flow://guide/crud/business`)."
  },
  {
   "family": "frontend-svelte",
   "old": "Shared layout and page outlet; see the tested session Layout below. |",
-  "new": "Shared layout and page outlet; see the tested session Layout in `flow://guide/frontend-svelte-actions`. |"
+  "new": "Shared layout and page outlet; see the tested session Layout in `flow://guide/frontend-svelte/actions`. |"
  },
  {
   "family": "frontend-svelte",
   "old": "Load `layout.session` with the root Layout's `OnAfterNavigate` example below.",
-  "new": "Load `layout.session` with the root Layout's `OnAfterNavigate` example of `flow://guide/frontend-svelte-actions`."
+  "new": "Load `layout.session` with the root Layout's `OnAfterNavigate` example of `flow://guide/frontend-svelte/actions`."
  },
  {
   "family": "frontend-svelte",
   "old": "Client action parameters accept the pure expressions described above; use a source, a",
-  "new": "Client action parameters accept the pure expressions described in `flow://guide/frontend-svelte-sources`; use a source, a"
+  "new": "Client action parameters accept the pure expressions described in `flow://guide/frontend-svelte/sources`; use a source, a"
  },
  {
   "family": "start",
@@ -82,32 +82,32 @@
  {
   "family": "entities",
   "old": "**Demo login** in `flow://guide/multipage-entities`;",
-  "new": "**Demo login** in `flow://guide/multipage-entities-access`;"
+  "new": "**Demo login** in `flow://guide/multipage-entities/access`;"
  },
  {
   "family": "multipage-entities",
   "old": "See Backend preview boundary in `flow://guide/entities`.",
-  "new": "See Backend preview boundary in `flow://guide/entities-actions`."
+  "new": "See Backend preview boundary in `flow://guide/entities/actions`."
  },
  {
   "family": "start",
   "old": "- Session and actor provider: `flow://guide/entities`, Authentication section.",
-  "new": "- Session and actor provider: `flow://guide/entities-auth`, Authentication section."
+  "new": "- Session and actor provider: `flow://guide/entities/auth`, Authentication section."
  },
  {
   "family": "start",
   "old": "- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities`, matching sections.",
-  "new": "- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities-access` and `flow://guide/multipage-entities-pages`, matching sections."
+  "new": "- Demo login, CSV, jobs and audit: `flow://guide/multipage-entities/access` and `flow://guide/multipage-entities/pages`, matching sections."
  },
  {
   "family": "entities",
   "old": "see **One access policy** below.",
-  "new": "see **One access policy** in `flow://guide/entities-policy`."
+  "new": "see **One access policy** in `flow://guide/entities/policy`."
  },
  {
   "family": "fullstack-paperboard",
   "old": "`flow://guide/frontend-svelte`) instead of duplicating markup and action",
-  "new": "`flow://guide/frontend-svelte-components`) instead of duplicating markup and action"
+  "new": "`flow://guide/frontend-svelte/components`) instead of duplicating markup and action"
  },
  {
   "family": "frontend-svelte",
@@ -395,35 +395,35 @@
   "file": "authoring.md",
   "currentOnly": true,
   "old": "| `flow://guide/authoring-data` (7.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "new": "| `flow://guide/authoring/data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "authoring",
   "file": "authoring.md",
   "currentOnly": true,
-  "old": "| `flow://guide/authoring-data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "old": "| `flow://guide/authoring/data` (8.3 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring/data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "crud",
   "file": "crud.md",
   "currentOnly": true,
   "old": "| `flow://guide/crud-business` (14.2 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |",
-  "new": "| `flow://guide/crud-business` (14.1 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |"
+  "new": "| `flow://guide/crud/business` (14.1 KB) | after generation: owned files, business Flows, transactions, per-user data, own pages, CSV, jobs |"
  },
  {
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
  },
  {
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-auth` (5.5 KB) | sign-in, session, actor provider |",
-  "new": "| `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |"
+  "new": "| `flow://guide/entities/auth` (5.4 KB) | sign-in, session, actor provider |"
  },
  {
   "family": "multipage-entities",
@@ -434,8 +434,8 @@
   "family": "multipage-entities",
   "file": "multipage-entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
-  "new": "| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |"
+  "old": "| `flow://guide/multipage-entities/access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities/access` (7.0 KB) | demo login, me and logout, application access, access rule hook |"
  },
  {
   "family": "multipage-roles",
@@ -544,8 +544,8 @@
   "family": "authoring",
   "file": "authoring.md",
   "currentOnly": true,
-  "old": "| `flow://guide/authoring-data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "old": "| `flow://guide/authoring/data` (8.6 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring/data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "start",
@@ -563,8 +563,8 @@
   "family": "authoring",
   "file": "authoring.md",
   "currentOnly": true,
-  "old": "| `flow://guide/authoring-data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "old": "| `flow://guide/authoring/data` (9.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring/data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "start",
@@ -633,15 +633,15 @@
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (6.3 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
  },
  {
   "family": "multipage-entities",
   "file": "multipage-entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/multipage-entities-access` (7.0 KB) | demo login, me and logout, application access, access rule hook |",
-  "new": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |"
+  "old": "| `flow://guide/multipage-entities/access` (7.0 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities/access` (7.1 KB) | demo login, me and logout, application access, access rule hook |"
  },
  {
   "family": "entities",
@@ -652,15 +652,15 @@
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (6.6 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |"
  },
  {
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (6.7 KB) | the access policy: roles, scopes, `publicRead`, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "family": "start",
@@ -680,8 +680,8 @@
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (7.7 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "family": "start",
@@ -694,8 +694,8 @@
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (8.5 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "family": "authoring",
@@ -747,7 +747,7 @@
  {
   "family": "fullstack-paperboard",
   "old": "and use `OnMount once={true}` only for bootstrap state that must survive a route round trip.",
-  "new": "and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte-actions`)."
+  "new": "and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte/actions`)."
  },
  {
   "family": "fullstack-paperboard",
@@ -757,12 +757,12 @@
  {
   "family": "fullstack-paperboard",
   "old": "9. Hardening only: replace mocks one by one with real FlowScript or small Rhino primitives.",
-  "new": "9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start-rules`)."
+  "new": "9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start/rules`)."
  },
  {
   "family": "fullstack-paperboard",
   "old": "Stop after at most two focused repairs.",
-  "new": "Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`)."
+  "new": "Keep each repair on a failed path (`flow://guide/frontend-svelte/proof`)."
  },
  {
   "family": "fullstack-paperboard",
@@ -798,22 +798,22 @@
   "family": "authoring",
   "file": "authoring.md",
   "currentOnly": true,
-  "old": "| `flow://guide/authoring-data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
-  "new": "| `flow://guide/authoring-data` (10.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
+  "old": "| `flow://guide/authoring/data` (9.9 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |",
+  "new": "| `flow://guide/authoring/data` (10.0 KB) | lists, maps, `config.*`, output schemas, native inputs, backend primitives |"
  },
  {
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (9.3 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "family": "multipage-entities",
   "file": "multipage-entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/multipage-entities-access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
-  "new": "| `flow://guide/multipage-entities-access` (7.2 KB) | demo login, me and logout, application access, access rule hook |"
+  "old": "| `flow://guide/multipage-entities/access` (7.1 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities/access` (7.2 KB) | demo login, me and logout, application access, access rule hook |"
  },
  {
   "family": "multipage-entities",
@@ -835,7 +835,7 @@
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-model` (14.9 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "new": "| `flow://guide/entities/model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "family": "entities",
@@ -851,15 +851,15 @@
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "old": "| `flow://guide/entities/model` (15.1 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
+  "new": "| `flow://guide/entities/model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "family": "entities",
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "old": "| `flow://guide/entities/model` (15.2 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
+  "new": "| `flow://guide/entities/model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "family": "entities",
@@ -889,12 +889,12 @@
  {
   "family": "multipage-entities",
   "old": "Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support is not Entity qualification. `initialize`/`demoReset` remain exported blocks without guards (`private:false`), called from a Flow protected by the application. Trusted ownership prefers a live session, otherwise preserves an explicit owner. `describe` is metadata-only and bounded; unreadable relation targets are omitted. Public errors omit SQL names and DDL. Author diagnostics and the additive preview stay in the server log and authenticated MCP `code-run` of `entity.initialize` with `dryRun:true`. See Backend preview boundary in `flow://guide/entities-actions`.",
-  "new": "Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support is not Entity qualification. `initialize`/`demoReset` remain exported blocks (`private:false`). The reset Flow must be private; an HTTP entry point verifies ADMIN then uses `requestable.call`. Demo reset runs only in Studio, or when the server symbol `lib_flow_entity.demoReset.enabled` is true (false by default). Trusted ownership prefers a live session, otherwise preserves an explicit owner. `describe` is metadata-only and bounded; unreadable relation targets are omitted. Public errors omit SQL names and DDL. Author diagnostics and the additive preview stay in the server log and authenticated MCP `code-run` of `entity.initialize` with `dryRun:true`. See Backend preview boundary in `flow://guide/entities-actions`."
+  "new": "Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support is not Entity qualification. `initialize`/`demoReset` remain exported blocks (`private:false`). The reset Flow must be private; an HTTP entry point verifies ADMIN then uses `requestable.call`. Demo reset runs only in Studio, or when the server symbol `lib_flow_entity.demoReset.enabled` is true (false by default). Trusted ownership prefers a live session, otherwise preserves an explicit owner. `describe` is metadata-only and bounded; unreadable relation targets are omitted. Public errors omit SQL names and DDL. Author diagnostics and the additive preview stay in the server log and authenticated MCP `code-run` of `entity.initialize` with `dryRun:true`. See Backend preview boundary in `flow://guide/entities/actions`."
  },
  {
   "family": "multipage-entities",
   "old": "1. Bootstrap with `flow-project-bootstrap` and direct references to `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when a Svelte application is needed. Do not generate CRUD sources. 2. Read **Your own HTTP contract over entities** in `flow://guide/entities` first when Flow names, JSON keys or error codes are imposed. They do not require direct SQL: ordinary public Flows wrap `entity.*`. 3. Configure one SQL connection and declare Room/Reservation once with `flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm. Keep IDs/revisions as text and dates as ISO; no duplicate business schema. 4. Install the private `app.actor` from the entities guide. It reads only the authenticated server session and the server directory; never client roles. 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`. Prepare only neutral demo accounts; leave the demo switch off by default. Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker. 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly opens selected entities. Writes stay closed until this application decision. 7. Declare the typed entity demo seed below and call the public `demo_reset` before sign-in. No ADMIN cookie or separate initialization Flow is needed. Its guard belongs to the application; the library imposes none. 8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap across all owners, and throws on refusal; data and audit roll back together. For an imposed 409, use HttpBookingRule from the entities guide instead. 9. Expose only the named Flows your HTTP contract needs: guard the session, validate inputs, call entity.list/read/save/delete with checkAccess:true, translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`. 10. Add EntityTable/EntityForm without targetProject: they use this application EntityGateway. Put New in its Toolbar, guarded by context.permissions.create; wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`. 11. Add CSV through the same authorized entity list, Journalisé with an allowlist, and a private scheduled worker as independent additions. No fabricated browser actor for jobs; keep their switch off by default. 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input, overlap, stale revision, deletion and logout. Promote the verified Flows.",
-  "new": "1. Bootstrap with `flow-project-bootstrap` and direct references to `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when a Svelte application is needed. Do not generate CRUD sources. 2. Read **Your own HTTP contract over entities** in `flow://guide/entities` first when Flow names, JSON keys or error codes are imposed. They do not require direct SQL: ordinary public Flows wrap `entity.*`. 3. Configure one SQL connection and declare Room/Reservation once with `flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm. Keep IDs/revisions as text and dates as ISO; no duplicate business schema. 4. Install the private `app.actor` from the entities guide. It reads only the authenticated server session and the server directory; never client roles. 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`. Prepare only neutral demo accounts; leave the demo switch off by default. Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker. 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly opens selected entities. Writes stay closed until this application decision. 7. Declare the typed entity demo seed below and call the private Studio `demo_reset` through internal tooling before demo sign-in. An HTTP entry point must require ADMIN. Its guard belongs to the application; the library imposes none. 8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap across all owners, and throws on refusal; data and audit roll back together. For an imposed 409, use HttpBookingRule from the entities guide instead. 9. Expose only the named Flows your HTTP contract needs: guard the session, validate inputs, call entity.list/read/save/delete with checkAccess:true, translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`. 10. Add EntityTable/EntityForm without targetProject: they use this application EntityGateway. Put New in its Toolbar, guarded by context.permissions.create; wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities-pages`. 11. Add CSV through the same authorized entity list, Journalisé with an allowlist, and a private scheduled worker as independent additions. No fabricated browser actor for jobs; keep their switch off by default. 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input, overlap, stale revision, deletion and logout. Promote the verified Flows."
+  "new": "1. Bootstrap with `flow-project-bootstrap` and direct references to `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when a Svelte application is needed. Do not generate CRUD sources. 2. Read **Your own HTTP contract over entities** in `flow://guide/entities` first when Flow names, JSON keys or error codes are imposed. They do not require direct SQL: ordinary public Flows wrap `entity.*`. 3. Configure one SQL connection and declare Room/Reservation once with `flow-entity-model-check` then `flow-entity-model-set` using its revision, with `gateway: true` because step 10 uses EntityTable/EntityForm. Keep IDs/revisions as text and dates as ISO; no duplicate business schema. 4. Install the private `app.actor` from the entities guide. It reads only the authenticated server session and the server directory; never client roles. 5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities/access`. Prepare only neutral demo accounts; leave the demo switch off by default. Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker. 6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities/access`: USER sees their rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly opens selected entities. Writes stay closed until this application decision. 7. Declare the typed entity demo seed below and call the private Studio `demo_reset` through internal tooling before demo sign-in. An HTTP entry point must require ADMIN. Its guard belongs to the application; the library imposes none. 8. Add the private BookingRule hook of `flow://guide/multipage-entities/access`. It locks the room, checks overlap across all owners, and throws on refusal; data and audit roll back together. For an imposed 409, use HttpBookingRule from the entities guide instead. 9. Expose only the named Flows your HTTP contract needs: guard the session, validate inputs, call entity.list/read/save/delete with checkAccess:true, translate known errors, then return exact keys. A refusal answers 200 with an `ENTITY_*` code; a hidden and an absent row answer the same 404 `ENTITY_NOT_FOUND`. 10. Add EntityTable/EntityForm without targetProject: they use this application EntityGateway. Put New in its Toolbar, guarded by context.permissions.create; wire select to the form and saved/deleted to refresh, as in `flow://guide/multipage-entities/pages`. 11. Add CSV through the same authorized entity list, Journalisé with an allowlist, and a private scheduled worker as independent additions. No fabricated browser actor for jobs; keep their switch off by default. 12. Verify anonymous, USER and MANAGER paths, a foreign row, invalid input, overlap, stale revision, deletion and logout. Promote the verified Flows."
  },
  {
   "family": "multipage-entities",
@@ -919,44 +919,44 @@
  {
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (10.8 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (9.9 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (10.8 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
-  "new": "| `flow://guide/entities-model` (16.0 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
+  "old": "| `flow://guide/entities/model` (15.5 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |",
+  "new": "| `flow://guide/entities/model` (16.0 KB) | writing the model, list filters and pages, natural keys, schema initialization, demo reset |"
  },
  {
   "file": "entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/entities-actions` (8.0 KB) | a business action changing several records atomically, backend preview limits |",
-  "new": "| `flow://guide/entities-actions` (8.6 KB) | a business action changing several records atomically, backend preview limits |"
+  "new": "| `flow://guide/entities/actions` (8.6 KB) | a business action changing several records atomically, backend preview limits |"
  },
  {
   "file": "frontend-svelte.md",
   "currentOnly": true,
   "old": "| `flow://guide/frontend-svelte-routing` (6.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |",
-  "new": "| `flow://guide/frontend-svelte-routing` (7.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |"
+  "new": "| `flow://guide/frontend-svelte/routing` (7.2 KB) | only for `[param]`, optional, rest or matched segments, route groups, nested layouts |"
  },
  {
   "file": "multipage-entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/multipage-entities-access` (7.2 KB) | demo login, me and logout, application access, access rule hook |",
-  "new": "| `flow://guide/multipage-entities-access` (7.4 KB) | demo login, me and logout, application access, access rule hook |"
+  "old": "| `flow://guide/multipage-entities/access` (7.2 KB) | demo login, me and logout, application access, access rule hook |",
+  "new": "| `flow://guide/multipage-entities/access` (7.4 KB) | demo login, me and logout, application access, access rule hook |"
  },
  {
   "file": "multipage-entities.md",
   "currentOnly": true,
   "old": "| `flow://guide/multipage-entities-pages` (11.8 KB) | pages, CSV export, scheduled jobs, audit, final proof |",
-  "new": "| `flow://guide/multipage-entities-pages` (11.9 KB) | pages, CSV export, scheduled jobs, audit, final proof |"
+  "new": "| `flow://guide/multipage-entities/pages` (11.9 KB) | pages, CSV export, scheduled jobs, audit, final proof |"
  },
  {
   "file": "start.md",
   "currentOnly": true,
   "old": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (6.2 KB) |",
-  "new": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` (7.2 KB) |"
+  "new": "| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte/routing` (7.2 KB) |"
  },
  {
   "family": "entities",
@@ -982,7 +982,7 @@
   "family": "start",
   "file": "start.md",
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities` |",
-  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities-widgets` |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`; pages: `flow://guide/entities/widgets` |"
  },
  {
   "family": "frontend-svelte",
@@ -995,19 +995,19 @@
   "file": "start.md",
   "currentOnly": true,
   "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (11.9 KB) |",
-  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |"
+  "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities/widgets` (16.0 KB) |"
  },
  {
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-policy` (10.8 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
-  "new": "| `flow://guide/entities-policy` (11.2 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
+  "old": "| `flow://guide/entities/policy` (10.8 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |",
+  "new": "| `flow://guide/entities/policy` (11.2 KB) | the access policy: roles, scopes, `publicRead`, inactive rows, write rules, actor block |"
  },
  {
   "file": "entities.md",
   "currentOnly": true,
-  "old": "| `flow://guide/entities-auth` (5.4 KB) | sign-in, session, actor provider |",
-  "new": "| `flow://guide/entities-auth` (6.1 KB) | sign-in, session, actor provider |"
+  "old": "| `flow://guide/entities/auth` (5.4 KB) | sign-in, session, actor provider |",
+  "new": "| `flow://guide/entities/auth` (6.1 KB) | sign-in, session, actor provider |"
  },
  {
   "family": "entities",
@@ -1027,7 +1027,7 @@
  {
   "family": "fullstack-paperboard",
   "old": "6. Build the first frontend paperboard from palette blocks. Use real layout",
-  "new": "6. For entity-backed pages, read `flow://guide/entities-widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout"
+  "new": "6. For entity-backed pages, read `flow://guide/entities/widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout"
  },
  {
   "file": "start.md",
@@ -1035,13 +1035,13 @@
   "old": "| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.5 KB) |",
   "new": "| Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard` (13.8 KB) |"
  },
- {"family": "start", "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |", "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB). Read `flow://guide/entities-widgets` before writing pages. |"},
- {"file": "start.md", "currentOnly": true, "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities-widgets` (16.0 KB) |", "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB). Read `flow://guide/entities-widgets` before writing pages. |"},
+ {"family": "start", "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities/widgets` (16.0 KB) |", "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB). Read `flow://guide/entities/widgets` before writing pages. |"},
+ {"file": "start.md", "currentOnly": true, "old": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB); pages: `flow://guide/entities/widgets` (16.0 KB) |", "new": "| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities` (14.3 KB), then `flow://guide/multipage-entities` (12.1 KB). Read `flow://guide/entities/widgets` before writing pages. |"},
  {"family": "frontend-svelte", "old": "2. Plan the Pages and transitions. Write each complete Page with `code-set` and `sourceFile`; it validates before the atomic write. Write target Pages before the Pages that navigate to them (`FRONTEND_NAVIGATE_PAGE_UNKNOWN` otherwise). A new Page has no revision; existing Pages use theirs.", "new": "2. Plan the Pages and transitions. Create target Pages before writing the layout and navigation links that refer to them; otherwise validation reports `FRONTEND_NAVIGATE_PAGE_UNKNOWN`. Write each complete Page with `code-set` and `sourceFile`; it validates before the atomic write. A new Page has no revision; existing Pages use theirs."},
- {"family": "start", "old": "For sign-in, CSV, jobs and audit, see Authentication and add-ons above.", "new": "For sign-in, CSV, jobs and audit, see `flow://guide/start-rules/workspace` for authentication and add-ons."},
+ {"family": "start", "old": "For sign-in, CSV, jobs and audit, see Authentication and add-ons above.", "new": "For sign-in, CSV, jobs and audit, see `flow://guide/start/rules/workspace` for authentication and add-ons."},
  {"family": "start", "old": "lists them, `tools-more({name})` gives one input schema. `browser-verify`", "new": "lists them, `tools-more({name})` gives one input schema. In particular, `flow-requestable-schema`, `frontend-svelte-tree` and `code-status` remain callable this way when absent from the core `tools/list`: call `tools-more({name:\"code-status\", arguments:{project:\"App\", name:\"Example\"}})` with the arguments of the named tool. `browser-verify`"},
- {"family": "authoring", "old": "the `while` and `forEach` blocks, below", "new": "the `while` and `forEach` blocks in `flow://guide/authoring-collections`"},
- {"family": "entities", "old": "ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.", "new": "ENTITY_SCHEMA_MISSING without the DDL plan; see the backend preview boundary in `flow://guide/entities-actions`."},
+ {"family": "authoring", "old": "the `while` and `forEach` blocks, below", "new": "the `while` and `forEach` blocks in `flow://guide/authoring/collections`"},
+ {"family": "entities", "old": "ENTITY_SCHEMA_MISSING without the DDL plan; see Backend preview boundary.", "new": "ENTITY_SCHEMA_MISSING without the DDL plan; see the backend preview boundary in `flow://guide/entities/actions`."},
  {
   "family": "frontend-svelte",
   "old": "On a project loaded in Convertigo, MCP writes are working copies like Studio edits (`draft:true`, `dirty:true`): they are previewed and checked at once and written to disk by **Save project**. Standalone runs write the files.",

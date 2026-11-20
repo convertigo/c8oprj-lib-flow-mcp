@@ -30,7 +30,7 @@ try {
  check(/"active"/.test(d)&&/"inactive"/.test(d)&&/"all"/.test(d)&&/ENTITY_ACTIVE_INVALID/.test(d)&&/input\.request\.payload\.options\.active/.test(d)&&/scope/.test(d)&&/ENTITY_NOT_FOUND/.test(d),
   'entity.read compact contract names options.active, its refusal, the policy, the scope and the missing-row answer',got&&got.block&&got.block.properties);
 } finally {FU.deleteDirectory(workspace);}
-var entities=guide('entities'),policy=guide('entities-policy');
+var entities=guide('entities'),policy=guide('entities/policy');
 check(/`entity\.list`, `entity\.count` and `entity\.read`/.test(entities)&&/read by key without it returns the row whatever its state/.test(entities),'entities guide names entity.read with options.active and its default',null);
 check(/`entity\.list`, `entity\.count`, `entity\.read`/.test(policy)&&/read by key \(`entity\.read`, the gateway's read\) without `options\.active` returns the row whatever its state/.test(policy)&&
  /receives it as `options\.active: "all"`/.test(policy)&&/`ENTITY_NOT_FOUND`, exactly as a missing key/.test(policy)&&/whether the row exists or not/.test(policy)&&/reactivate a row/.test(policy),

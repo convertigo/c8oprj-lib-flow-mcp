@@ -9,7 +9,7 @@ const guideFamily = require('./support/guide-family.cjs');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\s+/g, ' ');
 
-const rules = guideFamily(root, 'start-rules').replace(/\s+/g, ' ');
+const rules = guideFamily(root, 'start/rules').replace(/\s+/g, ' ');
 assert.match(rules, /A test Flow never promoted is only a working copy: `code-discard\(\{project,name\}\)` deletes it; `flow-object-remove` deletes saved objects only\./,
   'a test draft is deleted with code-discard');
 assert.match(rules, /`PROJECT_HAS_UNSAVED_CHANGES`, retry with `saveProject:false` and ask for \*\*Save project\*\*/,
@@ -17,7 +17,7 @@ assert.match(rules, /`PROJECT_HAS_UNSAVED_CHANGES`, retry with `saveProject:fals
 assert.match(rules, /`SOURCE_WORKING_COPY`, edit that file with `code-get`\/`code-set`, or `code-discard\(\{project,sourceFile\}\)` first/,
   'a source with a working copy is changed through the code tools');
 
-const forms = read('_flow/resources/guide/frontend-svelte-forms.md');
+const forms = read('_flow/resources/guide/frontend-svelte/forms.md');
 assert.match(forms, /<DateToday \$\$id="today" \$\$out="page\.day" \/>` in the page `OnMount` and `<DatePicker value="@page\.day" \/>`/,
   'a date field starts on today through $$out');
 assert.match(forms, /`target` is for `SetValue`, `UpdateList` and `UpdateNumber` only/, 'target belongs to the state actions');

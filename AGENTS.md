@@ -205,7 +205,7 @@ MCP resources mirror this guide for clients that do not read repo files.
 `flow://guide/search-and-edit`, `flow://guide/custom-blocks`,
 `flow://guide/rhino-block-api`, `flow://guide/portable-blocks`,
 `flow://guide/fullstack-paperboard`, `flow://guide/frontend-svelte`,
-`flow://guide/frontend-svelte-routing`, `flow://guide/fullsync` and
+`flow://guide/frontend-svelte/routing`, `flow://guide/fullsync` and
 `flow://guide/tracing`. The skills `flow://skills/convertigo-flow-mcp/SKILL`,
 `flow://skills/convertigo-flow-backend/SKILL` and
 `flow://skills/convertigo-flow-frontend-svelte/SKILL` are not listed but are

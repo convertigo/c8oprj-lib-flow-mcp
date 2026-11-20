@@ -6,7 +6,7 @@ For the simplest compliant start with persisted business data and roles, use **S
 
 ## Quick path: contract first, details below
 
-Before writing pages that display, create or edit entity data, read `flow://guide/entities-widgets`. Use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` and `EntityBreakdown`; `flow://guide/entities-widgets/stat` covers dashboards and `flow://guide/entities-widgets/view` covers record views. Build custom tables, forms or KPIs only when these widgets cannot cover the need.
+Before writing pages that display, create or edit entity data, read `flow://guide/entities/widgets`. Use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` and `EntityBreakdown`; `flow://guide/entities/widgets/stat` covers dashboards and `flow://guide/entities/widgets/view` covers record views. Build custom tables, forms or KPIs only when these widgets cannot cover the need.
 
 1. Bootstrap with `flow-project-bootstrap` and direct references to
    `lib_flow_entity`, `lib_flow_sql`, `lib_flow_crud_data`; set `ui:true` when
@@ -20,16 +20,16 @@ Before writing pages that display, create or edit entity data, read `flow://guid
    Keep IDs/revisions as text and dates as ISO; no duplicate business schema.
 4. Install the private `app.actor` from the entities guide. It reads only the
    authenticated server session and the server directory; never client roles.
-5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities-access`.
+5. For a demo, install `DemoLogin`, `CurrentUser` (`me`) and `Logout` of `flow://guide/multipage-entities/access`.
    Prepare only neutral demo accounts; leave the demo switch off by default.
    Prefer `lib_UserManager` for real accounts/passwords, not for a demo picker.
-6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities-access`: USER sees their
+6. Edit scaffolded `app.entityAccess` with the policy of `flow://guide/multipage-entities/access`: USER sees their
    rows (with `Possédé`), MANAGER/ADMIN sees all. `publicRead` explicitly
    opens selected entities. Writes stay closed until this application decision.
 7. Declare the typed entity demo seed below and call the private Studio `demo_reset`
    through internal tooling before demo sign-in. An HTTP entry point must require ADMIN.
    Its guard belongs to the application; the library imposes none.
-8. Add the private BookingRule hook of `flow://guide/multipage-entities-access`. It locks the room, checks overlap
+8. Add the private BookingRule hook of `flow://guide/multipage-entities/access`. It locks the room, checks overlap
    across all owners, and throws on refusal; data and audit roll back together.
    For an imposed 409, use HttpBookingRule from the entities guide instead.
 9. Expose only the named Flows your HTTP contract needs: guard the session,
@@ -56,17 +56,6 @@ hatch in `flow://guide/multipage-roles`.
 
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 
+For dashboard **répartition par statut**, use `EntityBreakdown allValues={true}` for every labelled enum state, including zeros; read `flow://guide/entities/widgets/stat`.
 
-## Drawers
-
-- `flow://guide/multipage-entities/setup` — open for the model, connection, seed and private demo reset.
-- `flow://guide/multipage-entities-access` — open for demo login, me/logout, access policy and hook.
-- `flow://guide/multipage-entities/pages` — open for pages and event wiring.
-- `flow://guide/multipage-entities/operations` — open for CSV, jobs and audit.
-- `flow://guide/multipage-entities/proof` — open for final proof and delivery.
-
-The proof guide covers browser context reuse, sign-out and the development session limit.
-
-For dashboard **répartition par statut**, use `EntityBreakdown allValues={true}` for every labelled enum state, including zeros; read `flow://guide/entities-widgets/stat`.
-
-Dashboard and list: `flow://guide/entities-widgets/table` covers sidebar icons, metric icons, automatic enum tones, two-line cells, related sums and recent compact lists.
+Dashboard and list: `flow://guide/entities/widgets/table` covers sidebar icons, metric icons, automatic enum tones, two-line cells, related sums and recent compact lists.

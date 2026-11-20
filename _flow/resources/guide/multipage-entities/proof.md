@@ -41,7 +41,6 @@ demo login/jobs off by default, application-protected initialization and documen
 identity/database choices. Entity example tests execute every backend/config
 fence above; `frontend-guide-examples` compiles the exact layout and editor.
 
-
 Entity CRUD supports HSQLDB and PostgreSQL only; MariaDB's SQL bootstrap support
 is not Entity qualification. `initialize`/`demoReset` remain exported blocks
 (`private:false`). The reset Flow must be private; an HTTP entry point verifies
@@ -51,4 +50,4 @@ Trusted ownership prefers a live session, otherwise preserves an explicit owner.
 `describe` is metadata-only and bounded; unreadable relation targets are omitted.
 Public errors omit SQL names and DDL. Author diagnostics and the additive preview
 stay in the server log and authenticated MCP `code-run` of `entity.initialize`
-with `dryRun:true`. See Backend preview boundary in `flow://guide/entities-actions`.
+with `dryRun:true`. See Backend preview boundary in `flow://guide/entities/actions`.

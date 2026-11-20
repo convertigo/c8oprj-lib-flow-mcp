@@ -11,7 +11,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const guideDir = path.join(root, '_flow/resources/guide');
 const skillDir = path.join(root, '_flow/resources/skills');
-const ANNOTATION = /`flow:\/\/guide\/([a-z0-9-]+)` \((\d+\.\d) KB\)/g;
+const ANNOTATION = /`flow:\/\/guide\/([a-z0-9\/-]+)` \((\d+\.\d) KB\)/g;  // one name form since 20/11: paths
 // Under 16 000 characters every client (Claude Code, Codex, Vibe) shows a tool result whole, without saving it to a file.
 const LIMIT = 16000;
 

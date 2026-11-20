@@ -10,7 +10,7 @@ const guideDir = path.join(root, '_flow/resources/guide');
 const read = name => fs.readFileSync(path.join(guideDir, name + '.md'), 'utf8');
 const normalize = text => text.replace(/\s+/g, ' ');
 const proofGuides = [
-  ['frontend-svelte-proof', 'frontend-svelte'],
+  ['frontend-svelte/proof', 'frontend-svelte'],
   ['frontend-svelte/loop', 'frontend-svelte'],
   ['multipage-entities/proof', 'multipage-entities'],
 ];
@@ -30,10 +30,11 @@ for (const [name, family] of proofGuides) {
 }
 
 for (const [name, destination] of [
-  ['frontend-svelte', 'frontend-svelte-proof'],
+  ['frontend-svelte', 'frontend-svelte/proof'],
   ['multipage-entities', 'multipage-entities/proof'],
 ]) {
-  assert.ok(read(name).includes(`flow://guide/${destination}`), `${name}: link to proof guide`);
+  // a parent lists its children when it is served (mcp.js guideNavigation, tests/guide-tree-1120.js)
+  assert.ok(read(name).includes(`flow://guide/${destination}`) || destination.startsWith(name + '/') && fs.existsSync(path.join(__dirname, '../_flow/resources/guide', destination + '.md')), `${name}: link to proof guide`);
 }
 
 for (const name of [...proofGuides.map(([name]) => name), 'frontend-svelte', 'multipage-entities']) {

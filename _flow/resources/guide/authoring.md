@@ -39,13 +39,3 @@ A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` c
 - do … while, for … in, labelled loop, labelled break or continue: while, for (const key of Object.keys(o)) (`FLOWSCRIPT_V3_LOOP_FORM`)
 - default(x, y) outside a switch: default is a reserved word, so this is not JavaScript: flow.default(x, y), with the same arguments (`FLOWSCRIPT_V3_RESERVED_WORD`)
 <!-- /generated -->
-
-## Drawers
-
-- `flow://guide/authoring/expressions` — open for expression operators, functions and JavaScript replacements.
-- `flow://guide/authoring/dialect` — open for declarations, scope rules, metadata, values, dates and input conversion.
-- `flow://guide/authoring/forms` — open for the table of every accepted JavaScript form and its block, and every refusal with its code.
-- `flow://guide/authoring-collections` — open for loops, list methods and typed collections.
-- `flow://guide/authoring-data` — open for JSON, text, HTTP and requestable data operations.
-- `flow://guide/authoring-source` — open for source revisions, run and promotion details.
-- `flow://guide/authoring-blocks` — open for custom block and catalog details.

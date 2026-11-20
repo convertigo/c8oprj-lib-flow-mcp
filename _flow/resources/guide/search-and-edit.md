@@ -18,7 +18,6 @@ to `code-patch` with `proposedPatch.revision`. A patch marked `requiresChoice`
 needs the indicated value first. Do not resend the last successful text as a
 patch base. `oldText` must match exactly once; use `code-set` for a whole source.
 
-
 ## Find
 
 `flow-search` is the Flow equivalent of `rg` over one project. Project scope

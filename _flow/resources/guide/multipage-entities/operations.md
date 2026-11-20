@@ -11,7 +11,7 @@ When adding screen filters, validate and pass the **same** filters here. For
 larger exports use a bounded paging loop, not a client-side CSV encoder.
 
 For larger filtered exports, use `entity.exportCsv` and `EntityTable.exportFlow`
-as in `flow://guide/entities-exports`: the server pages the list and refuses
+as in `flow://guide/entities/exports`: the server pages the list and refuses
 overflow.
 
 <!-- example: export-bookings -->
@@ -80,7 +80,7 @@ checks the ADMIN role, then calls the private job with `requestable.call`;
 never make the job itself public or hidden.
 
 For entity writes, use `flow://guide/entities/jobs` and
-`flow://guide/entities/jobs-runner`: atomic reminder preparation, bounded paging,
+`flow://guide/entities/jobs/runner`: atomic reminder preparation, bounded paging,
 manual role guard, replay and partial-failure recovery.
 
 ## Audit

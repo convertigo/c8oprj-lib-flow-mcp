@@ -76,9 +76,9 @@ invisible to all of them; a refusal says what to write instead.
 - For any persisted business data with roles, use the entity route: add the
   `lib_flow_entity` project reference and read `flow://guide/entities` plus
   `flow://guide/multipage-entities` before wiring `EntityTable`/`EntityForm`.
-  Read `flow://guide/entities-widgets` before choosing a widget, then
-  `flow://guide/entities-widgets/table` for lists, `flow://guide/entities-widgets/form` for edits,
-  `flow://guide/entities-widgets/view` for records or `flow://guide/entities-widgets/stat` for dashboards.
+  Read `flow://guide/entities/widgets` before choosing a widget, then
+  `flow://guide/entities/widgets/table` for lists, `flow://guide/entities/widgets/form` for edits,
+  `flow://guide/entities/widgets/view` for records or `flow://guide/entities/widgets/stat` for dashboards.
   Use `EntityTable`, `EntityForm`, `EntityView`,
   `EntityStat` and `EntityBreakdown`; build custom tables, forms or KPIs only
   when these widgets cannot cover the need.
@@ -183,7 +183,7 @@ invisible to all of them; a refusal says what to write instead.
   state. Do not recheck an unchanged pilot or repeat browser setup attempts.
   Run one compact browser pass after propagation; if the managed viewer is not
   controllable after one readiness check, report that limitation and stop.
-  For an application built from a specification, write the acceptance table (criterion, path, seen) from the specification before building; that pass does not replace the acceptance walk of each criterion (`flow://guide/frontend-svelte-proof`).
+  For an application built from a specification, write the acceptance table (criterion, path, seen) from the specification before building; that pass does not replace the acceptance walk of each criterion (`flow://guide/frontend-svelte/proof`).
 - For a simple reactive proof, use one browser evaluation that records the
   initial value, waits, and verifies the updated value. List/select tabs only
   when the viewer is ambiguous; do not split one assertion across a find and
@@ -236,7 +236,7 @@ invisible to all of them; a refusal says what to write instead.
   the multi-step proof, in the foreground and waited for before your turn
   ends, and one screenshot of your own for a visual check.
 - Before handing a frontend over, pass the visual checklist of
-  `flow://guide/frontend-svelte-proof` (POC Acceptance) as `checks` to the verifier
+  `flow://guide/frontend-svelte/proof` (POC Acceptance) as `checks` to the verifier
   or `browser-verify`, in light and dark, at 1366px and 390px: frame and
   current page, page headers, tables for records, badges for statuses, no
   stray status text, toasts for success, grouped forms, no horizontal
@@ -263,7 +263,7 @@ remaining visual defects.
 Before finalizing a changed source, consult the relevant official Svelte syntax
 section when uncertain, validate it with Flow's installed Svelte compiler, and
 exercise its visible behavior. This workflow adapts the MIT-licensed official
-Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte-sources` for the
+Svelte `svelte-code-writer` skill; see `flow://guide/frontend-svelte/sources` for the
 source and bundled permission notices. Read its tested layout examples before
 inventing widget properties or variants.
 

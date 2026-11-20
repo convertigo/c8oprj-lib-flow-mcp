@@ -2,8 +2,6 @@
 
 Every accepted JavaScript form with its block, and every refusal with its code and rewrite.
 
-Sub-guide of `flow://guide/authoring`: read that guide first. This text is generated from the FlowScript v3 specification.
-
 ## Accepted forms
 
 <!-- generated:v3-forms -->

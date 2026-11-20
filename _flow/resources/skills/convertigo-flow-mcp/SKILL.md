@@ -87,7 +87,7 @@ server (rights, perimeters, state rules), never only in the page.
   `convertigo-flow`, never from the Legacy server named `convertigo`.
 - Full-stack work: use both specialists and read
   `flow://guide/fullstack-paperboard` once. For several Flows and pages,
-  follow its Parallel Build (`flow://guide/fullstack-paperboard-parallel`): you set the contract (data model, each Flow
+  follow its Parallel Build (`flow://guide/fullstack-paperboard/parallel`): you set the contract (data model, each Flow
   with its inputs, outputs and a demo-shaped body, `docs/generated/PROGRESS.md`),
   then a backend and a frontend specialist build at the same time, each
   owning its files, and you integrate and prove. Run them as your own
@@ -100,9 +100,9 @@ server (rights, perimeters, state rules), never only in the page.
 - Any persisted business data with roles: use entities by default. Add the
   `lib_flow_entity` project reference (`flow-project-reference`), then read
   `flow://guide/entities` and `flow://guide/multipage-entities` once before
-  coding. Read `flow://guide/entities-widgets` before choosing a widget, then
-  `flow://guide/entities-widgets/table` for lists, `flow://guide/entities-widgets/form` for edits,
-  `flow://guide/entities-widgets/view` for records or `flow://guide/entities-widgets/stat` for dashboards.
+  coding. Read `flow://guide/entities/widgets` before choosing a widget, then
+  `flow://guide/entities/widgets/table` for lists, `flow://guide/entities/widgets/form` for edits,
+  `flow://guide/entities/widgets/view` for records or `flow://guide/entities/widgets/stat` for dashboards.
   This rule still applies when sign-in is a demonstration picker,
   or the application also needs a CSV export, scheduled job or audit journal.
   These additions do not select direct SQL; use
@@ -220,7 +220,7 @@ wait stays in it for the rest of the task.
   (criterion, path, seen), then fill seen on the screen and give the table in
   the final answer. An application built from a specification is done only when each acceptance criterion that goes through a screen has been walked in the browser: fill,
   submit, read the result, one refused value per form whose message shows,
-  leave and come back to each list (`flow://guide/frontend-svelte-proof`,
+  leave and come back to each list (`flow://guide/frontend-svelte/proof`,
   Application Acceptance). A direct Flow call proves no screen.
 
 - A multi-step proof (sign in, go through several pages, fill and submit a
@@ -235,7 +235,7 @@ wait stays in it for the rest of the task.
   default `waitSec`.
 - One visual check of the current page (layout, a rendered image, a label)
   is one relayed `browser-verify` call with its `checks`. For a Svelte
-  frontend, include the visual checklist of `flow://guide/frontend-svelte-proof`
+  frontend, include the visual checklist of `flow://guide/frontend-svelte/proof`
   (POC Acceptance) in the `checks`.
 - When your tool list has no `subagent-run` or `browser-verify` (the relay
   does not offer them; `tools-more` does not either), prove with the browser
@@ -399,7 +399,7 @@ EntityGateway by default; targetProject is optional, only for another applicatio
 Use describe capabilities for custom commands (Toolbar context.permissions.create),
 ordinary select/saved/deleted events for editing and refresh, and ownershipFilter
 only as an extra display filter, never a substitute for server scope. The form
-uses create/update, never upsert. See flow://guide/entities-policy, One access policy.
+uses create/update, never upsert. See flow://guide/entities/policy, One access policy.
 
 A refusal by a policy, model ACL or authorization slot, including on a relation target needed by options or validation, triggers no DDL (a refused target only omits labels); a refusal depending on data or a hook can occur after schema creation.
 

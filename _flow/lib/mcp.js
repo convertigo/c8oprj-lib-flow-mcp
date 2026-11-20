@@ -2470,6 +2470,13 @@
 				if (schemas[index].outputSchema !== undefined) tool.outputSchema = schemas[index].outputSchema;
 			});
 		}
+		// A guide read by resources/read carries the navigation of the tree, derived from the guide files (once: the
+		// flow-resource-get answer relays this text).
+		if (request && request.method === "resources/read" && response && response.result && response.result.contents &&
+			response.result.contents[0] && typeof response.result.contents[0].text === "string") {
+			response.result.contents[0].text = withGuideNavigation(ctx, response.result.contents[0].uri || request.params && request.params.uri,
+				response.result.contents[0].text);
+		}
 		// Page complete resource sources at the outer boundary. Internal resources/read relays
 		// keep the full text until flow-resource-get has selected its own response shape.
 		if (request && request.__flowMcpTraceDeferred !== true && response && response.result) {
@@ -2577,7 +2584,7 @@
 		value = compactToolValue(request, value);
 		value = withUnsavedSources(request, value, ctx);
 		if (value && value.ok !== false && !value.error && entityPageGuidanceApplies(request, value)) {
-			value.entityPages = "Entity pages: EntityTable → flow://guide/entities-widgets/table; EntityForm → flow://guide/entities-widgets/form; EntityView → flow://guide/entities-widgets/view; EntityStat/EntityBreakdown → flow://guide/entities-widgets/stat.";
+			value.entityPages = "Entity pages: EntityTable → flow://guide/entities/widgets/table; EntityForm → flow://guide/entities/widgets/form; EntityView → flow://guide/entities/widgets/view; EntityStat/EntityBreakdown → flow://guide/entities/widgets/stat.";
 			// Keep the decision before the verbose frontend contract in structuredContent.
 			var early = { entityPages: value.entityPages };
 			Object.keys(value).forEach(function (key) { if (key !== "entityPages") early[key] = value[key]; });
@@ -4471,14 +4478,16 @@
 		coreNames = coreNames || [];
 		function base(guide) { return String(guide.uri).replace(/^.*\//, "").toLowerCase(); }
 		function short(project) { return String(project).toLowerCase().replace(/^lib_(flow_)?/, ""); }
-		// A split guide has sub-guides <family>-<topic> and drawers <family>/<topic>: agents swap the two forms
-		// (it156: the drawer form frontend-svelte/data for the sub-guide frontend-svelte-data, on four front exercises). Either form
-		// reads the one guide of the other; flow://guide/ alone reads the entry guide.
-		var nested = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
-		var flat = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
-		var swapped = nested ? coreNames.filter(function (name) { return name.indexOf("/") < 0 && guideKey(name) === guideKey(nested[1] + "-" + nested[2]); })
-			: flat ? coreNames.filter(function (name) { return name.indexOf("/") > 0 && guideKey(name.replace(/\//g, "-")) === guideKey(flat[1]); }) : [];
-		if (swapped.length === 1) return { uri: "flow://guide/" + swapped[0] };
+		// One name form since 20/11: a guide is its path, flow://guide/<family>/<topic>. A name that differs by its separators
+		// only (the former sub-guide frontend-svelte-data, the former drawer entities-model/lists, or a guess) reads that one
+		// guide; the retired redirect guides read their parent; flow://guide/ alone reads the entry guide.
+		var named = /^flow:\/\/guides?\/([A-Za-z0-9_.\/-]+?)\/?$/i.exec(text);
+		var separatorKey = function (name) { return guideKey(name).replace(/\//g, "-"); };
+		var swapped = named ? coreNames.filter(function (name) { return separatorKey(name) === separatorKey(named[1]); }) : [];
+		if (swapped.length === 1 && "flow://guide/" + swapped[0] !== text) return { uri: "flow://guide/" + swapped[0] };
+		var retired = { "crud-business-reference": "crud/business", "entities-model-reference": "entities/model",
+			"entities-widgets-reference": "entities/widgets" }[named ? separatorKey(named[1]) : ""];
+		if (retired && coreNames.indexOf(retired) !== -1) return { uri: "flow://guide/" + retired };
 		if (/^flow:\/\/guides?\/?$/i.test(text) && coreNames.indexOf("start") !== -1) return { uri: "flow://guide/start" };
 		// One guide spelled differently (case, "_" for "-", ".md", a final "/", "guides" for "guide"): that guide.
 		var spelled = /^flow:\/\/guides?\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text), spelledLib = /^flow:\/\/lib\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)\/?$/i.exec(text);
@@ -4489,7 +4498,7 @@
 		if (spelled) text = "flow://guide/" + spelled[1].replace(/\.md$/i, "");
 		function familyEntry(names) {
 			var entries = names.filter(function (name) {
-				return names.every(function (other) { return other === name || other.indexOf(name + "-") === 0; });
+				return names.every(function (other) { return other === name || other.indexOf(name + "-") === 0 || other.indexOf(name + "/") === 0; });
 			});
 			return entries.length === 1 ? entries[0] : null;
 		}
@@ -4513,11 +4522,11 @@
 			}
 			if (!candidates.length) {
 				var lowerNames = coreNames.map(function (name) { return String(name).toLowerCase(); });
-				var family = familyEntry(lowerNames.filter(function (name) { return name.indexOf(wanted + "-") === 0; }));
+				var family = familyEntry(lowerNames.filter(function (name) { return name.indexOf(wanted + "-") === 0 || name.indexOf(wanted + "/") === 0; }));
 				// Else the one family whose names hold every word of the wanted name: svelte, svelte-frontend.
 				var words = wanted.split(/[-_]+/).filter(Boolean);
 				family = family || familyEntry(lowerNames.filter(function (name) {
-					var own = name.split("-");
+					var own = name.split(/[-\/]/);
 					return words.length > 0 && words.every(function (word) { return own.indexOf(word) !== -1; });
 				}));
 				if (family) return { uri: "flow://guide/" + family };
@@ -4537,8 +4546,9 @@
 			// A topic word held by one core guide only (datatable, components), or a sub-topic of a core guide (fullsync-scaffold).
 			var bare = wanted.replace(/\.md$/, "");
 			var lower = coreNames.map(function (name) { return String(name).toLowerCase(); });
-			var byWord = lower.filter(function (name) { return name.split("-").indexOf(bare) !== -1; });
-			var parents = lower.filter(function (name) { return bare.indexOf(name + "-") === 0; }).sort(function (a, b) { return b.length - a.length; });
+			// a guide path is words too: frontend-svelte/datatable holds datatable
+			var byWord = lower.filter(function (name) { return name.split(/[-\/]/).indexOf(bare) !== -1; });
+			var parents = lower.filter(function (name) { return bare.indexOf(name.replace(/\//g, "-") + "-") === 0; }).sort(function (a, b) { return b.length - a.length; });
 			if (byWord.length === 1) return { uri: "flow://guide/" + byWord[0] };
 			if (parents.length) return { uri: "flow://guide/" + parents[0] };
 		}
@@ -4583,6 +4593,121 @@
 		} catch (e) {
 		}
 		return names;
+	}
+	// The guide tree (20/11): a guide is its path, flow://guide/<family>/<topic>, and the navigation is derived from the
+	// guide files when a guide is served, never written in them: the prerequisite of a child (its parent), the children of
+	// a guide with their own children, the two-level tree in start, and the palette blocks and components its examples use.
+	// names: every guide path; describe(name): the description of a guide; palette: { blocks, components } name maps.
+	function guideDescription(text) {
+		var lines = String(text || "").split("\n"), i = 1, paragraph = [];
+		while (i < lines.length && !lines[i].trim()) i++;
+		while (i < lines.length && lines[i].trim()) paragraph.push(lines[i++].trim());
+		var joined = paragraph.join(" "), sentence = /^.*?[.!?](?=\s|$)/.exec(joined);
+		return (sentence ? sentence[0] : joined).trim();
+	}
+	function guideNavigation(name, text, names, describe, palette) {
+		var parentOf = function (each) { return each.indexOf("/") < 0 ? "" : each.substring(0, each.lastIndexOf("/")); };
+		var leaf = function (each) { return each.substring(each.lastIndexOf("/") + 1); };
+		var childrenOf = function (each) { return names.filter(function (other) { return parentOf(other) === each; }).sort(); };
+		var out = String(text).replace(/\s+$/, "") + "\n", parent = parentOf(name), own = childrenOf(name);
+		if (parent && names.indexOf(parent) !== -1) {
+			// after the description paragraph: the first paragraph after the title
+			var lines = out.split("\n"), i = 1;
+			while (i < lines.length && !lines[i].trim()) i++;
+			while (i < lines.length && lines[i].trim()) i++;
+			lines.splice(i, 0, "", "Prerequisite: read `flow://guide/" + parent + "` first.");
+			out = lines.join("\n");
+		}
+		if (name === "start") {
+			// the root: every family and its children (a number counts deeper guides), childless families on one line
+			var families = names.filter(function (each) { return each.indexOf("/") < 0; }).sort();
+			var parents = families.filter(function (family) { return childrenOf(family).length; });
+			var single = families.filter(function (family) { return !childrenOf(family).length; });
+			out += "\n## Guide tree\n\n`flow://guide/<path>`; (n) counts deeper guides.\n\n" + parents.map(function (family) {
+				return "- " + family + ": " + childrenOf(family).map(function (kid) { var deeper = childrenOf(kid).length; return leaf(kid) + (deeper ? " (" + deeper + ")" : ""); }).join(", ");
+			}).join("\n") + (single.length ? "\n- " + single.join(", ") : "") + "\n";
+			return out;
+		} else if (own.length) {
+			out += "\n## Children\n\n" + own.map(function (kid) {
+				var deeper = childrenOf(kid).map(leaf);
+				return "- `flow://guide/" + kid + "`" + (deeper.length ? " (" + deeper.join(", ") + ")" : "") + ": " + describe(kid);
+			}).join("\n") + "\n";
+		}
+		var blocks = {}, components = {};
+		String(text).replace(/^```(flowscript|javascript|js|svelte|html)\n([\s\S]*?)^```/gm, function (all, lang, code) {
+			if (/^(svelte|html)$/.test(lang)) code.replace(/<([A-Z][A-Za-z0-9]*)\b/g, function (tag, id) { if (palette.components[id]) components[id] = true; return tag; });
+			else if (!/<script/.test(code)) code.replace(/\b([a-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+)\(\{/g, function (call, id) { if (palette.blocks[id]) blocks[id] = true; return call; });
+			return all;
+		});
+		var quote = function (map) { return Object.keys(map).sort().map(function (id) { return "`" + id + "`"; }).join(", "); };
+		if (Object.keys(blocks).length) out += "\nRelated blocks: " + quote(blocks) + " (contract: `flow-block-get`).\n";
+		if (Object.keys(components).length) out += (Object.keys(blocks).length ? "" : "\n") + "Related components: " + quote(components) + " (contract: `code-get` with `contractBlocks`).\n";
+		return out;
+	}
+	// The palette names of the loaded projects: public backend blocks (_flow/blocks/**/<name>.block.js) and frontend
+	// components (_flow/frontbuilder/**/components/**/<Tag>.flow.svelte, *.uiblock.json "tag"); 30 s like the block index.
+	var guidePaletteIndex = { at: 0, palette: null };
+	function guidePalette() {
+		var now = Number(System.currentTimeMillis());
+		if (guidePaletteIndex.palette && now - guidePaletteIndex.at < 30000) return guidePaletteIndex.palette;
+		var palette = { blocks: {}, components: {} };
+		loadedProjectTargets().forEach(function (target) {
+			(function walk(dir, namespace) {
+				var files = dir.isDirectory() ? dir.listFiles() : null;
+				for (var i = 0; files && i < files.length; i++) {
+					var name = String(files[i].getName()), match = /^(.+)\.block\.js$/.exec(name);
+					if (files[i].isDirectory()) walk(files[i], namespace.concat([name]));
+					else if (match) {
+						var head = "";
+						try { head = String(new Packages.java.lang.String(Files.readAllBytes(files[i].toPath()), StandardCharsets.UTF_8)).substring(0, 4000); } catch (e) {}
+						if (!/"?private"?\s*:\s*true/.test(head)) palette.blocks[namespace.concat([match[1]]).join(".")] = true;
+					}
+				}
+			})(new File(new File(String(target.projectDir), "_flow"), "blocks"), []);
+			(function walk(dir, inComponents) {
+				var files = dir.isDirectory() ? dir.listFiles() : null;
+				for (var i = 0; files && i < files.length; i++) {
+					var name = String(files[i].getName());
+					if (files[i].isDirectory()) { if (name !== "node_modules") walk(files[i], inComponents || name === "components"); }
+					else if (inComponents && /^[A-Z][A-Za-z0-9]*\.flow\.svelte$/.test(name)) palette.components[name.split(".")[0]] = true;
+					else if (/\.uiblock\.json$/.test(name)) {
+						try {
+							var tag = JSON.parse(String(new Packages.java.lang.String(Files.readAllBytes(files[i].toPath()), StandardCharsets.UTF_8))).tag;
+							if (tag) palette.components[String(tag)] = true;
+						} catch (e) {}
+					}
+				}
+			})(new File(new File(String(target.projectDir), "_flow"), "frontbuilder"), false);
+		});
+		guidePaletteIndex = { at: now, palette: palette };
+		return palette;
+	}
+	// A guide served by resources/read (flow-resource-get relays it): its text with the navigation of the tree.
+	function withGuideNavigation(ctx, uri, text) {
+		var match = /^flow:\/\/guide\/([A-Za-z0-9_.\/-]+)$/.exec(String(uri || ""));
+		if (!match || typeof text !== "string") return text;
+		try {
+			var names = coreGuideNames(ctx), dir = new File(new File(String(knownProjectDir(ctx))), "_flow/resources/guide");
+			if (names.indexOf(match[1]) === -1) return text;
+			return guideNavigation(match[1], text, names, function (kid) {
+				return guideDescription(String(new Packages.java.lang.String(Files.readAllBytes(new File(dir, kid + ".md").toPath()), StandardCharsets.UTF_8)));
+			}, guidePalette());
+		} catch (e) {
+			return text;
+		}
+	}
+	// What the navigation of a guide reads besides the guide itself: the paths, sizes and dates of the guide files.
+	function guideTreeSignature(ctx) {
+		var parts = [];
+		try {
+			var dir = new File(new File(String(knownProjectDir(ctx))), "_flow/resources/guide");
+			coreGuideNames(ctx).sort().forEach(function (name) {
+				var file = new File(dir, name + ".md");
+				parts.push(name + ":" + file.length() + ":" + file.lastModified());
+			});
+		} catch (e) {
+		}
+		return sha256Hex(parts.join("\n"));
 	}
 	function knownLibraryGuides() {
 		try {
@@ -4744,7 +4869,7 @@
 	}
 	function entityWidgetGuide(tag) {
 		var topics = { EntityTable: "table", EntityForm: "form", EntityView: "view", EntityStat: "stat", EntityBreakdown: "stat" };
-		return topics[tag] ? "flow://guide/entities-widgets/" + topics[tag] : "";
+		return topics[tag] ? "flow://guide/entities/widgets/" + topics[tag] : "";
 	}
 
 	function withBlockContract(request, diagnostic) {
@@ -4872,7 +4997,7 @@
 			out.push({ severity: "warning", code: "ENTITY_LIST_PAGE_UNCHECKED", block: "entity.list", path: target,
 				line: text.substring(0, match.index).split("\n").length,
 				message: "entity.list returns one page (limit 25 by default, 200 at most): " + target + ".rows is not the whole list when " + target + ".hasMore is true.",
-				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. Read flow://guide/entities-model/lists." });
+				hint: "Check " + target + ".hasMore (throw or narrow the filter), or page with options.offset and " + target + ".nextOffset. Read flow://guide/entities/model/lists." });
 		}
 		return out;
 	}
@@ -6283,7 +6408,7 @@
 			return { error: subagentRelayError("SUBAGENT_SCOPE_REQUIRED", "A Flow constructor needs inputs.project and inputs.scope backend or frontend: " +
 				"the one project it builds in and the side of it that it owns.",
 				"subagent-run({profile:\"constructor\", task, inputs:{project:\"<project>\", scope:\"backend\", contracts, notes}, waitSec:5}), " +
-				"then the same with scope frontend; see the Parallel Build of flow://guide/fullstack-paperboard-parallel.",
+				"then the same with scope frontend; see the Parallel Build of flow://guide/fullstack-paperboard/parallel.",
 				{ project: project, scope: scope, scopes: FLOW_CONSTRUCTOR_SCOPES.slice(0) }) };
 		}
 		if (isServerProject(ctx, project)) {
@@ -6930,6 +7055,8 @@
 			return null;
 		}
 		var content = sha256Hex(String(new Packages.java.lang.String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)));
+		// a guide also serves the navigation of the tree, derived from the other guide files
+		if (uri.indexOf("flow://guide/") === 0) content += "\n" + guideTreeSignature(ctx);
 		var params = request.params || {};
 		var variant = request.__flowMcpTraceDeferred === true ? "deferred" : params.allowLarge === true ? "allowLarge" : "bounded";
 		return stableEntry("resource", [caller, uri, variant, String(params.startChar || 0), canonicalPath(file), content, code], STABLE_TTL_MS.resource);
@@ -7117,6 +7244,8 @@
 		_enrichSveltePaletteMutations: enrichSveltePaletteMutationsForArgs,
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
 		finalizeResponse: finalizeResponse,
+		guideNavigation: guideNavigation,
+		guideDescription: guideDescription,
 		sanitizeForMcp: sanitizeForMcp,
 		traceJsonl: traceJsonl,
 		runToolBlock: runToolBlock,

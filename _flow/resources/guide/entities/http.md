@@ -12,7 +12,7 @@ contract requires: `MyReservations` → `entity.list`, `ReadReservation` →
 `flow-entity-model-set` creates `app.entityAccess` without overwriting it;
 facades need no gateway (`gateway: true` adds one for EntityTable/EntityForm
 pages). Edit that one policy before opening writes;
-see **One access policy** in `flow://guide/entities-policy`. Use the same guard and error translation
+see **One access policy** in `flow://guide/entities/policy`. Use the same guard and error translation
 for each endpoint; keep SQL, ownership and audit in the declared model.
 With the Reservation model in `flow://guide/multipage-entities`, this
 complete create/update facade accepts flat request fields and returns exact keys:
@@ -114,7 +114,7 @@ An `Activable` entity lists and counts active rows only. `options.active` of
 list or a count), `"inactive"` or `"all"`; `null` reads as absent, any other
 value is `ENTITY_ACTIVE_INVALID`. A read by key without it returns the row
 whatever its state, when the policy allows inactive rows to that actor.
-The access policy receives it and decides: see **Inactive rows** in `flow://guide/entities-policy`.
+The access policy receives it and decides: see **Inactive rows** in `flow://guide/entities/policy`.
 
 For an imposed business error code, set `Reservation.hooks.beforeSave` to
 `HttpBookingRule`. It adds the application's date-order refusal and reuses the
@@ -153,12 +153,12 @@ and in `details.errors`: `{field, rule, message, expected}`, the rule one of
 `readOnly`, `serverManaged`, `owner`, `relation` or `unique`, `expected` the form
 the model accepts; never the value received. A duplicate of a unique field
 outside the actor's list answers the model ACL refusal instead (**Unique
-fields** in `flow://guide/entities-model/unique`). A `try` keeps only `code`, `message`, `status`
+fields** in `flow://guide/entities/model/unique`). A `try` keeps only `code`, `message`, `status`
 and `hint` of the error: validate the fields your contract names before
 `entity.save`. `entity.save` creates a row only when the database generates its
 identity: on an entity identified by a natural key (an email, a code), a create
 answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` with how to do it today
-(**Natural key** in `flow://guide/entities-model/format`).
+(**Natural key** in `flow://guide/entities/model/format`).
 
 A throw code is literal text: add one catch branch per expected business code,
 not `code: failure.code`. Unexpected failures become BOOKING_FAILED
@@ -170,8 +170,8 @@ Entity refusals (`ENTITY_UNAUTHENTICATED`, `ENTITY_FORBIDDEN`, `ENTITY_SCOPE_VIO
 the same way, with `Cache-Control: no-store` and one server log line. A client tests `ok`
 (or the `error` envelope) before reading data: `ok: false` with HTTP 200 is a refusal or a
 failure, never empty data to show as a success.
-For demo login and `me`, use the project actor in **Authentication** of `flow://guide/entities-auth` and
-**Demo login** in `flow://guide/multipage-entities-access`; the switch stays off by
+For demo login and `me`, use the project actor in **Authentication** of `flow://guide/entities/auth` and
+**Demo login** in `flow://guide/multipage-entities/access`; the switch stays off by
 default. Login/session shape is independent of the choice of entities.
 
 Read `flow://guide/multipage-entities` for the ordered application recipe.

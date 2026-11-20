@@ -32,7 +32,7 @@ A condition, a value or an expression property is a small JavaScript subset; any
   Not in a `while` condition, evaluated before every pass: keep the value in a `let` updated at the end of the body.
   `xs.concat(ys)` is JavaScript's `concat` and may take a chain (`items.concat(page.rows.map(r => ({ id: r.id })))`).
 - **Loops and collections:** `for (const x of xs)` is the `forEach` block and `while (condition)` the `while` block;
-  typed lists and maps, loop bounds and refusals: `flow://guide/authoring-collections`.
+  typed lists and maps, loop bounds and refusals: `flow://guide/authoring/collections`.
 - **Refused, with the replacement:** a regular expression literal `/x/` (the regex blocks above), `Math.random`
   (`crypto.random`), `Date.now` and `new Date` (`date.now`, `date.format`), `Object.entries`
   (`for (const key of Object.keys(o))`), `reduce` (`list.sum`, `list.map` or a loop), `xs.sort` in place (`toSorted`).

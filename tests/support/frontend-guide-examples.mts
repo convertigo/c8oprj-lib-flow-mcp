@@ -30,7 +30,7 @@ function tableNamed(document: Document, name: string) {
 // A guide and its sub-guides (<guide>-*.md), entry first: split guides keep their examples in the family.
 async function family(guide: string) {
   if (guide === 'entities') {
-    const paths = ['entities.md', 'entities-widgets/snippets.md', 'entities-widgets/stat.md', 'entities-widgets/view.md', 'entities-widgets/deadlines.md'];
+    const paths = ['entities.md', 'entities/widgets/snippets.md', 'entities/widgets/stat.md', 'entities/widgets/view.md', 'entities/widgets/deadlines.md'];
     return (await Promise.all(paths.map(file => readFile(resolve(guides, file), 'utf8')))).join('\n\n');
   }
   const subs = (await readdir(guides)).filter(file => file.startsWith(guide + "-") && file.endsWith(".md")).sort();
@@ -354,7 +354,7 @@ test('CRM dashboard and company list recipes compile with entity options and ico
   }
   const {generateFixtureProject}=await import(pathToFileURL(resolve(provider,'src-builder/testGeneration.ts')).href);
   let count=0;
-  for(const guide of ['entities-widgets/table','multipage-entities/pages']){
+  for(const guide of ['entities/widgets/table','multipage-entities/pages']){
     const text=await readFile(resolve(guides,guide+'.md'),'utf8');
     const recipe=text.split('## Dashboard and list')[1];assert.ok(recipe);
     for(const match of recipe.matchAll(/```svelte\n([\s\S]*?)```/g)){

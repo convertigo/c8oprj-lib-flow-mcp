@@ -83,11 +83,11 @@ function mcp_resources_list({ input, config, result }) {
   })
   local.entryGuides = [
     "flow://guide/start",
-    "flow://guide/start-rules",
+    "flow://guide/start/rules",
     "flow://guide/authoring",
     "flow://guide/samples",
     "flow://guide/frontend-svelte",
-    "flow://guide/frontend-svelte-routing",
+    "flow://guide/frontend-svelte/routing",
     "flow://guide/fullstack-paperboard",
     "flow://guide/portable-blocks",
   ]

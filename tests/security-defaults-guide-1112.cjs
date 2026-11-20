@@ -9,10 +9,10 @@ const path = require('node:path');
 const guideFamily = require('./support/guide-family.cjs');
 
 const guide = name => guideFamily(path.join(__dirname, '..'), name).replace(/\s+/g, ' ');
-const policy = guide('entities-policy');
-const access = guide('multipage-entities-access');
+const policy = guide('entities/policy');
+const access = guide('multipage-entities/access');
 const pages = guide('multipage-entities');
-const data = guide('authoring-data');
+const data = guide('authoring/data');
 let checks = 0;
 function check(condition, message) { checks++; assert.ok(condition, message); }
 

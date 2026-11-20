@@ -424,14 +424,18 @@ with its one-line summary; `resources/read` returns every resource whole:
 - `flow://guide/portable-blocks`
 - `flow://guide/fullstack-paperboard`
 - `flow://guide/frontend-svelte`
-- `flow://guide/frontend-svelte-routing`
+- `flow://guide/frontend-svelte/routing`
 - `flow://guide/fullsync`
 - `flow://guide/tracing`
 - `flow://guide/crud`
 
-Every guide stays under 16 000 characters, the size every agent client shows whole: a longer one is an entry guide plus sub-guides named
-`<guide>-<topic>` (for example `flow://guide/frontend-svelte-forms`), listed
-in the entry guide with the topic they cover. Each `resources/list`
+Every guide stays under 16 000 characters, the size every agent client shows whole: a longer one is an entry guide plus
+children. A guide is its path, `_flow/resources/guide/<family>/<topic>.md` read as `flow://guide/<family>/<topic>` (one
+name form since 20/11; a former `<family>-<topic>` name is still read by alias). The MCP derives the navigation from the
+guide files when it serves a guide (`resources/read`, relayed by `flow-resource-get`), so nothing is written by hand
+and nothing goes stale: the prerequisite of a child (its parent), the children of a guide with their own children, the
+two-level tree in `start`, and the palette blocks and components its examples use. `tests/guide-tree-1120.js` checks the
+convention (no orphan, one name form, a description line) and the rendering. Each `resources/list`
 description ends with the guide size in KB, computed from its bytes; guide
 tables write it after the URI, kept current by `node tools/guide-sizes.cjs --write`
 and checked by `tests/guide-split-coverage.cjs`, which also proves that the

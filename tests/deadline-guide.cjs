@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..'),guides=path.join(root,'_flow/resources/g
 const read=name=>fs.readFileSync(path.join(guides,name+'.md'),'utf8');
 const load=name=>vm.runInNewContext(fs.readFileSync(path.join(root,'../lib_flow_entity/_flow/lib',name+'.js'),'utf8'));
 const format=load('entity-format'),model=load('entity-model'),traits=load('entity-traits');
-const doc=read('entities-widgets/deadlines');
+const doc=read('entities/widgets/deadlines');
 const example=()=>JSON.parse(doc.match(/<!-- example: deadline-model -->\s*```json\n([\s\S]*?)```/)[1]);
 test('the documented deadline model passes authoring and runtime model resolution',()=>{
  const definition=example(),issues=format.check(definition,traits);
@@ -25,10 +25,11 @@ test('the recipe cannot introduce restricted reference dates or silent business-
  assert(format.check(definition,traits).some(d=>d.path.endsWith('.delay.businessDays')));
 });
 test('deadline guidance is reachable and respects summary and drawer character budgets',()=>{
- for(const entry of ['entities','entities-widgets','entities-model'])assert(read(entry).length<6000,entry);
- for(const drawer of ['entities-widgets/deadlines','entities-widgets/table','entities-model/format'])assert(read(drawer).length<12000,drawer);
- assert.match(read('entities-widgets'),/flow:\/\/guide\/entities-widgets\/deadlines/);
- assert.match(read('entities-widgets/table'),/flow:\/\/guide\/entities-widgets\/deadlines/);
+ for(const entry of ['entities','entities/widgets','entities/model'])assert(read(entry).length<6000,entry);
+ for(const drawer of ['entities/widgets/deadlines','entities/widgets/table','entities/model/format'])assert(read(drawer).length<12000,drawer);
+ // the parent lists its children when it is served (mcp.js guideNavigation, tests/guide-tree-1120.js): the child is a file of its folder
+ assert.ok(fs.existsSync(path.join(__dirname,'../_flow/resources/guide/entities/widgets/deadlines.md')),'entities/widgets serves its deadlines child');
+ assert.match(read('entities/widgets/table'),/flow:\/\/guide\/entities\/widgets\/deadlines/);
  assert.match(doc,/pas une nouvelle API/);
 });
 

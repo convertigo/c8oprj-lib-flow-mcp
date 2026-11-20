@@ -27,7 +27,7 @@ Read for the ordered backend and frontend implementation path.
    A distinct business step is a Page. Keep only one Page or mutually exclusive
    surface active; never expose an empty downstream list or detail before its
    required selection. For dynamic segments, layouts or route groups, read
-   `flow://guide/frontend-svelte-routing`.
+   `flow://guide/frontend-svelte/routing`.
    Before multiplying CRUD Pages, write the smallest domain contract that can
    answer the primary user intent: entities, stable ids, relationships,
    required fields, create/update rules and deletion semantics. Model one user
@@ -45,7 +45,7 @@ Read for the ordered backend and frontend implementation path.
 5. When a backend domain block is missing, create a typed project-local mock
    with `flow-block-mock`. The mock must keep the parent Flow executable and
    must remain visible in `flow-block-mock-list`.
-6. For entity-backed pages, read `flow://guide/entities-widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout
+6. For entity-backed pages, read `flow://guide/entities/widgets` before choosing blocks: use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` or `EntityBreakdown` where their contracts fit; use generic blocks for unsupported views. Build the first frontend paperboard from palette blocks. Use real layout
    blocks and visible placeholders:
    - `AppShell` in the root Layout (navigation, user, `PageContent`), or
      `PageShell` for a single Page;
@@ -60,7 +60,7 @@ Read for the ordered backend and frontend implementation path.
      static link. `OnMount` runs when the page mounts; `OnAfterNavigate` after
      each navigation, to load what depends on the address
      (`@event.to.params.id`). Put `GoBack` below a visible Button event action
-     chain, and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte-actions`).
+     chain, and load the state of a page on every mount (a plain `OnMount`): `once` is only for work whose result lives outside the page (`flow://guide/frontend-svelte/actions`).
    Keep the default theme and adjust its tokens in `theme.flow.css`; use the
    application CSS source plus explicit `class` values only for gradients,
    illustrations and one-off rules. Do not expand every UI block into a CSS
@@ -72,7 +72,7 @@ Read for the ordered backend and frontend implementation path.
    the pattern to sibling entities. If the shell, form, card or relation picker
    repeats, turn the proven pattern into an application component with typed
    inputs (`_flow.props`, `@props.<name>`; see "Components And Inputs" in
-   `flow://guide/frontend-svelte-components`) instead of duplicating markup and action
+   `flow://guide/frontend-svelte/components`) instead of duplicating markup and action
    chains. Remove obsolete demo Flows once the
    real command replaces them so agents cannot choose between parallel data
    paths with different validation rules.
@@ -81,7 +81,7 @@ Read for the ordered backend and frontend implementation path.
    poll: Vite and the Studio viewer open automatically when setup completes.
    Run `dev.sync` once after the final repair to regenerate the completed
    source. Use `dev.open` only to reveal an already running viewer.
-9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start-rules`).
+9. Replace mocks one by one with real FlowScript or small Rhino primitives, before delivery (`flow://guide/start/rules`).
     Keep orchestration visible in FlowScript; Rhino is only for unavoidable
     low-level parsing or JVM bridges.
 10. Prove the POC with a short check:

@@ -10,6 +10,7 @@ System.setProperty("java.awt.headless", "true");
 var FileUtils = Packages.org.apache.commons.io.FileUtils;
 var projectDir = new File(arguments.length > 0 ? arguments[0] : ".").getCanonicalFile();
 var engineDir = new File(arguments.length > 1 ? arguments[1] : new File(projectDir.getParentFile(), "lib_flow_engine/_flow").getPath()).getCanonicalFile();
+load(new File(projectDir, "tests/support/guide-navigation.js"));
 var checks = 0;
 function assert(value, message) { checks++; if (!value) throw new Error(message); }
 function json(value) { return JSON.stringify(value); }
@@ -235,17 +236,18 @@ try {
 	var edited = String(FileUtils.readFileToString(guideFile, "UTF-8")) + "\nOne more line for the test.\n";
 	FileUtils.writeStringToFile(guideFile, edited, "UTF-8");
 	var guideEdited = read(502, "flow://guide/start");
-	assert(guideEdited.response.result.contents[0].text === edited, "an edited guide was answered from the store");
+	// the served guide carries the navigation derived from the guide files (mcp.js guideNavigation)
+	assert(sameGuideText(guideEdited.response.result.contents[0].text, edited) && /One more line for the test\./.test(guideEdited.response.result.contents[0].text), "an edited guide was answered from the store");
 	var skill = read(503, "flow://skills/convertigo-flow-mcp/SKILL");
 	assert(/convertigo-flow-mcp/.test(skill.response.result.contents[0].text) && read(504, "flow://skills/convertigo-flow-mcp/SKILL").response.id === 504,
 		"the skill was not read");
 	var viaTool = call(505, "flow-resource-get", { uri: "flow://guide/start" });
-	assert(viaTool.response.id === 505 && viaTool.response.result.structuredContent.text === edited, "flow-resource-get lost the guide");
+	assert(viaTool.response.id === 505 && sameGuideText(viaTool.response.result.structuredContent.text, edited), "flow-resource-get lost the guide");
 	assert(/Resource text is in text/.test(viaTool.response.result.structuredContent.content), "cached guide has no duplicate alias");
  var plainGuide = call(509, "flow-resource-get", {uri:"flow://guide/start", format:"text"});
- assert(!plainGuide.response.result.structuredContent && plainGuide.response.result.content[0].text === edited,
+ assert(!plainGuide.response.result.structuredContent && sameGuideText(plainGuide.response.result.content[0].text, edited),
   "text format must not reuse the structured presentation");
- assert(call(510, "flow-resource-get", {uri:"flow://guide/start"}).response.result.structuredContent.text === edited,
+ assert(sameGuideText(call(510, "flow-resource-get", {uri:"flow://guide/start"}).response.result.structuredContent.text, edited),
   "text format must not mutate the cached document");
  var unknown = read(506, "flow://guide/missing-guide");
 	assert(unknown.response.error && unknown.response.id === 506 && read(507, "flow://guide/missing-guide").response.error, "an unknown guide was answered");

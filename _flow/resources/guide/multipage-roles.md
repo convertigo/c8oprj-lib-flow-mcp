@@ -15,12 +15,4 @@ for direct SQL: a user sees their own bookings; a manager sees every booking
 and the journal. Its demonstration
 sign-in is disabled by default.
 
-
 Use this route only when there is no persisted business data or the user explicitly asks for direct SQL. Enforce role and row scope on the server for every read and write; client-supplied roles are not evidence. A job has no session. Prove user and manager paths, a foreign row and logout before delivery.
-
-## Drawers
-
-- `flow://guide/multipage-roles/data` — open for contracts, SQL data and session setup.
-- `flow://guide/multipage-roles/policy` — open for server access and row scope.
-- `flow://guide/multipage-roles/pages` — open for distinct pages and scoped CSV export.
-- `flow://guide/multipage-roles/proof` — open for jobs, tracing and acceptance proof.

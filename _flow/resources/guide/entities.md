@@ -47,7 +47,7 @@ pass `nextOffset` as `offset` to fetch another page.
 To use this path, reference `lib_flow_entity`, `lib_flow_sql` and `lib_flow_crud_data`,
 configure one SQL connection, then check/set the model with the revision from
 `flow-entity-model-get`. Set `config.entities.actorProvider` to your server-session
-actor block (**Authentication** in `flow://guide/entities-auth`); without it, nobody gets the MANAGER scope.
+actor block (**Authentication** in `flow://guide/entities/auth`); without it, nobody gets the MANAGER scope.
 The schema is ensured on first authorized use. No hand-written schema, migration
 or CRUD generation is needed. The remaining sections explain HTTP adaptation,
 write permissions and setup; `flow://guide/multipage-entities` orders the full recipe.
@@ -60,21 +60,10 @@ palette by intent: **liste** or **formulaire**, then inspect the installed contr
 Set the model with `gateway: true` for these components. Open only the required
 operations in `app.entityAccess`; enforce business invariants in private model
 hooks, shared by the gateway and checked facades. A component cannot grant access.
-See `flow://guide/entities-widgets` for actions, slots, refresh and route recipes.
+See `flow://guide/entities/widgets` for actions, slots, refresh and route recipes.
 Prefer `code-patch` with the returned revision on existing pages and group reads.
 For browser inputs use `frontend-svelte-action` field help before retrying typing.
 Count with `entity.count` (one SQL COUNT, same policy), never `rows.length` of a
 listed page; a dashboard figure is an `EntityStat` (search **compteur**).
 
 For an imposed HTTP contract, keep entities and put the translation in public Flows; read `flow://guide/entities/http`.
-
-## Drawers
-
-- `flow://guide/entities/http` — open for imposed HTTP names, response keys and error mapping.
-- `flow://guide/entities-policy` — open to write server roles, scope, ownership or inactive-row rules.
-- `flow://guide/entities-model` — open to declare the model, page through results or initialize schema.
-- `flow://guide/entities-auth` — open for sign-in, session and the actor provider.
-- `flow://guide/entities-widgets` — open before an entity-backed page; it names the exact widget drawers.
-- `flow://guide/entities-actions` — open for atomic business actions and backend preview limits.
-
-- `flow://guide/entities/jobs` — open for private reminder jobs, replay and a shared manual action.

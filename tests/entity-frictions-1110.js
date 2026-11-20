@@ -38,8 +38,8 @@ try {
  });
 } finally {FU.deleteDirectory(workspace);}
 // 1 bis. The guides an agent reads before writing a list.
-var entities=guide('entities'),policy=guide('entities-policy'),model=guide('entities-model');
-[['entities',entities],['entities-policy',policy]].forEach(function(pair){var g=pair[1];
+var entities=guide('entities'),policy=guide('entities/policy'),model=guide('entities/model');
+[['entities',entities],['entities/policy',policy]].forEach(function(pair){var g=pair[1];
  check(/options\.active/.test(g)&&/"active"[^.]*default/.test(g)&&/"inactive"/.test(g)&&/"all"/.test(g)&&/ENTITY_ACTIVE_INVALID/.test(g),pair[0]+' guide names the values of options.active',null);
 });
 check(/input\.request\.payload\.options\.active/.test(policy)&&/scope that fixes the active field/.test(policy)&&/filter on the active field[\s\S]{0,90}?reads as `options\.active: "all"`/.test(policy),'entities-policy says the policy decides options.active and a filter on the active field reads as all',null);

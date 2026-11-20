@@ -155,4 +155,4 @@ Same meaning as JavaScript, with the value rules of the FlowScript expression ev
   60 s unless `flow.while` sets other bounds; a counted `for` gets the largest bound (1000000 passes, 60 s).
 <!-- /generated -->
 
-Continue with `flow://guide/authoring-collections` for the remaining recipes.
+Continue with `flow://guide/authoring/collections` for the remaining recipes.

@@ -21,12 +21,4 @@ your own work then goes to the business rules the model cannot express.
 Do not use it for an application without tables of records (an API relay, a
 FullSync application, a calculator): follow `flow://guide/start` instead.
 
-
 Generated files belong to the model: change the spec and apply again, never patch generated sources. Preview with `dryRun:true`, then apply the same spec and `planHash`; prove the result. For persisted business data with roles, prefer interpreted entities unless generation was explicitly requested.
-
-## Drawers
-
-- `flow://guide/crud/model` — open to write the generated CRUD specification.
-- `flow://guide/crud/lifecycle` — open for preview, apply, proof and evolution.
-- `flow://guide/crud-business` — open for owned business Flows and page extensions.
-- `flow://guide/crud-modes` — open for generation modes.

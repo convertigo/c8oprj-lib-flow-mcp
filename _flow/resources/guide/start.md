@@ -1,6 +1,6 @@
 # Flow MCP Start
 
-Start here: which guide to read next, the source contract in five rules and the default backend loop; project rules are in `flow://guide/start-rules`.
+Start here: which guide to read next, the source contract in five rules and the default backend loop; project rules are in `flow://guide/start/rules`.
 
 For browser verification, `browser_wait_for.time` is in **seconds**, at most 30: use `2`, never `2000`.
 
@@ -12,18 +12,18 @@ Direct SQL and generated CRUD require one.
 
 | Task | Read |
 | --- | --- |
-| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring`; collections and loops: `flow://guide/authoring-collections` |
+| Backend FlowScript syntax, run, promote, schemas | `flow://guide/authoring`; collections and loops: `flow://guide/authoring/collections` |
 | Unclear syntax: two real samples | `flow://guide/samples` |
 | Project blocks, block contract, defaults, icons | `flow://guide/custom-blocks` |
 | One pure block for backend and frontend | `flow://guide/portable-blocks` |
-| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`. Read `flow://guide/entities-widgets` before writing pages; `flow://guide/entities-widgets/stat` covers dashboards; `flow://guide/entities-widgets/view` covers records. |
+| Any persisted business data with roles: add the `lib_flow_entity` project reference | `flow://guide/entities`, then `flow://guide/multipage-entities`. Read `flow://guide/entities/widgets` before writing pages; `flow://guide/entities/widgets/stat` covers dashboards; `flow://guide/entities/widgets/view` covers records. |
 | Backend plus Svelte application, parallel build | `flow://guide/fullstack-paperboard/contract`, then `flow://guide/fullstack-paperboard/path` |
 | No persisted business data, or an explicit request for direct SQL | `flow://guide/multipage-roles/data` |
 | Svelte-only frontend | `flow://guide/frontend-svelte/loop` |
-| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte-routing` |
+| Dynamic segments, layouts, route groups | `flow://guide/frontend-svelte/routing` |
 | FullSync server DBOs and client actions | `flow://guide/fullsync` |
 | Locate and patch existing code | `flow://guide/search-and-edit` |
-| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start-rules/tools`; secrets/config: `flow://guide/start-rules/design`; Save: `flow://guide/start-rules/workspace` |
+| Tool hygiene, design rules (CORS, secrets, config), drafts and Save, project layout, demo login, switches, friction reports | `flow://guide/start/rules/tools`; secrets/config: `flow://guide/start/rules/design`; Save: `flow://guide/start/rules/workspace` |
 
 An imposed HTTP contract (Flow names, error codes, JSON keys) keeps
 entities: see Your own HTTP contract over entities in `flow://guide/entities`.
@@ -75,8 +75,3 @@ Accounts, sign-in and roles: reference `lib_UserManager` and read
    are private `sample_*` Flows.
 6. Use `flow-requestable-list` / `flow-requestable-schema` only when a legacy
    sequence or transaction shape is needed.
-
-## Drawers
-
-- `flow://guide/start/syntax` — open for JavaScript to FlowScript conversions.
-- `flow://guide/start-rules` — open for tool hygiene, config, drafts and project layout.

@@ -16,8 +16,8 @@ const alternative = guide('multipage-roles');
 const bootstrap = read('_flow/blocks/project/bootstrap.block.js');
 const tools = read('_flow/blocks/mcp/tools/available.block.js');
 
-assert.match(start, /\| Any persisted business data with roles: add the `lib_flow_entity` project reference \| `flow:\/\/guide\/entities`, then `flow:\/\/guide\/multipage-entities`\. Read `flow:\/\/guide\/entities-widgets` before writing pages;/);
-assert.match(guideFamily(root, 'start-rules'), /## Authentication and add-ons/);
+assert.match(start, /\| Any persisted business data with roles: add the `lib_flow_entity` project reference \| `flow:\/\/guide\/entities`, then `flow:\/\/guide\/multipage-entities`\. Read `flow:\/\/guide\/entities\/widgets` before writing pages;/);
+assert.match(guideFamily(root, 'start/rules'), /## Authentication and add-ons/);
 for (const anchor of ['authentication', 'demo-login', 'export-csv', 'scheduled-jobs', 'audit']) {
   const resource = anchor === 'authentication' ? 'entities' : 'multipage-entities';
   assert.ok(start.includes('flow://guide/' + resource), anchor + ' stays independent of direct SQL');

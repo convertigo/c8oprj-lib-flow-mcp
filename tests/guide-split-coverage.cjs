@@ -20,12 +20,12 @@ for (const rewrite of rewrites.filter(item => item.currentOnly)) {
   // remains checked; semantic rewrites must still be present verbatim.
   const uri = /flow:\/\/guide\/[A-Za-z0-9-]+/.exec(next);
   assert.ok(/\d+\.\d KB/.test(next) ? uri && (current.includes(uri[0]) ||
-    uri[0] === 'flow://guide/multipage-entities-pages' && current.includes('flow://guide/multipage-entities/pages')) : current.includes(next),
+    uri[0] === 'flow://guide/multipage-entities/pages' && current.includes('flow://guide/multipage-entities/pages')) : current.includes(next),
     `${rewrite.file}: current-only rewrite missing from its served family`);
 }
 const { stale, guides, LIMIT } = require(path.join(root, 'tools/guide-sizes.cjs'));
 
-const authoringData = fs.readFileSync(path.join(guideDir, 'authoring-data.md'), 'utf8');
+const authoringData = fs.readFileSync(path.join(guideDir, 'authoring/data.md'), 'utf8');
 assert.match(authoringData, /physical line numbers/i, 'authoring data explains physical line numbering');
 assert.match(authoringData, /text\.split\(\{[^\n]*removeEmpty: false[^\n]*\}\)/,
   'the split example retains blank lines before numbering');
@@ -34,18 +34,22 @@ assert.match(authoringData, /top-level `throw\.line`/, 'the physical line is a t
 assert.match(authoringData, /filter only after numbering/i, 'filtering cannot discard the original line index');
 
 // A CallSequence naming the page project in full stores its result under that name, not under @.Sequence.
-const frontendData = fs.readFileSync(path.join(guideDir, 'frontend-svelte-data.md'), 'utf8').replace(/\s+/g, ' ');
+const frontendData = fs.readFileSync(path.join(guideDir, 'frontend-svelte/data.md'), 'utf8').replace(/\s+/g, ' ');
 assert.match(frontendData, /`requestable="App\.Sequence"` is read `@App\.Sequence`, not `@\.Sequence`/,
   'the data guide tells how a result of a call naming the page project is read');
 
+const renames = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/guide-renames-20261120.json'), 'utf8'));
+const renamePattern = new RegExp('(flow://guides?/)(' + Object.keys(renames).sort((a, b) => b.length - a.length)
+  .map(name => name.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&')).join('|') + ')(?![\\w/-])', 'g');
+
 const families = {
-  'frontend-svelte': { entryMax: 8000, subs: ['sources', 'layout', 'data', 'forms', 'datatable', 'actions', 'themes', 'components', 'proof'].map(s => 'frontend-svelte-' + s) },
-  start: { entryMax: 6000, subs: ['start-rules'] },
-  authoring: { entryMax: LIMIT, subs: ['authoring-collections', 'authoring-data', 'authoring-source', 'authoring-blocks'] },
-  entities: { entryMax: LIMIT, subs: ['entities-policy', 'entities-model', 'entities-auth', 'entities-widgets', 'entities-actions'] },
-  crud: { entryMax: LIMIT, subs: ['crud-modes', 'crud-business'] },
-  'fullstack-paperboard': { entryMax: LIMIT, subs: ['fullstack-paperboard-parallel'] },
-  'multipage-entities': { entryMax: LIMIT, subs: ['multipage-entities-access', 'multipage-entities-pages'] },
+  'frontend-svelte': { entryMax: 8000, subs: ['sources', 'layout', 'data', 'forms', 'datatable', 'actions', 'themes', 'components', 'proof'].map(s => 'frontend-svelte/' + s) },
+  start: { entryMax: 6000, subs: ['start/rules'] },
+  authoring: { entryMax: LIMIT, subs: ['authoring/collections', 'authoring/data', 'authoring/source', 'authoring/blocks'] },
+  entities: { entryMax: LIMIT, subs: ['entities/policy', 'entities/model', 'entities/auth', 'entities/widgets', 'entities/actions'] },
+  crud: { entryMax: LIMIT, subs: ['crud/modes', 'crud/business'] },
+  'fullstack-paperboard': { entryMax: LIMIT, subs: ['fullstack-paperboard/parallel'] },
+  'multipage-entities': { entryMax: LIMIT, subs: ['multipage-entities/access', 'multipage-entities/pages'] },
 };
 
 const read = file => fs.readFileSync(file, 'utf8');
@@ -82,8 +86,9 @@ for (const [entry, family] of Object.entries(families)) {
   // The entry keeps the title and names each sub-guide with its size; each sub-guide points back to the entry.
   assert.equal(entryText.split('\n')[0], original.split('\n')[0], entry + ' keeps its title');
   for (const sub of family.subs) {
-    assert.ok(entryText.includes('`flow://guide/' + sub + '`') ||
-      sub === 'multipage-entities-pages' && entryText.includes('`flow://guide/multipage-entities/pages`'),
+    // a child is listed when its parent is served (mcp.js guideNavigation, tests/guide-tree-1120.js)
+    assert.ok(entryText.includes('`flow://guide/' + sub + '`') || sub.startsWith(entry + '/') && fs.existsSync(path.join(guideDir, sub + '.md')) ||
+      sub === 'multipage-entities/pages' && entryText.includes('`flow://guide/multipage-entities/pages`'),
       `${entry} must link ${sub}`);
   }
 
@@ -92,19 +97,21 @@ for (const [entry, family] of Object.entries(families)) {
   for (const heading of headings(original)) assert.ok(now.has(heading) ||
     v3Rewrites.some(item => item.family === entry && item.heading === heading && now.has(item.newHeading)) ||
     entry === 'crud' && heading === 'Add business logic' &&
-    read(path.join(guideDir, 'crud-business/flows.md')).includes('### Business actions in a transaction'),
+    read(path.join(guideDir, 'crud/business/flows.md')).includes('### Business actions in a transaction'),
     `${entry}: section "${heading}" was lost`);
 
   // Paragraphs: every former paragraph (title and one-line description excepted) is served whole by the family.
-  let previous = normalize(original);
+  // The guides take one name form on 20/11 (tools/gen-guide-tree.cjs): the former addresses of the reference read as today.
+  const renamed = text => text.replace(renamePattern, (all, scheme, name) => scheme + renames[name]);
+  let previous = normalize(renamed(original));
   for (const rewrite of rewrites.filter(item => item.family === entry && !item.currentOnly)) {
-    const old = normalize(rewrite.old);
+    const old = normalize(renamed(rewrite.old));
     assert.ok(previous.includes(old), `${entry}: rewrite source not found: ${rewrite.old}`);
     previous = previous.split(old).join(normalize(rewrite.new));
   }
   const union = normalize(texts.join('\n\n'));
   const lines = original.split('\n');
-  const paragraphs = original.split(/\n[ \t]*\n/).map(normalize).filter(Boolean)
+  const paragraphs = renamed(original).split(/\n[ \t]*\n/).map(normalize).filter(Boolean)
     .filter(text => text !== normalize(lines[0]) && text !== normalize(lines[2]) && !/^#{2,3} /.test(text));
   for (let paragraph of paragraphs) {
     if (paragraph.startsWith('| Task |')) {
@@ -113,7 +120,7 @@ for (const [entry, family] of Object.entries(families)) {
       continue;
     }
     if (entry === 'start' && paragraph.startsWith('- Session and actor provider:')) {
-      for (const uri of ['flow://guide/entities-auth', 'flow://guide/multipage-entities-access',
+      for (const uri of ['flow://guide/entities/auth', 'flow://guide/multipage-entities/access',
         'flow://guide/multipage-entities/pages', 'flow://guide/multipage-entities/operations'])
         assert.ok(union.includes(uri), `start: add-on destination lost ${uri}`);
       continue;
@@ -124,7 +131,7 @@ for (const [entry, family] of Object.entries(families)) {
       continue;
     }
     if (entry === 'frontend-svelte' && paragraph.startsWith('```text subagent-run({ profile:"verifier"')) {
-      const proof = read(path.join(guideDir, 'frontend-svelte-proof.md'));
+      const proof = read(path.join(guideDir, 'frontend-svelte/proof.md'));
       for (const phrase of ['subagent-run({ profile:"verifier"', 'Accessible heading Prêts',
         'Borrow action only for the member', 'Loan limit refusal is visible', 'subagent-run({ runId })'])
         assert.ok(proof.includes(phrase), `frontend-svelte: loan verifier rewrite lost "${phrase}"`);
@@ -140,7 +147,7 @@ for (const [entry, family] of Object.entries(families)) {
       checkedParagraphs++;
       continue;
     }
-    const v3 = v3Rewrites.find(item => item.family === entry && item.oldStart && paragraph.startsWith(normalize(item.oldStart)));
+    const v3 = v3Rewrites.find(item => item.family === entry && item.oldStart && paragraph.startsWith(normalize(renamed(item.oldStart))));
     if (v3) {
       for (const phrase of v3.keep) assert.ok(union.includes(normalize(phrase)), `${entry}: v3 rewrite lost "${phrase}"`);
       checkedParagraphs++;
@@ -157,7 +164,7 @@ for (const [entry, family] of Object.entries(families)) {
       continue;
     }
     for (const rewrite of rewrites.filter(item => item.family === entry && !item.currentOnly)) {
-      paragraph = paragraph.split(normalize(rewrite.old)).join(normalize(rewrite.new));
+      paragraph = paragraph.split(normalize(renamed(rewrite.old))).join(normalize(rewrite.new));
     }
     assert.ok(union.includes(paragraph), `${entry}: paragraph lost or changed:\n${paragraph.slice(0, 300)}`);
     checkedParagraphs++;

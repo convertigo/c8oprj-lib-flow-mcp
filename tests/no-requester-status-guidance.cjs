@@ -18,9 +18,9 @@ for (const file of files) {
   assert.doesNotMatch(body, /(?:HTTP status is its `status`|error\.status|code\/status reach|code\/status in catch|HTTP [45]\d\d and .*error)/i, file);
   assert.doesNotMatch(body, /\b[A-Z][A-Z0-9_]+ \/ [45]\d\d\b/, file);
 }
-const authoring = fs.readFileSync(path.join(guideDir, 'authoring-data.md'), 'utf8');
+const authoring = fs.readFileSync(path.join(guideDir, 'authoring/data.md'), 'utf8');
 const backend = fs.readFileSync(path.join(skillDir, 'convertigo-flow-backend/SKILL.md'), 'utf8');
-for (const [name, body] of [['authoring-data', authoring], ['backend skill', backend]]) {
+for (const [name, body] of [['authoring/data', authoring], ['backend skill', backend]]) {
   assert.match(body, /requester \(\.json, SDK, frontbuilder\)[\s\S]{0,100}200 and the `error` envelope; do not set `status`/i, name);
 }
 console.log('no-requester-status-guidance OK');

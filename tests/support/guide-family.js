@@ -16,5 +16,7 @@ function guideFamily(root, name) {
     if (folder.isDirectory() && (folderName === name || folderName.indexOf(name + '-') === 0))
       walk(folder, folderName + '/');
   });
+  // A nested guide (entities/model, start/rules) also serves its own folder of children.
+  if (name.indexOf('/') >= 0) walk(new File(dir, name), name + '/');
   return names.map(function (file) { return String(FU.readFileToString(new File(dir, file), 'UTF-8')); }).join('\n\n').replace(/ \(\d+\.\d KB\)/g, '');
 }

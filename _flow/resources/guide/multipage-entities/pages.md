@@ -2,6 +2,8 @@
 
 Read to build pages with ordinary events and entity widgets.
 
+Use `EntityTable` for lists and `EntityForm` for create/edit through the local EntityGateway. Put New in the table Toolbar under `context.permissions.create`; refresh the list after save or delete. Server policy applies to every query. A scheduled job has no browser session and must use a private, bounded Flow with its own trusted data access.
+
 ## 3. Build pages with ordinary events
 
 Use `BookingApp` below as the target project name (adapt it to your project).
@@ -18,7 +20,7 @@ Make those Pages in three passes: first minimal skeletons with final
 `_flow.page.id` values and visible placeholders, then links to the existing
 Pages, then guarded widgets, forms and data. Validate each pass. For
 account/password sign-in, use the exact `Form` with `<Children>`, bound
-`Input` States and adjacent `Status` in `flow://guide/frontend-svelte-forms`.
+`Input` States and adjacent `Status` in `flow://guide/frontend-svelte/forms`.
 
 <!-- example: session-layout -->
 ```svelte
@@ -117,13 +119,12 @@ custom cell, preserve the generic lexical snippet arguments described in
 ## Dashboard and list
 
 For a CRM with Company, Contact and Deal, use the complete **Dashboard and list**
-recipe in `flow://guide/entities-widgets/table`: AppShell sidebar with icon
+recipe in `flow://guide/entities/widgets/table`: AppShell sidebar with icon
 links, four EntityStat cards, summed EntityBreakdown bars, a recent compact
 EntityTable and company cells with a secondary domain, related contacts counts
 and filtered pipeline sums. Keep the same session, create capability guards,
 record routes and refreshKey wiring as the pages here. Read that drawer before
 writing the dashboard or list; it includes the model gateway allowlists.
-
 
 Dashboard and list page structures, after declaring the CRM model and routes
 of that recipe (place each in the shared AppShell's Children):

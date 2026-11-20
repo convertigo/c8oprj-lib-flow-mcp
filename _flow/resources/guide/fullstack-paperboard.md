@@ -15,7 +15,7 @@ or an explicit user request for direct SQL.
 
 The default goal is a runnable POC: one backend pass, one frontend application
 pass, build, and one useful browser path. One application pass may contain
-several Page sources. Keep each repair on a failed path (`flow://guide/frontend-svelte-proof`).
+several Page sources. Keep each repair on a failed path (`flow://guide/frontend-svelte/proof`).
 Allow one verifier run and at most two reruns after focused repairs, on failed
 paths only; collecting the same `runId` is not a rerun. Report checks left
 undone when that limit is reached. Exhaustive
@@ -69,10 +69,3 @@ must be fixed before progress can reach 100%. Execute
 missing binding, execute its `inspect` call and select a returned schema-backed
 candidate. Bindable descendants of a data-bound `ForEach` require an explicit
 source, including a structured literal for intentionally static content.
-
-
-## Drawers
-
-- `flow://guide/fullstack-paperboard/path` — open for the ordered backend and frontend build path.
-- `flow://guide/fullstack-paperboard/contract` — open to agree the paperboard contract, progress and done criteria.
-- `flow://guide/fullstack-paperboard-parallel` — open when backend and frontend specialists work in parallel.

@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const guide = fs.readFileSync(path.join(__dirname, '../_flow/resources/guide/frontend-svelte-actions.md'), 'utf8')
+const guide = fs.readFileSync(path.join(__dirname, '../_flow/resources/guide/frontend-svelte/actions.md'), 'utf8')
   .replace(/\s+/g, ' ');
 let checks = 0;
 function check(condition, message) { checks++; assert.ok(condition, message); }

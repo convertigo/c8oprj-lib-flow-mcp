@@ -30,7 +30,7 @@ const env = {
   isRuntimeHandle: () => false, sanitizeRuntimeValue: plain,
 };
 const fences = {};
-for (const name of ['jobs', 'jobs-runner']) {
+for (const name of ['jobs', 'jobs/runner']) {
   const guide = read(path.join(__dirname, '../_flow/resources/guide/entities', name + '.md'));
   for (const m of guide.matchAll(/<!-- example: ([\w-]+) -->\s*```(\w+)\n([\s\S]*?)```/g)) fences[m[1]] = {language: m[2], code: m[3]};
 }
@@ -246,7 +246,7 @@ test('changed guide envelopes stay within summary/drawer budgets through the MCP
   const Packages = {java: {io: {}, nio: {file: {}, charset: {}},
     lang: {CharSequence: class {}, System: {getProperty: () => null}}, util: {concurrent: {ConcurrentHashMap: Map}}}};
   const mcp = vm.runInNewContext(read(path.join(__dirname, '../_flow/lib/mcp.js')), {Packages});
-  const names = ['entities', 'entities/jobs', 'entities/jobs-runner', 'crud-business/jobs', 'multipage-entities/operations'];
+  const names = ['entities', 'entities/jobs', 'entities/jobs/runner', 'crud/business/jobs', 'multipage-entities/operations'];
   for (const name of names) {
     const text = read(path.join(__dirname, '../_flow/resources/guide', name + '.md'));
     assert.match(text, /^# [^\n]+\n\n[^\n]{40,}\.\n/);
@@ -265,7 +265,7 @@ test('changed guide envelopes stay within summary/drawer budgets through the MCP
 });
 
 test('runner uses the advertised scheduler contract and creates a disabled job',()=>{
-  const text=read(path.join(__dirname,'../_flow/resources/guide/entities/jobs-runner.md'));
+  const text=read(path.join(__dirname,'../_flow/resources/guide/entities/jobs/runner.md'));
   assert(!text.includes('dryRun'));
   assert(text.includes('flow://guide/entities/jobs'));
   assert(text.includes('scheduler-list')&&text.includes('enabled:false'));

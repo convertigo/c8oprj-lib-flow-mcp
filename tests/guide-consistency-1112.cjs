@@ -9,7 +9,7 @@ const guideFamily = require('./support/guide-family.cjs');
 
 const resources = path.join(__dirname, '../_flow/resources');
 const read = file => file.startsWith('guide/') && file.endsWith('.md')
-  ? guideFamily(path.join(__dirname, '..'), path.basename(file, '.md')).replace(/\s+/g, ' ')
+  ? guideFamily(path.join(__dirname, '..'), file.slice('guide/'.length, -'.md'.length)).replace(/\s+/g, ' ')
   : fs.readFileSync(path.join(resources, file), 'utf8').replace(/\s+/g, ' ');
 const guides = fs.readdirSync(path.join(resources, 'guide')).filter(n => n.endsWith('.md')).map(n => [n, read('guide/' + n)]);
 const skills = fs.readdirSync(path.join(resources, 'skills')).map(n => [n, read('skills/' + n + '/SKILL.md')]);
@@ -42,7 +42,7 @@ check(none(guides.concat(skills), /satisfies the request, stop and answer|proves
 check(/verify the visible behavior asked that is not observed yet/.test(read('guide/frontend-svelte.md')), 'frontend: verify before answering');
 // 10. no count of repairs ends a walk that still fails
 check(none(guides, /Stop after at most two focused repairs|the two allowed focused repair passes|allow one focused browser diagnostic instead/).length === 0, 'no repair quota');
-check(/keep each diagnostic on a failed path, and go on while a fix resolves an identified failure/i.test(read('guide/frontend-svelte-proof.md')), 'proof: go on while a fix resolves a failure');
+check(/keep each diagnostic on a failed path, and go on while a fix resolves an identified failure/i.test(read('guide/frontend-svelte/proof.md')), 'proof: go on while a fix resolves a failure');
 // 11. a run that ends ok is no acceptance
 check(!/Saved Flow passed\. Stop unless|run\/test passed\. Stop unless/.test(mcp), 'mcp: ok is no verdict');
 check(/Execution completed\. Compare the result with the expected outcome/.test(mcp), 'mcp: compare with the expected outcome');

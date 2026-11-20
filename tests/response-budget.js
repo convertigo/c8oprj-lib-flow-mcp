@@ -107,11 +107,12 @@ listed.filter(function(item) { return /^flow:\/\/guide\//.test(item.uri); }).for
   check(response.structuredContent && response.structuredContent.ok, item.uri + ': ' + JSON.stringify(response).slice(0, 300));
   record(item.uri, response);
 });
-var summaries = ['start','start-rules','entities','entities-model','entities-widgets','multipage-entities',
-  'multipage-entities-pages','frontend-svelte','authoring','crud-business','crud','fullstack-paperboard','multipage-roles'];
+var summaries = ['start','start/rules','entities','entities/model','entities/widgets','multipage-entities',
+  'frontend-svelte','authoring','crud/business','crud','fullstack-paperboard','multipage-roles'];
 summaries.forEach(function(name) {
-  var uri = 'flow://guide/' + name, item = byUri[uri];
-  check(item && item.chars < 6000, 'Summary exceeds 6000 served characters: ' + uri + ' ' + (item && item.chars));
+  // start also serves the root of the guide tree since 20/11 (mcp.js guideNavigation): 6500 for it
+  var uri = 'flow://guide/' + name, item = byUri[uri], limit = name === 'start' ? 6500 : 6000;
+  check(item && item.chars < limit, 'Summary exceeds ' + limit + ' served characters: ' + uri + ' ' + (item && item.chars));
 });
 Object.keys(byUri).filter(function(uri) { return /^flow:\/\/guide\/[^/]+\//.test(uri); }).forEach(function(uri) {
   check(byUri[uri].chars < 12000, 'Drawer exceeds 12000 served characters: ' + uri + ' ' + byUri[uri].chars);
@@ -276,14 +277,14 @@ Object.keys(pieces).forEach(function(key){var unit=JSON.parse(pieces[key].join('
 check(firstHugeSeen && hugeFragmentSeen && largeProperties.choice===oversizedContract.authoringContract.blocks[0].properties.choice &&
   largePortables.some(function(item){return item.id==='huge.portable' && item.contract.choices.length===2000;}),
   'oversized enum and portable contract are reconstructed exactly');
-['flow://guide/entities-model/format','flow://guide/authoring/expressions','flow://guide/start-rules/design',
- 'flow://guide/entities-model/schema','flow://guide/entities-widgets/table'].forEach(function(uri){
+['flow://guide/entities/model/format','flow://guide/authoring/expressions','flow://guide/start/rules/design',
+ 'flow://guide/entities/model/schema','flow://guide/entities/widgets/table'].forEach(function(uri){
   var doc=read(uri), targets=doc.match(/flow:\/\/guide\/[A-Za-z0-9_.\/-]+/g)||[];
   check(targets.length>0,uri+' must name an explicit guide destination');
   targets.forEach(function(target){check(read(target).length>0,uri+' destination '+target+' is served alone');});
 });
-check(read('flow://guide/entities-model/format').indexOf('**Unique fields** below')<0,'format guide has no local-only unique link');
-check(read('flow://guide/entities-widgets/table').indexOf('flow://guide/multipage-entities/operations')>=0,'table export points to operations');
+check(read('flow://guide/entities/model/format').indexOf('**Unique fields** below')<0,'format guide has no local-only unique link');
+check(read('flow://guide/entities/widgets/table').indexOf('flow://guide/multipage-entities/operations')>=0,'table export points to operations');
 // The dispatcher can rewrite tool names internally; continuations keep the caller's original selector.
 [{original:{name:'code-get',arguments:{project:'App',qname:'App.LongFlow',revision:'flow-r'}},internal:'flow-code-get',selector:'qname',expected:'App.LongFlow'},
  {original:{name:'code-get',arguments:{project:'App',block:'app.longBlock',revision:'flow-r'}},internal:'flow-block-code-get',selector:'block',expected:'app.longBlock'},
@@ -305,23 +306,23 @@ do {
   found = found.concat(searchResult.matches || searchResult.resources || []);
   searchCursor = searchResult.nextCursor;
   check(++searchPages<30, 'flow-resource-search drawer continuation terminates');
-} while(searchCursor && !found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }));
-check(found.some(function(item) { return item.uri === 'flow://guide/entities-widgets/table'; }),
+} while(searchCursor && !found.some(function(item) { return item.uri === 'flow://guide/entities/widgets/table'; }));
+check(found.some(function(item) { return item.uri === 'flow://guide/entities/widgets/table'; }),
   'flow-resource-search must find the table drawer: ' + JSON.stringify(list).slice(0,600));
-var widgetSummary = byUri['flow://guide/entities-widgets'].response.structuredContent.text;
+var widgetSummary = byUri['flow://guide/entities/widgets'].response.structuredContent.text;
 check(/répartition par statut/.test(widgetSummary) && /allValues=\{true\}/.test(widgetSummary), 'served widget summary selects all enum states for status dashboards');
-var deadlineGuide = read('flow://guide/entities-widgets/deadlines');
+var deadlineGuide = read('flow://guide/entities/widgets/deadlines');
 check(deadlineGuide.length < 12000 && widgetSummary.length < 6000 &&
-  widgetSummary.indexOf('flow://guide/entities-widgets/deadlines') >= 0 &&
+  widgetSummary.indexOf('flow://guide/entities/widgets/deadlines') >= 0 &&
   deadlineGuide.indexOf('orderBy="dateEcheance"') >= 0,
   'Due queues must have a short reachable drawer with the server-sorted example');
-check(read('flow://guide/entities-widgets/table').indexOf('EntityTable') >= 0,
+check(read('flow://guide/entities/widgets/table').indexOf('EntityTable') >= 0,
   'resources/read must serve nested guide paths');
 check(widgetSummary.indexOf('EntityTable') >= 0 && widgetSummary.indexOf('EntityForm') >= 0 &&
   widgetSummary.indexOf('EntityView') >= 0 && widgetSummary.indexOf('EntityStat') >= 0 &&
   widgetSummary.indexOf('EntityBreakdown') >= 0 && widgetSummary.indexOf('EntityTable') < 6000,
   'Entity widget selection must survive in the first 6000 characters');
-['flow://guide/start','flow://guide/start-rules','flow://guide/frontend-svelte'].forEach(function(uri) {
+['flow://guide/start','flow://guide/start/rules','flow://guide/frontend-svelte'].forEach(function(uri) {
   var text = byUri[uri].response.structuredContent.text;
   check(text.indexOf('browser_wait_for.time') >= 0 && text.indexOf('seconds') >= 0 &&
     text.indexOf('30') >= 0 && text.indexOf('2000') >= 0 && text.indexOf('browser_wait_for.time') < 6000,
@@ -348,8 +349,8 @@ try {
   FU.writeStringToFile(new File(project, 'c8oProject.yaml'), '↓App [core.Project]:\n  ↓entities [references.ProjectSchemaReference]:\n    projectName: lib_flow_entity\n', 'UTF-8');
   FU.writeStringToFile(new File(project, '_flow/engine.yaml'), JSON.stringify({version:1,config:{frontbuilder:{svelte:{target:'svelte5',resourceRoot:String(new File(sibling,'lib_flow_frontbuilder_svelte/_flow/frontbuilder/svelte').getCanonicalPath()),modelPath:page}}}}), 'UTF-8');
   FU.writeStringToFile(new File(project, page), source, 'UTF-8');
-  var nestedPath = call('flow-resource-get', {project:'App',projectDir:String(project.getCanonicalPath()),path:'_flow/resources/guide/entities-widgets/table.md'});
-  check(nestedPath.structuredContent && nestedPath.structuredContent.uri === 'flow://guide/entities-widgets/table',
+  var nestedPath = call('flow-resource-get', {project:'App',projectDir:String(project.getCanonicalPath()),path:'_flow/resources/guide/entities/widgets/table.md'});
+  check(nestedPath.structuredContent && nestedPath.structuredContent.uri === 'flow://guide/entities/widgets/table',
     'A nested guide path must fall back to its drawer URI: ' + JSON.stringify(nestedPath).slice(0,400));
   var response = call('code-get', {project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,kind:'source'});
   var content = response.structuredContent || {};
@@ -359,7 +360,7 @@ try {
   check(hintAt >= 0 && hintAt < 4000 && hintAt < contractAt,
     'entityPages must precede authoringContract in the first 4000 characters: ' + hintAt + '/' + contractAt);
   check(json.length < 16000, 'A small entity page code-get should fit the Vibe limit: ' + json.length);
-  var tableUri = /flow:\/\/guide\/entities-widgets\/table/.exec(content.entityPages || '');
+  var tableUri = /flow:\/\/guide\/entities\/widgets\/table/.exec(content.entityPages || '');
   check(tableUri && byUri[tableUri[0]], 'code-get entityPages must point to the existing table drawer');
   var drawer = call('flow-resource-get', {uri:tableUri[0],format:'text'});
   check(drawer.content && drawer.content[0].text.indexOf('EntityTable') >= 0 &&

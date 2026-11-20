@@ -18,5 +18,7 @@ module.exports = function guideFamily(root, name) {
     if (entry.isDirectory() && (entry.name === name || entry.name.startsWith(name + '-')))
       walk(path.join(dir, entry.name));
   }
+  // A nested guide (entities/model, start/rules) also serves its own folder of children.
+  if (name.includes('/')) walk(path.join(dir, name));
   return files.map(file => fs.readFileSync(path.join(dir, file), 'utf8')).join('\n\n').replace(/ \(\d+\.\d KB\)/g, '');
 };

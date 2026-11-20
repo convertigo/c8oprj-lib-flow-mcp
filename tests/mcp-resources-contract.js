@@ -5,6 +5,7 @@ var engineSource = String(FileUtils.readFileToString(new java.io.File(engineDir,
 var __flowEngineDir = String(new java.io.File(engineDir).getAbsolutePath());
 var __flowProjectDir = String(new java.io.File(projectDir).getAbsolutePath());
 var engine = eval(engineSource);
+load(new java.io.File(projectDir, "tests/support/guide-navigation.js"));
 var flowSource = String(FileUtils.readFileToString(
   new java.io.File(projectDir, "_flow/flows/McpServer.flow.js"), "UTF-8"));
 
@@ -74,11 +75,11 @@ guideFiles.forEach(function (file, index) {
     "resources/read failed for " + uri + ": " + JSON.stringify(response).substring(0, 300));
   var expected = readText("_flow/resources/guide/" + file);
   var text = response.result.contents[0].text;
-  assertTrue(text === expected, uri + " was not returned whole: " + text.length + " of " + expected.length + " characters");
+  assertTrue(sameGuideText(text, expected), uri + " was not returned whole: " + text.length + " of " + expected.length + " characters");
   assertTrue(response.result.contents[0].mimeType === "text/markdown", uri + " must be text/markdown");
 });
 var skill = call(40, "resources/read", { uri: "flow://skills/convertigo-flow-mcp/SKILL" });
-var inputGuide = call(39, "resources/read", { uri: "flow://guide/authoring-data" });
+var inputGuide = call(39, "resources/read", { uri: "flow://guide/authoring/data" });
 assertTrue(/FLOW_INPUT_REQUIRED/.test(inputGuide.result.contents[0].text) &&
   /throw \{ code, message \}/.test(inputGuide.result.contents[0].text) &&
   /requester \(\.json, SDK, frontbuilder\)[\s\S]*200 and the `error` envelope/.test(inputGuide.result.contents[0].text),
@@ -97,7 +98,9 @@ function tool(id, name, args) {
   return response.result.structuredContent;
 }
 var startGuide = tool(42, "flow-resource-get", { uri: "flow://guide/start" });
-assertTrue(startGuide.ok === true && startGuide.text === readText("_flow/resources/guide/start.md") && startGuide.source === "resources/read",
+// the relay carries the tree of start once (mcp.js guideNavigation)
+assertTrue(startGuide.ok === true && sameGuideText(startGuide.text, readText("_flow/resources/guide/start.md")) &&
+  startGuide.text.split("\n## Guide tree\n").length === 2 && startGuide.source === "resources/read",
   "flow-resource-get must read flow://guide/start whole without project: " + JSON.stringify(startGuide).substring(0, 400));
 var routerSkill = tool(43, "flow-resource-get", { uri: "flow://skills/convertigo-flow-mcp/SKILL" });
 assertTrue(routerSkill.text === readText("_flow/resources/skills/convertigo-flow-mcp/SKILL.md").slice(0,6000) &&
