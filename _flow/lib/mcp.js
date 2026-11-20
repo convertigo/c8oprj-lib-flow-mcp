@@ -5937,6 +5937,48 @@
 		return out;
 	}
 
+	// An unfocused tree with the Flow catalog of every library runs over a million characters (L31F, 20/11): past
+	// TREE_OUTLINE_CHARS, its first two levels only, with the ways to read the rest.
+	var TREE_OUTLINE_CHARS = 150000;
+
+	function treeOutline(nodes, depth) {
+		return (Array.isArray(nodes) ? nodes : []).map(function (node) {
+			var out = {};
+			["name", "kind", "type", "path", "summary"].forEach(function (key) {
+				if (node && node[key] !== undefined && node[key] !== "") out[key] = node[key];
+			});
+			var children = node && Array.isArray(node.children) ? node.children : [];
+			if (children.length) {
+				out.childCount = children.length;
+				if (depth > 1) out.children = treeOutline(children, depth - 1);
+			}
+			return out;
+		});
+	}
+
+	function boundedUnfocusedTree(treeArgs, value) {
+		if (treeArgs.allowLarge === true || treeArgs.focusPath || !value || !Array.isArray(value.children)) {
+			return value;
+		}
+		var size = JSON.stringify(value).length;
+		if (size <= TREE_OUTLINE_CHARS) {
+			return value;
+		}
+		var out = {};
+		Object.keys(value).forEach(function (key) {
+			if (key !== "children") out[key] = value[key];
+		});
+		out.children = treeOutline(value.children, 2);
+		out.responseDetail = "outline";
+		out.warnings = (Array.isArray(value.warnings) ? value.warnings.slice() : []).concat([{
+			code: "TREE_RESPONSE_OUTLINED",
+			message: "The unfocused tree is " + size + " characters: only its first two levels are shown."
+		}]);
+		out.next = "Read one branch with focusPath (a path of this outline); for the blocks, search with flow-catalog and " +
+			"read one with flow-block-get instead of includeFlowCatalog. allowLarge:true only for explicit debugging.";
+		return out;
+	}
+
 	function compactToolValue(request, value) {
 		var name = toolName(request);
 		if (name === "code-get" || name === "frontend-svelte-code-get" || name === "flow-code-get" || name === "flow-block-code-get") return compactCodeGetContract(request, boundedCodeRead(request, value));
@@ -5960,7 +6002,7 @@
 				value.responseDetail = "inspect";
 				value.next = "Repeat with an exact focusPath and property. Use allowLarge:true only for explicit debugging."
 			}
-			return value;
+			return boundedUnfocusedTree(treeArgs, value);
 		}
 		if (name === "flow-list") {
 			return compactFlowListToolValue(request, value);
@@ -7245,6 +7287,7 @@
 		studioRefreshFlowEngine: studioRefreshFlowEngine,
 		finalizeResponse: finalizeResponse,
 		guideNavigation: guideNavigation,
+		boundedUnfocusedTree: boundedUnfocusedTree,
 		guideDescription: guideDescription,
 		sanitizeForMcp: sanitizeForMcp,
 		traceJsonl: traceJsonl,

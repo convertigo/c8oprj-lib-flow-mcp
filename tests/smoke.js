@@ -248,6 +248,19 @@ assertTrue(leanAuthoringTreeArgs.includeFrontendCatalog === false &&
 	explicitCatalogTreeArgs.includeFrontendCatalog === true &&
 	explicitCatalogTreeArgs.includeFlowCatalog === true,
 	"MCP authoring-tree should omit eager catalogs by default and preserve explicit inspection");
+// an unfocused tree past 150 000 characters is outlined to its first two levels (L31F, 20/11)
+var hugeTree = { ok: true, children: [{ name: "catalog", kind: "catalog", path: "catalog", children: [] }] };
+for (var hugeIndex = 0; hugeIndex < 3000; hugeIndex++) {
+	hugeTree.children[0].children.push({ name: "b" + hugeIndex, kind: "block", path: "catalog.b" + hugeIndex,
+		summary: new Array(60).join("x"), children: [{ name: "leaf", kind: "field", path: "catalog.b" + hugeIndex + ".leaf" }] });
+}
+var outlinedTree = mcpLib.boundedUnfocusedTree({ includeFlowCatalog: true }, hugeTree);
+assertTrue(outlinedTree.responseDetail === "outline" && outlinedTree.children[0].childCount === 3000 &&
+	!outlinedTree.children[0].children[0].children && outlinedTree.children[0].children[0].childCount === 1 &&
+	outlinedTree.warnings.some(function (warning) { return warning.code === "TREE_RESPONSE_OUTLINED"; }) &&
+	mcpLib.boundedUnfocusedTree({ focusPath: "catalog" }, hugeTree) === hugeTree &&
+	mcpLib.boundedUnfocusedTree({ allowLarge: true }, hugeTree) === hugeTree,
+	"MCP authoring-tree should outline an unfocused tree past its size bound");
 var proxyAwareFrontendArgs = mcpLib.prepareToolArguments({
 	convertigoContext: function () {
 		return {
