@@ -51,7 +51,25 @@ for (const name of ['set', 'if', 'return', 'throw', 'try', 'forEach', 'while', '
 contracts['sql.transaction'] = {props: {connection: {kind: 'template', type: 'string'}}, slots: [{name: 'nodes'}]};
 contracts['app.actor'] = {props: {}};
 const programs = {};
-for (const id of ['prepare-reminder', 'manual-reminder', 'run-reminders']) programs[id] = parser.parseFlowScript(contracts, fences[id].code, env);
+// The guides teach FlowScript v3, read by the Java reader of lib_flow_engine: the definitions come from the engine under
+// Rhino (tests/support/guide-flow-definitions.js, with the actor block the guide teaches); the orchestration stays here.
+{
+  const {spawnSync} = require('node:child_process');
+  const os = require('node:os');
+  const guides = path.join(__dirname, '../_flow/resources/guide');
+  const all = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(item => item.isDirectory() ? all(path.join(dir, item.name)) : item.name.endsWith('.md') ? [path.join(dir, item.name)] : []);
+  const actor = all(guides).map(read).map(text => /<!-- example: actor-block -->\s*```javascript\n([\s\S]*?)```/.exec(text)).find(Boolean);
+  assert.ok(actor, 'the entity guides teach the app.actor block');
+  const ids = ['prepare-reminder', 'manual-reminder', 'run-reminders'];
+  const requestFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'flow-reminder-')), 'request.json');
+  fs.writeFileSync(requestFile, JSON.stringify({blocks: {'app.actor': actor[1]}, flows: Object.fromEntries(ids.map(id => [id, fences[id].code]))}));
+  assert.ok(process.env.CONVERTIGO_TEST_CLASSPATH, 'CONVERTIGO_TEST_CLASSPATH is required (tools/run-tests.sh sets it)');
+  const run = spawnSync('java', ['-Djava.awt.headless=true', '-cp', process.env.CONVERTIGO_TEST_CLASSPATH + path.delimiter + path.join(engine, '../libs/build/classes'), 'org.mozilla.javascript.tools.shell.Main',
+    '-version', '200', path.join(__dirname, 'support/guide-flow-definitions.js'), engine, requestFile], {encoding: 'utf8', maxBuffer: 1 << 26});
+  fs.rmSync(path.dirname(requestFile), {recursive: true, force: true});
+  assert.equal(run.status, 0, 'guide Flow definitions: ' + run.stderr.split('\n').filter(line => !/^WARNING/.test(line)).join('\n').slice(0, 2000));
+  Object.assign(programs, JSON.parse(run.stdout.trim().split('\n').pop()));
+}
 const flows = {PrepareReminder: 'prepare-reminder', PrepareReminderManually: 'manual-reminder', RunReminders: 'run-reminders'};
 
 function fixture(count = 2) {

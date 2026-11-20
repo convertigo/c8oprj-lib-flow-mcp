@@ -48,7 +48,9 @@ try {
  }
  // FlowScript v3 (B line): the backend authoring family and the backend skills teach v3. Their examples are translated
  // and run by tests/flowscript-v3-guide-examples.js of lib_flow_engine; a v3 text is never formatted from its tree.
- var v3Sources=/\/(guide\/(authoring[^\/]*|authoring\/[^\/]+|start|start\/syntax|multipage-roles\/pages)\.md|skills\/convertigo-flow-(backend|mcp)\/SKILL\.md)$/;
+ // Since 20/11 every guide and skill of lib_flow_mcp teaches v3 (tests/flowscript-v3-guides-conformance.js reads them).
+ var mcpResources=String(new java.io.File(mcpRoot,'_flow/resources')).replace(/\\/g,'/')+'/';
+ var v3Sources={test:function(where){where=String(where).replace(/\\/g,'/');return where.indexOf(mcpResources)===0&&/^(guide|skills)\/.+\.md$/.test(where.substring(mcpResources.length));}};
  function transform(document,where) {
   return document.replace(/```(flowscript|javascript|js)\n([\s\S]*?)```/g,function(fence,lang,text,offset){
    if(/\(function\s*\(|^function\s*\(input\)/.test(text))return fence; // Explicit native implementation.
@@ -65,7 +67,8 @@ try {
   var before=read(file),after=before.replace(/((?:"longDescription"|longDescription)\s*:\s*)("(?:[^"\\]|\\.)*")/g,function(whole,prefix,literal){return prefix+JSON.stringify(transform(JSON.parse(literal),String(file)));});
   if(update&&before!==after)files.writeStringToFile(file,after,'UTF-8');
  });});
- assert(examples>=20,'No silent omission of teaching sources: '+examples);
+ // 11 on 20/11: the examples of the engine guides and of block descriptions (the MCP guides and skills are v3).
+ assert(examples>=10,'No silent omission of teaching sources: '+examples);
  // Execute the v3 row projection with the server state prepared by its surrounding Flow.
  var rolesGuide=read(new java.io.File(mcpRoot,'_flow/resources/guide/multipage-roles/pages.md'));
  var projection=/```javascript\n(const books = list\.map\([\s\S]*?)```/.exec(rolesGuide);

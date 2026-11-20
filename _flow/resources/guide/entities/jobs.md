@@ -57,41 +57,40 @@ revision. The unique key identifies one task/deadline cycle, not one run/day.
 
 <!-- example: prepare-reminder -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private", inputs: { key: { type: "object" } } }
+const _flow = { sourceVersion: 3, accessibility: "private", inputs: { key: { type: "object" } } }
 
 function PrepareReminder({ input, config, result }) {
-  local.prepared = false
+  let prepared = false
   sql.transaction({
     connection: "app",
-    $$nodes: function () {
-      local.task = entity.read({ entity: "Task", checkAccess: false, key: input.key })
-      if (local.task.values.statut === "aRelancer" && local.task.values.preparedDue !==
-        local.task.values.dateEcheance) {
-        local.replay = String(local.task.key.id) + ":" + local.task.values.dateEcheance
-        local.existing = entity.list({
+    $$nodes() {
+      const task = entity.read({ entity: "Task", checkAccess: false, key: input.key })
+      if (task.values.statut === "aRelancer" && task.values.preparedDue !== task.values.dateEcheance) {
+        const replay = String(task.key.id) + ":" + task.values.dateEcheance
+        const existing = entity.list({
           entity: "Reminder",
           checkAccess: false,
-          options: { filter: { replayKey: local.replay }, limit: 1 },
+          options: { filter: { replayKey: replay }, limit: 1 },
         })
-        if (local.existing.rows.length === 0) {
-          local.reminder = entity.save({
+        if (existing.rows.length === 0) {
+          entity.save({
             entity: "Reminder",
             checkAccess: false,
-            values: { task: local.task.key.id, replayKey: local.replay, due: local.task.values.dateEcheance },
+            values: { task: task.key.id, replayKey: replay, due: task.values.dateEcheance },
           })
-          local.prepared = true
+          prepared = true
         }
-        local.saved = entity.save({
+        entity.save({
           entity: "Task",
           checkAccess: false,
-          key: local.task.key,
-          revision: local.task.revision,
-          values: { preparedDue: local.task.values.dateEcheance },
+          key: task.key,
+          revision: task.revision,
+          values: { preparedDue: task.values.dateEcheance },
         })
       }
     },
   })
-  return { prepared: local.prepared }
+  return { prepared }
 }
 ```
 

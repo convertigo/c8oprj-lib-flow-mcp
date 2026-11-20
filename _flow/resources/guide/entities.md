@@ -24,19 +24,19 @@ these five lines (signed-in reads; writes stay closed):
 if (!input.request.user || input.request.write) {
   throw { code: "ENTITY_FORBIDDEN", message: "Signed-in reads only" }
 }
-local.ownTasks = input.request.entity === "Task" && !input.request.roles.includes("MANAGER")
-return { scope: local.ownTasks ? { requester: input.request.user } : {} }
+const ownTasks = input.request.entity === "Task" && !input.request.roles.includes("MANAGER")
+return { scope: ownTasks ? { requester: input.request.user } : {} }
 ```
 
 `ListTasks` is an ordinary public Flow; `checkAccess: true` applies the policy:
 
 <!-- example: short-list-tasks -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "public" }
+const _flow = { sourceVersion: 3, accessibility: "public" }
 
 function ListTasks({ input, config, result }) {
-  local.page = entity.list({ entity: "Task", checkAccess: true, options: { offset: input.offset || 0 } })
-  return local.page
+  const page = entity.list({ entity: "Task", checkAccess: true, options: { offset: input.offset || 0 } })
+  return page
 }
 ```
 

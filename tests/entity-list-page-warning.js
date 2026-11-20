@@ -47,7 +47,7 @@ try {
  check(warning(refused).length===0,'a refused source is not linted',false);
  // The guide teaches the same contract the warning names.
  var guide=guideFamily(root,'entities');
- check(/## Lists: filters and pages/.test(guide)&&/ENTITY_LIST_PAGE_UNCHECKED/.test(guide)&&/ENTITY_LIST_INCOMPLETE/.test(guide)&&/local\.page\.hasMore/.test(guide)&&/nextOffset/.test(guide),'guide documents pages and both warnings');
+ check(/## Lists: filters and pages/.test(guide)&&/ENTITY_LIST_PAGE_UNCHECKED/.test(guide)&&/ENTITY_LIST_INCOMPLETE/.test(guide)&&/\bpage\.hasMore/.test(guide)&&/nextOffset/.test(guide),'guide documents pages and both warnings');
  check(/\{field: value\}/.test(guide)&&/relations\s+included/.test(guide),'guide documents the short filter form on relations');
  check(/return \{ scope: \{ requesterId: input\.request\.user \} \}/.test(guide)&&/actorProvider/.test(guide)&&/ENTITY_RELATION_LABELS_OMITTED/.test(guide),'guide shows the role scope, the actor provider and omitted relation labels');
  // C1, C2, C4 of the 05/11 review: neutral refusals, writes that do not touch the relation, absent filter values.

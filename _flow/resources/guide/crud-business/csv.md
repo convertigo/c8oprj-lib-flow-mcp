@@ -9,12 +9,11 @@ Export what the user may see by calling the generated list with
 with its `resource` and rows (`flow-block-get` gives the `data.csv` contract):
 
 ```javascript
-local.list = requestable.call({
+const list = requestable.call({
   requestable: ".desk_tickets_list",
   input: { offset: 0, limit: 200, includeResource: true },
 })
-local.file = data.csv({ resource: local.list.resource, rows: local.list.page.rows, filename: "tickets.csv" })
-result.file = local.file
+result.file = data.csv({ resource: list.resource, rows: list.page.rows, filename: "tickets.csv" })
 ```
 
 A button of a page saves that file in two actions: the `CallSequence` of the

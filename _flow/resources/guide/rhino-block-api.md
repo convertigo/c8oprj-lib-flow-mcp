@@ -44,7 +44,7 @@ const _meta = {
 The IIFE returns `{ run: function (ctx, node) {...} }` plus local helpers;
 dynamic labels and analysis live in the `hooks.file` companion, not in
 runtime code. Write it with `code-set({ project, block:"ns.name", code })`
-and prove it by running a Flow that calls `local.x = ns.name({ text: "hi" })`.
+and prove it by running a Flow that calls `const x = ns.name({ text: "hi" })`.
 
 Runtime helpers available in `run(ctx,node)`:
 

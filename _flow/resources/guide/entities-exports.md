@@ -21,7 +21,7 @@ the export does not run a different Flow's checks automatically.
 <!-- example: entity-export-bookings -->
 ```javascript
 const _flow = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   accessibility: "hidden",
   authenticatedContextRequired: true,
   inputs: { options: { type: "object", default: {} }, fields: { type: "array", default: [] } },

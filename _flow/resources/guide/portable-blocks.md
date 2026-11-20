@@ -81,7 +81,7 @@ declared writable `State`.
 Backend FlowScript calls the canonical id:
 
 ```javascript
-local.normalized = text.trim({ text: input.name })
+const normalized = text.trim({ text: input.name })
 ```
 
 Flow Svelte uses the palette tag generated from that id, inside an event's

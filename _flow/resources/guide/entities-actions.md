@@ -32,34 +32,35 @@ Borrow in a single request:
 <!-- example: borrow-book -->
 ```javascript
 const _flow = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   authenticatedContextRequired: true,
   inputs: { livre: { type: "object" }, adherent: { type: "string" } },
 }
 
 function Emprunter({ input, config, result }) {
+  let pret
   sql.transaction({
     connection: "app",
-    $$nodes: function () {
-      local.livre = entity.read({ entity: "Livre", checkAccess: true, key: input.livre })
-      if (!local.livre.values.disponible) {
+    $$nodes() {
+      const livre = entity.read({ entity: "Livre", checkAccess: true, key: input.livre })
+      if (!livre.values.disponible) {
         throw { code: "LIVRE_INDISPONIBLE", message: "Livre déjà emprunté" }
       }
-      local.pret = entity.save({
+      pret = entity.save({
         entity: "Pret",
         checkAccess: true,
-        values: { livre: local.livre.key.id, adherent: input.adherent, rendu: false },
+        values: { livre: livre.key.id, adherent: input.adherent, rendu: false },
       })
-      local.updated = entity.save({
+      entity.save({
         entity: "Livre",
         checkAccess: true,
-        key: local.livre.key,
-        revision: local.livre.revision,
+        key: livre.key,
+        revision: livre.revision,
         values: { disponible: false },
       })
     },
   })
-  result.pret = local.pret
+  result.pret = pret
 }
 ```
 
@@ -67,34 +68,35 @@ Return in a single request:
 
 <!-- example: return-book -->
 ```javascript
-const _flow = { sourceVersion: 2, authenticatedContextRequired: true, inputs: { pret: { type: "object" } } }
+const _flow = { sourceVersion: 3, authenticatedContextRequired: true, inputs: { pret: { type: "object" } } }
 
 function Rendre({ input, config, result }) {
+  let closed
   sql.transaction({
     connection: "app",
-    $$nodes: function () {
-      local.pret = entity.read({ entity: "Pret", checkAccess: true, key: input.pret })
-      if (local.pret.values.rendu) {
+    $$nodes() {
+      const pret = entity.read({ entity: "Pret", checkAccess: true, key: input.pret })
+      if (pret.values.rendu) {
         throw { code: "PRET_DEJA_RENDU", message: "Prêt déjà rendu" }
       }
-      local.livre = entity.read({ entity: "Livre", checkAccess: true, key: { id: local.pret.values.livre } })
-      local.closed = entity.save({
+      const livre = entity.read({ entity: "Livre", checkAccess: true, key: { id: pret.values.livre } })
+      closed = entity.save({
         entity: "Pret",
         checkAccess: true,
-        key: local.pret.key,
-        revision: local.pret.revision,
+        key: pret.key,
+        revision: pret.revision,
         values: { rendu: true },
       })
-      local.updated = entity.save({
+      entity.save({
         entity: "Livre",
         checkAccess: true,
-        key: local.livre.key,
-        revision: local.livre.revision,
+        key: livre.key,
+        revision: livre.revision,
         values: { disponible: true },
       })
     },
   })
-  result.pret = local.closed
+  result.pret = closed
 }
 ```
 

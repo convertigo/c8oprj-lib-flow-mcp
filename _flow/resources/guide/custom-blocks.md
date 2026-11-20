@@ -18,7 +18,7 @@ optional `<name>.block.defaults.json` (defaults history).
 
 ```javascript
 const _meta = {
-  "sourceVersion": 2,
+  "sourceVersion": 3,
   "description": "Formats a customer label.",
   "summary": "label {{name}}",
   "icon": "mdi:card-text-outline",
@@ -48,6 +48,8 @@ const _meta = {
   },
 }
 
+const _flow = { sourceVersion: 3 }
+
 function crm_customerLabel({ input, config, result }) {
   return input.name + " #" + input.id
 }
@@ -56,8 +58,8 @@ function crm_customerLabel({ input, config, result }) {
 A caller captures the result with an assignment:
 
 ```javascript
-local.label = crm.customerLabel({ name: "Ada", id: "42" })
-result.label = local.label
+const label = crm.customerLabel({ name: "Ada", id: "42" })
+result.label = label
 ```
 
 ## Property charter
@@ -70,7 +72,7 @@ result.label = local.label
   node. A property named `id`, `disabled`, `comment` or `out` is an ordinary
   business value, as `id` above.
 - The block result is the returned value, described by `_meta.outputs.out`;
-  the caller captures it (`local.x = ns.block({...})`). A block that returns
+  the caller captures it (`const x = ns.block({...})`). A block that returns
   nothing useful marks `outputs.out` `hidden` (or `expert`) so Studio moves
   or hides the Output row.
 - `summary` is a node summary template such as `"GET {{url}}"`.

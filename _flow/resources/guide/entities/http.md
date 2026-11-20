@@ -19,63 +19,60 @@ complete create/update facade accepts flat request fields and returns exact keys
 
 <!-- example: http-save-reservation -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
+const _flow = { sourceVersion: 3, accessibility: "hidden" }
 
 function SaveReservation({ input, config, result }) {
-  local.user = session.authenticatedUser({})
-  if (!local.user) {
+  const user = session.authenticatedUser({})
+  if (!user) {
     throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
-  local.roomId = text.match({ text: input.room || "", pattern: "^[0-9]+$" })
+  const roomId = text.match({ text: input.room || "", pattern: "^[0-9]+$" })
   if (typeof input.title !== "string" || !input.title.trim() || typeof input.room !== "string" ||
-    !local.roomId.matched || !input.starts || !input.ends) {
+    !roomId.matched || !input.starts || !input.ends) {
     throw { code: "VALIDATION_FAILED", message: "Title, room and dates required" }
   }
-  try({
-    error: "local.failure",
-    $$try: function () {
-      local.row = entity.save({
-        entity: "Reservation",
-        checkAccess: true,
-        key: input.id ? { id: input.id } : {},
-        revision: input.revision || "",
-        values: { title: input.title, room: input.room, starts: input.starts, ends: input.ends },
-      })
-    },
-    $$catch: function () {
-      if (local.failure.code === "ENTITY_UNAUTHENTICATED" || local.failure.code === "UNAUTHENTICATED") {
-        throw { code: "UNAUTHENTICATED", message: "Sign in first" }
-      }
-      if (local.failure.code === "ENTITY_SCHEMA_MISSING") {
-        throw { code: "ENTITY_SCHEMA_MISSING", message: local.failure.message }
-      }
-      if (local.failure.code === "ENTITY_VALIDATION") {
-        throw { code: "VALIDATION_FAILED", message: local.failure.message }
-      }
-      if (local.failure.code === "ENTITY_NOT_FOUND" || local.failure.code === "ENTITY_FORBIDDEN" ||
-        local.failure.code === "ENTITY_SCOPE_VIOLATION" || local.failure.code === "FORBIDDEN") {
-        throw { code: "FORBIDDEN", message: "Reservation unavailable" }
-      }
-      if (local.failure.code === "ENTITY_CONFLICT") {
-        throw { code: "REVISION_CONFLICT", message: "Reload before saving" }
-      }
-      if (local.failure.code === "BOOKING_WINDOW_CONFLICT") {
-        throw { code: "BOOKING_WINDOW_CONFLICT", message: local.failure.message }
-      }
-      if (local.failure.code === "BOOKING_OVERLAP") {
-        throw { code: "ROOM_ALREADY_BOOKED", message: local.failure.message }
-      }
-      throw { code: "BOOKING_FAILED", message: "Booking service unavailable" }
-    },
-  })
+  let row
+  try {
+    row = entity.save({
+      entity: "Reservation",
+      checkAccess: true,
+      key: input.id ? { id: input.id } : {},
+      revision: input.revision || "",
+      values: { title: input.title, room: input.room, starts: input.starts, ends: input.ends },
+    })
+  } catch (failure) {
+    if (failure.code === "ENTITY_UNAUTHENTICATED" || failure.code === "UNAUTHENTICATED") {
+      throw { code: "UNAUTHENTICATED", message: "Sign in first" }
+    }
+    if (failure.code === "ENTITY_SCHEMA_MISSING") {
+      throw { code: "ENTITY_SCHEMA_MISSING", message: failure.message }
+    }
+    if (failure.code === "ENTITY_VALIDATION") {
+      throw { code: "VALIDATION_FAILED", message: failure.message }
+    }
+    if (failure.code === "ENTITY_NOT_FOUND" || failure.code === "ENTITY_FORBIDDEN" ||
+      failure.code === "ENTITY_SCOPE_VIOLATION" || failure.code === "FORBIDDEN") {
+      throw { code: "FORBIDDEN", message: "Reservation unavailable" }
+    }
+    if (failure.code === "ENTITY_CONFLICT") {
+      throw { code: "REVISION_CONFLICT", message: "Reload before saving" }
+    }
+    if (failure.code === "BOOKING_WINDOW_CONFLICT") {
+      throw { code: "BOOKING_WINDOW_CONFLICT", message: failure.message }
+    }
+    if (failure.code === "BOOKING_OVERLAP") {
+      throw { code: "ROOM_ALREADY_BOOKED", message: failure.message }
+    }
+    throw { code: "BOOKING_FAILED", message: "Booking service unavailable" }
+  }
   return {
     reservation: {
-      id: local.row.key.id,
-      revision: local.row.revision,
-      title: local.row.values.title,
-      roomId: local.row.values.room,
-      starts: local.row.values.starts,
-      ends: local.row.values.ends,
+      id: row.key.id,
+      revision: row.revision,
+      title: row.values.title,
+      roomId: row.values.room,
+      starts: row.values.starts,
+      ends: row.values.ends,
     },
   }
 }
@@ -92,28 +89,20 @@ keys to your contract.
 
 <!-- example: http-list-reservations -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
+const _flow = { sourceVersion: 3, accessibility: "hidden" }
 
 function MyReservations({ input, config, result }) {
-  local.user = session.authenticatedUser({})
-  if (!local.user) {
+  const user = session.authenticatedUser({})
+  if (!user) {
     throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
-  local.page = entity.list({
+  const page = entity.list({
     entity: "Reservation",
     checkAccess: true,
     options: { limit: 20, offset: input.offset || 0 },
   })
-  local.rows = list.map({
-    items: local.page.rows,
-    select: {
-      id: current.key.id,
-      title: current.values.title,
-      starts: current.values.starts,
-      ends: current.values.ends,
-    },
-  })
-  return { reservations: local.rows, total: local.page.total }
+  const rows = page.rows.map(item => ({ id: item.key.id, title: item.values.title, starts: item.values.starts, ends: item.values.ends }))
+  return { reservations: rows, total: page.total }
 }
 ```
 
@@ -133,18 +122,18 @@ detailed recipe's locked overlap check. Its code reaches the Flow unchanged:
 
 <!-- example: http-booking-rule -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private", authenticatedContextRequired: true }
+const _flow = { sourceVersion: 3, accessibility: "private", authenticatedContextRequired: true }
 
 function HttpBookingRule({ input, config, result }) {
-  local.values = input.mutation.patch
+  let values = input.mutation.patch
   if (!input.mutation.creating) {
-    local.previous = entity.read({ entity: "Reservation", key: input.mutation.key })
-    local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
+    const previous = entity.read({ entity: "Reservation", key: input.mutation.key })
+    values = object.merge({ target: previous.values, source: input.mutation.patch })
   }
-  if (local.values.starts >= local.values.ends) {
+  if (values.starts >= values.ends) {
     throw { code: "BOOKING_WINDOW_CONFLICT", message: "End must follow start" }
   }
-  flow.call({ flow: "BookingRule", input: input })
+  flow.call({ flow: "BookingRule", input })
 }
 ```
 
@@ -172,7 +161,7 @@ answers `ENTITY_NATURAL_KEY_CREATE_UNSUPPORTED` with how to do it today
 (**Natural key** in `flow://guide/entities-model/format`).
 
 A throw code is literal text: add one catch branch per expected business code,
-not `code: local.failure.code`. Unexpected failures become BOOKING_FAILED
+not `code: failure.code`. Unexpected failures become BOOKING_FAILED
 at this public boundary, without exposing internal errors; never report success.
 A thrown error interrupts the Flow: the requester answers with HTTP 200 and
 the JSON envelope contains `error.code` and `error.message`, with no success result. Use

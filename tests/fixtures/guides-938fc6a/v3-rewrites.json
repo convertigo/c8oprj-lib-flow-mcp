@@ -139,5 +139,324 @@
    "Filter with an arrow:",
    "a bare field name such as `name` is not the field of the item"
   ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: short-access-policy --> ```javascript if (!input.request.user || input.reque",
+  "keep": [
+   "<!-- example: short-access-policy -->",
+   "throw { code: \"ENTITY_FORBIDDEN\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: short-list-tasks --> ```javascript const _flow = { sourceVersion: 2, accessi",
+  "keep": [
+   "<!-- example: short-list-tasks -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function ListTasks({ input, config, result }) { local.page = entity.list({ entity: \"Task\",",
+  "keep": [
+   "function ListTasks({ input, config, result })",
+   "entity.list({ entity: \"Task\"",
+   "entity.list({"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: http-save-reservation --> ```javascript const _flow = { sourceVersion: 2, ac",
+  "keep": [
+   "<!-- example: http-save-reservation -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function SaveReservation({ input, config, result }) { local.user = session.authenticatedUs",
+  "keep": [
+   "function SaveReservation({ input, config, result })",
+   "throw { code: \"UNAUTHENTICATED\"",
+   "throw { code: \"VALIDATION_FAILED\"",
+   "throw { code: \"ENTITY_SCHEMA_MISSING\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: http-list-reservations --> ```javascript const _flow = { sourceVersion: 2, a",
+  "keep": [
+   "<!-- example: http-list-reservations -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function MyReservations({ input, config, result }) { local.user = session.authenticatedUse",
+  "keep": [
+   "function MyReservations({ input, config, result })",
+   "throw { code: \"UNAUTHENTICATED\"",
+   "entity.list({ entity: \"Reservation\"",
+   "session.authenticatedUser({"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: http-booking-rule --> ```javascript const _flow = { sourceVersion: 2, access",
+  "keep": [
+   "<!-- example: http-booking-rule -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function HttpBookingRule({ input, config, result }) { local.values = input.mutation.patch ",
+  "keep": [
+   "function HttpBookingRule({ input, config, result })",
+   "throw { code: \"BOOKING_WINDOW_CONFLICT\"",
+   "entity.read({ entity: \"Reservation\"",
+   "flow.call({ flow: \"BookingRule\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "A throw code is literal text: add one catch branch per expected business code, not `code: ",
+  "keep": [
+   "not `code: failure.code`",
+   "Unexpected failures become BOOKING_FAILED"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: default-access-policy --> ```javascript const _meta = {sourceVersion:2,versi",
+  "keep": [
+   "<!-- example: default-access-policy -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function block({ input, config, result }) { // The request of the operation is an object: ",
+  "keep": [
+   "function block({ input, config, result })",
+   "throw { code: \"ENTITY_FORBIDDEN\"",
+   "throw { code: \"ENTITY_UNAUTHENTICATED\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "```javascript local.page = entity.list({ entity: \"Ticket\", checkAccess: true, options: { l",
+  "keep": [
+   "throw { code: \"TOO_MANY_ROWS\"",
+   "entity.list({ entity: \"Ticket\"",
+   "entity.list({"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: actor-block --> ```javascript const _meta = { sourceVersion: 2, private: tru",
+  "keep": [
+   "<!-- example: actor-block -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function block({ input, config, result }) { local.user = session.authenticatedUser({}) if ",
+  "keep": [
+   "function block({ input, config, result })",
+   "throw { code: \"UNAUTHENTICATED\"",
+   "throw { code: \"FORBIDDEN\"",
+   "sql.query({ query: \"actorBySession\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: demo-login --> ```javascript const _flow = { sourceVersion: 2, accessibility",
+  "keep": [
+   "<!-- example: demo-login -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function DemoLogin({ input, config, result }) { if (String(config.demo.login) !== \"true\") ",
+  "keep": [
+   "function DemoLogin({ input, config, result })",
+   "throw { code: \"DEMO_LOGIN_DISABLED\"",
+   "throw { code: \"FORBIDDEN\"",
+   "sql.query({ query: \"demoAccount\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: borrow-book --> ```javascript const _flow = { sourceVersion: 2, authenticate",
+  "keep": [
+   "<!-- example: borrow-book -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function Emprunter({ input, config, result }) { sql.transaction({ connection: \"app\", $$nod",
+  "keep": [
+   "function Emprunter({ input, config, result })",
+   "throw { code: \"LIVRE_INDISPONIBLE\"",
+   "sql.transaction({ connection: \"app\"",
+   "entity.read({ entity: \"Livre\""
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "<!-- example: return-book --> ```javascript const _flow = { sourceVersion: 2, authenticate",
+  "keep": [
+   "<!-- example: return-book -->"
+  ]
+ },
+ {
+  "family": "entities",
+  "oldStart": "function Rendre({ input, config, result }) { sql.transaction({ connection: \"app\", $$nodes:",
+  "keep": [
+   "function Rendre({ input, config, result })",
+   "throw { code: \"PRET_DEJA_RENDU\"",
+   "sql.transaction({ connection: \"app\"",
+   "entity.read({ entity: \"Pret\""
+  ]
+ },
+ {
+  "family": "crud",
+  "oldStart": "```javascript local.session = requestable.call({ requestable: \".desk_session\" }) if (!loca",
+  "keep": [
+   "throw { code: \"FORBIDDEN\"",
+   "requestable.call({ requestable: \".desk_session\"",
+   "requestable.call({ requestable: \".desk_tickets_read\"",
+   "requestable.call({"
+  ]
+ },
+ {
+  "family": "crud",
+  "oldStart": "```javascript const _flow = { sourceVersion: 2, accessibility: \"hidden\", authenticatedCont",
+  "keep": [
+   "ticket_resolve_update",
+   "ticket_resolve_event"
+  ]
+ },
+ {
+  "family": "crud",
+  "oldStart": "function ticket_resolve({ input, config, result }) { local.session = requestable.call({ re",
+  "keep": [
+   "function ticket_resolve({ input, config, result })",
+   "throw { code: \"FORBIDDEN\"",
+   "requestable.call({ requestable: \".desk_session\"",
+   "requestable.call({ requestable: \".desk_tickets_read\""
+  ]
+ },
+ {
+  "family": "crud",
+  "oldStart": "```javascript function my_tickets({ input, config, result }) { local.session = requestable",
+  "keep": [
+   "function my_tickets({ input, config, result })",
+   "throw { code: \"FORBIDDEN\"",
+   "requestable.call({ requestable: \".desk_session\"",
+   "sql.query({ query: \"my_tickets_rows\""
+  ]
+ },
+ {
+  "family": "crud",
+  "oldStart": "```javascript local.list = requestable.call({ requestable: \".desk_tickets_list\", input: { ",
+  "keep": [
+   "requestable.call({ requestable: \".desk_tickets_list\"",
+   "requestable.call({",
+   "data.csv({"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: demo-reset --> ```javascript const _flow = { sourceVersion: 2, accessibility",
+  "keep": [
+   "<!-- example: demo-reset -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: current-user --> ```javascript const _flow = { sourceVersion: 2, accessibili",
+  "keep": [
+   "<!-- example: current-user -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "function CurrentUser({ input, config, result }) { local.user = session.authenticatedUser({",
+  "keep": [
+   "function CurrentUser({ input, config, result })",
+   "session.authenticatedUser({"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: logout --> ```javascript const _flow = { sourceVersion: 2, accessibility: \"h",
+  "keep": [
+   "<!-- example: logout -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: booking-access-policy --> ```javascript const _meta = {sourceVersion:2,versi",
+  "keep": [
+   "<!-- example: booking-access-policy -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "function block({ input, config, result }) { // Explicit public catalog reads only; leave e",
+  "keep": [
+   "function block({ input, config, result })",
+   "throw { code: \"UNAUTHENTICATED\"",
+   "throw { code: \"FORBIDDEN\""
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: booking-rule --> ```javascript const _flow = { sourceVersion: 2, accessibili",
+  "keep": [
+   "<!-- example: booking-rule -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "function BookingRule({ input, config, result }) { local.values = input.mutation.patch if (",
+  "keep": [
+   "function BookingRule({ input, config, result })",
+   "throw { code: \"BOOKING_DATES_INVALID\"",
+   "throw { code: \"ROOM_NOT_FOUND\"",
+   "throw { code: \"BOOKING_OVERLAP\""
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: export-bookings --> ```javascript const _flow = { sourceVersion: 2, accessib",
+  "keep": [
+   "<!-- example: export-bookings -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "function ExportBookings({ input, config, result }) { local.page = entity.list({ entity: \"R",
+  "keep": [
+   "function ExportBookings({ input, config, result })",
+   "throw { code: \"EXPORT_LIMIT\"",
+   "entity.list({ entity: \"Reservation\"",
+   "entity.list({"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "<!-- example: daily-bookings --> ```javascript const _flow = { sourceVersion: 2, accessibi",
+  "keep": [
+   "<!-- example: daily-bookings -->"
+  ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "function DailyBookings({ input, config, result }) { if (String(config.jobs.enabled) !== \"t",
+  "keep": [
+   "function DailyBookings({ input, config, result })",
+   "sql.query({ query: \"startsToday\"",
+   "date.today({",
+   "sql.query({"
+  ]
  }
 ]

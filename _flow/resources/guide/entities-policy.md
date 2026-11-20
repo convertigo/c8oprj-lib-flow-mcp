@@ -46,7 +46,9 @@ editing `publicRead`; uncomment and adapt the role example to scope rows per rol
 
 <!-- example: default-access-policy -->
 ```javascript
-const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+const _meta = {sourceVersion:3,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+
+const _flow = { sourceVersion: 3 }
 
 function block({ input, config, result }) {
   // The request of the operation is an object: anything else is refused.
@@ -54,8 +56,8 @@ function block({ input, config, result }) {
     throw { code: "ENTITY_FORBIDDEN", message: "Invalid access request." }
   }
   // Entities readable without sign-in: for example ["Room"], or ["*"].
-  local.publicRead = []
-  if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
+  const publicRead = []
+  if (!input.request.write && (publicRead.includes("*") || publicRead.includes(input.request.entity))) {
     return {}
   }
   if (!input.request.user) {

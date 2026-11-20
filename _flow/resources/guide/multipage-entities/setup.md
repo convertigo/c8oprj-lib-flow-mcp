@@ -155,15 +155,15 @@ an HTTP request or page. After `entity.initialize({})`, list by a stable demo
 field and create only when absent; for example, a Room seed:
 
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
+const _flow = { sourceVersion: 3, accessibility: "private" }
 
 function seed_demo_room({ input, config, result }) {
   entity.initialize({})
-  local.existing = entity.list({ entity: "Room", options: { filter: { name: "Room A" }, limit: 1 } })
-  if (local.existing.rows.length == 0) {
+  const existing = entity.list({ entity: "Room", options: { filter: { name: "Room A" }, limit: 1 } })
+  if (existing.rows.length == 0) {
     result.room = entity.save({ entity: "Room", values: { name: "Room A" } })
   } else {
-    result.room = local.existing.rows[0]
+    result.room = existing.rows[0]
   }
 }
 ```
@@ -180,7 +180,7 @@ For an ADMIN button, use a separate hidden Flow that verifies ADMIN before
 
 <!-- example: demo-reset -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
+const _flow = { sourceVersion: 3, accessibility: "private" }
 
 function demo_reset({ input, config, result }) {
   if (String(config.demo.login) !== "true") {

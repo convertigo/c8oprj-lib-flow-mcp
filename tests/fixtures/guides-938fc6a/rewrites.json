@@ -1066,5 +1066,10 @@
   "family": "authoring",
   "old": "`requestable.call`, the scheduler and the MCP run `private` Flows by design.",
   "new": "`requestable.call`, the scheduler and the MCP run `private` Flows by design: `code-run` and `requestable-execute` never prove that an HTTP client can call a Flow."
+ },
+ {
+  "family": "entities",
+  "old": "and return `local.page.nextOffset`",
+  "new": "and return `page.nextOffset`"
  }
 ]

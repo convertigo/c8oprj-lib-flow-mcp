@@ -11,27 +11,23 @@ it reloads the active role and ignores client-supplied identity.
 <!-- example: manual-reminder -->
 ```javascript
 const _flow = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   accessibility: "hidden",
   authenticatedContextRequired: true,
   inputs: { key: { type: "object" } },
 }
 
 function PrepareReminderManually({ input, config, result }) {
-  local.actor = app.actor({})
-  if (!contains(local.actor.roles, "MANAGER")) {
+  const actor = app.actor({})
+  if (!actor.roles.includes("MANAGER")) {
     throw { code: "FORBIDDEN", message: "Operation refused" }
   }
-  try({
-    error: "local.failure",
-    $$try: function () {
-      result.preparation = flow.call({ flow: "PrepareReminder", input: { key: input.key } })
-    },
-    $$catch: function () {
-      log({ level: "warn", message: "REMINDER_MANUAL_FAILED" })
-      throw { code: "REMINDER_FAILED", message: "Operation failed" }
-    },
-  })
+  try {
+    result.preparation = flow.call({ flow: "PrepareReminder", input: { key: input.key } })
+  } catch (failure) {
+    log({ level: "warn", message: "REMINDER_MANUAL_FAILED" })
+    throw { code: "REMINDER_FAILED", message: "Operation failed" }
+  }
 }
 ```
 
@@ -42,60 +38,45 @@ Do not offer the private worker as an HTTP button or change it to hidden/public.
 
 <!-- example: run-reminders -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
+const _flow = { sourceVersion: 3, accessibility: "private" }
 
 function RunReminders({ input, config, result }) {
   if (String(config.jobs.enabled) !== "true") {
     return { enabled: false, prepared: 0 }
   }
-  local.offset = 0
-  local.pages = 0
-  local.more = true
-  local.prepared = 0
-  local.scanned = 0
+  let offset = 0
+  let pages = 0
+  let more = true
+  let prepared = 0
+  let scanned = 0
   log({ level: "info", message: "REMINDER_JOB_STARTED" })
-  try({
-    error: "local.failure",
-    $$try: function () {
-      while({
-        condition: local.more && local.pages < 5,
-        maxIterations: 5,
-        timeoutMs: 60000,
-        $$nodes: function () {
-          local.page = entity.list({
-            entity: "Task",
-            checkAccess: false,
-            options: { filter: { statut: "aRelancer" }, orderBy: "id", limit: 200, offset: local.offset },
-          })
-          forEach({
-            items: local.page.rows,
-            $$nodes: function () {
-              local.one = flow.call({ flow: "PrepareReminder", input: { key: current.key } })
-              local.prepared = local.prepared + (local.one.prepared ? 1 : 0)
-              local.scanned = local.scanned + 1
-            },
-          })
-          local.more = local.page.hasMore
-          local.offset = local.page.nextOffset
-          local.pages = local.pages + 1
-        },
-      })
-    },
-    $$catch: function () {
-      log({
-        level: "error",
-        message: "REMINDER_JOB_FAILED",
-        data: { scanned: local.scanned, prepared: local.prepared },
-      })
-      throw { code: "REMINDER_FAILED", message: "Operation failed" }
-    },
-  })
-  log({
-    level: "info",
-    message: "REMINDER_JOB_FINISHED",
-    data: { scanned: local.scanned, prepared: local.prepared, complete: !local.more },
-  })
-  return { enabled: true, scanned: local.scanned, prepared: local.prepared, complete: !local.more }
+  try {
+    flow.while({
+      condition: more && pages < 5,
+      maxIterations: 5,
+      timeoutMs: 60000,
+      $$nodes() {
+        const page = entity.list({
+          entity: "Task",
+          checkAccess: false,
+          options: { filter: { statut: "aRelancer" }, orderBy: "id", limit: 200, offset },
+        })
+        for (const item of page.rows) {
+          const one = flow.call({ flow: "PrepareReminder", input: { key: item.key } })
+          prepared += one.prepared ? 1 : 0
+          scanned += 1
+        }
+        more = page.hasMore
+        offset = page.nextOffset
+        pages += 1
+      },
+    })
+  } catch (failure) {
+    log({ level: "error", message: "REMINDER_JOB_FAILED", data: { scanned, prepared } })
+    throw { code: "REMINDER_FAILED", message: "Operation failed" }
+  }
+  log({ level: "info", message: "REMINDER_JOB_FINISHED", data: { scanned, prepared, complete: !more } })
+  return { enabled: true, scanned, prepared, complete: !more }
 }
 ```
 

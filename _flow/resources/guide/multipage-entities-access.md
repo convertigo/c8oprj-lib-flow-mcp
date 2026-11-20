@@ -29,26 +29,26 @@ authorizing entity operations as soon as the server table changes.
 
 <!-- example: current-user -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
+const _flow = { sourceVersion: 3, accessibility: "hidden" }
 
 function CurrentUser({ input, config, result }) {
-  local.user = session.authenticatedUser({})
-  local.demoLoginEnabled = String(config.demo.login) === "true"
-  if (!local.user) {
-    return { authenticated: false, user: null, demoLoginEnabled: local.demoLoginEnabled }
+  const user = session.authenticatedUser({})
+  const demoLoginEnabled = String(config.demo.login) === "true"
+  if (!user) {
+    return { authenticated: false, user: null, demoLoginEnabled }
   }
-  local.actor = app.actor({})
+  const actor = app.actor({})
   return {
     authenticated: true,
-    demoLoginEnabled: local.demoLoginEnabled,
-    user: { id: local.actor.user, firstName: local.actor.user, role: local.actor.roles[0] },
+    demoLoginEnabled,
+    user: { id: actor.user, firstName: actor.user, role: actor.roles[0] },
   }
 }
 ```
 
 <!-- example: logout -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden" }
+const _flow = { sourceVersion: 3, accessibility: "hidden" }
 
 function Logout({ input, config, result }) {
   session.authenticate({ user: "" })
@@ -66,30 +66,32 @@ No gateway slot or config key is needed; no model ACL opens additional rights.
 
 <!-- example: booking-access-policy -->
 ```javascript
-const _meta = {sourceVersion:2,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+const _meta = {sourceVersion:3,version:1,private:true,properties:{request:{type:"object",kind:"expression"}},outputs:{out:{type:"object"}}}
+
+const _flow = { sourceVersion: 3 }
 
 function block({ input, config, result }) {
   // Explicit public catalog reads only; leave empty for authenticated reads.
-  local.publicRead = []
+  const publicRead = []
   if (!input.request.user) {
-    if (!input.request.write && (local.publicRead.includes("*") || local.publicRead.includes(input.request.entity))) {
+    if (!input.request.write && (publicRead.includes("*") || publicRead.includes(input.request.entity))) {
       return {}
     }
     throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
-  local.roles = input.request.roles || []
-  local.manager = local.roles.includes("MANAGER") || local.roles.includes("ADMIN")
-  if (!local.manager && !local.roles.includes("USER")) {
+  const roles = input.request.roles || []
+  const manager = roles.includes("MANAGER") || roles.includes("ADMIN")
+  if (!manager && !roles.includes("USER")) {
     throw { code: "FORBIDDEN", message: "Booking role required" }
   }
-  if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !local.manager)) {
+  if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !manager)) {
     throw { code: "FORBIDDEN", message: "Directory or audit unavailable" }
   }
-  if (input.request.write && ((input.request.entity === "Room" && !local.manager) || (input.request.operation ===
-    "delete" && !local.manager))) {
+  if (input.request.write && ((input.request.entity === "Room" && !manager) || (input.request.operation ===
+    "delete" && !manager))) {
     throw { code: "FORBIDDEN", message: "Manager action required" }
   }
-  if (input.request.entity === "Reservation" && !local.manager) {
+  if (input.request.entity === "Reservation" && !manager) {
     return { scope: { owner: input.request.user } }
   }
   return {}
@@ -123,33 +125,33 @@ expose the technical SQL statements as HTTP facades.
 
 <!-- example: booking-rule -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private", authenticatedContextRequired: true }
+const _flow = { sourceVersion: 3, accessibility: "private", authenticatedContextRequired: true }
 
 function BookingRule({ input, config, result }) {
-  local.values = input.mutation.patch
+  let values = input.mutation.patch
   if (!input.mutation.creating) {
-    local.previous = entity.read({ entity: "Reservation", key: input.mutation.key })
-    local.values = object.merge({ target: local.previous.values, source: input.mutation.patch })
+    const previous = entity.read({ entity: "Reservation", key: input.mutation.key })
+    values = object.merge({ target: previous.values, source: input.mutation.patch })
   }
-  if (local.values.starts >= local.values.ends) {
+  if (values.starts >= values.ends) {
     throw { code: "BOOKING_DATES_INVALID", message: "End must follow start" }
   }
-  local.lock = sql.write({ statement: "lockRoom", parameters: { room: local.values.room } })
-  if (local.lock.affectedRows !== 1) {
+  const lock = sql.write({ statement: "lockRoom", parameters: { room: values.room } })
+  if (lock.affectedRows !== 1) {
     throw { code: "ROOM_NOT_FOUND", message: "Choose an existing room" }
   }
-  if (local.values.status === "OPEN") {
-    local.overlap = sql.query({
+  if (values.status === "OPEN") {
+    const overlap = sql.query({
       query: "overlap",
       parameters: {
-        room: local.values.room,
-        starts: local.values.starts,
-        ends: local.values.ends,
+        room: values.room,
+        starts: values.starts,
+        ends: values.ends,
         id: input.mutation.creating ? null : input.mutation.key.id,
       },
       limit: 1,
     })
-    if (local.overlap.rows[0].total !== "0") {
+    if (overlap.rows[0].total !== "0") {
       throw { code: "BOOKING_OVERLAP", message: "This room is already booked" }
     }
   }

@@ -16,15 +16,15 @@ offset warns `ENTITY_LIST_INCOMPLETE`. The first is a heuristic on the source te
 it can miss a case (false negatives) and never proves that a list is complete.
 
 ```javascript
-local.page = entity.list({
+const page = entity.list({
   entity: "Ticket",
   checkAccess: true,
   options: { limit: 200, filter: { equipmentId: input.equipmentId } },
 })
-if (local.page.hasMore) {
+if (page.hasMore) {
   throw { code: "TOO_MANY_ROWS", message: "Narrow the filter" }
 }
-result.tickets = local.page.rows
+result.tickets = page.rows
 ```
 
 An empty group is the neutral element of its operator: `{and: []}` adds no
@@ -34,5 +34,5 @@ scope: an empty group never reaches a row outside it. A group holds at most 12
 members, 5 levels deep. For `options.active` of an `Activable` entity, see
 **Inactive rows** in `flow://guide/entities-policy`.
 
-To page instead, pass `offset: input.offset || 0` and return `local.page.nextOffset`
+To page instead, pass `offset: input.offset || 0` and return `page.nextOffset`
 (`null` on the last page) with the rows.

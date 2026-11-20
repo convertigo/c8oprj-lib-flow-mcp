@@ -8,11 +8,11 @@ A business Flow reuses the model rights by calling the generated Flows in the
 same session: `requestable.call` returns their result.
 
 ```javascript
-local.session = requestable.call({ requestable: ".desk_session" })
-if (!local.session.permissions.tickets.update) {
+const session = requestable.call({ requestable: ".desk_session" })
+if (!session.permissions.tickets.update) {
   throw { code: "FORBIDDEN", message: "Role denied" }
 }
-local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
+const ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
 ```
 
 Apply registers the connection (`sql.connections.<connection>`), the SQL
@@ -41,7 +41,7 @@ of the model (`desk` here), which the project configuration already carries.
 
 ```javascript
 const _flow = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   accessibility: "hidden",
   authenticatedContextRequired: true,
   inputs: { id: { type: "string" } },
@@ -79,18 +79,18 @@ const _flow = {
 }
 
 function ticket_resolve({ input, config, result }) {
-  local.session = requestable.call({ requestable: ".desk_session" })
-  if (local.session.role !== "agent" && local.session.role !== "manager") {
+  const session = requestable.call({ requestable: ".desk_session" })
+  if (session.role !== "agent" && session.role !== "manager") {
     throw { code: "FORBIDDEN", message: "Role denied" }
   }
-  local.ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
-  local.done = sql.transaction({
+  const ticket = requestable.call({ requestable: ".desk_tickets_read", input: { id: input.id } })
+  const done = sql.transaction({
     steps: [
       { id: "ticket", statement: "ticket_resolve_update", parameters: { id: input.id } },
-      { id: "event", statement: "ticket_resolve_event", parameters: { ticket_id: input.id, actor: local.session.user } },
+      { id: "event", statement: "ticket_resolve_event", parameters: { ticket_id: input.id, actor: session.user } },
     ],
   })
-  result.resolved = local.done.committed
+  result.resolved = done.committed
 }
 ```
 
@@ -120,12 +120,12 @@ rule, write a business Flow whose filter comes from the server:
 
 ```javascript
 function my_tickets({ input, config, result }) {
-  local.session = requestable.call({ requestable: ".desk_session" })
-  if (!local.session.permissions.tickets.list) {
+  const session = requestable.call({ requestable: ".desk_session" })
+  if (!session.permissions.tickets.list) {
     throw { code: "FORBIDDEN", message: "Role denied" }
   }
-  local.mine = sql.query({ query: "my_tickets_rows", parameters: { user: local.session.user } })
-  result.rows = local.mine.rows
+  const mine = sql.query({ query: "my_tickets_rows", parameters: { user: session.user } })
+  result.rows = mine.rows
 }
 ```
 

@@ -16,24 +16,16 @@ overflow.
 
 <!-- example: export-bookings -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden", authenticatedContextRequired: true }
+const _flow = { sourceVersion: 3, accessibility: "hidden", authenticatedContextRequired: true }
 
 function ExportBookings({ input, config, result }) {
-  local.page = entity.list({ entity: "Reservation", checkAccess: true, options: { limit: 200, orderBy: "id" } })
-  if (local.page.hasMore) {
+  const page = entity.list({ entity: "Reservation", checkAccess: true, options: { limit: 200, orderBy: "id" } })
+  if (page.hasMore) {
     throw { code: "EXPORT_LIMIT", message: "Narrow the export below 201 rows" }
   }
-  local.rows = list.map({
-    items: local.page.rows,
-    select: {
-      id: current.key.id,
-      title: current.values.title,
-      starts: current.values.starts,
-      ends: current.values.ends,
-    },
-  })
+  const rows = page.rows.map(item => ({ id: item.key.id, title: item.values.title, starts: item.values.starts, ends: item.values.ends }))
   result.file = data.csv({
-    rows: local.rows,
+    rows,
     columns: [
       { field: "id", type: "int64" },
       { field: "title" },
@@ -65,15 +57,15 @@ The private named query has only the aggregate necessary for this service.
 
 <!-- example: daily-bookings -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "private" }
+const _flow = { sourceVersion: 3, accessibility: "private" }
 
 function DailyBookings({ input, config, result }) {
   if (String(config.jobs.enabled) !== "true") {
     return { enabled: false, count: "0" }
   }
-  local.day = date.today({ timeZone: "Europe/Paris" })
-  local.page = sql.query({ query: "startsToday", parameters: { day: local.day }, limit: 1 })
-  return { enabled: true, day: local.day, count: local.page.rows[0].total }
+  const day = date.today({ timeZone: "Europe/Paris" })
+  const page = sql.query({ query: "startsToday", parameters: { day }, limit: 1 })
+  return { enabled: true, day, count: page.rows[0].total }
 }
 ```
 

@@ -72,23 +72,25 @@ Save this block with `code-set({project,block:"app.actor",code:...})`:
 <!-- example: actor-block -->
 ```javascript
 const _meta = {
-  sourceVersion: 2,
+  sourceVersion: 3,
   private: true,
   properties: {},
   outputs: { out: { type: "object", properties: { user: { type: "string" }, roles: { type: "array", items: { type: "string" } } } } },
 }
 
+const _flow = { sourceVersion: 3 }
+
 function block({ input, config, result }) {
-  local.user = session.authenticatedUser({})
-  if (!local.user) {
+  const user = session.authenticatedUser({})
+  if (!user) {
     throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
-  local.accounts = sql.query({ query: "actorBySession", parameters: { user: local.user }, limit: 1 })
-  local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
-  if (!local.account || !local.account.role) {
+  const accounts = sql.query({ query: "actorBySession", parameters: { user }, limit: 1 })
+  const account = accounts.rows[0]
+  if (!account || !account.role) {
     throw { code: "FORBIDDEN", message: "Active account required" }
   }
-  return { user: local.account.user, roles: [local.account.role] }
+  return { user: account.user, roles: [account.role] }
 }
 ```
 
@@ -102,22 +104,20 @@ choice of entities, direct SQL, CSV or scheduling.
 
 <!-- example: demo-login -->
 ```javascript
-const _flow = { sourceVersion: 2, accessibility: "hidden", inputs: { account: { type: "string" } } }
+const _flow = { sourceVersion: 3, accessibility: "hidden", inputs: { account: { type: "string" } } }
 
 function DemoLogin({ input, config, result }) {
   if (String(config.demo.login) !== "true") {
     throw { code: "DEMO_LOGIN_DISABLED", message: "Demo sign-in is disabled" }
   }
-  local.accounts = sql.query({ query: "demoAccount", parameters: { user: input.account }, limit: 1 })
-  local.account = object.get({ source: local.accounts.rows, key: "0", defaultValue: null })
-  if (!local.account) {
+  const accounts = sql.query({ query: "demoAccount", parameters: { user: input.account }, limit: 1 })
+  const account = accounts.rows[0]
+  if (!account) {
     throw { code: "FORBIDDEN", message: "Demo account required" }
   }
-  session.authenticate({ user: local.account.user })
-  local.actor = app.actor({})
-  result.authenticated = true
-  result.user = local.actor.user
-  result.roles = local.actor.roles
+  session.authenticate({ user: account.user })
+  const actor = app.actor({})
+  return { authenticated: true, user: actor.user, roles: actor.roles }
 }
 ```
 

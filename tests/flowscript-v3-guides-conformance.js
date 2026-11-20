@@ -27,8 +27,42 @@ v3.guidePaths.forEach(function (path) {
 	var text = v3.read(new java.io.File(new java.io.File(root, "_flow/resources"), path));
 	zones += (text.match(/<!-- generated:v3-/g) || []).length;
 });
+// Every other guide and skill (20/11): no backend Flow nor FlowScript block in sourceVersion 2, and each FlowScript
+// fence is read by the v3 reader. A .flow.svelte page keeps sourceVersion 2 (its own format), as a Rhino block
+// ("runtime": "rhino") or a portable block ("implementations"): they are not FlowScript.
+var covered = {}, others = 0;
+v3.guidePaths.forEach(function (path) { covered[path] = true; });
+function markdownPaths(dir, rel, out) {
+	dir.listFiles().forEach(function (file) {
+		var name = rel + "/" + file.getName();
+		if (file.isDirectory()) markdownPaths(file, name, out);
+		else if (/\.md$/.test(name)) out.push(name);
+	});
+	return out;
+}
+var resources = new java.io.File(root, "_flow/resources");
+markdownPaths(new java.io.File(resources, "guide"), "guide", []).concat(markdownPaths(new java.io.File(resources, "skills"), "skills", [])).sort().forEach(function (path) {
+	v3.fences(v3.read(new java.io.File(resources, path))).forEach(function (fence) {
+		var code = fence.code, where = path + ":" + fence.line;
+		if (!v3.isV3Lang(fence.lang) || /<script/.test(code)) return;
+		var version = code.match(/\b_(flow|meta)\s*=\s*\{[\s\S]*?"?sourceVersion"?\s*:\s*(\d)/);
+		if (version && version[2] === "2" && (version[1] === "flow" || !/"?(runtime"?\s*:\s*"rhino"|implementations"?\s*:)/.test(code))) {
+			failures.push(where + ": FlowScript in sourceVersion 2, write it in v3");
+			return;
+		}
+		if (covered[path]) return;
+		if (/\b_meta\s*=/.test(code)) {
+			if (!/\bconst _flow\s*=/.test(code)) return; // a Rhino or portable block: not FlowScript
+			code = code.substring(code.search(/\bconst _flow\s*=/));
+		}
+		if (!/\bconst _flow\s*=/.test(code) && !/^guide\//.test(path)) return;
+		var result = v3.checkAccepted(v3.complete(code, "OtherGuideExample" + others++));
+		if (!result.parse || result.problems.length) failures.push(where + ": " + result.problems.join("; "));
+	});
+});
+if (others < 20) failures.push("too few examples in the other guides: " + others);
 if (checked < 6) failures.push("too few v3 guide examples: " + checked);
 if (zones < 10) failures.push("too few generated zones: " + zones);
 if (cleared.length) print("NOTICE: examples of the waiting list that the reader accepts now (remove them): " + cleared.join(", "));
 if (failures.length) throw new Error("FlowScript v3 guide conformance failed (" + failures.length + "):\n" + failures.join("\n"));
-print("flowscript-v3-guides-conformance OK: " + checked + " guide examples (+ " + refused + " refused), " + waited + " waiting, " + zones + " generated zones, " + v3.incompleteScans + " scans left to the reader");
+print("flowscript-v3-guides-conformance OK: " + checked + " guide examples, " + others + " in the other guides (+ " + refused + " refused), " + waited + " waiting, " + zones + " generated zones, " + v3.incompleteScans + " scans left to the reader");
