@@ -21,10 +21,9 @@ JSON and object functions are blocks written as JavaScript, in a declaration, an
 - `Object.entries` is refused: `for (const key of Object.keys(o)) { const value = o[key] … }`.
 - `Date.now()` and `new Date()` are refused: use `date.now`, `date.format`… (time zone and format).
 - `JSON.*` and `Object.*` remain refused inside other expressions, as in v2.
-- An object spread or `Object.assign({}, …)` is also the whole value of a `push` or of `groups[k] = …`, and a branch of
-  such a `?:`. Elsewhere (an argument, inside an expression) it is refused (`FLOWSCRIPT_V3_SPREAD`), with the statement to
-  write: `const merged = { ...a, k: v }`, then `merged`. A spread of a value that is not an object (`null`, a list, a
-  text) adds no field. `Object.assign(o, …)` changes `o` and is refused (`FLOWSCRIPT_V3_GLOBAL_CALL`).
+- An object spread or `Object.assign({}, …)` is also the whole value of a `push`, of `groups[k] = …` or of a branch of
+  such a `?:`; elsewhere it is refused (`FLOWSCRIPT_V3_SPREAD`). A spread of a non-object adds no field;
+  `Object.assign(o, …)` changes `o` (`FLOWSCRIPT_V3_GLOBAL_CALL`).
 <!-- /generated -->
 
 For an all-or-nothing batch, parse first, then validate every item in a `for…of`; push refusals and valid items to separate typed arrays. Do not write during validation.
@@ -174,10 +173,8 @@ Rare, explicit choices for a client outside the SDK; by default write
 - `response.header({name,value})` sets one header the same way; CR/LF and
   engine-owned headers (`Set-Cookie`, `Content-Length`, CORS, security) are refused.
 
-`session.set({ key, value })` keeps a value in the HTTP session of the
-caller: a text as is, any other value as its JSON text, which
-`session.get({ key })` gives back with its type (object, list, number,
-boolean). A key written by another program stays a text.
+`session.get({ key })` gives back what `session.set` stored with its type
+(object, list, number, boolean); a key set by another program is a text.
 
 Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
 maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The

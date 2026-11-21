@@ -47,17 +47,7 @@ Read for metadata, slots, values, dates or input conversion.
   `return { answer: input.value }`, bare `return`, and
   `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.
-  Everything outside this list is refused at its line, with the rewrite (`flow://guide/authoring/refusals`). A top-level helper after the Flow function is accepted with one object parameter.
-- **Local functions** of one expression are inlined where they are called,
-  in conditions and list arrows too: `const blank = v => v == null || v ===
-  ""`, then `if (!blank(input.sort))`. Statements go to a top-level helper,
-  `function fail({ message }) { throw { code: "INVALID", message } }`, called
-  `fail({ message: "…" })` in its own statement; it reads only its parameters.
-- **Objects and lists:** `const next = { ...input.options, search: null }`
-  or `Object.assign({}, a, b)` copies and merges (`object.merge`), as a whole
-  value, a push or `groups[k] = …`; `lines.sort((a, b) => a.id - b.id)`
-  sorts in place a list the Flow built (`const lines = []`), `toSorted`
-  elsewhere.
+  Everything outside this list is refused at its line, with the rewrite (`flow://guide/authoring/refusals`). A top-level helper after the Flow function takes one object parameter; a `const` arrow of one expression is inlined.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its
@@ -94,10 +84,8 @@ Read for metadata, slots, values, dates or input conversion.
   refused at its line. A pattern runs under a budget (`TEXT_PATTERN_TIMEOUT`)
   and stays a literal text in a public Flow (`dynamicPattern: true` otherwise).
   A local never takes the
-  name of a scope (`input`, `config`, `local`, `result`, `request`);
-  `const current = …`, `parent` and `trace` are locals (`local.current`),
-  except `current` beside a `list.*` or `flow.forEach` call that reads its
-  item. Studio shows the same: a text, an
+  name of a scope (`input`, `config`, `local`, `result`, `request`).
+  Studio shows the same: a text, an
   expression, or a text with `${…}` parts. `===`
   and `!==` are strict as in JavaScript (`0 === ""` is false), `==` and `!=`
   loose. Methods chain as in JavaScript, on a path, a call or a parenthesis
@@ -157,9 +145,8 @@ Read for metadata, slots, values, dates or input conversion.
   name starting with `__`, nor the name of a block namespace the Flow uses (`text`, `list`, `json`, `http`…): after
   `let text = …`, `text.trim({…})` would be a method call in JavaScript (`FLOWSCRIPT_V3_RESERVED_NAME`,
   `FLOWSCRIPT_V3_NAME_SHADOWS_BLOCK`);
-- a local may be named `current`, `parent` or `trace`: it is read as `local.current`, never as the scope. `current` stays
-  refused when a `list.*` or `flow.forEach` call of the Flow reads `current` as its item (`FLOWSCRIPT_V3_RESERVED_NAME`,
-  with that call).
+- a local may be named `current`, `parent` or `trace` (read as `local.current`), but not `current` when a `list.*` or
+  `flow.forEach` call reads `current` as its item.
 <!-- /generated -->
 
 ## Value rules
