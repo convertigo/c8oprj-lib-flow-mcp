@@ -1224,7 +1224,19 @@ const _meta = {
 		return out;
 	}
 
-	function starterBlock(item) {
+	// What a named snippet receives, for a contract read block by block: its description, and for each parameter its fields
+	// (the context of a Toolbar or of a Related1 slot) or its description.
+	function snippetContext(snippet) {
+		var out = {};
+		if (snippet && snippet.description) out.description = String(snippet.description);
+		((snippet && snippet.parameters) || []).forEach(function (parameter) {
+			if (parameter && parameter.fields) out[String(parameter.name)] = parameter.fields;
+			else if (parameter && parameter.description) out[String(parameter.name)] = String(parameter.description);
+		});
+		return out;
+	}
+
+	function starterBlock(item, detailed) {
 		var starter = {
 			tag: String(item.tag || item.insert && item.insert.tag || ""),
 			properties: compactProperties(item.properties),
@@ -1240,6 +1252,16 @@ const _meta = {
 		if (Object.keys(snippets).length) starter.snippets = snippets;
 		// the handlers of the events the block raises, in its Events slot (OnClick, OnSelectionChange...)
 		if (Array.isArray(item.events) && item.events.length) starter.events = item.events.slice();
+		if (detailed) {
+			// read block by block: what each snippet receives and what each event gives in @event.value
+			var contexts = {};
+			Object.keys(item.snippets || {}).forEach(function (name) {
+				var context = snippetContext(item.snippets[name]);
+				if (Object.keys(context).length) contexts[sourceSlots(objectWith(name))[0]] = context;
+			});
+			if (Object.keys(contexts).length) starter.snippetContexts = contexts;
+			if (item.eventDescriptions && Object.keys(item.eventDescriptions).length) starter.eventDescriptions = item.eventDescriptions;
+		}
 		return starter;
 	}
 
@@ -1251,14 +1273,14 @@ const _meta = {
 			if (lower.indexOf(tag) === -1) return false;
 			found[tag] = true;
 			return true;
-		}).map(starterBlock);
+		}).map(function (item) { return starterBlock(item, true); });
 		// A block asked for by its tag may come from a referenced library (Chart of the charts library).
 		(contract.items || []).forEach(function (item) {
 			var id = String(item.id || ""), tag = String(item.tag || item.insert && item.insert.tag || "");
 			var key = tag.toLowerCase();
 			if (!tag || id.indexOf("flow.block.") === 0 || found[key] || lower.indexOf(key) === -1) return;
 			found[key] = true;
-			blocks.push(starterBlock(item));
+			blocks.push(starterBlock(item, true));
 		});
 		var portableBlocks = [], seen = {};
 		(contract.items || []).forEach(function (item) {

@@ -4871,7 +4871,7 @@
 			Object.keys(item.properties || {}).forEach(function (name) {
 				var definition = item.properties[name] || {}, out = { type: String(definition.type || "") };
 				if (definition["default"] !== undefined) out["default"] = definition["default"];
-				if (definition.description) out.description = String(definition.description).substring(0, 400);
+				if (definition.description) out.description = String(definition.description).substring(0, 1000);
 				properties[name] = out;
 			});
 			function slotName(name) { return name === "default" || name === "children" ? "Children" : name.charAt(0).toUpperCase() + name.substring(1); }
@@ -4884,6 +4884,19 @@
 			var out = { id: String(item.id || widget.id), tag: widget.tag, description: String(item.description || widget.description || ""),
 				properties: properties, events: (item.events || []).slice ? (item.events || []).slice() : Object.keys(item.events || {}), slots: slots };
 			if (Object.keys(snippets).length) out.snippets = snippets;
+			// what each snippet receives (the context of a Toolbar or of a Related1 slot) and what each event gives in @event.value
+			var contexts = {};
+			Object.keys(item.snippets || {}).forEach(function (name) {
+				var snippet = item.snippets[name] || {}, context = {};
+				if (snippet.description) context.description = String(snippet.description);
+				(snippet.parameters || []).forEach(function (parameter) {
+					if (parameter && parameter.fields) context[String(parameter.name)] = parameter.fields;
+					else if (parameter && parameter.description) context[String(parameter.name)] = String(parameter.description);
+				});
+				if (Object.keys(context).length) contexts[slotName(name)] = context;
+			});
+			if (Object.keys(contexts).length) out.snippetContexts = contexts;
+			if (item.eventDescriptions && Object.keys(item.eventDescriptions).length) out.eventDescriptions = item.eventDescriptions;
 			return out;
 		} catch (e) {
 			return null;
@@ -5869,6 +5882,9 @@
 					units.push({kind:"block",tag:block.tag,slots:block.slots || [],events:block.events || []});
 					Object.keys(block.properties || {}).forEach(function (key) { units.push({kind:"property",tag:block.tag,key:key,value:block.properties[key]}); });
 					Object.keys(block.snippets || {}).forEach(function (name) { units.push({kind:"snippet",tag:block.tag,key:name,value:block.snippets[name]}); });
+					// what each snippet receives and what each event gives, after the properties
+					Object.keys(block.snippetContexts || {}).forEach(function (name) { units.push({kind:"snippetContext",tag:block.tag,key:name,value:block.snippetContexts[name]}); });
+					Object.keys(block.eventDescriptions || {}).forEach(function (name) { units.push({kind:"eventDescription",tag:block.tag,key:name,value:block.eventDescriptions[name]}); });
 				});
 				portables.forEach(function (block) { if (indexOnly(block)) units.push({kind:"portable",value:block}); });
 			} else {
@@ -5920,6 +5936,8 @@
 					else if (unit.kind === "slot") block.slots.push(unit.value);
 					else if (unit.kind === "event") block.events.push(unit.value);
 					else if (unit.kind === "snippet") block.snippets[unit.key]=unit.value;
+					else if (unit.kind === "snippetContext") (block.snippetContexts = block.snippetContexts || {})[unit.key]=unit.value;
+					else if (unit.kind === "eventDescription") (block.eventDescriptions = block.eventDescriptions || {})[unit.key]=unit.value;
 				}
 			}
 			while (index < units.length) {

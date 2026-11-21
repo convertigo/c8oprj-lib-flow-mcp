@@ -39,6 +39,9 @@ try {
 	var table = call("flow-block-get", Object.assign({ name: "DataTable" }, base)).frontendWidget;
 	assert(table && table.slots.indexOf("Cell2") >= 0 && table.slots.indexOf("Actions") >= 0 && table.snippets.Cell2.join() === "row,column,value",
 		"DataTable lists its snippets as slots: " + JSON.stringify(table && { slots: table.slots, snippets: table.snippets }));
+	// what each event gives in @event.value, as its contract says it (lot 6 of 21/11)
+	assert(table.eventDescriptions && /zero-based/.test(table.eventDescriptions.OnChange || ""),
+		"DataTable gives what OnChange gives: " + JSON.stringify(table.eventDescriptions));
 	var got = call("code-get", Object.assign({ sourceFile: sourceFile, contractBlocks: ["DataTable"] }, base));
 
 	// The call the hint gives, with the Structure parentPath of the page, returns the contract of the widget.
