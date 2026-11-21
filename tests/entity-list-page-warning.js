@@ -56,6 +56,14 @@ try {
  check(guide.indexOf('A create also sets it when a default, an auto rule, the policy scope or the Possédé owner fills it.')>=0,'guide states that server-filled values set the relation');
  check(/Relation non autorisée\."\s+naming only `details\.field`/.test(guide)&&/a 404 still fails the read/.test(guide),'guide states the neutral relation refusal');
  check(/an absent value is\s+`ENTITY_FILTER_INVALID`/.test(guide),'guide states that an absent filter value is an error');
+ // An empty filter object is refused at run time: code-set says so where the filter is written (21/11, L36F).
+ function empty(out){return (out.warnings||[]).filter(function(w){return w.code==='ENTITY_FILTER_EMPTY';});}
+ var literal=empty(set('EmptyFilter','  result.page = entity.list({ entity: "Ticket", checkAccess: true, options: { filter: {}, limit: 20 } })'));
+ check(literal.length===1&&literal[0].line===4&&/leave filter out or pass null/.test(literal[0].hint),'an empty filter object is warned at code-set');
+ check(empty(set('FallbackFilter','  result.page = entity.exportCsv({ entity: "Ticket", options: { filter: input.status ? { status: input.status } : {} } })')).length===1,'an empty object as the fallback of a filter is warned');
+ var fixed=set('NullFilter','  result.page = entity.list({ entity: "Ticket", checkAccess: true, options: { filter: input.status ? { status: input.status } : null, limit: 20 } })');
+ check(empty(fixed).length===0&&empty(set('EmptyGroup','  result.page = entity.list({ entity: "Ticket", options: { filter: { and: [] } } })')).length===0,'null and an empty group are not warned',false);
+ check(/For no filter, leave `filter` out or pass `null`/.test(guide)&&/ENTITY_FILTER_EMPTY/.test(guide),'guide gives the form of no filter and names the warning');
  var failed=results.filter(function(r){return !r.passed;}),regressions=results.filter(function(r){return r.regression;});
  var passed=negative?failed.length===regressions.length&&failed.every(function(r){return r.regression;}):failed.length===0;
  print(JSON.stringify({passed:passed,baseline:negative,checks:checks,regressionChecks:regressions.length,failures:failed.map(function(r){return r.name;})}));

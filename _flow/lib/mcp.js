@@ -5021,6 +5021,21 @@
 		return out;
 	}
 
+	// entity.list, count, aggregate and exportCsv refuse an empty filter object at run time (ENTITY_FILTER_INVALID): a
+	// short filter whose values were all absent reads the same once serialized. A heuristic on the source lines: a
+	// filter whose value holds {} (filter: {}, filter: x ? {...} : {}, filter: input.filter || {}).
+	function entityEmptyFilterWarnings(code) {
+		var text = String(code || ""), out = [];
+		if (!/\bentity\.(list|count|aggregate|exportCsv)\(/.test(text)) return out;
+		text.split("\n").forEach(function (line, index) {
+			if (out.length < 5 && /\bfilter\s*:[^,\n]*\{\s*\}/.test(line))
+				out.push({ severity: "warning", code: "ENTITY_FILTER_EMPTY", line: index + 1,
+					message: "An entity filter {} is refused at run time (ENTITY_FILTER_INVALID): it is also what a short filter whose values were absent becomes.",
+					hint: "For no filter, leave filter out or pass null ({and: []} adds no condition either). Read flow://guide/entities/model/lists." });
+		});
+		return out;
+	}
+
 	function addEntityListPageWarnings(request, value) {
 		if (!value || typeof value !== "object" || value.ok === false) return;
 		var args = toolArguments(request) || {}, code = typeof value.code === "string" ? value.code : typeof args.code === "string" ? args.code : "";
@@ -5028,7 +5043,7 @@
 		if (!code && file) {
 			try { code = String(new Packages.java.lang.String(Files.readAllBytes(new File(String(file)).toPath()), StandardCharsets.UTF_8)); } catch (e) { code = ""; }
 		}
-		var found = entityListPageWarnings(code);
+		var found = entityListPageWarnings(code).concat(entityEmptyFilterWarnings(code));
 		if (found.length) value.warnings = found.concat(value.warnings || []);
 	}
 

@@ -36,5 +36,10 @@ scope: an empty group never reaches a row outside it. A group holds at most 12
 members, 5 levels deep. For `options.active` of an `Activable` entity, see
 **Inactive rows** in `flow://guide/entities/policy`.
 
+For no filter, leave `filter` out or pass `null`. An empty object `{}` is
+`ENTITY_FILTER_INVALID` (a short filter whose values were all absent becomes
+`{}` once serialized), and `code-set` warns `ENTITY_FILTER_EMPTY` on a `filter`
+written with `{}`: write `filter: input.status ? {status: input.status} : null`.
+
 To page instead, pass `offset: input.offset || 0` and return `page.nextOffset`
 (`null` on the last page) with the rows.
