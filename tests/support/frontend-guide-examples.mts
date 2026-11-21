@@ -112,9 +112,13 @@ test("the documented server table sends paging, filter and sort parameters to th
   input.dispatchEvent(new f.dom.window.Event("input", { bubbles: true }));
   await pause();
   assert.deepEqual(parameters(), { offset: 0, limit: 10, query: "Alice", sortKey: "", sortDirection: "none" });
-  (f.dom.window.document.querySelector('button[aria-label="Sort ascending: Room"]') as HTMLButtonElement).click();
+  // the sort button of a header is named by its column; the header carries aria-sort
+  const roomSort = Array.from(f.dom.window.document.querySelectorAll("th button")).find(button => button.textContent?.trim().startsWith("Room")) as HTMLButtonElement;
+  assert.ok(roomSort, "a sort button named by the Room column");
+  roomSort.click();
   await pause();
   assert.deepEqual(parameters(), { offset: 0, limit: 10, query: "Alice", sortKey: "room", sortDirection: "asc" });
+  assert.equal(roomSort.closest("th")?.getAttribute("aria-sort"), "ascending");
   assert.deepEqual(f.errors, []);
 });
 
