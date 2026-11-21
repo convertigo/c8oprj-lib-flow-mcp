@@ -33,7 +33,7 @@ Object.keys(utils.expressionFunctions({})).filter(function (name) {
 });
 // The catch reads every field of the thrown object, and an uncaught throw answers them in its error envelope (bench L8:
 // a catch lost error.field)
-["`failure.field`", "every other field of the thrown", "at the top of the error envelope"].forEach(function (part) {
+["`failure.field`", "every other field of the thrown", "at the top of the error envelope", "give `flow.call` or `requestable.call`\n  `onError: \"return\"`"].forEach(function (part) {
 	assert(family.indexOf(part) !== -1, "the authoring family says what a catch and a client read of a throw: " + part);
 });
 print("authoring-guide-expressions OK (" + checks + " checks)");

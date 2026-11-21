@@ -60,7 +60,10 @@ Read for metadata, slots, values, dates or input conversion.
   object (`throw { code, message, field: "amount" }` gives `failure.field`),
   and `throw failure` raises it again unchanged. Uncaught, those fields reach
   the client at the top of the error envelope:
-  `{ error: { code, message, details, field } }`.
+  `{ error: { code, message, details, field } }`. To read the failure of a
+  called Flow as a value instead, give `flow.call` or `requestable.call`
+  `onError: "return"`: the call answers `{ error: { code, message, status,
+  path, hint, details, ... } }` and the caller goes on.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), on a property of kind expression too (`day:
   "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
