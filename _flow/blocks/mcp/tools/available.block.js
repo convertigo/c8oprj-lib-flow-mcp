@@ -681,7 +681,7 @@ const _meta = {
 		} else if (name === "flow-project-remove") {
 			description = "Safely unloads a Studio project or deletes its workspace content. Starts with dryRun:true and blocks dirty, linked, Git-backed or referenced projects by default.";
 		} else if (name === "flow-fullsync-scaffold") {
-			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true; apply reports saved DBOs separately from live CouchDB readiness and returns a repair call on failure. PostBulkDocuments accepts complete document arrays through _use_json_base.";
+			description = "Creates FullSync connector, design documents and standard transactions through DBO APIs. Start with dryRun:true; apply reports saved DBOs separately from live CouchDB readiness and returns a repair call on failure. The answer lists in inputs the variables each transaction takes, under their declared names: getView, getDocument and attachment variables get the _use_ prefix (key becomes _use_key). postDocument takes the whole document as _use_json_base or one variable per field; postBulkDocuments takes the document array as _use_json_base.";
 		} else if (name === "flow-resource-search") {
 			description = "Searches project-local Flow files. Requires project; not for executable Flow code. Prefer code-get/code-rg for FlowScript.";
 		} else if (name === "flow-resource-delete") {

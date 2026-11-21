@@ -282,6 +282,13 @@ const _meta = {
         "repair": {
           "type": "object",
         },
+        "usage": {
+          "type": "object",
+        },
+        "inputs": {
+          "type": "object",
+          "description": "By transaction name: {requestable, type, variables}, the names requestable.call takes (a view variable key is _use_key).",
+        },
       },
     },
   },
@@ -588,6 +595,14 @@ const _meta = {
 				description: "JSON array of complete documents to write in one bulk request"
 			}];
 		}
+		if (type === "postDocument") {
+			// The whole document in one input, as Convertigo reads it (PostDocumentTransaction json_base): the declared
+			// field variables are written over it.
+			return [{
+				name: "_use_json_base",
+				description: "Whole document as a JSON object; field variables declared beside it are written over it"
+			}];
+		}
 		if (type === "getDocumentAttachment") {
 			return [
 				{ name: "_use_attpath", description: "Optional destination attachment path" },
@@ -885,8 +900,11 @@ const _meta = {
 				warnings: designWarnings(designDocuments),
 				saved: false,
 				usage: {
-					postBulkDocuments: "Pass the document array as input._use_json_base. Do not invent a docs variable."
-				}
+					postDocument: "Pass the whole document as input._use_json_base (an object), or one declared variable per field. requestable.call refuses a field the transaction does not declare (REQUESTABLE_UNDECLARED_INPUT).",
+					postBulkDocuments: "Pass the document array as input._use_json_base. Do not invent a docs variable.",
+					variables: "The variables of getView, getDocument and the attachment transactions are created with the _use_ prefix (key becomes _use_key, startkey _use_startkey, docid _use_docid): call them under the names that inputs lists."
+				},
+				inputs: {}
 			};
 			var connectorQName = name + "." + fsName;
 			var projectChanged = false;
@@ -896,12 +914,18 @@ const _meta = {
 				dboName(spec.name, "design document name");
 				designJson(spec, String(spec.name));
 			});
+			// The input of each transaction as requestable.call takes it: its requestable and its variables, under the names
+			// it declares (a view variable key is _use_key).
 			transactions.forEach(function (rawSpec) {
 				var spec = objectValue(rawSpec, "transactions[]");
-				dboName(spec.name, "transaction name");
+				var transactionName = dboName(spec.name, "transaction name");
 				var type = canonicalType(spec.type);
 				transactionClass(type);
-				mergedVariables(type, spec);
+				result.inputs[transactionName] = {
+					requestable: "." + fsName + "." + transactionName,
+					type: type,
+					variables: mergedVariables(type, spec).map(function (variable) { return variable.name; })
+				};
 			});
 			listeners.forEach(function (rawSpec) {
 				var spec = objectValue(rawSpec, "listeners[]");
@@ -1014,6 +1038,10 @@ const _meta = {
 				variables.forEach(function (variableSpec) {
 					projectChanged = configureVariable(transaction, variableSpec, result, qname) || projectChanged;
 				});
+				// the variables the transaction declares now, those of an earlier scaffold included
+				var declared = [], list = transaction.getVariablesList();
+				for (var v = 0; list && v < list.size(); v++) declared.push(String(list.get(v).getName()));
+				result.inputs[transactionName].variables = declared;
 			});
 
 			listeners.forEach(function (rawSpec) {

@@ -12,6 +12,7 @@
     "mcp-hot-path-benchmark.js",
     "mcp-resources-contract.js",
     "fullsync-transaction-type.js",
+    "fullsync-scaffold-inputs.js",
     "native-property-values.js",
     "resource-content-config-warnings.js",
     "resource-patch-hunks.js",

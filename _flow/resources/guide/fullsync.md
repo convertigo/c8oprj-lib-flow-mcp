@@ -25,6 +25,16 @@ variable multiplicity and defaults exactly when migrating an existing DBO.
 Attachment transactions provision their standard `_use_docid`,
 `_use_attname`, path/base64 and content-type variables.
 
+Call a transaction with `requestable.call` under the variable names it
+declares, listed by the scaffold answer in `inputs` (`requestable`, `type`,
+`variables`). The variables of `getView`, `getDocument` and the attachment
+transactions get the `_use_` prefix: a view variable `key` is `_use_key`,
+`startkey` is `_use_startkey`. `postDocument` declares `_use_json_base`: pass
+the whole document there as an object, or declare one variable per field
+(field variables are written over `_use_json_base`). `postBulkDocuments` takes
+the document array as `_use_json_base`. A key the transaction does not declare
+is refused (`REQUESTABLE_UNDECLARED_INPUT`), with the declared names.
+
 `listeners[]` creates FullSync view listeners targeting a saved Sequence or
 Flow and a fully qualified design-document view. Keep a listener disabled until
 its target is saved and a disposable differential fixture is ready. An enabled
