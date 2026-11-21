@@ -37,9 +37,9 @@ a pending preparation, never an unchanged active viewer.
    `frontend-svelte-action({ project, actionId:"dev.ensure", wait:false })`
    once: it preserves a running viewer and restarts it after a Studio
    relaunch. Do not poll or repeat it.
-2. Plan the Pages and transitions. Create target Pages before writing the
-   layout and navigation links that refer to them; otherwise validation reports
-   `FRONTEND_NAVIGATE_PAGE_UNKNOWN`. Write each complete Page with `code-set`
+2. Plan the Pages and transitions. A link to a Page not written yet is a
+   warning at writing and an error at the build (`FLOW_PAGE_LINK_UNKNOWN`)
+   while that Page is missing: write every linked Page before building. Write each complete Page with `code-set`
    and `sourceFile`; it validates before the atomic write. A new Page has no
    revision; existing Pages use theirs.
    The home Page `flow-project-bootstrap(ui:true)` created exists: pass its `frontbuilderModelRevision`.

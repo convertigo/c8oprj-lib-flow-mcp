@@ -43,6 +43,10 @@ the supplied page locally. Its **OnChange** requests a new page with
 Capture these values before calling the Flow; there is no separate OnPage
 event. `OnSelectionChange` is a different event, for the selected row keys.
 
+The sort button of a column header is named by the column label
+(`getByRole('button', { name: 'Amount' })`), its header carries `aria-sort`,
+and the action of the next click (`sortAscendingLabel`…) is its description.
+
 This complete Page expects `.ListBookings` to return `{ items, total }` and
 accept `offset`, `limit`, `query`, `sortKey` and `sortDirection`. The Flow checks
 the session and allowed sort keys, and applies the filter, sort and bounded

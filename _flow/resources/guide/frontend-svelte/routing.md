@@ -91,8 +91,10 @@ supply values through `Params` and `Query`:
 </Navigate>
 ```
 
-Write the target Page before the Page that navigates to it; a `Navigate` to a
-Page that does not exist yet fails with `FRONTEND_NAVIGATE_PAGE_UNKNOWN`.
+A link to a Page not written yet (`Navigate`, `LinkButton`, a `DataTable` row
+action) is a warning at writing, which names the existing Pages, and an error at
+the build (`FLOW_PAGE_LINK_UNKNOWN`) while that Page is missing: two Pages that
+link to each other are written one after the other, then built.
 
 For several routes, build in three passes: create a minimal skeleton source
 for **every** Page with its final `_flow.page.id`; then add `LinkButton` and

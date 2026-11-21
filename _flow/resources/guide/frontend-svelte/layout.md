@@ -50,7 +50,8 @@ than `Text`, `Card` and classes:
 | Frame, in the root Layout | `AppShell`: `Navigation` (one `LinkButton page=` per Page, the current one highlighted), `Tools` (logout `Button variant="ghost" size="sm"`, `DisplayModeControl`), `Children` > `PageContent` |
 | Top of a Page | `PageHeader` `title`, `description`, `eyebrow`, its commands in `Tools` |
 | Title of a Page alone | `Heading level="1"` (one `<h1>`; `Heading` is level 2 by default, `Text variant="title"` is a paragraph) |
-| Key figures | `GridLayout minColumnWidth="200px"` > `StatCard` `label`, `value`, `tone`, `hint`, `page` |
+| Key figures | `GridLayout minColumnWidth="200px"` > `StatCard` `label`, `value`, `tone`, `hint`, `page`: a group named by its label (`getByRole('group', { name: 'Upcoming' })`), a link named by its content with `page` |
+| A named area | `Card label="Bookings"`: a region named by its label, not displayed (`<section aria-label>`, `getByRole('region', { name: 'Bookings' })`); without `label` a plain surface |
 | Records | `DataTable`: `caption`, `columns` (`format` date, number, badge with `labels` and `tones`; `template` "{first} {last}"; `emphasis`), `rowActions`, `pageSize`, `locale`, an `emptyText` |
 | Simple rows | `Table`: `caption` (its accessible name), `columns` `[{ label, path }]` or `<Columns><Column label path /></Columns>`; `header`/`field` are accepted synonyms with a `FRONTEND_PROPERTY_ALIAS` warning: write `label`/`path`; optional `rowKey` names the row identity field (else `_id`, `id`) |
 | A status | `StatusBadge` `value` and `options` `[{ value, label, tone }]` |

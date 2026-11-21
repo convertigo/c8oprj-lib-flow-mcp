@@ -35,6 +35,18 @@ failure ends the chain, an empty branch lets it go on. Its branches hold
 actions and `If` only. A `DataGrid` `OnChange` also fires when new rows drop
 the selected one (`@event.source` is `selection`): guard what needs a row.
 
+The value of an action (`Variable value`, `SetValue value`, the `Params` of a
+`LinkButton`) and the `test` of an `If` in `Actions` take a literal, an
+`@reference`, or an expression in braces composed from the visible sources
+(the event, a `ForEach` item, a snippet parameter such as `row`, page and
+layout states, `route`, a call by its `$$id`) with literals, comparison,
+logical and arithmetic operators, `?:`, templates, arrays and objects of
+written keys (`value={{ key: { id: route.params.id } }}`), and `String`,
+`Number`, `Boolean`, `JSON.stringify`, `Array.isArray`, `encodeURIComponent`:
+`test={event.value.action === "edit"}`. A spread, a computed key, a method or
+another call is refused (`FRONTEND_ACTION_EXPRESSION_NOT_PORTABLE`): compute
+it in a `Derived` and read `@page.<id>`.
+
 A chain started by a user event survives the teardown of the view that
 launched it: a button may hide its own panel, or a Flow component may be
 unmounted, and the remaining actions still run; lifecycle work (`OnMount`,
