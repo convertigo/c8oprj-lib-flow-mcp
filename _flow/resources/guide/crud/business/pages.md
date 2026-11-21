@@ -28,6 +28,12 @@ export const _flow = { sourceVersion: 2, page: { id: "my_tickets", title: "My ti
 </FlowComponent>
 ```
 
+Each `ui.navigation` entry is a `navCustom_<page>` link of the generated shell:
+its page must exist before the build and the sync of the dev viewer, or the
+build refuses `FLOW_PAGE_LINK_UNKNOWN` naming that link (writing the model only
+warns). Write the page first, then add its entry and apply; to drop a page,
+remove its entry first.
+
 The generated pages, dashboard included, cannot be changed by hand: add a
 page instead of editing one.
 
