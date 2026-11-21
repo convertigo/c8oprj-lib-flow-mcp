@@ -788,7 +788,12 @@
 			return args;
 		}
 		var parent = splitAuthoringParentPath(args.parentPath);
+		// a qualified focusPath (Project::path, the parentPath of an authoring-tree node) names its project and path too
+		if (!parent && typeof args.focusPath === "string" && args.focusPath.indexOf("::") !== -1) {
+			parent = splitAuthoringParentPath(args.focusPath);
+		}
 		if (!parent) {
+			authoringFocusSurface(args, String(args.focusPath || ""));
 			return args;
 		}
 		if (parent.project) {
@@ -802,18 +807,23 @@
 		}
 		if (parent.path) {
 			args.focusPath = parent.path;
-			if (!args.surface) {
-				if (/^frontends(?:\.|$)/.test(parent.path)) {
-					args.surface = "frontend";
-					if (/^frontends\.svelte(?:\.|$)/.test(parent.path) && !args.builder) {
-						args.builder = "svelte";
-					}
-				} else if (/^(?:engine|catalog)(?:\.|$)/.test(parent.path)) {
-					args.surface = "backend";
-				}
-			}
+			authoringFocusSurface(args, parent.path);
 		}
 		return args;
+	}
+
+	// The surface of a palette or mutate focus that names none: the frontend tree for frontends.*, the backend tree for the
+	// engine, its catalog and the configuration (config.*, configs), as authoring-tree shows them.
+	function authoringFocusSurface(args, path) {
+		if (args.surface || !path) return;
+		if (/^frontends(?:\.|$)/.test(path)) {
+			args.surface = "frontend";
+			if (/^frontends\.svelte(?:\.|$)/.test(path) && !args.builder) {
+				args.builder = "svelte";
+			}
+		} else if (/^(?:engine|catalog|config|configs)(?:\.|$)/.test(path)) {
+			args.surface = "backend";
+		}
 	}
 
 	function qualifyAuthoringPath(args, path) {
@@ -891,7 +901,7 @@
 	// unfocused tree of the same request), so the caller retries without reading the whole tree.
 	function authoringFocusNotFound(args, value, tree) {
 		var error = value && value.error;
-		if (!error || error.code !== "AUTHORING_TREE_FOCUS_NOT_FOUND") return value;
+		if (!error || error.code !== "AUTHORING_TREE_FOCUS_NOT_FOUND" && error.code !== "AUTHORING_FOCUS_NOT_FOUND") return value;
 		var wanted = String(value.focusPath || args.focusPath || args.rootPath || args.path || "");
 		var nearest = nearestAuthoringPaths(wanted, tree, 3).map(function (path) { return qualifyAuthoringPath(args, path); });
 		value.nearestPaths = nearest;

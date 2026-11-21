@@ -397,6 +397,32 @@ const _meta = {
 				if (target === "block.get") {
 					result = withLongDescription(ctx, args, result);
 				}
+				if (target === "authoring.palette" && result && result.error && result.error.code === "AUTHORING_FOCUS_NOT_FOUND") {
+					// a path of authoring-tree that the tree of the palette names otherwise (frontends: the builder node; the project
+					// name: the root) reads as that node, with a note; any other unknown path keeps the error and its nearest paths
+					var paletteTree = null;
+					try {
+						paletteTree = ctx.callBlock("authoring.tree", Object.assign({}, args, { focusPath: "", rootPath: "", path: "",
+							property: undefined, detail: "compact", maxDepth: 8 }), { trace: false });
+					} catch (ignored) {
+					}
+					var wantedFocus = String(result.focusPath || args.focusPath || "");
+					var paletteAlias = mcp.authoringFocusAlias(args, wantedFocus, paletteTree);
+					var aliasedPalette = null;
+					if (paletteAlias && paletteAlias.path !== wantedFocus) {
+						try {
+							aliasedPalette = ctx.callBlock("authoring.palette", Object.assign({}, args, { focusPath: paletteAlias.path }), { trace: false });
+						} catch (ignored) {
+						}
+					}
+					if (aliasedPalette && typeof aliasedPalette === "object" && !aliasedPalette.error) {
+						aliasedPalette.warnings = (Array.isArray(aliasedPalette.warnings) ? aliasedPalette.warnings.slice() : []).concat([{
+							code: "FOCUS_PATH_NORMALIZED", message: paletteAlias.note }]);
+						result = aliasedPalette;
+					} else {
+						result = mcp.authoringFocusNotFound(args, result, paletteTree);
+					}
+				}
 				if (target === "authoring.palette") {
 					result = externalPaletteItems(ctx, mcp, args, result);
 				}
