@@ -9,7 +9,9 @@ Read when filtering, sorting or paging entity results.
 scope and takes the same short form, `{field: value}` (equalities, relations
 included; an array means one of, `null` an empty value, an absent value is
 `ENTITY_FILTER_INVALID`), or `{field, op, value}` with `eq`, `in`,
-`contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`. Do not use `rows`
+`contains`, `between` (`[from, to]`, bounds included), or one bound with `gt`,
+`gte`, `lt`, `lte` (`null` leaves it open), grouped by `{and:[...]}` /
+`{or:[...]}`. Do not use `rows`
 as the whole list without checking `hasMore`: `code-set` warns
 `ENTITY_LIST_PAGE_UNCHECKED`, and a run that gets a partial page without an
 offset warns `ENTITY_LIST_INCOMPLETE`. The first is a heuristic on the source text:

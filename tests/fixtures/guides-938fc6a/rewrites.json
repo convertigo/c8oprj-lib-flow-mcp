@@ -1071,5 +1071,10 @@
   "family": "entities",
   "old": "and return `local.page.nextOffset`",
   "new": "and return `page.nextOffset`"
+ },
+ {
+  "family": "entities",
+  "old": "`contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`.",
+  "new": "`contains`, `between` (`[from, to]`, bounds included), or one bound with `gt`, `gte`, `lt`, `lte` (`null` leaves it open), grouped by `{and:[...]}` / `{or:[...]}`."
  }
 ]

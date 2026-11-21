@@ -14,7 +14,10 @@ stay strings; `describe` adds label/tone maps and `timeZone`. Dates use
 offset is already local time in the model's zone.
 
 Use `filters={[{field:"statut"},{field:"responsableId"},{field:"actif"}]}` for enum,
-searchable relation and boolean controls; dates and text also work. An optional
+searchable relation and boolean controls; dates and text also work. A filter's
+`op` is an `entity.list` operator: `eq` by default, `contains`, or one bound,
+`gt`, `gte`, `lt`, `lte`; `{field:"dateDebut",op:"gte",label:"Du"}` and
+`{field:"dateDebut",op:"lte",label:"Au"}` make an inclusive date range. An optional
 base `filter` is ANDed with all controls on the server. Admin lists offering
 inactive rows set `active="all"`; neither control grants that access. Search,
 sort and pagination are server operations, and ordinary page/sort changes keep
