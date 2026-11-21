@@ -184,10 +184,11 @@ do {
   check(++metaCount<100,'metadata pagination terminates');
 } while (true);
 check(Object.keys(seenPages).length===120 && Object.keys(seenTags).length===80,'metadata pages and available blocks are recoverable');
-// Explicitly requested contracts retain optional properties, events and snippet parameters across pages.
+// Explicitly requested contracts retain optional properties, events and snippet parameters across pages (five blocks
+// of 150 properties, past one targeted page).
 var requestedBlocks=[];
 for(var t=0;t<5;t++) {
-  var properties={}; for(var j=0;j<60;j++) properties['optional'+j]='string:literal';
+  var properties={}; for(var j=0;j<150;j++) properties['optional'+j]='string:literal';
   requestedBlocks.push({tag:'Entity'+t,properties:properties,events:['OnLoaded','OnSelectionChange'],slots:['Toolbar'],snippets:{Toolbar:['row','selected','item']}});
 }
 var targetedValue={ok:true,code:new Array(19000).join('x'),revision:'target-r',authoringContract:{version:2,detail:'blocks',blocks:requestedBlocks}};
@@ -210,12 +211,34 @@ do {
   check(++contractPages<100,'targeted contract pagination terminates');
 } while(true);
 check(contractPages>0,'large targeted contract is paginated');
-requestedBlocks.forEach(function(block){var got=recovered[block.tag];check(got && Object.keys(got.properties).length===60 && got.events.length===2 && got.snippets.Toolbar.length===3,
+requestedBlocks.forEach(function(block){var got=recovered[block.tag];check(got && Object.keys(got.properties).length===150 && got.events.length===2 && got.snippets.Toolbar.length===3,
   'targeted contract complete for '+block.tag);});
+// One to three blocks asked for, of the size of the frontend catalog (DataTable: about 40 properties, 8 slots, 3 events),
+// come back complete in one response, the index of the other portable blocks after them. With a targeted page of 4800
+// characters, that index filled the page and DataTable, EntityStat or Input came back incomplete (bench, 21/11).
+var catalogBlocks=[], portableIndex=[];
+for(var cb=0;cb<3;cb++) {
+  var catalogProperties={}; for(var cp=0;cp<45;cp++) catalogProperties['property'+cp]='string:literal|expression|source';
+  catalogBlocks.push({tag:'Catalog'+cb,properties:catalogProperties,slots:['Cell','Actions','Empty','Tools','Events'],events:['OnClick','OnChange','OnSelectionChange'],
+    snippets:{Cell:['row','column','value'],Actions:['row']}});
+}
+for(var pi=0;pi<60;pi++) portableIndex.push({id:'portable.block'+pi,tag:'PortableBlock'+pi});
+[1,2,3].forEach(function(count){
+  var asked=catalogBlocks.slice(0,count).map(function(block){return block.tag;});
+  var catalogValue={ok:true,revision:'catalog-r',authoringContract:{version:2,detail:'blocks',blocks:catalogBlocks.slice(0,count),portableBlocks:portableIndex,missingBlocks:[]}};
+  var catalogReply=mcp.toolResponse({id:1,method:'tools/call',params:{name:'code-get',arguments:{project:'App',sourceFile:'src/routes/+page.flow.svelte',contractBlocks:asked}}},catalogValue,{}).result;
+  var catalogPart=catalogReply.structuredContent.authoringContract;
+  check(length(catalogReply)<16000,'catalog-size targeted contract exceeds the final envelope budget: '+length(catalogReply));
+  check(catalogPart.complete===true && catalogPart.contractNextOffset===undefined && catalogPart.blocks.length===count && catalogPart.blocks.every(function(block){
+    return !block.incomplete && Object.keys(block.properties).length===45 && block.events.length===3 && block.snippets.Cell.length===3;}),
+    count+' catalog-size blocks come back complete in one response: '+JSON.stringify({complete:catalogPart.complete,next:catalogPart.contractNextOffset,
+      blocks:catalogPart.blocks.map(function(block){return [block.tag,Object.keys(block.properties).length,block.incomplete];})}));
+  check(catalogPart.portableBlocks.length===60,'the portable index follows the blocks asked for');
+});
 // It126: EntityStat was cut before sum, and Form appeared with slots=[] although
 // its component has Children and OnSubmit. Each block announces structure on
-// its first page, while a cut block says it is incomplete.
-var statProperties={}; for(var sp=0;sp<400;sp++) statProperties['field'+sp]='string:literal';
+// its first page, while a cut block says it is incomplete (600 properties, past one targeted page).
+var statProperties={}; for(var sp=0;sp<600;sp++) statProperties['field'+sp]='string:literal';
 statProperties.sum='decimal:expression';
 var edgeBlocks=[{tag:'EntityStat',properties:statProperties,slots:[],events:['OnLoaded']},
   {tag:'Form',properties:{ariaLabel:'string:binding'},slots:['Children','Events'],events:['OnSubmit']}];
@@ -371,6 +394,14 @@ try {
     'A targeted code-get must retain the full block contract');
   check(picked.authoringContract.portableBlocks.some(function(block) {return block.id === 'date.now' && block.tag;}),
     'A targeted code-get must retain the portable block index');
+  // Three blocks of the catalog, DataTable the largest, in one complete response.
+  var trio = call('code-get', {project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,contractBlocks:['Input','Table','DataTable']});
+  var trioContract = trio.structuredContent.authoringContract;
+  print('TARGETED_CODE_GET ' + JSON.stringify({chars:length(trio),blocks:trioContract.blocks.map(function(block) {return [block.tag,length(block)];})}));
+  check(length(trio) < 16000 && trioContract.complete === true && trioContract.contractNextOffset === undefined && trioContract.blocks.length === 3 &&
+    trioContract.blocks.every(function(block) {return !block.incomplete;}) &&
+    trioContract.blocks.some(function(block) {return block.tag === 'DataTable' && block.properties.columns && block.slots.indexOf('Actions') >= 0 && block.events.length;}),
+    'Input, Table and DataTable come back complete in one response: ' + JSON.stringify(trioContract).slice(0, 600));
   var absoluteSource = 'alpha\nbeta\n' + new Array(19000).join('z') + '\nomega';
   FU.writeStringToFile(new File(project, page), absoluteSource, 'UTF-8');
   var lineChunk = call('code-get',{project:'App',projectDir:String(project.getCanonicalPath()),sourceFile:page,startLine:3,endLine:3});

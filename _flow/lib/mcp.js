@@ -5780,6 +5780,13 @@
 		return out;
 	}
 
+	// A page of the contract of the blocks asked for (contractBlocks), measured on the structured value. One to three
+	// blocks of the frontend catalog (Input, Table, DataTable, EntityStat...) fit in one page, complete; larger contracts
+	// still continue at contractNextOffset. The final MCP response stays below 16000 characters (finalizeResponse): the
+	// rest is left to the continuation, the entity page hint, the text summary and the notices. It was 4800, which cut
+	// DataTable after the portable index (bench, 21/11).
+	var TARGETED_CONTRACT_PAGE_CHARS = 12000;
+
 	function compactCodeGetContract(request, value) {
 		if (!value || value.ok === false) return value;
 		var args = toolArguments(request), out = Object.assign({}, value), source = typeof out.code === "string" ? out.code : "";
@@ -5808,7 +5815,10 @@
 			if (contract.valueSyntax) units.push({kind:"valueSyntax",value:targeted ? contract.valueSyntax : {local:contract.valueSyntax.local}});
 			if (contract.missingBlocks) units.push({kind:"missingBlocks",value:contract.missingBlocks});
 			if (targeted) {
-				(contract.portableBlocks || []).forEach(function (block) { units.push({kind:"portable",value:block}); });
+				// The blocks asked for come first, then the index of the other portable blocks ({id, tag}): a page
+				// filled by that index cut DataTable or EntityStat although they fit in one response (bench, 21/11).
+				var portables = contract.portableBlocks || [], indexOnly = function (block) { return block && block.properties === undefined; };
+				portables.forEach(function (block) { if (!indexOnly(block)) units.push({kind:"portable",value:block}); });
 				blocks.forEach(function (block) {
 					// The first unit for a block carries its structural contract. A page cut
 					// among properties must not make Children or OnSubmit look absent.
@@ -5816,6 +5826,7 @@
 					Object.keys(block.properties || {}).forEach(function (key) { units.push({kind:"property",tag:block.tag,key:key,value:block.properties[key]}); });
 					Object.keys(block.snippets || {}).forEach(function (name) { units.push({kind:"snippet",tag:block.tag,key:name,value:block.snippets[name]}); });
 				});
+				portables.forEach(function (block) { if (indexOnly(block)) units.push({kind:"portable",value:block}); });
 			} else {
 				if (Array.isArray(contract.pages)) contract.pages.forEach(function (page) { units.push({kind:"page",value:page}); });
 				else if (contract.pages) units.push({kind:"pagesValue",value:contract.pages});
@@ -5870,7 +5881,7 @@
 			while (index < units.length) {
 				var saved = JSON.stringify(page); append(units[index]);
 				// Leave room for the continuation after the last unit, so it cannot evict a source that already fits.
-				if (jsonChars(out) > (targeted ? 4800 : out.partial ? 3200 : 6000) && index > offset) { out.authoringContract = page = JSON.parse(saved); break; }
+				if (jsonChars(out) > (targeted ? TARGETED_CONTRACT_PAGE_CHARS : out.partial ? 3200 : 6000) && index > offset) { out.authoringContract = page = JSON.parse(saved); break; }
 				index++;
 			}
 			if (targeted) page.blocks.forEach(function(block) {
