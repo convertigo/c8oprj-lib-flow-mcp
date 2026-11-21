@@ -34,4 +34,5 @@ A refusal names its line, its code and the rewrite; the source is never rewritte
 | if or while whose condition is an object literal | `FLOWSCRIPT_V3_OBJECT_CONDITION` | flow.if({ … }) or flow.while({ … }) |
 | a regular expression literal in a lazy place (after && \|\| ??, in a list arrow, an argument, a while condition) or in another form | `FLOWSCRIPT_V3_PATTERN` | const m = text.match({ text: String(s), pattern: "p" }) before the statement, then m.matched |
 | a field of a block call result read in a lazy place (after && \|\| ??, a branch of a ?: inside an expression, an argument, a list arrow, a while condition, a for…of list) | `FLOWSCRIPT_V3_CALL_RESULT` | const r = block({ … }) in its own statement, then r.field |
+| a write under a computed key elsewhere than on a local object or map (result[k], a loop item, a list item, a nested field, an input), groups[k].push(v) | `FLOWSCRIPT_V3_COMPUTED_WRITE` | const groups = {} then groups[k] = v, and result.groups = groups; groups[k] = groups[k].concat([v]) |
 <!-- /generated -->

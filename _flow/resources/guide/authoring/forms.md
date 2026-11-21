@@ -42,7 +42,7 @@ The refusals, with their code and rewrite: `flow://guide/authoring/refusals`.
 | `const x = cond ? xs.filter(…).map(…) : ys` |  | if (cond) { x = branch1 } else { x = branch2 }, each chain lowered in its branch. a declaration, assignment or returned field that is entirely the ?: |
 | `xs.concat(ys, …)` |  | the expression method Array.prototype.concat; a chain in an argument runs before it |
 | `rows.push(v)` | `json.push` | properties: path = local.rows; value = v. rows created by json.array, or by const rows = [] / let rows = [] whose item type every push proves |
-| `byId[key] = v` | `json.put` | properties: path = local.byId; key = key; value = v. byId created by json.map |
+| `byId[key] = v`, `byId[key] += v`, `byId[key]++` | `json.put` | properties: path = local.byId; key = key; value = v. byId created by json.map or declared with an object literal (const groups = {}); a finite number key is its text, as in JavaScript; any other computed key is FLOWSCRIPT_V3_COMPUTED_WRITE |
 | `Object.keys(o)` | `object.keys` | properties: source = o. assignment, return, chain head, if condition, for…of list |
 | `Object.values(o)` | `object.values` | properties: source = o. assignment, return, chain head, if condition, for…of list |
 | `JSON.parse(t)` | `json.parse` | properties: text = t. assignment, return, chain head, if condition |
