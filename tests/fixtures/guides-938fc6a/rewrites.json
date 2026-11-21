@@ -1075,6 +1075,6 @@
  {
   "family": "entities",
   "old": "`contains`, `between`, grouped by `{and:[...]}` / `{or:[...]}`.",
-  "new": "`contains`, `between` (`[from, to]`, bounds included), or one bound with `gt`, `gte`, `lt`, `lte` (`null` leaves it open), grouped by `{and:[...]}` / `{or:[...]}`."
+  "new": "`contains`, `between` (`[from, to]`, bounds included), or one bound with `gt`, `gte`, `lt`, `lte`, grouped by `{and:[...]}` / `{or:[...]}`. A `null` bound is open: `between` `[\"2026-03-01\", null]` reads as `gte`. A decimal bound is exact text or a finite JSON number (`355.25`)."
  }
 ]

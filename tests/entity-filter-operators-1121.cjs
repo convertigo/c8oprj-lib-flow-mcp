@@ -8,7 +8,12 @@ const ONE_BOUND=['gt','gte','lt','lte'];
 test('the list guide names every filter operator, the one-bound comparisons included',()=>{
  const lists=read('entities/model/lists');
  for(const op of ['eq','in','contains','between',...ONE_BOUND])assert.match(lists,new RegExp('`'+op+'`'),op);
- assert.match(lists,/`null` leaves it open/);
+ assert.match(lists,/A `null` bound is open/);
+});
+test('the list guide gives an open between bound and a JSON number for a decimal',()=>{
+ const lists=read('entities/model/lists');
+ assert.match(lists,/`between` `\["2026-03-01", null\]` reads as `gte`/);
+ assert.match(lists,/A decimal bound is exact text or a finite JSON number/);
 });
 test('the table guide gives the op of a filter control and an inclusive date range',()=>{
  const table=read('entities/widgets/table');
