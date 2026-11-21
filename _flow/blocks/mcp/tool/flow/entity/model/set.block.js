@@ -30,7 +30,7 @@ const _meta = {
     "expectedRevision": {
       "kind": "text",
       "type": "string",
-      "description": "Required SHA-256 returned by get, or missing for first creation. Stale revisions are refused."
+      "description": "Required SHA-256 returned by get, or missing for first creation. A stale revision is refused with ENTITY_MODEL_STALE, whose details.currentRevision is the stored revision."
     },
     "confirmStorageChange": {
       "kind": "literal",

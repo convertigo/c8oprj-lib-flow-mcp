@@ -2,7 +2,7 @@
 
 Essential model, paging and schema rules; open one drawer for the operation at hand.
 
-`flow-entity-model-get({project})` returns the model and revision. Check the complete declaration with `flow-entity-model-check`, then write with `flow-entity-model-set({project,model,expectedRevision})`; a stale revision requires a fresh read. `gateway: true` creates the local `EntityGateway` for entity pages. Give IDs and revisions as text, including int64 values above JavaScript's safe integer.
+`flow-entity-model-get({project})` returns the model and revision. Check the complete declaration with `flow-entity-model-check`, then write with `flow-entity-model-set({project,model,expectedRevision})`; a stale revision is refused (`ENTITY_MODEL_STALE`) with the stored revision in `details.currentRevision`. `gateway: true` creates the local `EntityGateway` for entity pages. Give IDs and revisions as text, including int64 values above JavaScript's safe integer.
 
 `entity.list` returns one page (`rows`, `total`, `hasMore`, `nextOffset`), at most 200 rows. Never treat `rows` as complete until `hasMore` is false; page with `options.offset` or narrow the filter. Public entity calls use `checkAccess: true`. Policy scope is always applied, even with an empty filter group.
 

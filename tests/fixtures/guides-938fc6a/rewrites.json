@@ -1081,5 +1081,10 @@
   "family": "frontend-svelte",
   "old": "| Key figures | `GridLayout minColumnWidth=\"200px\"` > `StatCard` `label`, `value`, `tone`, `hint`, `page` |",
   "new": "| Key figures | `GridLayout minColumnWidth=\"200px\"` > `StatCard` `label`, `value`, `tone`, `hint`, `page`: a group named by its label (`getByRole('group', { name: 'Upcoming' })`), a link named by its content with `page` | | A named area | `Card label=\"Bookings\"`: a region named by its label, not displayed (`<section aria-label>`, `getByRole('region', { name: 'Bookings' })`); without `label` a plain surface |"
+ },
+ {
+  "family": "entities",
+  "old": "A stale revision is a conflict: read again, reconcile the change and check before retrying.",
+  "new": "A stale revision is a conflict (`ENTITY_MODEL_STALE`): its `details.currentRevision` is the stored revision; reconcile the change with the stored model and retry with it."
  }
 ]
