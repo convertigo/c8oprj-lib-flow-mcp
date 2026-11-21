@@ -31,4 +31,9 @@ Object.keys(utils.expressionFunctions({})).filter(function (name) {
 ["`flow.while({ condition:", "maxIterations", "after 1000 passes", "WHILE_ITERATION_LIMIT", "timeoutMs", "FLOWSCRIPT_V3_LOOP_FORM"].forEach(function (part) {
 	assert(family.indexOf(part) !== -1, "the authoring family describes the while block: " + part);
 });
+// The catch reads every field of the thrown object, and an uncaught throw answers them in its error envelope (bench L8:
+// a catch lost error.field)
+["`failure.field`", "every other field of the thrown", "at the top of the error envelope"].forEach(function (part) {
+	assert(family.indexOf(part) !== -1, "the authoring family says what a catch and a client read of a throw: " + part);
+});
 print("authoring-guide-expressions OK (" + checks + " checks)");

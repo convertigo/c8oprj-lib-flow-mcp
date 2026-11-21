@@ -56,8 +56,11 @@ Read for metadata, slots, values, dates or input conversion.
   result made of an `error` object alone. To go on after a block that may
   fail (an email, a call to another Flow or service), wrap it in
   `try { ... } catch (failure) { ... }`; the catch reads `failure.code`,
-  `failure.message` and `failure.details` (the details of the thrown error),
-  and `throw failure` raises it again unchanged.
+  `failure.message`, `failure.details` and every other field of the thrown
+  object (`throw { code, message, field: "amount" }` gives `failure.field`),
+  and `throw failure` raises it again unchanged. Uncaught, those fields reach
+  the client at the top of the error envelope:
+  `{ error: { code, message, details, field } }`.
 - **Values read as JavaScript:** a quoted string is text (`"cost ${x}"` is
   those characters), on a property of kind expression too (`day:
   "2025-12-14"` is that date, never 2025 - 12 - 14; a quoted scope path such
