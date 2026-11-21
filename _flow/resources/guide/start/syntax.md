@@ -16,8 +16,8 @@ Not available, with the replacement:
 - `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
 - return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
 - throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
-- const rows = [] then a push of no certain type, or of different types: json.array({ itemType }) with the type of the pushed values (`FLOWSCRIPT_V3_UNTYPED_LIST`)
-- a function other than a top-level helper, a list arrow or a slot (nested, in an expression, a closure); a slot with a parameter or an expression body: inline, a top-level helper, or a project block; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
+- const rows = [] then a push of no certain type, or of different types; a push into a list of no declared type: json.array({ itemType }) with the type of the pushed values (`FLOWSCRIPT_V3_UNTYPED_LIST`)
+- a function other than a top-level helper, a list arrow, a slot or a const local function of one expression (statements, let, passed as a value, calling a block, nested declaration); a slot with a parameter or an expression body: const f = (a, b) => expression; a top-level helper function f({ a, b }) { … } called in its own statement; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
 - import … from "…": const { … } = flow.import("…") (`FLOWSCRIPT_V3_IMPORT_SYNTAX`)
 - default(x, y) outside a switch: default is a reserved word, so this is not JavaScript: flow.default(x, y), with the same arguments (`FLOWSCRIPT_V3_RESERVED_WORD`)
 <!-- /generated -->

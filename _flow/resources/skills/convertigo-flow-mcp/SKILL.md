@@ -45,7 +45,7 @@ palette. That is why:
 - `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
 - return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
 - throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
-- a function other than a top-level helper, a list arrow or a slot (nested, in an expression, a closure); a slot with a parameter or an expression body: inline, a top-level helper, or a project block; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
+- a function other than a top-level helper, a list arrow, a slot or a const local function of one expression (statements, let, passed as a value, calling a block, nested declaration); a slot with a parameter or an expression body: const f = (a, b) => expression; a top-level helper function f({ a, b }) { … } called in its own statement; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
 <!-- /generated -->
 
   When a construct is outside the subset, the refusal names it and the

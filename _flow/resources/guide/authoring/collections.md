@@ -144,6 +144,7 @@ function Active({ input, config, result }) {
 | `xs.toSorted((a, b) => a.localeCompare(b))`, also with `String(a)` and `String(b)` | `list.sort({ items: xs, compare: "locale" })`; reversed operands add `direction: "desc"` |
 | `xs.toSorted((a, b) => a.k < b.k ? -1 : (a.k > b.k ? 1 : 0))` and its exact spellings | `list.sort({ items: xs, by: current.k, compare: "natural" })`: `left < right ? -1 : left > right ? 1 : 0` on the raw keys; `b` first adds `direction: "desc"` |
 | `xs.toSorted((a, b) => c1 \|\| c2 \|\| …)`, each `ci` one of the comparators above | `list.sort` with the first key and `then: [{ by, compare, direction }, …]`; a `0` or `NaN` falls to the next key, as `\|\|` does |
+| `xs.sort((a, b) => …)` as a statement, `xs` a list the Flow builds (`const xs = []` or `json.array`), never assigned nor read whole before the sort or in a loop around it | `list.sort` into `local.xs` itself, with the comparators above; on any other list, `const sorted = xs.toSorted(…)` (`FLOWSCRIPT_V3_LIST_METHOD`) |
 | `includes`, `slice`, `join`, `at`, `indexOf`, `length` | expression methods, no block |
 | `xs.concat(ys)` | the expression method `Array.prototype.concat`: a copy of `xs` followed by the items of `ys` (a non-list argument is appended as one item); a list method chain in an argument runs before it |
 <!-- /generated -->
@@ -168,7 +169,8 @@ function Active({ input, config, result }) {
   give that `list.sort` (paths are null-safe). Without `compare`,
   `list.sort` keeps its Flow order (numeric texts as numbers, `null` as `""`), which no JavaScript comparator
   reproduces: it stays a call.
-- Refused: `xs.sort(…)` alone (it sorts in place, `list.sort` returns a copy: write `toSorted`), a comparator that is not an accepted key comparator,
+- Refused: `xs.sort(…)` inside an expression, or as a statement on a list the Flow does not build (it sorts in place what
+  shares the list: write `toSorted`), a comparator that is not an accepted key comparator,
   `reduce`, an index parameter `(x, i)`, a parameter of an outer arrow read in an inner one
   (`FLOWSCRIPT_V3_LIST_METHOD`).
 <!-- /generated -->

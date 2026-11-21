@@ -35,7 +35,7 @@ A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` c
 - `finally`: the statements after the try (`FLOWSCRIPT_V3_FINALLY`)
 - return inside a loop: continue, or a local and a return after the loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`)
 - throw new Error(m): throw { code: "CHOOSE_ERROR_CODE", message: m } (`FLOWSCRIPT_V3_ERROR_CODE_CHOICE`)
-- a function other than a top-level helper, a list arrow or a slot (nested, in an expression, a closure); a slot with a parameter or an expression body: inline, a top-level helper, or a project block; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
+- a function other than a top-level helper, a list arrow, a slot or a const local function of one expression (statements, let, passed as a value, calling a block, nested declaration); a slot with a parameter or an expression body: const f = (a, b) => expression; a top-level helper function f({ a, b }) { … } called in its own statement; a slot $$s() {…} (`FLOWSCRIPT_V3_FUNCTION`)
 - do … while, for … in, labelled loop, labelled break or continue: while, for (const key of Object.keys(o)) (`FLOWSCRIPT_V3_LOOP_FORM`)
 - default(x, y) outside a switch: default is a reserved word, so this is not JavaScript: flow.default(x, y), with the same arguments (`FLOWSCRIPT_V3_RESERVED_WORD`)
 <!-- /generated -->

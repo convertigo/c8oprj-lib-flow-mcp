@@ -15,11 +15,16 @@ JSON and object functions are blocks written as JavaScript, in a declaration, an
 | `Object.keys(o)`, `Object.values(o)` | `object.keys({ source: o })`, `object.values({ source: o })` |
 | `JSON.parse(t)` | `json.parse({ text: t })` |
 | `JSON.stringify(v)`, `JSON.stringify(v, null, 2)` | `json.stringify({ value: v })`, with `pretty: true` |
+| `{ ...a, k: v, ...b }`, `Object.assign({}, a, { k: v })` | `object.merge({ target: a, source: { k: v } })`, one per part after the first, in hidden locals |
 
 - Elsewhere, and with other arguments (replacer, reviver, other indent), they are refused (`FLOWSCRIPT_V3_GLOBAL_CALL`).
 - `Object.entries` is refused: `for (const key of Object.keys(o)) { const value = o[key] … }`.
 - `Date.now()` and `new Date()` are refused: use `date.now`, `date.format`… (time zone and format).
 - `JSON.*` and `Object.*` remain refused inside other expressions, as in v2.
+- An object spread or `Object.assign({}, …)` is also the whole value of a `push` or of `groups[k] = …`, and a branch of
+  such a `?:`. Elsewhere (an argument, inside an expression) it is refused (`FLOWSCRIPT_V3_SPREAD`), with the statement to
+  write: `const merged = { ...a, k: v }`, then `merged`. A spread of a value that is not an object (`null`, a list, a
+  text) adds no field. `Object.assign(o, …)` changes `o` and is refused (`FLOWSCRIPT_V3_GLOBAL_CALL`).
 <!-- /generated -->
 
 For an all-or-nothing batch, parse first, then validate every item in a `for…of`; push refusals and valid items to separate typed arrays. Do not write during validation.
@@ -168,6 +173,11 @@ Rare, explicit choices for a client outside the SDK; by default write
   called Flow; without HTTP request (schedule, FullSync) it has no effect.
 - `response.header({name,value})` sets one header the same way; CR/LF and
   engine-owned headers (`Set-Cookie`, `Content-Length`, CORS, security) are refused.
+
+`session.set({ key, value })` keeps a value in the HTTP session of the
+caller: a text as is, any other value as its JSON text, which
+`session.get({ key })` gives back with its type (object, list, number,
+boolean). A key written by another program stays a text.
 
 Use `csv.parse({path:input.file,rowSchema:local.rowSchema,separator:";",
 maxRows:10000})` for uploaded UTF-8 CSV, or pass `text` instead of path. The
