@@ -44,3 +44,8 @@ written with `{}`: write `filter: input.status ? {status: input.status} : null`.
 
 To page instead, pass `offset: input.offset || 0` and return `page.nextOffset`
 (`null` on the last page) with the rows.
+
+`orderBy` names a visible field (the identity by default) and `direction` is
+`asc` or `desc`. Ties keep the identity ascending in both directions, compared
+in its declared type: an `int64` numerically (9 before 10), a `string` as text
+(`"10"` before `"9"`). Declare an identity holding integers `int64`.

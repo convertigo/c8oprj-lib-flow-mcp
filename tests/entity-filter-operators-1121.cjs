@@ -1,5 +1,5 @@
 // The filter operators the entity guides teach are the ones entity.list accepts (21/11, L34F: EntityTable filters
-// declared op "gte"/"lte" for a date range, and no guide named a one-bound operator).
+// declared op "gte"/"lte" for a date range, and no guide named a one-bound operator), and the order of sort ties.
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),guides=path.join(root,'_flow/resources/guide');
@@ -14,6 +14,10 @@ test('the list guide gives an open between bound and a JSON number for a decimal
  const lists=read('entities/model/lists');
  assert.match(lists,/`between` `\["2026-03-01", null\]` reads as `gte`/);
  assert.match(lists,/A decimal bound is exact text or a finite JSON number/);
+});
+test('the list guide says how sort ties are ordered and how to declare an integer identity',()=>{
+ const lists=read('entities/model/lists');
+ assert.match(lists,/Ties keep the identity ascending in both directions, compared in its declared type: an `int64` numerically \(9 before 10\), a `string` as text \(`"10"` before `"9"`\)\. Declare an identity holding integers `int64`\./);
 });
 test('the table guide gives the op of a filter control and an inclusive date range',()=>{
  const table=read('entities/widgets/table');
