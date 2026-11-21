@@ -38,7 +38,8 @@ identity field when its model name differs. There, `EntityForm` and `EntityView`
 take `routeId="@route.params.id"`. Activation sends only
 key, revision and the active-field change through the gateway. Its rule must
 live in a model hook, not only in a calling Flow. An `Actions` slot replaces
-defaults, including in read-only sessions where it may offer View.
+defaults, including in read-only sessions where it may offer View. An empty
+`<Actions></Actions>` is dropped and keeps the defaults.
 
 `selectable` plus `bulkActions={[{id:"declare",label:"Déclarer"}]}` raises
 `OnBulkAction` with `{action,keys}`; `OnSelectionChange` and bindable `selected`

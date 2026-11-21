@@ -19,7 +19,9 @@ A selected `row` or an exact `recordKey` also works. Composite identities need
 `recordKey`. The widget always re-reads the record; parent row values are never
 authorization evidence. `active` defaults to active rows; admin histories may
 request all when the server policy permits it. `OnEdit` should open EntityForm;
-`OnChanged` reports activation. `Actions(row,context)` replaces its defaults.
+the default Edit is shown only when `OnEdit` is bound. `OnChanged` reports
+activation. `Actions(row,context)` replaces its defaults; an empty
+`<Actions></Actions>` is dropped and keeps them.
 A section field can use `cellSlot:"field2"` with `Field2(row,field)`; Field3 and
 Field4 also exist. `Field` is the compatible global override.
 

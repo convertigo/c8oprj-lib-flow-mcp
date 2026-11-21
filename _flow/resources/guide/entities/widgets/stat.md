@@ -116,8 +116,10 @@ and client-side arithmetic on money. Currency display uses currency rounding.
 `EntityBreakdown sum="amount"` or `avg="amount"` displays the measured value
 per group; enable both `groupBy` and the measured field in `gateway.aggregate`.
 Use `orderBy="value"`, optionally `direction="asc"`. Cards use `currency`;
-table mode shows exact text without bars for measures. `OnLoaded.groups`
-retains decimal strings; `series` continues to contain row counts for charts.
+bars (the default with `sum`, or `display="table"`) show the group label, then
+the formatted measure and the row count, with a bar proportional to the measure.
+`OnLoaded.groups` retains decimal strings; `series` continues to contain row
+counts for charts.
 
 This example assumes a `Deal` with public `bookedOn` (date), `stage` (enum),
 `site` and `amount` (decimal), and `gateway: {aggregate: [stage, amount]}`.
