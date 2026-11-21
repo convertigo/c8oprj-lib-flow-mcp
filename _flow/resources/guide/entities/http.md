@@ -109,6 +109,11 @@ function MyReservations({ input, config, result }) {
 For `entity.list`, `options.orderBy` is one field name string, never an array.
 When sorting by another field, the engine adds the automatic identity field as a stable tie-breaker.
 
+`options.search` reads the display title, or the visible text fields named by
+`options.searchFields` (at most 8, any of them matching, ignoring case), in
+`entity.list`, `entity.count` and `entity.exportCsv`; a directory entity keeps one
+`options.searchField`.
+
 An `Activable` entity lists and counts active rows only. `options.active` of
 `entity.list`, `entity.count` and `entity.read` is `"active"` (the default of a
 list or a count), `"inactive"` or `"all"`; `null` reads as absent, any other

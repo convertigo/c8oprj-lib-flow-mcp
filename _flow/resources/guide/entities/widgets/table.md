@@ -41,6 +41,10 @@ live in a model hook, not only in a calling Flow. An `Actions` slot replaces
 defaults, including in read-only sessions where it may offer View. An empty
 `<Actions></Actions>` is dropped and keeps the defaults.
 
+With `viewPage` and no `OnSelect` bound, the title of each row (the model display
+title) is a link to that page too; with `OnSelect` it stays a button raising it. A
+custom cell reads the key as `@row.key.id`.
+
 `selectable` plus `bulkActions={[{id:"declare",label:"Déclarer"}]}` raises
 `OnBulkAction` with `{action,keys}`; `OnSelectionChange` and bindable `selected`
 expose the array of exact object keys. Keep it as an array in page state when
@@ -53,6 +57,15 @@ from Toolbar, as in `flow://guide/multipage-entities/operations`.
 For a complete filtered CSV, set `exportFlow` to an application Flow calling
 `entity.exportCsv`; read `flow://guide/entities/exports` for the server limits,
 list policy and a page with a real download button.
+
+`labels.export` renames the button of `exportFlow` (`Exporter les résultats (CSV)`
+by default) and `labels.exportPage` the page download of `exportable`.
+
+The `Toolbar` context gives `total` (the rows the search and filters match, `null`
+when a business list Flow gives none), `shown` (the rows of the page) and `offset`;
+`OnLoaded` gives `{total, shown, offset, hasMore}` in `@event.value` after every
+load, a search, filter, sort or page change included: write a count from it, never
+by counting rendered rows.
 
 ## Dashboard and list: companies, contacts and deals
 
@@ -119,6 +132,12 @@ Company list (place inside the same shell's Children):
 ```
 
 Search uses the model title by default. Its single label is supplied by labels.search; do not add a separate search-help text.
+
+`searchFields={["title","description"]}` searches up to eight visible text fields,
+any of them matching, ignoring case (a directory entity keeps one `searchField`).
+`resettable` adds a Réinitialiser button (`labels.reset`) that clears the search and
+the controls (back to their declared `value`) and restores the initial sort and the
+first page; `refreshKey` reloads without clearing them.
 Use the authorized list total for the header subtitle "13 companies"; never
 count a downloaded page. All examples use the application's gateway, without
 targetProject. Wire refreshKey to session changes and completed writes.

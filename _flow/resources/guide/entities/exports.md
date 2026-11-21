@@ -40,11 +40,16 @@ function ExportBookings({ input, config, result }) {
 ```
 
 `options` retains the list's `filter` (including AND/OR), `search`, `searchField`,
-`active`, `scope`, `orderBy` and `direction`. Export starts at zero, ignoring the
+`searchFields`, `active`, `scope`, `orderBy` and `direction`. Export starts at zero, ignoring the
 screen's offset/limit and related `counts`. Pages contain at most 200 rows.
 `fields` orders visible model fields; an empty array chooses all visible fields.
 Values are stable scalars: relation keys, enum codes, ISO dates/timestamps and
 exact int64/decimal text. Custom cell markup and related counts are not exported.
+
+`dateFormat: "dd/MM/yyyy"` in the arguments of `entity.exportCsv` writes the date
+fields in that form (tokens `dd`, `d`, `MM`, `M`, `yyyy`, `yy`, separated by `/`,
+`.`, `-` or a space); ISO stays the default, timestamps stay ISO, and any other
+pattern is refused before the export (`ENTITY_EXPORT_INVALID`).
 
 The result has `{content, filename, mimeType, rowCount, byteCount, bom, complete}`.
 CSV uses semicolons, UTF-8 BOM, CRLF records and doubled quotes. Headers and cells

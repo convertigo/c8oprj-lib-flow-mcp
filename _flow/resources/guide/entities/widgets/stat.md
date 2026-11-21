@@ -13,6 +13,11 @@ the gateway accepts these numeric measure fields. In a Flow,
 `entity.aggregate({entity, checkAccess: true, sum: "amount", options})` gives
 `{count, sum}`; `currency="USD"` shows an amount, as a model field `currency` does.
 
+`currency` formats a `sum` or an `avg` only: a count stays a plain number. The
+`OnLoaded` of EntityStat gives its result in `@event.value`: `total` for a count,
+`sum` or `avg` with `count` for a measure, and `previous` and `period` with
+`compare`.
+
 ```svelte
 <script module>export const _flow = { sourceVersion: 2, page: { id: "myDossiers" } };</script>
 <FlowComponent $$id="myDossiers"><Variables><State $$id="refresh" type="number" value={0} /></Variables><Structure>

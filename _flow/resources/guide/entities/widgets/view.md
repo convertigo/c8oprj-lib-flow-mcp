@@ -32,6 +32,11 @@ inverse entity applies its own policy. Options include `columns`, `filters`,
 `pageSize`, `active`, `viewPage`, `editPage`, and `slot` selecting Related or
 Related2 for a custom list. Wire page actions for linked records as needed.
 
+A `Related1(row, context)` or `Related2(row, context)` slot receives the record shown
+and a context: `context.filter` is the inverse filter of the list (ANDed with its
+`filter`), to pass as the `filter` of an `EntityTable`; `context.relation` its
+`related` entry; and `refresh`, `permissions`, `busy` and `schema`.
+
 The six verified integration page sources are shipped by lib_flow_entity at
 `_flow/resources/examples/entity-front`. They cover dossiers, responsible users, history,
 notifications and a bulk declaration form. Authoritative counters and the
