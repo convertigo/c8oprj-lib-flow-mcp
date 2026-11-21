@@ -28,7 +28,7 @@ function Greeting({ input, config, result }) {
 
 Write a first draft with `code-set`; use `code-run` diagnostics, then `code-promote` when clean. `unsaved:true` or `workingCopy:true` requires promotion. For an existing source, use `code-rg`, `code-get`, then the smallest `code-patch` with its revision. A missing reusable domain block may be mocked explicitly, but a Flow calling a mock is unfinished.
 
-A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` code and the rewrite to apply; the source is never rewritten for you. The common ones (all of them: `flow://guide/authoring/forms`):
+A construct outside the subset is refused at its line with a `FLOWSCRIPT_V3_*` code and the rewrite to apply; the source is never rewritten for you. The common ones (all of them: `flow://guide/authoring/refusals`):
 
 <!-- generated:v3-refusals format=bullets codes=BREAK,FINALLY,RETURN_IN_LOOP,ERROR_CODE_CHOICE,FUNCTION,LOOP_FORM,RESERVED_WORD -->
 - `break`: a local tested by the while condition, or find / filter (`FLOWSCRIPT_V3_BREAK`)

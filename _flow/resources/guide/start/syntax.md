@@ -23,4 +23,4 @@ Not available, with the replacement:
 <!-- /generated -->
 
 A regular expression literal is a block: `/re/.test(x)` becomes `text.match({ text: x, pattern: "re" })`.
-Every accepted form and every refusal: `flow://guide/authoring/forms`.
+Every accepted form: `flow://guide/authoring/forms`; every refusal: `flow://guide/authoring/refusals`.

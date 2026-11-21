@@ -52,7 +52,7 @@ return { status, rows }
 | `switch (x) { case "a": …; break; default: … }` | chain of `if` | Literal labels; every case ends with `break`, `return` or `throw`; `default` last. |
 | `try {…} catch (e) {…}` | `try` | The error is `local.e`, read as `e` inside the catch only. `catch {…}` declares no name: the error goes to `local.error`, or to a hidden local when the Flow has its own `error`. |
 | `continue` | `next` | In a `while`, a `for…of` or a counted `for`, without a label. |
-| `return`, `return value`, `return {…}` | `return` | Leaves the Flow. Refused inside a loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`). |
+| `return`, `return value`, `return {…}` | `return` | Leaves the Flow. Refused inside a loop (`FLOWSCRIPT_V3_RETURN_IN_LOOP`). `return block({…})` returns the result of the call, written to a hidden local first. |
 | `throw { code: "LITERAL", message }` | `throw` | `code` is a literal public code. |
 <!-- /generated -->
 

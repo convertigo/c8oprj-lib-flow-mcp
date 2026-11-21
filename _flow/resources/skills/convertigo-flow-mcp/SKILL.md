@@ -38,7 +38,7 @@ palette. That is why:
   string methods, `rows.filter(r => …)`/`map`/`find`/`some`/`every`/`toSorted`,
   `rows.push(v)` on a typed list, `rows[i]`. Imports: `const { get } =
   flow.import("http")`. Each step stays a node of the tree, so these are
-  refused with their replacement (`flow://guide/authoring/forms` lists every form and refusal):
+  refused with their replacement (`flow://guide/authoring/forms` lists every form, `flow://guide/authoring/refusals` every refusal):
 
 <!-- generated:v3-refusals format=bullets codes=BREAK,FINALLY,RETURN_IN_LOOP,ERROR_CODE_CHOICE,FUNCTION -->
 - `break`: a local tested by the while condition, or find / filter (`FLOWSCRIPT_V3_BREAK`)

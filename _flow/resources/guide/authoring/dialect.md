@@ -47,7 +47,7 @@ Read for metadata, slots, values, dates or input conversion.
   `return { answer: input.value }`, bare `return`, and
   `throw { code: "INVALID", message: "Invalid input" }`.
   Catalog blocks stay calls, including captures `const rows = sql.query({ ... })`.
-  Everything outside this list is refused at its line, with the rewrite (`flow://guide/authoring/forms`). A top-level helper after the Flow function is accepted with one object parameter.
+  Everything outside this list is refused at its line, with the rewrite (`flow://guide/authoring/refusals`). A top-level helper after the Flow function is accepted with one object parameter.
 - **Error or answer:** `throw` what must interrupt the caller (missing rights,
   resource or parameter, failed dependency):
   the Flow answers its error alone and a frontend action fails and stops its
