@@ -62,8 +62,11 @@ The relation labels are Company.companyName and Contact.fullName. Set
 `Deal.gateway.aggregate: [companyId, stage, amount]` and
 `Contact.gateway.aggregate: [companyId]`. Declare stage values with readable
 labels; tones are optional. Keep the application read policy as the authority
-for every row, relation label and measure. `updatedAt` is maintained by the
-application or its timestamp trait; the recent list sorts this stored field.
+for every row, relation label and measure. Declare `updatedAt` as
+`{type: "timestamp", auto: "update", readOnly: true, table: false}`: the server
+writes it at every save, and the recent list sorts on it. The trait `Horodaté`
+adds `dateCreation` and `dateModification` instead, never `updatedAt`: with it,
+sort with `orderBy="dateModification"`.
 
 Use AppShell `layout="sidebar"`, named LinkButton entries with `icon`, and
 `userName` from CurrentUser. Tools contains the existing Logout action. Keep
@@ -131,6 +134,7 @@ and gateway authorization. Related summaries support SQL entities; provider-back
 Both via and sum must be enabled; an unreadable or
 refused sum is omitted, never shown as zero. `layout="compact"` uses authorized
 relation labels, viewPage record links, server sorting and a bounded pageSize
-(1..50). Without orderBy it uses updatedAt descending.
+(1..50). Without orderBy it sorts on updatedAt, descending, when the model
+declares it, else on the identity.
 
 Bar counts use the current public model label, with optional `labelSingular` and `labelPlural` for explicit grammatical forms (for example `label: "Deal", labelPlural: "Deals"`). Common English/French statuses receive semantic tones before the stable fallback; explicit tones win. Sidebar layout keeps a full-height rail on mobile.
