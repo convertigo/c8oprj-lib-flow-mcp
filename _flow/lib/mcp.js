@@ -793,7 +793,6 @@
 			parent = splitAuthoringParentPath(args.focusPath);
 		}
 		if (!parent) {
-			authoringFocusSurface(args, String(args.focusPath || ""));
 			return args;
 		}
 		if (parent.project) {
