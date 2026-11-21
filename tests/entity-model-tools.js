@@ -101,6 +101,14 @@ try {
  assert(stale&&(stale.ok===false||!!stale.error),"Stale revision refused");
  var invalid=tool("flow-entity-model-set",{projectDir:args.projectDir,model:{version:2,entities:{Equipment:{fields:{bad:{type:"UNSUPPORTED"}}}}},expectedRevision:read.revision});
  assert(invalid&&invalid.ok===false,"Invalid model refused");
+ // gateway: true written on an entity (L28F, 21/11): the text of the refusal, all that a client showing only the text
+ // of an isError result reads, names the code, the path and the two forms, instead of "Error [TOOL_FAILED]: The tool
+ // reported a failure".
+ var refused=rpc("tools/call",{name:"flow-entity-model-set",arguments:{projectDir:args.projectDir,model:{version:2,entities:{Equipment:{gateway:true,fields:{label:{type:"string"}}}}},expectedRevision:read.revision}}).result;
+ var refusedText=String(refused.content&&refused.content[0]&&refused.content[0].text||"");
+ assert(refused.isError===true&&refused.structuredContent.ok===false&&refusedText.indexOf("TOOL_FAILED")<0&&/^Error \[ENTITY_MODEL_INVALID\]/.test(refusedText)&&
+  refusedText.indexOf("entities.Equipment.gateway")>=0&&refusedText.indexOf("gateway: true to flow-entity-model-set")>=0&&refusedText.indexOf('"gateway": {"aggregate": [')>=0,
+  "A model refusal names its diagnostics in the text: "+refusedText);
  var unchanged=tool("flow-entity-model-get",args);
  assert(unchanged&&unchanged.revision===read.revision,"Refused writes preserve file");
  print(JSON.stringify({ok:true,protocolCalls:calls,assertions:assertions}));

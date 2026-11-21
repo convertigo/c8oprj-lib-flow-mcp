@@ -448,13 +448,15 @@
 	// The diagnostics of a refusal in the text of the result: a client that shows the text alone (structuredContent
 	// ignored) read "FlowScript validation failed." and nothing it could fix. Line, code, construction and fix of the
 	// first diagnostics; the hint of the error when it has none.
-	function errorDiagnosticLines(error) {
+	function errorDiagnosticLines(error, listed) {
 		var details = error && error.details;
 		var diagnostics = error && Array.isArray(error.diagnostics) ? error.diagnostics
 			: Array.isArray(details) ? details : details && Array.isArray(details.diagnostics) ? details.diagnostics : [];
 		var errors = diagnostics.filter(function (diagnostic) { return diagnostic && diagnostic.severity !== "warning"; });
 		var lines = errors.slice(0, 5).map(function (diagnostic) {
-			var where = [diagnostic.line ? "line " + diagnostic.line : "", diagnostic.block ? diagnostic.block + (diagnostic.property ? "." + diagnostic.property : "") : ""]
+			// the path of a diagnostic of data (entities.Deal.gateway), unless its message starts with it
+			var path = typeof diagnostic.path === "string" && diagnostic.path && String(diagnostic.message || "").indexOf(diagnostic.path) !== 0 ? diagnostic.path : "";
+			var where = [diagnostic.line ? "line " + diagnostic.line : "", diagnostic.block ? diagnostic.block + (diagnostic.property ? "." + diagnostic.property : "") : "", path]
 				.filter(function (part) { return part; }).join(", ");
 			var text = "\n- " + (where ? where + ": " : "") + (diagnostic.code ? diagnostic.code + ": " : "") + String(diagnostic.message || "");
 			if (diagnostic.expression && String(diagnostic.message || "").indexOf(String(diagnostic.expression)) === -1) {
@@ -463,7 +465,7 @@
 			return text + (diagnostic.hint ? "\n  Fix: " + String(diagnostic.hint) : "");
 		});
 		if (errors.length > lines.length) {
-			lines.push("\n- " + (errors.length - lines.length) + " more in structuredContent.error.diagnostics.");
+			lines.push("\n- " + (errors.length - lines.length) + " more in " + (listed || "structuredContent.error.diagnostics") + ".");
 		}
 		if (!lines.length && error && error.hint) {
 			return " Fix: " + String(error.hint);
@@ -530,10 +532,27 @@
 		return lines;
 	}
 
-	// A result with ok:false and no error object (a frontend action, for instance) still has a code for text clients.
+	// A result with ok:false and no error object (a frontend action, for instance) still has a code for text clients:
+	// its own, else the one of its first error diagnostic.
 	function failedCode(value) {
 		var code = typeof value.code === "string" ? value.code : "";
+		if (!/^[A-Z][A-Z0-9_]{2,}$/.test(code)) code = String((failedDiagnostics(value)[0] || {}).code || "");
 		return /^[A-Z][A-Z0-9_]{2,}$/.test(code) ? code : "TOOL_FAILED";
+	}
+
+	// The error diagnostics of a refusal answered as a result (ok:false, diagnostics, no error object), as an entity
+	// model check or set answers an invalid model: its text said "The tool reported a failure" and nothing to fix, as a
+	// client may show only the text of an isError result (L28F, 21/11).
+	function failedDiagnostics(value) {
+		return Array.isArray(value.diagnostics) ? value.diagnostics.filter(function (diagnostic) {
+			return diagnostic && typeof diagnostic === "object" && diagnostic.severity !== "warning";
+		}) : [];
+	}
+
+	function failedMessage(value) {
+		if (value.message || value.title) return String(value.message || value.title);
+		var count = failedDiagnostics(value).length;
+		return count ? "Refused with " + count + " diagnostic" + (count > 1 ? "s" : "") : "The tool reported a failure";
 	}
 
 	// The first failed step of details.steps, with the error line of its output.
@@ -566,8 +585,8 @@
 				errorDiagnosticLines(value.error) + errorFieldLines(value.error) + keptWorkingCopyLine(value) + intuitiveCallLines(value) + " See structuredContent.error.";
 		}
 		if (value.ok === false) {
-			return "Error [" + failedCode(value) + "]: " + String(value.message || value.title || "The tool reported a failure").replace(/\.$/, "") + "." +
-				failedStepLine(value) + " See structuredContent.";
+			return "Error [" + failedCode(value) + "]: " + failedMessage(value).replace(/\.$/, "") + "." +
+				failedStepLine(value) + errorDiagnosticLines({ diagnostics: failedDiagnostics(value) }, "structuredContent.diagnostics") + " See structuredContent.";
 		}
 		var parts = [];
 		if (value.ok === true) {
