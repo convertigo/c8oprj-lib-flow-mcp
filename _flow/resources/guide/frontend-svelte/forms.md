@@ -28,9 +28,9 @@ its `@event.value` keeps the line breaks. `SearchField`, `ChatComposer`,
 `Button type="submit"` in a `Form` and run the save from `Form` > `Events` >
 `OnSubmit`, reading the page states.
 
-For multi-page sign-in, first create skeleton sources for every target Page
-with stable `_flow.page.id` values; then add links and submit navigation; then
-fill the pages with content. This complete login Form keeps both fields in
+For multi-page sign-in, give every Page a stable `_flow.page.id`; its links
+and submit navigation may be written before their target Page (a warning).
+This complete login Form keeps both fields in
 State. Its `Children` slot is required, and `Status` belongs in the page
 structure beside the Form, where a failed `.SignIn` remains visible:
 

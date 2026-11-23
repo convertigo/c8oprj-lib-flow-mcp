@@ -139,9 +139,9 @@ patch rather than changing its meaning silently.
 
 ## Avoid the remaining writing round trips
 
-- Create navigation target Pages first. For mutually linked pages, write their
-  content without navigation, then add the links after all Page ids exist.
-  A missing Page is not replaced with a guessed destination.
+- A link may name a Page not written yet (a warning, `FLOW_PAGE_LINK_UNKNOWN`
+  at the build): write mutually linked pages one after the other, links
+  included. A missing Page is not replaced with a guessed destination.
 - Declare State before reading `page.name`; read `code-get` for actual action
   results and schema paths. A `null` initial field leaves its future shape
   unknown; an explicit schema still constrains it. Do not delete a path merely

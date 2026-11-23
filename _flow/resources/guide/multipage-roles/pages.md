@@ -4,8 +4,8 @@ Read to build distinct pages and export the same scoped list.
 
 ## 4. Build distinct pages
 
-Create the target pages before the links: home/sign-in, my bookings,
-management and journal. The root Layout is an `AppShell`: its `Navigation`
+The pages are home/sign-in, my bookings, management and journal; a link may
+come before its page (a warning). The root Layout is an `AppShell`: its `Navigation`
 holds a `LinkButton` per page, its `Tools` the user and the logout, its
 content `PageContent`. Each page starts with a `PageHeader`, checks the
 session before loading its data and lists its records in a `DataTable` (or

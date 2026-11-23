@@ -40,8 +40,8 @@ values. Pure expressions (comparisons, arithmetic, arrays, conditionals and
 `JSON.stringify`, `String`, `Number`, `Boolean`, `Array.isArray`) resolve their
 reads through the same source contracts. Browser globals and arbitrary calls
 need a portable block.
-Create navigation target Pages first; use their Page ids and the actual schemas
-from `code-get`. An action `If` puts actions directly in `Then`/`Else`.
+Link Pages by their Page ids, written before or after the link (a warning
+until the Page exists); use the actual schemas from `code-get`. An action `If` puts actions directly in `Then`/`Else`.
 
 `code-set` and `code-patch` validate, then atomically save canonical `.flow.svelte`, `app.flow.css`
 and `theme.flow.css` files, also in Studio. No promotion; `code-check` is the dry-run. Backend Flows

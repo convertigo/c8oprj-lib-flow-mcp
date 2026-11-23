@@ -38,8 +38,8 @@ a pending preparation, never an unchanged active viewer.
    once: it preserves a running viewer and restarts it after a Studio
    relaunch. Do not poll or repeat it.
 2. Plan the Pages and transitions. A link to a Page not written yet is a
-   warning at writing and an error at the build (`FLOW_PAGE_LINK_UNKNOWN`)
-   while that Page is missing: write every linked Page before building. Write each complete Page with `code-set`
+   warning at writing and at the build (`FLOW_PAGE_LINK_UNKNOWN`), never a
+   refusal: write the Pages in any order. Write each complete Page with `code-set`
    and `sourceFile`; it validates before the atomic write. A new Page has no
    revision; existing Pages use theirs.
    The home Page `flow-project-bootstrap(ui:true)` created exists: pass its `frontbuilderModelRevision`.
@@ -68,10 +68,9 @@ a pending preparation, never an unchanged active viewer.
    Never claim a color, layout, timer, navigation or viewer state that was
    not observed.
 
-For a multi-page build, make the target-Page step above three passes: create
-minimal skeletons for **all** Pages with their final ids, add links only after
-every target exists, then fill each Page with its full content. Validate after
-each pass.
+For a multi-page build, write each Page complete with its final id, links
+included, in any order; before the browser proof, the build says no
+`FLOW_PAGE_LINK_UNKNOWN`. Validate each Page as it is written.
 
 For a multi-page application, group the browser proof by visible assertions:
 open a fresh session, submit login and assert the signed-in identity; visit

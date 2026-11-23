@@ -92,14 +92,15 @@ supply values through `Params` and `Query`:
 ```
 
 A link to a Page not written yet (`Navigate`, `LinkButton`, a `DataTable` row
-action) is a warning at writing, which names the existing Pages, and an error at
-the build (`FLOW_PAGE_LINK_UNKNOWN`) while that Page is missing: two Pages that
-link to each other are written one after the other, then built.
+action) is a warning at writing, which names the existing Pages, and at the
+build (`FLOW_PAGE_LINK_UNKNOWN`), never a refusal. Until that Page is written,
+the link leads nowhere: a `LinkButton` has no address, a row action stays a
+button, a `Navigate` ends its chain with an error.
 
-For several routes, build in three passes: create a minimal skeleton source
-for **every** Page with its final `_flow.page.id`; then add `LinkButton` and
-`Navigate` references; finally add forms, data and full content. Validate
-each pass.
+For several routes, give each Page its final `_flow.page.id` and write each one
+complete, links included, in any order; no empty Page is needed first. A
+`FLOW_PAGE_LINK_UNKNOWN` left in the build names a Page still to write or a
+link to correct.
 
 The generator resolves and encodes the URL. Do not interpolate paths: a
 native `<a href={"/product/" + item.id}>` leaves an application served under

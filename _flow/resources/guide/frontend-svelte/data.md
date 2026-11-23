@@ -80,7 +80,8 @@ the form that reads it: keep the result with the Output of its call,
 or bind it without braces: `<Text text="@.GetNews.title" />`,
 `<If test="@.GetNews.error">`.
 
-Create target Pages before writing a `Navigate` to their **Page id**. Use the
+A `Navigate` names its target by **Page id**, written before or after it (a
+warning until that Page exists). Use the
 `authoringContract.pages` and bindings from `code-get` for actual names and
 paths; do not guess state/action ids, properties or schema fields. An `If`
 action's `Then`/`Else` contains actions directly, without another `Actions`.
