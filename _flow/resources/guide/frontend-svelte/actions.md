@@ -94,6 +94,10 @@ SvelteKit `afterNavigate`: load there what depends on the address, with
 `@event.to.route`, `@event.from` (null on the first display) and `@event.type`
 (`enter`, `link`, `goto`, `popstate`, `form`). A newer navigation cancels the
 run of an older one still going.
+`@event.to.route` is the route of the Page as SvelteKit names it (`/login`,
+`/deals/[id]`, a `(group)` folder included: `/(app)/deals`), without base nor
+final `/`: compare it to know the Page. `@event.to.path` is the address in the
+browser, after the base of the viewer or of the build, and ends with `/`.
 
 ```svelte
 <OnAfterNavigate $$id="load"><Actions>

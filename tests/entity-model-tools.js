@@ -71,10 +71,11 @@ try {
  var model={version:2,modelVersion:1,entities:{Equipment:{fields:{label:{type:"string",default:"{{ 6 * 7 }}"}}}}};
  var check=tool("flow-entity-model-check",{projectDir:args.projectDir,model:model});
  assert(check&&check.valid===true,"Valid model check failed: "+JSON.stringify(check));
+ // The first model replaces none: written without expectedRevision (6 runs of 11 had it refused, 23/11)
+ var saved=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model});
+ assert(saved&&saved.ok===true,"The first model is written without a revision: "+JSON.stringify(saved));
  var noRevision=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model});
- assert(noRevision&&(noRevision.ok===false||!!noRevision.error),"Set without revision refused");
- var saved=tool("flow-entity-model-set",{projectDir:args.projectDir,model:model,expectedRevision:"missing"});
- assert(saved&&saved.ok===true,"Initial write failed: "+JSON.stringify(saved));
+ assert(noRevision&&(noRevision.ok===false||!!noRevision.error),"Set without revision refused once a model exists");
  // Without gateway: true, the policy only: business Flows need no generic HTTP entry point.
  assert(saved.scaffold&&saved.scaffold.created.join()==="block:app.entityAccess"&&saved.scaffold.gateway==="absent","Only the policy is scaffolded without gateway: true: "+JSON.stringify(saved.scaffold));
  assert(/publicRead/.test(saved.scaffold.message)&&/Writes stay denied/.test(saved.scaffold.message)&&/gateway: true/.test(saved.scaffold.message),"Scaffold reports application decisions and how to ask for the gateway");

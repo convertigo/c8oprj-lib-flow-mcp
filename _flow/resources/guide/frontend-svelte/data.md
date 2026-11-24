@@ -48,7 +48,10 @@ Sources:
 - `@event.value`, `.checked`, `.key`, `.name`, `.file`, `.files`, `.source`:
   the normalized event; `@event.target.*` and `@event.detail.*` do not exist
   (`FRONTEND_EVENT_PATH_NOT_NORMALIZED`);
-- `@route.path`, `@route.params.id`, `@route.query.tab`: current route;
+- `@route.path`, `@route.params.id`, `@route.query.tab`: current route. `@route.path` is the address in the
+  browser: the base of the viewer (`/convertigo/gw/…/`) or of the build comes first, and it always ends with `/`
+  (`…/deals/42/`). Never compare it with a route: in a Layout, tell the current Page by `@event.to.route` of
+  `OnAfterNavigate` (`/login`, `/deals/[id]`), or give the Pages that need another frame their own `(group)` Layout;
 - `@props.<name>`: a component input (inside a component);
 - `@theme.available`, `@theme.options`, `@theme.default`: application themes.
 

@@ -10,7 +10,8 @@ Read when checking and writing the model with its revision.
    Inspect `valid` and every diagnostic's `code`, `path`, `severity` and
    `message`. This verifies declarations, not a live database or user session.
 3. `flow-entity-model-set({project,model,expectedRevision})` checks the same
-   model and writes only with the revision just read. A stale revision is a
+   model and writes only with the revision just read; the first model needs
+   none (`expectedRevision` omitted or `"missing"`). A stale revision is a
    conflict (`ENTITY_MODEL_STALE`): its `details.currentRevision` is the stored
    revision; reconcile the change with the stored model and retry with it.
    An invalid declaration never replaces the stored model.
