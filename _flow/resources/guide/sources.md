@@ -20,8 +20,10 @@ model as JSON, which is valid YAML.
 | Theme CSS | `.flow.css` under the same `src/` |
 | Entity model | `_flow/data/model.yaml` |
 
-Never edit `_flow/schemas/**` (generated), `c8oProject.yaml` or `_c8oProject/**`
-(Convertigo objects, written by the engine when a Flow is synced).
+Never edit `_flow/schemas/**`, `c8oProject.yaml` or `_c8oProject/**`: the engine
+writes them (schemas when a Flow runs or is saved, Convertigo objects when a
+Flow is synced), and a sync without `paths` ignores them. Output schemas are
+managed by `flow-output-schema` and `flow-schema-reset`.
 
 ## The loop
 
@@ -51,6 +53,7 @@ Never edit `_flow/schemas/**` (generated), `c8oProject.yaml` or `_c8oProject/**`
 | `code-set`, `code-patch` (Flow, block, page) | edit the file, then `flow-source-sync` |
 | `code-promote`, `code-status`, `code-discard`, working copy, `unsaved` | nothing to do: a synced file is saved |
 | `flow-entity-model-set` | edit `_flow/data/model.yaml`, then sync; `flow-entity-model-check` stays available |
+| `flow-entity-model-set` with `gateway: true` | `flow-source-sync({ project, gateway: true })` after the model: it creates the `EntityGateway` of EntityTable and EntityForm pages |
 | `flow-block-mock` | write the `.block.js`, and the `.browser.js` for a browser target, yourself |
 | `frontend-svelte-mutate`, `authoring-mutate`, an `apply` of `authoring-palette` | edit the file at that node |
 | Deleting a Flow, block or page | not available: a deleted file is reported, nothing is removed in the engine |

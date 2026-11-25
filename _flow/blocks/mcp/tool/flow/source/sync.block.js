@@ -7,6 +7,7 @@ const _meta = {
     project: {kind:"text",type:"string",description:"Target project; its files are read from the project folder on disk."},
     paths: {kind:"expression",type:"array",items:{type:"string"},description:"Project-relative files to check and save; omitted, the files changed since the last sync."},
     dryRun: {kind:"literal",type:"boolean",default:false,description:"Check without saving."},
+    gateway: {kind:"literal",type:"boolean",default:false,description:"With the data model: also create the EntityGateway (pages with EntityTable or EntityForm), as flow-entity-model-set gateway:true."},
     out: {kind:"path",mode:"write",default:"local.response"}
   }
 }

@@ -92,13 +92,18 @@
 			}
 			var paths=args.paths;
 			if (paths === undefined || paths === null) {
+				// Changed files only, never the schemas the engine generates when it runs or saves a Flow (i191: they were
+				// refused as edits, and the whole sync answered an error).
 				paths=Object.keys(disk).concat(Object.keys(known).filter(function(p){return disk[p]===undefined;}))
-					.filter(function(p){return disk[p]!==known[p];});
+					.filter(function(p){return disk[p]!==known[p] && !/^_flow\/schemas\//.test(p);});
+				// gateway:true creates the EntityGateway with the model: the model is synced even when it did not change.
+				if (args.gateway === true && disk["_flow/data/model.yaml"] !== undefined && paths.indexOf("_flow/data/model.yaml") < 0)
+					paths.push("_flow/data/model.yaml");
 			}
 			if (!Array.isArray(paths)) throw {code:"INVALID_ARGUMENT",message:"paths must be an array of project-relative paths."};
 			var results=[], count={checked:0,applied:0,refused:0,rewritten:0}, dry=args.dryRun===true;
 			function inner(name, a, op) {
-				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun;
+				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun; delete clean.gateway;
 				var req={jsonrpc:"2.0",id:request.id,method:"tools/call",__flowMcpTraceDeferred:true,params:{name:name,arguments:Object.assign(clean,a)}};
 				return ctx.callBlock(op ? "mcp.tool.code.dispatch" : "mcp.tool."+name.replace(/^flow-/,"flow.").replace(/-/g,"."),
 					{request:req,operation:op,out:"local.sourceSyncInner"},{trace:false});
@@ -141,7 +146,8 @@
 					var model=ctx.parseYaml(text);
 					response=inner("flow-entity-model-check",{model:model});
 					if (!dry && !failed(response))
-						response=inner("flow-entity-model-set",{model:model,expectedRevision:structured(response).revision});
+						response=inner("flow-entity-model-set",Object.assign({model:model,expectedRevision:structured(response).revision},
+							args.gateway === true ? {gateway:true} : {}));
 				} finally {
 					if (swap && (dry || failed(response))) FileUtils.writeStringToFile(file, text, "UTF-8");
 				}
@@ -175,7 +181,15 @@
 				if (failed(response)) entry.note="Not saved. code-run reads this file from disk while HTTP keeps the last synced version: fix it and sync again before running it.";
 				results.push(entry);
 			});
-			if (!dry) servlet.setAttribute(key,JSON.stringify(known));
+			if (!dry) {
+				// Files the engine itself wrote during this sync (the access block of a model, generated schemas) are not edits.
+				var after={};
+				["_flow/flows","_flow/blocks","_flow/frontbuilder/svelte/model","_flow/data","_flow/schemas"].forEach(function(p){scan(confined(p),after);});
+				Object.keys(after).forEach(function(p){
+					if (ordered.indexOf(p) < 0 && after[p] !== disk[p]) known[p]=after[p];
+				});
+				servlet.setAttribute(key,JSON.stringify(known));
+			}
 			var content=[];
 			results.forEach(function(e){
 				// Same text as code-check/code-promote/code-set, warnings included: the sources mode loses no information.
