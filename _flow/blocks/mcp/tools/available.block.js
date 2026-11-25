@@ -841,7 +841,7 @@ const _meta = {
 			if (profile === "core") {
 				tools.push(JSON.parse(JSON.stringify(TOOLS_MORE)));
 			}
-			// In sources mode the files are edited on disk: flow-source-sync, the only writer, comes first.
+			// In sources mode the files are edited on disk: flow-source-sync, which saves them, comes first.
 			tools.sort(function (a, b) {
 				return ((a.name === "flow-source-sync" ? 0 : 1) - (b.name === "flow-source-sync" ? 0 : 1)) || a.name.localeCompare(b.name);
 			});

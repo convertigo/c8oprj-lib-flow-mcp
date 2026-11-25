@@ -4,8 +4,10 @@ When `tools/list` starts with `flow-source-sync`: edit the project files on disk
 
 The project files on disk are the truth. Read, search and edit them with your
 own file tools; then `flow-source-sync` checks each changed file with the
-validator of `code-check` and saves it as written. A synced file is saved:
-there is no working copy and nothing to promote.
+validator of its kind (the one of `code-check`) and saves it. A synced file is
+saved: there is no working copy and nothing to promote. Flows and pages are
+saved as written; the engine may normalize a block, and it saves the data
+model as JSON, which is valid YAML.
 
 ## The files
 
@@ -27,12 +29,15 @@ Never edit `_flow/schemas/**` (generated), `c8oProject.yaml` or `_c8oProject/**`
    writes the first files.
 2. Edit the files.
 3. `flow-source-sync({ project })`. Without `paths` it takes every file
-   changed since the last sync, in this order: blocks, data model, Flows,
-   pages. `dryRun: true` checks without saving.
+   changed since the last sync, in this order: blocks, browser
+   implementations, data model, Flows, pages. `dryRun: true` checks without
+   saving.
 4. Read each result:
-   - refused: nothing was saved and the engine keeps the last synced version.
-     The diagnostics, hints and guide links are those of `code-check`; apply a
-     `proposedPatch` to the file, then sync again.
+   - refused: nothing was saved. The file stays on disk and `code-run` reads
+     it, so fix it and sync again before running. The diagnostics, hints and
+     guide links are those of `code-check`; apply a `proposedPatch` to the
+     file. A data model that removes or retypes a stored field is refused
+     against the last synced model.
    - `rewritten: true`: the engine normalized the file when saving it. Read it
      again before your next edit.
 5. Prove it: `code-run` for a Flow; for a page, `frontend-svelte-action`
@@ -46,10 +51,12 @@ Never edit `_flow/schemas/**` (generated), `c8oProject.yaml` or `_c8oProject/**`
 | `code-promote`, `code-status`, `code-discard`, working copy, `unsaved` | nothing to do: a synced file is saved |
 | `flow-entity-model-set` | edit `_flow/data/model.yaml`, then sync; `flow-entity-model-check` stays available |
 | `flow-block-mock` | write the `.block.js`, and the `.browser.js` for a browser target, yourself |
-| `frontend-svelte-mutate` | edit the `.flow.svelte` file |
+| `frontend-svelte-mutate`, `authoring-mutate`, an `apply` of `authoring-palette` | edit the file at that node |
 | Deleting a Flow, block or page | not available: a deleted file is reported, nothing is removed in the engine |
 
 `flow-crud-upsert`, `flow-fullsync-scaffold` and
 `frontend-svelte-fullsync-schema` are not available in this mode. Reading,
 search, guides, palette, `code-check`, `code-run`, the dev actions and
-`flow-app-progress` work as everywhere else.
+`flow-app-progress` work as everywhere else, and so do the tools that change
+what is not a source file: `flow-project-reference`, `flow-project-symbol-set`,
+`frontend-svelte-asset-import`, `tags-apply`.

@@ -39,6 +39,18 @@
 	function structured(r) {
 		return r && r.result && r.result.structuredContent || {};
 	}
+	// The revision of a Flow is the SHA-256 of its code (flow-code-service): code-promote with code requires it.
+	function sha256(text) {
+		var digest = Packages.java.security.MessageDigest.getInstance("SHA-256")
+			.digest(new Packages.java.lang.String(String(text)).getBytes(Packages.java.nio.charset.StandardCharsets.UTF_8));
+		return String(Packages.java.util.HexFormat.of().formatHex(digest));
+	}
+	// Contracts before what uses them: blocks, browser implementations, data model, Flows, pages and CSS.
+	var RANK = {block:0, browser:1, model:2, flow:3, source:4};
+	function rank(path) {
+		var t = target(path);
+		return t ? RANK[t.type] : 5;
+	}
 	function sync(ctx, request, args) {
 		var mcp = ctx.lib("mcp"), File = Packages.java.io.File, Files = Packages.java.nio.file.Files;
 		var root = new File(String(args.projectDir)).getCanonicalFile();
@@ -70,9 +82,10 @@
 		return new Packages.org.mozilla.javascript.Synchronizer(function () {
 			var disk={};
 			["_flow/flows","_flow/blocks","_flow/frontbuilder/svelte/model","_flow/data","_flow/schemas"].forEach(function(p){scan(confined(p),disk);});
-			var kept=servlet.getAttribute(key), known=kept ? JSON.parse(String(kept)) : {};
+			var kept=servlet.getAttribute(key), known=kept ? JSON.parse(String(kept)) : {}, snapshot=!!kept;
 			// The first call snapshots the engine view, before the harness starts the source editor.
 			if (!kept && Array.isArray(args.paths) && args.paths.length === 0) {
+				snapshot=true;
 				var store=mcp.sourceStore(args);
 				Object.keys(disk).forEach(function(p){var f=confined(p); if(target(p) && store.exists(f)) known[p]=store.read(f); else if(/^_flow\/schemas\//.test(p)) known[p]=disk[p];});
 				servlet.setAttribute(key,JSON.stringify(known));
@@ -94,17 +107,12 @@
 			// that each file is checked against what it uses.
 			function apply(t, text) {
 				var a=t.args, response;
-				if (t.type === "model") {
-					var model=ctx.parseYaml(text);
-					response=inner("flow-entity-model-check",{model:model});
-					if (dry || failed(response)) return response;
-					return inner("flow-entity-model-set",{model:model,expectedRevision:structured(response).revision});
-				}
+				if (t.type === "model") return applyModel(file, text);
 				if (t.type === "flow") {
 					// A Flow is checked, then promoted from its code: saved as written, declared, and no working copy is kept.
 					response=inner("code-check",Object.assign({},a,{code:text}),"check");
 					if (dry || failed(response)) return response;
-					return inner("code-promote",Object.assign({},a,{code:text}),"promote");
+					return inner("code-promote",Object.assign({},a,{code:text,revision:sha256(text)}),"promote");
 				}
 				if (t.type === "block") {
 					// A backend block has no code-check: code-set dry:true is its validator. The file already exists on disk.
@@ -117,7 +125,31 @@
 				var revision=t.type === "source" ? structured(inner("code-get",a,"get")).revision : undefined;
 				return inner("code-set",Object.assign({},a,{code:text,revision:revision}),"set");
 			}
-			paths.filter(function(p,i){return paths.indexOf(p)===i;}).sort().forEach(function(path) {
+			// The entity tools compare a new model with the model file on disk, which the editor has already changed: while
+			// they check and save, that file holds the last synced model again (none for a model created since the snapshot),
+			// so that a stored field removed or retyped is still refused. The edited file is put back unless it was saved.
+			function applyModel(file, text) {
+				var FileUtils=Packages.org.apache.commons.io.FileUtils, base=known["_flow/data/model.yaml"], response;
+				var swap=snapshot && base !== text;
+				if (swap) {
+					// A private copy of the edited model survives an interrupted call.
+					FileUtils.writeStringToFile(new File(root, "_private/flow/source-sync/model.yaml.edited"), text, "UTF-8");
+					if (base === undefined) Files.deleteIfExists(file.toPath());
+					else FileUtils.writeStringToFile(file, base, "UTF-8");
+				}
+				try {
+					var model=ctx.parseYaml(text);
+					response=inner("flow-entity-model-check",{model:model});
+					if (!dry && !failed(response))
+						response=inner("flow-entity-model-set",{model:model,expectedRevision:structured(response).revision});
+				} finally {
+					if (swap && (dry || failed(response))) FileUtils.writeStringToFile(file, text, "UTF-8");
+				}
+				return response;
+			}
+			var ordered=paths.filter(function(p,i){return paths.indexOf(p)===i;});
+			ordered.sort(function(a,b){return (rank(a)-rank(b)) || (a < b ? -1 : a > b ? 1 : 0);});
+			ordered.forEach(function(path) {
 				var entry={path:path,applied:false}, response;
 				try {
 					var file=confined(path), t=target(path);
