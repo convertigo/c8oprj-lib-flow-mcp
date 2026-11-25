@@ -105,7 +105,7 @@
 			}
 			// Check, then save as is: blocks (contract) first, then the data model, the Flows and the pages, so
 			// that each file is checked against what it uses.
-			function apply(t, text) {
+			function apply(t, text, file) {
 				var a=t.args, response;
 				if (t.type === "model") return applyModel(file, text);
 				if (t.type === "flow") {
@@ -160,7 +160,7 @@
 						hint:"Restore the file. Removing a Flow or a page is not part of the sources mode.",details:{accepted:ACCEPTED}};
 					var text=read(file);
 					entry.type=t.type;
-					response=apply(t,text);
+					response=apply(t,text,file);
 					count.checked++;
 					if (failed(response)) count.refused++;
 					else if (!dry) {
@@ -172,7 +172,7 @@
 				} catch(e) {response=mcp.toolError(Object.assign({},request,{__flowMcpTraceDeferred:true}),e,ctx);count.refused++;}
 				// Preserve the complete code-check/code-set envelope, including text, hints and guide drawers.
 				entry.response=response;
-				if (failed(response)) entry.note="Not applied: the engine keeps the last synchronized version. Fix the file and sync again before running it.";
+				if (failed(response)) entry.note="Not saved. code-run reads this file from disk while HTTP keeps the last synced version: fix it and sync again before running it.";
 				results.push(entry);
 			});
 			if (!dry) servlet.setAttribute(key,JSON.stringify(known));

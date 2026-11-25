@@ -33,8 +33,9 @@ Never edit `_flow/schemas/**` (generated), `c8oProject.yaml` or `_c8oProject/**`
    implementations, data model, Flows, pages. `dryRun: true` checks without
    saving.
 4. Read each result:
-   - refused: nothing was saved. The file stays on disk and `code-run` reads
-     it, so fix it and sync again before running. The diagnostics, hints and
+   - refused: nothing was saved. The file stays on disk: `code-run` reads it,
+     while HTTP keeps the last synced version. Fix it and sync again before
+     running. The diagnostics, hints and
      guide links are those of `code-check`; apply a `proposedPatch` to the
      file. A data model that removes or retypes a stored field is refused
      against the last synced model.
