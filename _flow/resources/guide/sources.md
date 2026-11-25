@@ -4,7 +4,8 @@ When `tools/list` starts with `flow-source-sync`: edit the project files on disk
 
 The project files on disk are the truth. Read, search and edit them with your
 own file tools; then `flow-source-sync` checks each changed file with the
-validator of its kind (the one of `code-check`) and saves it. A synced file is
+validator of its kind (`code-check` for Flows and pages, a dry `code-set` for
+blocks, `flow-entity-model-check` for the model) and saves it. A synced file is
 saved: there is no working copy and nothing to promote. Flows and pages are
 saved as written; the engine may normalize a block, and it saves the data
 model as JSON, which is valid YAML.
@@ -39,8 +40,8 @@ managed by `flow-output-schema` and `flow-schema-reset`.
      while HTTP keeps the last synced version. Fix it and sync again before
      running. The diagnostics, hints and
      guide links are those of `code-check`; apply a `proposedPatch` to the
-     file. A data model that removes or retypes a stored field is refused
-     against the last synced model.
+     file. A data model that removes or retypes a field already stored in the
+     database is refused.
    - `rewritten: true`: the engine normalized the file when saving it. Read it
      again before your next edit.
 5. Prove it: `code-run` for a Flow; for a page, `frontend-svelte-action`

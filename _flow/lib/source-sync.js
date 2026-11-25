@@ -96,11 +96,11 @@
 				// refused as edits, and the whole sync answered an error).
 				paths=Object.keys(disk).concat(Object.keys(known).filter(function(p){return disk[p]===undefined;}))
 					.filter(function(p){return disk[p]!==known[p] && !/^_flow\/schemas\//.test(p);});
-				// gateway:true creates the EntityGateway with the model: the model is synced even when it did not change.
-				if (args.gateway === true && disk["_flow/data/model.yaml"] !== undefined && paths.indexOf("_flow/data/model.yaml") < 0)
-					paths.push("_flow/data/model.yaml");
 			}
 			if (!Array.isArray(paths)) throw {code:"INVALID_ARGUMENT",message:"paths must be an array of project-relative paths."};
+			// gateway:true creates the EntityGateway with the model: the model is synced even when it did not change.
+			if (args.gateway === true && disk["_flow/data/model.yaml"] !== undefined && paths.indexOf("_flow/data/model.yaml") < 0)
+				paths=paths.concat(["_flow/data/model.yaml"]);
 			var results=[], count={checked:0,applied:0,refused:0,rewritten:0}, dry=args.dryRun===true;
 			function inner(name, a, op) {
 				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun; delete clean.gateway;
@@ -171,8 +171,14 @@
 					if (failed(response)) count.refused++;
 					else if (!dry) {
 						var saved=read(file);
-						known[path]=saved;count.applied++;entry.applied=true;
-						if (saved !== text) {entry.rewritten=true;entry.note=REREAD;count.rewritten++;}
+						count.applied++;entry.applied=true;
+						if (t.type === "flow" && saved !== text) {
+							// A Flow is saved as written: other bytes now are an edit made meanwhile, left for the next sync.
+							entry.note="Changed on disk during the sync: sync it again.";
+						} else {
+							known[path]=saved;
+							if (saved !== text) {entry.rewritten=true;entry.note=REREAD;count.rewritten++;}
+						}
 						mcp.stableToolCalled(t.type === "model" ? "flow-entity-model-set" : t.type === "flow" ? "code-promote" : "code-set");
 					}
 				} catch(e) {response=mcp.toolError(Object.assign({},request,{__flowMcpTraceDeferred:true}),e,ctx);count.refused++;}
@@ -182,11 +188,13 @@
 				results.push(entry);
 			});
 			if (!dry) {
-				// Files the engine itself wrote during this sync (the access block of a model, generated schemas) are not edits.
+				// Files the engine itself wrote during this sync are not edits: the ones it created (the access block of a
+				// model, a gateway Flow) and the schemas it generates. A file that existed before keeps its own state.
 				var after={};
 				["_flow/flows","_flow/blocks","_flow/frontbuilder/svelte/model","_flow/data","_flow/schemas"].forEach(function(p){scan(confined(p),after);});
 				Object.keys(after).forEach(function(p){
-					if (ordered.indexOf(p) < 0 && after[p] !== disk[p]) known[p]=after[p];
+					if (ordered.indexOf(p) < 0 && after[p] !== disk[p] && (disk[p] === undefined || /^_flow\/schemas\//.test(p)))
+						known[p]=after[p];
 				});
 				servlet.setAttribute(key,JSON.stringify(known));
 			}
