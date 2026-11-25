@@ -1,7 +1,7 @@
 const _meta = {
   sourceVersion: 2, version: 1, private: true, runtime: "rhino",
   uses: ["mcp", "source-sync"], icon: "mdi:sync",
-  description: "Checks or applies author files read from the project disk through the existing code validators and writers. Omit paths for changed/new/deleted sources; dryRun checks without applying. Repair disk files and sync before code-run or dev.sync.",
+  description: "Sources mode: the project files on disk are the truth. Checks each changed file (Flows, blocks, .browser.js, pages, .flow.css, _flow/data/model.yaml) with the validator of code-check, then saves it as written: no working copy, nothing to promote. Omit paths for the files changed since the last sync; dryRun checks without saving. Same diagnostics, hints and guides as code-check. flow://guide/sources.",
   properties: {
     request: {kind:"expression",type:"object",default:"input.request"},
     project: {kind:"text",type:"string",required:true},

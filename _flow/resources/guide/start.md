@@ -4,6 +4,8 @@ Start here: which guide to read next, the source contract in five rules and the 
 
 For browser verification, `browser_wait_for.time` is in **seconds**, at most 30: use `2`, never `2000`.
 
+Sources mode (`tools/list` starts with `flow-source-sync`): read `flow://guide/sources` first.
+
 ## Which guide next
 
 For persisted business data with roles, entities are the simplest compliant option: a short model and a few lines of access policy

@@ -42,6 +42,11 @@ const _meta = {
 }
 
 (function () {
+	// Sources mode (flow://guide/sources) decides what is listed and callable; a host without it is the normal mode.
+	function sourceModeVisible(ctx, name) {
+		var sync = ctx.lib("source-sync");
+		return sync && typeof sync.visible === "function" ? sync.visible(ctx, name) : name !== "flow-source-sync";
+	}
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
@@ -346,7 +351,7 @@ const _meta = {
 			var out = props.out || "local.response";
 			var response;
 			try {
-				if (!ctx.lib("source-sync").visible(ctx,name)) throw {code:"TOOL_DISABLED_IN_MODE",message:name+" is unavailable in this authoring mode.",hint:"In sources mode, edit project files and call flow-source-sync."};
+				if (!sourceModeVisible(ctx,name)) throw {code:"TOOL_DISABLED_IN_MODE",message:name+" is unavailable in this authoring mode.",hint:"In sources mode, edit project files and call flow-source-sync."};
 				// An expired leased MCP token was let through to read why it is refused (jwt.guardRequest): no tool runs.
 				if (request.__flowMcpTokenExpired) {
 					response = mcp.toolError(request, request.__flowMcpTokenExpired, ctx);

@@ -118,6 +118,8 @@ assertTrue(catalogWithoutProject.error && /requires an explicit project/.test(ca
 // Guides name only tools advertised by tools/list, and show only the current source dialect.
 var tools = {};
 call(50, "tools/list").result.tools.forEach(function (tool) { tools[tool.name] = true; });
+// flow-source-sync is advertised by the sources profile only (X-Convertigo-Source-Mode: sources, flow://guide/sources).
+tools["flow-source-sync"] = true;
 // Words that look like tool names but are values ("runtime": "flow-svelte").
 var notTools = { "flow-svelte": true };
 var toolPattern = /(^|[\s`(\[{,"'])((?:code|flow|authoring|frontend-svelte)-[a-z][a-z0-9-]*[a-z0-9])/g;

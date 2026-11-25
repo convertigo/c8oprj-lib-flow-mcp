@@ -47,6 +47,11 @@ const _meta = {
 }
 
 (function () {
+	// Sources mode (flow://guide/sources) decides what is listed and callable; a host without it is the normal mode.
+	function sourceModeVisible(ctx, name) {
+		var sync = ctx.lib("source-sync");
+		return sync && typeof sync.visible === "function" ? sync.visible(ctx, name) : name !== "flow-source-sync";
+	}
 	var TOOL_PREFIX = "mcp.tool.flow.";
 	var CODE_TOOL_PREFIX = "mcp.tool.code.";
 	var AUTHORING_TOOL_PREFIX = "mcp.tool.authoring.";
@@ -764,7 +769,7 @@ const _meta = {
 			var mcp = ctx.lib("mcp");
 			var profile = String(props.profile || "").trim().toLowerCase() === "more" ? "more" : mcp.toolProfile(ctx, props.profile);
 			function listed(name) {
-				return ctx.lib("source-sync").visible(ctx,name) && (name === "flow-source-sync" || profile === "all" || (profile === "core" ? mcp.coreTool(name) : !mcp.coreTool(name)));
+				return sourceModeVisible(ctx,name) && (name === "flow-source-sync" || profile === "all" || (profile === "core" ? mcp.coreTool(name) : !mcp.coreTool(name)));
 			}
 			var names;
 			var byName;
@@ -822,7 +827,7 @@ const _meta = {
 			// The relayed tools belong to the Convertigo MCP and its own visibility rules: listed as before.
 			if (profile !== "more") {
 				mcp.legacyRelayTools(ctx).forEach(function (tool) {
-					if (!own[tool.name] && ctx.lib("source-sync").visible(ctx,tool.name)) {
+					if (!own[tool.name] && sourceModeVisible(ctx,tool.name)) {
 						tools.push(tool);
 					}
 				});
@@ -836,8 +841,9 @@ const _meta = {
 			if (profile === "core") {
 				tools.push(JSON.parse(JSON.stringify(TOOLS_MORE)));
 			}
+			// In sources mode the files are edited on disk: flow-source-sync, the only writer, comes first.
 			tools.sort(function (a, b) {
-				return a.name.localeCompare(b.name);
+				return ((a.name === "flow-source-sync" ? 0 : 1) - (b.name === "flow-source-sync" ? 0 : 1)) || a.name.localeCompare(b.name);
 			});
 			if (profile !== "more") {
 				withoutRepeatedDescriptions(tools);

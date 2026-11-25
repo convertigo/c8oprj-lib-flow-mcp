@@ -79,6 +79,10 @@ server (rights, perimeters, state rules), never only in the page.
 
 ## Route Once
 
+- Sources mode (`tools/list` starts with `flow-source-sync`): read
+  `flow://guide/sources` first. You edit the project files on disk and save
+  them with `flow-source-sync`; every `code-set`, `code-patch` or
+  `code-promote` step below becomes a file edit, then a sync.
 - Backend FlowScript, schemas, HTTP, FullSync or runtime work: read
   `skills/convertigo-flow-backend/SKILL.md`, then only the live guide it names.
 - Svelte pages, components, bindings, styling, assets or viewer work: read
