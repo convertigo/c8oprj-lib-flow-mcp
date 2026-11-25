@@ -373,6 +373,11 @@ const _meta = {
 			schema.required = toolName === "flow-entity-model-get" ? ["project"] : toolName === "flow-entity-model-check" ? ["project", "model"] : ["project", "model", "expectedRevision"];
 			if (schema.properties.model) schema.properties.model.description = ENTITY_MODEL_FORMAT;
 		}
+		// A JSON Schema lists required properties on the object: "required": true inside a property is not valid, and
+		// Codex dropped the tool from its list (i191: 29 syncs went through tools-more).
+		if (toolName === "flow-source-sync") {
+			schema.required = ["project"];
+		}
 		if (toolName === "authoring-palette") {
 			schema.properties.parentPath = {
 				type: "string",
