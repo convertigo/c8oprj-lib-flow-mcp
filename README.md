@@ -665,3 +665,20 @@ Model-free checks: `node tests/source-sync-contract.cjs`, and the live regressio
 `tests/source-sync-http.py` (a disposable project's authenticated test harness
 supplies `call`, `project_dir` and `project`). The live test compares the whole
 syntax-error tool result with code-check, including hints and guide drawers.
+
+### Command line `c8o` (prototype)
+
+`cli/c8o.mjs` is a dependency-free Node client of this endpoint in sources mode,
+for agents that work with a shell next to the files and no MCP client: each
+command is one `tools/call`, printed as plain text without the envelope.
+`c8o check` and `c8o sync` are `flow-source-sync` (dry run or not) and print a
+refused file as `path:line: severity CODE (block.property): message` with its
+`fix:`; `c8o run <Flow> k=v` is `code-run`; `c8o view` is
+`frontend-svelte-action` `dev.sync` and prints the viewer URL; `c8o block`,
+`c8o guide`, `c8o tools`, `c8o help <tool>`; any other listed tool is
+`c8o <tool> k=v` (`k:=<json>` for a typed value), the project added when the tool
+takes one. Exit code: 0 ok, 1 refused or failed, 2 usage or connection. The
+endpoint and the project come from `C8O_URL`/`C8O_PROJECT` or
+`/c8o/c8o.json`; a bearer token only from a file (`C8O_TOKEN_FILE`), never
+printed. Tests: `node --test cli/c8o.test.mjs`.
+
