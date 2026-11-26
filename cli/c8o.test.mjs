@@ -3,7 +3,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +20,7 @@ const TOOLS = [
   { name: "echo-secret", description: "Echoes.", inputSchema: { type: "object", properties: {} } },
   { name: "tools-more", description: "The tools outside this list.", inputSchema: { type: "object", properties: { name: { type: "string" } } } },
 ];
+const SKILL = "---\nname: convertigo-flow-cli\ndescription: Build or change a Flow project with c8o.\n---\n\n# Convertigo Flow with c8o\n";
 const MORE = [{ name: "scheduler-list", description: "Lists jobs." }];
 const MORE_SCHEMA = { "scheduler-list": { type: "object", properties: { project: { type: "string", description: "Project." } } } };
 
@@ -68,6 +69,8 @@ function answer(name, args) {
     return { content: [{ type: "text", text: "OK. keys: ok, openUrl. Use structuredContent for data." }],
       structuredContent: args.wait === "nourl" ? { ok: true, pending: true } : { ok: true, openUrl: "http://127.0.0.1:1/app/", status: "ready", args } };
   }
+  if (name === "flow-resource-get" && args.uri === "flow://skills/convertigo-flow-cli/SKILL")
+    return { content: [{ type: "text", text: SKILL }] };
   if (name === "flow-resource-get") return { content: [{ type: "text", text: "# Guide " + args.uri + "\nkeys: kept as written" }] };
   if (name === "scheduler-list") return { content: [{ type: "text", text: "OK. keys: ok, jobs. Use structuredContent for data." }],
     structuredContent: { ok: true, jobs: [{ name: "daily", project: args.project }] } };
@@ -206,6 +209,20 @@ test("tools behind tools-more: listed, described and called through tools-more w
   r = await c8o(["code-set", "x=1"]);
   assert.equal(r.code, 2);
   assert.match(r.err, /Unknown command or tool: code-set/);
+});
+
+test("skill: printed as served, or installed in a skills folder", async () => {
+  let r = await c8o(["skill"]);
+  assert.equal(r.code, 0);
+  assert.equal(r.out, SKILL);
+  assert.deepEqual(last().body.params.arguments, { uri: "flow://skills/convertigo-flow-cli/SKILL", format: "text" });
+  const dir = mkdtempSync(join(tmpdir(), "c8o-skills-"));
+  r = await c8o(["skill", "--install", dir]);
+  assert.equal(r.code, 0);
+  assert.equal(r.out.trim(), join(dir, "convertigo-flow-cli", "SKILL.md"));
+  assert.equal(readFileSync(join(dir, "convertigo-flow-cli", "SKILL.md"), "utf8"), SKILL);
+  r = await c8o(["skill", "x=1"]);
+  assert.equal(r.code, 2);
 });
 
 test("the tool list is cached per user and identity", async () => {

@@ -682,7 +682,10 @@ stdout, notes on stderr. `c8o view` is `frontend-svelte-action` `dev.sync` and
 prints the viewer URL first (no URL: exit 1); a stopped viewer is started first
 (`dev.ensure` with `wait`, then `dev.sync` again). `c8o block`, `c8o guide` (the
 guide as the engine serves it: `start` with the tree of guides, aliases and
-`flow://lib/...` resolved), `c8o tools`, `c8o help <tool>` (`--json` for both); any
+`flow://lib/...` resolved), `c8o tools`, `c8o help <tool>` (`--json` for both); `c8o skill` prints the
+`convertigo-flow-cli` skill (`_flow/resources/skills/convertigo-flow-cli`) as this
+engine serves it, `--install <skills dir>` writes it for an agent (Codex, Claude
+Code, Vibe), so the skill always matches the engine; any
 other tool is `c8o <tool> k=v` (`k:=<json>` for a typed value), the project
 added when the tool takes one, a `tools-more` tool called through it. Options are
 checked per command before any call. Exit code: 0 ok, 1 refused, pending or

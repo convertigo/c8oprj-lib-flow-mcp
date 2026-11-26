@@ -4,7 +4,8 @@ When `tools/list` starts with `flow-source-sync`: edit the project files on disk
 
 With the `c8o` command instead of an MCP client, the same loop is `c8o sync`
 (`c8o check` for `dryRun: true`), `c8o run <Flow> k=v` for `code-run`, `c8o view`
-for `dev.sync`, and `c8o <tool> k=v` for any other tool this guide names.
+for `dev.sync`, and `c8o <tool> k=v` for any other tool this guide names
+(skill `convertigo-flow-cli`, `c8o skill`).
 
 The project files on disk are the truth. Read, search and edit them with your
 own file tools; then `flow-source-sync` checks each changed file with the

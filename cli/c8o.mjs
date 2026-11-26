@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.2.2";
+const VERSION = "0.3.0";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
@@ -20,6 +20,8 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
   c8o guide [path|uri]         a guide as the engine serves it (default: start, with the tree of guides; aliases
                                and flow://lib/... resolved); the plain files are in /c8o/guide
   c8o tools [word]             list the engine tools
+  c8o skill [--install <dir>]  the skill of this command, as this engine serves it; --install writes
+                               <dir>/convertigo-flow-cli/SKILL.md (a skills folder: ~/.codex/skills, ~/.claude/skills...)
   c8o help <tool>              arguments of a tool
   c8o <tool> [k=v | k:=json]   call any tool of c8o tools; the project is added when the tool takes one
 
@@ -38,6 +40,7 @@ const COMMANDS = {
   block: { pos: 1, min: 1, flags: [], kv: false },
   guide: { pos: 1, flags: [], kv: false },
   tools: { pos: 1, flags: [], kv: false },
+  skill: { pos: 0, flags: ["install"], kv: false },
   help: { pos: 1, flags: [], kv: false },
 };
 const GENERIC = { pos: 0, flags: ["args"], kv: true };
@@ -391,6 +394,19 @@ async function main(argv) {
       else if (failed(data)) emit(process.stderr, texts(data).join("\n"));
       else emit(process.stdout, (data.result?.content || []).filter(c => c.type === "text").map(c => c.text).join("\n\n"));
       return failed(data) ? 1 : 0;
+    }
+    case "skill": {
+      const data = await call(cfg, "flow-resource-get", { uri: "flow://skills/convertigo-flow-cli/SKILL", format: "text" });
+      if (failed(data)) { emit(process.stderr, texts(data).join("\n")); return 1; }
+      let text = (data.result?.content || []).filter(c => c.type === "text").map(c => c.text).join("\n\n");
+      if (!/^---\r?\nname: convertigo-flow-cli\r?\n/.test(text)) throw new Protocol("The engine serves no convertigo-flow-cli skill.");
+      if (!text.endsWith("\n")) text += "\n";
+      if (!flags.install) { emit(process.stdout, text); return 0; }
+      const dir = join(flags.install, "convertigo-flow-cli");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "SKILL.md"), text);
+      emit(process.stdout, join(dir, "SKILL.md"));
+      return 0;
     }
     case "tools": {
       const word = (pos[0] || "").toLowerCase();
