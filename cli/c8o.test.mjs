@@ -16,41 +16,60 @@ const TOOLS = [
   { name: "flow-source-sync", description: "Checks and saves changed source files. More.", inputSchema: { type: "object", required: ["project"],
     properties: { project: { type: "string", description: "Project." }, paths: { type: "array" }, dryRun: { type: "boolean" } } } },
   { name: "code-run", description: "Runs a Flow.", inputSchema: { type: "object", properties: { project: { type: "string" }, name: { type: "string" } } } },
-  { name: "flow-catalog", description: "Lists blocks.", inputSchema: { type: "object", properties: { query: { type: "string" } } } },
-  { name: "scheduler-list", description: "Lists jobs.", inputSchema: { type: "object", properties: { project: { type: "string" } } } },
+  { name: "flow-resource-search", description: "Searches guides.", inputSchema: { type: "object", properties: { query: { type: "string" } } } },
+  { name: "echo-secret", description: "Echoes.", inputSchema: { type: "object", properties: {} } },
+  { name: "tools-more", description: "The tools outside this list.", inputSchema: { type: "object", properties: { name: { type: "string" } } } },
 ];
+const MORE = [{ name: "scheduler-list", description: "Lists jobs." }];
+const MORE_SCHEMA = { "scheduler-list": { type: "object", properties: { project: { type: "string", description: "Project." } } } };
 
-const REFUSED = {
+const diag = { severity: "error", code: "INVALID_EXPRESSION", line: 7, block: "if", property: "condition",
+  message: "Unknown expression function: date.add", expression: "!date.add({})", hint: "Call date.add on its own line." };
+const ok = (extra = {}) => ({ result: { content: [{ type: "text", text: "OK. app.x. keys: ok, name. Use structuredContent for data." }],
+  structuredContent: { ok: true, ...extra } } });
+const SYNC = {
   isError: true,
-  content: [{ type: "text", text: "Error [FLOWSCRIPT_VALIDATION_FAILED]: FlowScript validation failed at line 7. See structuredContent.error." },
-    { type: "text", text: "_flow/flows/a.flow.js: Not saved." }, { type: "text", text: "1 checked, 1 applied, 1 refused." }],
-  structuredContent: { ok: false, dryRun: false, summary: { checked: 2, applied: 1, refused: 1, rewritten: 1 }, next: "Fix the refused files.",
+  content: [{ type: "text", text: "Error [FLOWSCRIPT_VALIDATION_FAILED]: at line 7. See structuredContent.error." }],
+  structuredContent: { ok: false, dryRun: false, summary: { checked: 4, applied: 3, refused: 2, rewritten: 1 },
     results: [
-      { path: "_flow/blocks/app/x.block.js", type: "block", applied: true, rewritten: true, note: "The engine normalized this file when saving it: read it again before editing it.",
-        response: { result: { content: [{ type: "text", text: "OK. app.x. keys: ok, name. Use structuredContent for data." }],
-          structuredContent: { ok: true, warnings: ["Move structural endpoints to config."] } } } },
+      { path: "_flow/blocks/app/x.block.js", type: "block", applied: true, rewritten: true, note: "The engine normalized this file.",
+        response: ok({ warnings: ["Move structural endpoints to config."] }) },
+      { path: "_flow/flows/w.flow.js", type: "flow", applied: true,
+        response: { result: { content: [{ type: "text", text: "OK. warnings=1: Put the related writes in one sql.transaction. keys: ok, qname. Use structuredContent for data." }],
+          structuredContent: { ok: true } } } },
+      { path: "_flow/flows/p.flow.js", type: "flow", applied: true, note: "Changed on disk during the sync: sync it again.", response: ok() },
       { path: "_flow/flows/a.flow.js", type: "flow", note: "Not saved.",
         response: { result: { isError: true, content: [{ type: "text", text: "Error [FLOWSCRIPT_VALIDATION_FAILED]: at line 7" }],
-          structuredContent: { ok: false, error: { diagnostics: [{ severity: "error", code: "INVALID_EXPRESSION", line: 7, block: "if",
-            property: "condition", message: "Unknown expression function: date.add", expression: "!date.add({})",
-            hint: "Call date.add on its own line." }] } } } } } ] },
+          structuredContent: { ok: false, error: { code: "FLOWSCRIPT_VALIDATION_FAILED", diagnostics: [diag] } } } } },
+      { path: "_flow/flows/b.flow.js", type: "flow", note: "Not saved.",
+        response: { result: { isError: true, content: [{ type: "text", text: "Error [FLOWSCRIPT_V3_UNSUPPORTED]: line 5" }],
+          structuredContent: { ok: false, error: { code: "FLOWSCRIPT_V3_UNSUPPORTED", details: [{ severity: "error",
+            code: "FLOWSCRIPT_V3_UNSUPPORTED", line: 5, message: "Outside the FlowScript v3 subset.", hint: "Use a v3 form." }] } } } } },
+    ] },
 };
 
 function answer(name, args) {
   if (name === "flow-source-sync") {
     if (args.dryRun) return { content: [{ type: "text", text: "No changed source since the last sync." }],
       structuredContent: { ok: true, dryRun: true, results: [], summary: { checked: 0, applied: 0, refused: 0, rewritten: 0 } } };
-    return REFUSED;
+    return SYNC;
   }
   if (name === "code-run") return { content: [{ type: "text", text: "OK. keys: ok, result, qname. Use structuredContent for data." }],
-    structuredContent: { ok: true, qname: "P.f", revision: "abc", result: { echo: args.input }, accessibilityNote: "f is public." } };
+    structuredContent: { ok: true, qname: "P.f", revision: "abc", result: { echo: args.input }, accessibilityNote: "f is public.",
+      unsavedSources: { count: 0 } } };
   if (name === "frontend-svelte-action") return { content: [{ type: "text", text: "OK. keys: ok, openUrl. Use structuredContent for data." }],
-    structuredContent: { ok: true, openUrl: "http://127.0.0.1:1/app/", status: "ready" } };
-  if (name === "flow-resource-get") return { content: [{ type: "text", text: "# Guide " + args.uri }] };
+    structuredContent: args.wait === "nourl" ? { ok: true, pending: true } : { ok: true, openUrl: "http://127.0.0.1:1/app/", status: "ready", args } };
+  if (name === "flow-resource-get") return { content: [{ type: "text", text: "# Guide " + args.uri + "\nkeys: kept as written" }] };
   if (name === "scheduler-list") return { content: [{ type: "text", text: "OK. keys: ok, jobs. Use structuredContent for data." }],
     structuredContent: { ok: true, jobs: [{ name: "daily", project: args.project }] } };
-  if (name === "flow-catalog") return { content: [{ type: "text", text: "count=1. 1 blocks: date.diff. Use structuredContent for data." }],
-    structuredContent: { count: 1, blocks: [{ name: "date.diff" }], hadProject: "project" in args } };
+  if (name === "flow-resource-search") return { content: [{ type: "text", text: "count=1. Use structuredContent for data." }],
+    structuredContent: { count: 1, hadProject: "project" in args } };
+  if (name === "echo-secret") return { content: [{ type: "text", text: "header was Bearer secret-value" }] };
+  if (name === "tools-more") {
+    if (!args.name) return { content: [], structuredContent: { ok: true, tools: MORE } };
+    if (!args.arguments) return { content: [], structuredContent: { ok: true, tool: { name: args.name, inputSchema: MORE_SCHEMA[args.name] } } };
+    return answer(args.name, args.arguments);
+  }
   return { isError: true, content: [{ type: "text", text: "Unknown tool" }] };
 }
 
@@ -61,6 +80,7 @@ before(async () => {
     req.on("end", () => {
       const m = JSON.parse(body);
       calls.push({ url: req.url, headers: req.headers, body: m });
+      if (m.params?.arguments?.name === "broken") { res.statusCode = 500; res.end("<html>oops</html>"); return; }
       const result = m.method === "tools/list" ? { tools: TOOLS } : answer(m.params.name, m.params.arguments);
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ jsonrpc: "2.0", id: m.id, result }));
@@ -71,10 +91,11 @@ before(async () => {
 });
 after(() => server.close());
 
+const freshTmp = () => mkdtempSync(join(tmpdir(), "c8o-tmp-"));
 function c8o(args, env = {}) {
   return new Promise(resolve => {
     const p = spawn(process.execPath, [C8O, ...args], { env: { PATH: process.env.PATH, HOME: mkdtempSync(join(tmpdir(), "c8o-home-")),
-      TMPDIR: mkdtempSync(join(tmpdir(), "c8o-tmp-")), C8O_URL: url, C8O_PROJECT: "P", C8O_CONFIG: "/nonexistent", ...env } });
+      TMPDIR: freshTmp(), C8O_URL: url, C8O_PROJECT: "P", C8O_CONFIG: "/nonexistent", ...env } });
     let out = "", err = "";
     p.stdout.on("data", d => out += d); p.stderr.on("data", d => err += d);
     p.on("close", code => resolve({ code, out, err }));
@@ -86,85 +107,108 @@ test("help needs no endpoint", async () => {
   const r = await c8o(["help"], { C8O_URL: "" });
   assert.equal(r.code, 0);
   assert.match(r.out, /c8o check \[path\.\.\.\]/);
+  assert.match(r.out, /2 usage, connection or protocol error/);
 });
 
-test("sync: refused file with file:line diagnostics, no envelope noise, exit 1", async () => {
+test("sync: refused, pending, normalized and warned files; file:line diagnostics; exit 1", async () => {
   const r = await c8o(["sync"]);
   assert.equal(r.code, 1);
   assert.match(r.out, /^_flow\/flows\/a\.flow\.js:7: error INVALID_EXPRESSION \(if\.condition\): Unknown expression function: date\.add$/m);
+  assert.match(r.out, /^ {2}expression: !date\.add\(\{\}\)$/m);
   assert.match(r.out, /^ {2}fix: Call date\.add on its own line\.$/m);
+  assert.match(r.out, /^_flow\/flows\/b\.flow\.js:5: error FLOWSCRIPT_V3_UNSUPPORTED: Outside the FlowScript v3 subset\.$/m);
+  assert.match(r.out, /^_flow\/flows\/p\.flow\.js: PENDING/m);
   assert.match(r.out, /^_flow\/blocks\/app\/x\.block\.js: saved, normalized by the engine: read it again \(block\)$/m);
   assert.match(r.out, /warning: Move structural endpoints to config\./);
-  assert.match(r.out, /2 checked, 1 saved, 1 refused, 1 normalized\./);
+  assert.match(r.out, /^ {2}warnings=1: Put the related writes in one sql\.transaction\.$/m);
+  assert.match(r.out, /4 checked, 3 saved, 2 refused, 1 normalized\./);
   assert.doesNotMatch(r.out, /structuredContent|keys: ok/);
-  const b = last().body;
-  assert.equal(b.params.name, "flow-source-sync");
-  assert.deepEqual(b.params.arguments, { project: "P", dryRun: false });
+  assert.deepEqual(last().body.params.arguments, { project: "P", dryRun: false });
   assert.equal(last().headers["x-convertigo-source-mode"], "sources");
+  assert.equal(last().headers["x-convertigo-no-log"], "true");
   assert.equal(last().headers.authorization, undefined);
   assert.match(last().url, /^\/flow\?jsonOnly=true$/);
 });
 
-test("check: dry run with normalized paths", async () => {
-  const r = await c8o(["check", "./_flow/flows/a.flow.js", "/project/_flow/data/model.yaml", "--gateway"]);
+test("check: dry run with normalized paths; options are checked per command", async () => {
+  let r = await c8o(["check", "./_flow/flows/a.flow.js", "/project/_flow/data/model.yaml", "--gateway"]);
   assert.equal(r.code, 0);
   assert.match(r.out, /No changed source since the last sync\./);
   assert.deepEqual(last().body.params.arguments,
     { project: "P", dryRun: true, paths: ["_flow/flows/a.flow.js", "_flow/data/model.yaml"], gateway: true });
+  const n = calls.length;
+  for (const bad of [["sync", "paths=_flow/x"], ["run", "f", "g"], ["run"], ["view", "--gateway"], ["sync", "--nope"], ["block"]]) {
+    r = await c8o(bad);
+    assert.equal(r.code, 2, bad.join(" "));
+  }
+  assert.equal(calls.length, n, "a usage error never calls the engine");
 });
 
-test("run: input from --input, k=v and k:=json; result printed as JSON", async () => {
+test("run: JSON result alone on stdout, notes on stderr, k=v over --input", async () => {
   const r = await c8o(["run", "f", "--input", '{"a":1,"b":"x"}', "b=y", "n:=3", "flag:=true"]);
   assert.equal(r.code, 0);
   assert.deepEqual(last().body.params.arguments, { project: "P", name: "f", input: { a: 1, b: "y", n: 3, flag: true } });
-  assert.deepEqual(JSON.parse(r.out.split("\naccessibilityNote")[0]), { echo: { a: 1, b: "y", n: 3, flag: true } });
-  assert.match(r.out, /^accessibilityNote: f is public\.$/m);
-  assert.doesNotMatch(r.out, /revision|keys: ok/);
+  assert.deepEqual(JSON.parse(r.out), { echo: { a: 1, b: "y", n: 3, flag: true } });
+  assert.equal(r.err.trim(), "accessibilityNote: f is public.");
 });
 
-test("view prints the viewer URL first", async () => {
-  const r = await c8o(["view"]);
+test("view: the URL first, extra arguments passed; no URL is a failure", async () => {
+  let r = await c8o(["view", "wait:=false"]);
+  assert.equal(r.code, 0);
   assert.equal(r.out.split("\n")[0], "http://127.0.0.1:1/app/");
-  assert.deepEqual(last().body.params.arguments, { project: "P", actionId: "dev.sync" });
+  assert.deepEqual(last().body.params.arguments, { actionId: "dev.sync", wait: false, project: "P" });
+  r = await c8o(["view", "wait=nourl"]);
+  assert.equal(r.code, 1);
 });
 
-test("guide: a file path of the guide folder is read as its flow://guide URI", async () => {
+test("guide: served as written, a file path of the guide folder read as its URI", async () => {
   const r = await c8o(["guide", "/c8o/guide/entities/model.md"]);
-  assert.equal(r.out.trim(), "# Guide flow://guide/entities/model");
+  assert.equal(r.out, "# Guide flow://guide/entities/model\nkeys: kept as written\n");
   await c8o(["guide"]);
   assert.equal(last().body.params.arguments.uri, "flow://guide/start");
 });
 
-test("passthrough: project added only when the tool takes one", async () => {
-  let r = await c8o(["scheduler-list"]);
+test("tools behind tools-more: listed, described and called through tools-more with the project", async () => {
+  let r = await c8o(["tools", "jobs"]);
+  assert.equal(r.out.trim(), "scheduler-list: Lists jobs.");
+  r = await c8o(["help", "scheduler-list"]);
+  assert.match(r.out, /^ {2}project \(string\): Project\.$/m);
+  r = await c8o(["scheduler-list"]);
   assert.equal(r.code, 0);
-  assert.deepEqual(last().body.params.arguments, { project: "P" });
+  assert.deepEqual(last().body.params, { name: "tools-more", arguments: { name: "scheduler-list", arguments: { project: "P" } } });
   assert.match(r.out, /"name": "daily"/);
-  r = await c8o(["flow-catalog", "query=date", "--json"]);
+  r = await c8o(["flow-resource-search", "query=date", "--json"]);
   assert.deepEqual(last().body.params.arguments, { query: "date" });
-  assert.equal(JSON.parse(r.out).hadProject, false);
+  assert.equal(JSON.parse(r.out).structuredContent.hadProject, false);
   r = await c8o(["code-set", "x=1"]);
   assert.equal(r.code, 2);
   assert.match(r.err, /Unknown command or tool: code-set/);
 });
 
-test("tools and help read the tool list", async () => {
-  let r = await c8o(["tools", "sync"]);
-  assert.equal(r.out.trim(), "flow-source-sync: Checks and saves changed source files.");
-  r = await c8o(["help", "flow-source-sync"]);
-  assert.match(r.out, /^ {2}project \(string, required\): Project\.$/m);
+test("the tool list is cached per user and identity", async () => {
+  const tmp = freshTmp();
+  await c8o(["tools"], { TMPDIR: tmp });
+  const n = calls.filter(c => c.body.method === "tools/list").length;
+  await c8o(["scheduler-list"], { TMPDIR: tmp });
+  assert.equal(calls.filter(c => c.body.method === "tools/list").length, n);
 });
 
-test("token file: sent as a bearer header, never printed", async () => {
+test("token file: sent as a bearer header, masked in any output", async () => {
   const f = join(mkdtempSync(join(tmpdir(), "c8o-tok-")), "token");
   writeFileSync(f, "secret-value\n");
-  const r = await c8o(["view"], { C8O_TOKEN_FILE: f });
+  let r = await c8o(["view"], { C8O_TOKEN_FILE: f });
   assert.equal(last().headers.authorization, "Bearer secret-value");
+  r = await c8o(["echo-secret"], { C8O_TOKEN_FILE: f });
+  assert.match(r.out, /Bearer <token>/);
+  r = await c8o(["echo-secret", "--json"], { C8O_TOKEN_FILE: f });
   assert.doesNotMatch(r.out + r.err, /secret-value/);
 });
 
-test("connection refused: exit 2 with a short message", async () => {
-  const r = await c8o(["view"], { C8O_URL: "http://127.0.0.1:9/flow" });
+test("connection refused and protocol errors: exit 2 with a short message", async () => {
+  let r = await c8o(["view"], { C8O_URL: "http://127.0.0.1:9/flow" });
   assert.equal(r.code, 2);
   assert.match(r.err, /^c8o: Cannot reach the engine/);
+  r = await c8o(["run", "broken"]);
+  assert.equal(r.code, 2);
+  assert.match(r.err, /^c8o: No JSON-RPC answer from the engine \(HTTP 500\)/);
 });

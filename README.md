@@ -669,16 +669,22 @@ syntax-error tool result with code-check, including hints and guide drawers.
 ### Command line `c8o` (prototype)
 
 `cli/c8o.mjs` is a dependency-free Node client of this endpoint in sources mode,
-for agents that work with a shell next to the files and no MCP client: each
-command is one `tools/call`, printed as plain text without the envelope.
-`c8o check` and `c8o sync` are `flow-source-sync` (dry run or not) and print a
-refused file as `path:line: severity CODE (block.property): message` with its
-`fix:`; `c8o run <Flow> k=v` is `code-run`; `c8o view` is
-`frontend-svelte-action` `dev.sync` and prints the viewer URL; `c8o block`,
-`c8o guide`, `c8o tools`, `c8o help <tool>`; any other listed tool is
-`c8o <tool> k=v` (`k:=<json>` for a typed value), the project added when the tool
-takes one. Exit code: 0 ok, 1 refused or failed, 2 usage or connection. The
-endpoint and the project come from `C8O_URL`/`C8O_PROJECT` or
-`/c8o/c8o.json`; a bearer token only from a file (`C8O_TOKEN_FILE`), never
-printed. Tests: `node --test cli/c8o.test.mjs`.
-
+for agents that work with a shell next to the files and no MCP client. Each
+command is a `tools/call` printed as plain text without the envelope; generic
+commands also read the tool list (core and `tools-more`), cached ten minutes per
+user, endpoint, project and identity, and refreshed on an unknown name.
+`c8o check` and `c8o sync` are `flow-source-sync` (dry run or not): one line per
+file (`valid`, `saved`, `saved, normalized by the engine: read it again`,
+`PENDING` when it changed during the sync, `REFUSED`), a refusal as
+`path:line: severity CODE (block.property): message` with its `fix:`, warnings
+and notes kept. `c8o run <Flow> k=v` is `code-run`: the result alone as JSON on
+stdout, notes on stderr. `c8o view` is `frontend-svelte-action` `dev.sync` and
+prints the viewer URL first (no URL: exit 1). `c8o block`, `c8o guide` (the
+guide as served, same text as the files), `c8o tools`, `c8o help <tool>`; any
+other tool is `c8o <tool> k=v` (`k:=<json>` for a typed value), the project
+added when the tool takes one, a `tools-more` tool called through it. Options are
+checked per command before any call. Exit code: 0 ok, 1 refused, pending or
+failed, 2 usage, connection or protocol error (`set -o pipefail` in a pipe).
+The endpoint and the project come from `C8O_URL`/`C8O_PROJECT` or
+`/c8o/c8o.json`; a bearer token only from a file (`C8O_TOKEN_FILE`), masked in
+any output; redirects are refused. Tests: `node --test cli/c8o.test.mjs`.

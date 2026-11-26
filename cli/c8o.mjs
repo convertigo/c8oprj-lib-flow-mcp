@@ -1,30 +1,47 @@
 #!/usr/bin/env node
 // c8o: command line for a Convertigo Flow project edited as files on disk (prototype).
-// A thin client of the Flow MCP endpoint in sources mode: each command is one tools/call, printed as plain text.
-// No dependency: Node 18+ (global fetch).
+// A thin client of the Flow MCP endpoint in sources mode: each command is a tools/call (plus a cached tool list for
+// generic tools), printed as plain text. No dependency: Node 18+ (global fetch).
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { tmpdir, homedir } from "node:os";
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
+import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
-  c8o check [path...]          validate changed files (or the given ones) without saving
-  c8o sync [path...]           validate and save them (--gateway: also the EntityGateway of the model)
+  c8o check [path...]          validate the changed files (or the given ones) without saving them
+  c8o sync [path...]           validate and save them; --gateway also creates the EntityGateway of the data model
   c8o run <flow> [k=v...]      run a Flow; k:=<json> for a typed value, --input '<json>' for the whole input
-  c8o view                     build the frontend and print the viewer URL (dev.sync)
+                               (k=v wins over --input); the result is printed as JSON on stdout, notes on stderr
+  c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line
   c8o block <ns.name>          contract of a block (library or project)
-  c8o guide [path|uri]         print a guide (default: start); files: see the guide folder of your setup
+  c8o guide [path|uri]         a guide as the engine serves it (default: start); the same files are in /c8o/guide
   c8o tools [word]             list the engine tools
   c8o help <tool>              arguments of a tool
-  c8o <tool> [k=v | k:=json]   call any listed tool; the project is added when the tool takes one
+  c8o <tool> [k=v | k:=json]   call any tool of c8o tools; the project is added when the tool takes one
 
-Options: --json (raw structured result), --project <name>.
-Exit code: 0 ok, 1 refused or failed, 2 usage or connection error.
-Paths are project-relative: _flow/flows/<Flow>.flow.js, _flow/blocks/<ns>/<name>.block.js, ...`;
+Options: --json (the whole result as JSON), --project <name>, -- (end of options).
+Exit code: 0 ok, 1 refused, pending or failed, 2 usage, connection or protocol error.
+In a pipe the shell reports the last command: use set -o pipefail to keep c8o's status.
+Paths are project-relative: _flow/flows/<Flow>.flow.js, _flow/blocks/<ns>/<name>.block.js, _flow/data/model.yaml,
+.flow.svelte and .flow.css under _flow/frontbuilder/svelte/model/<App>/src/.`;
+
+// Options and key=value arguments each command accepts (positional: number allowed).
+const COMMANDS = {
+  check: { pos: Infinity, flags: ["gateway"], kv: false },
+  sync: { pos: Infinity, flags: ["gateway"], kv: false },
+  run: { pos: 1, min: 1, flags: ["input"], kv: true },
+  view: { pos: 0, flags: [], kv: true },
+  block: { pos: 1, min: 1, flags: [], kv: false },
+  guide: { pos: 1, flags: [], kv: false },
+  tools: { pos: 1, flags: [], kv: false },
+  help: { pos: 1, flags: [], kv: false },
+};
+const GENERIC = { pos: 0, flags: ["args"], kv: true };
 
 class Usage extends Error {}
+class Protocol extends Error {}
 
 function config() {
   const files = [process.env.C8O_CONFIG, "/c8o/c8o.json", join(homedir(), ".c8o.json")].filter(Boolean);
@@ -40,20 +57,34 @@ function config() {
   return { url, project: process.env.C8O_PROJECT || cfg.project || "", token };
 }
 
-function parseArgs(argv) {
+function parseArgs(argv, spec) {
   const pos = [], kv = {}, flags = {};
+  let rest = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--json" || a === "--gateway") flags[a.slice(2)] = true;
-    else if (a === "--project" || a === "--input" || a === "--args") {
-      if (i + 1 >= argv.length) throw new Usage(a + " needs a value");
-      flags[a.slice(2)] = argv[++i];
-    } else if (/^[A-Za-z_][\w.-]*:=/.test(a)) {
-      const k = a.slice(0, a.indexOf(":=")), v = a.slice(a.indexOf(":=") + 2);
-      try { kv[k] = JSON.parse(v); } catch { throw new Usage(`${k}:= needs JSON, got: ${v}`); }
-    } else if (/^[A-Za-z_][\w.-]*=/.test(a)) kv[a.slice(0, a.indexOf("="))] = a.slice(a.indexOf("=") + 1);
-    else pos.push(a);
+    if (!rest && a === "--") { rest = true; continue; }
+    if (!rest && a.startsWith("--")) {
+      const name = a.slice(2);
+      if (name === "json" || (name === "gateway" && spec.flags.includes("gateway"))) { flags[name] = true; continue; }
+      if (name === "project" || spec.flags.includes(name)) {
+        if (i + 1 >= argv.length) throw new Usage(a + " needs a value");
+        flags[name] = argv[++i];
+        continue;
+      }
+      throw new Usage("Unknown option " + a + ". See c8o help.");
+    }
+    const m = !rest && /^([A-Za-z_][\w.-]*)(:?=)([\s\S]*)$/.exec(a);
+    if (m) {
+      if (!spec.kv) throw new Usage(`${m[1]}${m[2]}… is not an argument of this command. See c8o help.`);
+      if (m[2] === ":=") {
+        try { kv[m[1]] = JSON.parse(m[3]); } catch { throw new Usage(`${m[1]}:= needs JSON, got: ${m[3]}`); }
+      } else kv[m[1]] = m[3];
+      continue;
+    }
+    pos.push(a);
   }
+  if (pos.length > spec.pos) throw new Usage(`Too many arguments: ${pos.slice(spec.pos).join(" ")}. See c8o help.`);
+  if (pos.length < (spec.min || 0)) throw new Usage("Missing argument. See c8o help.");
   for (const k of ["input", "args"]) {
     if (flags[k] === undefined) continue;
     try { flags[k] = JSON.parse(flags[k]); } catch { throw new Usage(`--${k} needs JSON`); }
@@ -64,36 +95,67 @@ function parseArgs(argv) {
 
 let rpcId = 0;
 async function rpc(cfg, method, params) {
-  const url = cfg.url + (cfg.url.includes("?") ? "&" : "?") + "jsonOnly=true";
+  const url = new URL(cfg.url);
+  url.searchParams.set("jsonOnly", "true");
   const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream",
-    "X-Convertigo-Source-Mode": "sources" };
+    "X-Convertigo-Source-Mode": "sources", "X-Convertigo-No-Log": "true" };
   if (cfg.token) headers.Authorization = "Bearer " + cfg.token;
+  const id = ++rpcId;
   let res;
   try {
-    res = await fetch(url, { method: "POST", headers,
-      body: JSON.stringify({ jsonrpc: "2.0", id: ++rpcId, method, params }), signal: AbortSignal.timeout(900_000) });
+    res = await fetch(url, { method: "POST", headers, redirect: "error",
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }), signal: AbortSignal.timeout(900_000) });
   } catch (e) {
-    throw new Usage("Cannot reach the engine (" + (e.cause?.code || e.name) + ").");
+    throw new Protocol("Cannot reach the engine (" + (e.cause?.code || e.name) + ").");
   }
   const text = await res.text();
   let data = null;
   try { data = JSON.parse(text); } catch {
     for (const line of text.split(/\r?\n/)) if (line.startsWith("data:")) { try { data = JSON.parse(line.slice(5)); } catch { /* next */ } }
   }
-  if (!data) throw new Usage(`No JSON-RPC answer (HTTP ${res.status}).`);
+  if (!data || data.jsonrpc !== "2.0" || (data.id !== id && data.id !== null) || !("result" in data || "error" in data))
+    throw new Protocol(`No JSON-RPC answer from the engine (HTTP ${res.status}).`);
   return data;
 }
 
-async function tools(cfg) {
-  const cache = join(tmpdir(), "c8o-tools-" + createHash("sha1").update(cfg.url).digest("hex").slice(0, 12) + ".json");
+// The tools: the default list and the ones behind tools-more, cached per endpoint, project and identity.
+function cachePath(cfg) {
+  const key = createHash("sha256").update([cfg.url, cfg.project, cfg.token].join("\n")).digest("hex").slice(0, 16);
+  const dir = join(tmpdir(), "c8o-" + userInfo().uid);
+  return { dir, file: join(dir, "tools-" + key + ".json") };
+}
+
+async function tools(cfg, fresh) {
+  const { dir, file } = cachePath(cfg);
+  if (!fresh) {
+    try {
+      const c = JSON.parse(readFileSync(file, "utf8"));
+      if (Date.now() - c.at < 600_000 && Array.isArray(c.tools)) return c.tools;
+    } catch { /* refresh */ }
+  }
+  const core = await rpc(cfg, "tools/list", {});
+  if (core.error || !Array.isArray(core.result?.tools)) throw new Protocol("tools/list failed: " + (core.error?.message || "no list"));
+  const list = core.result.tools.filter(t => t.name !== "tools-more").map(t => ({ name: t.name, description: t.description || "",
+    inputSchema: t.inputSchema }));
+  if (core.result.tools.some(t => t.name === "tools-more")) {
+    const more = await call(cfg, "tools-more", {});
+    const extra = more.result?.structuredContent?.tools;
+    if (Array.isArray(extra)) for (const t of extra) {
+      const name = typeof t === "string" ? t : t?.name;
+      if (name && !list.some(x => x.name === name)) list.push({ name, description: (typeof t === "object" && t.description) || "", more: true });
+    }
+  }
   try {
-    const c = JSON.parse(readFileSync(cache, "utf8"));
-    if (Date.now() - c.at < 300_000) return c.tools;
-  } catch { /* refresh */ }
-  const data = await rpc(cfg, "tools/list", {});
-  const list = data.result?.tools || [];
-  try { mkdirSync(tmpdir(), { recursive: true }); writeFileSync(cache, JSON.stringify({ at: Date.now(), tools: list }), { mode: 0o600 }); } catch { /* no cache */ }
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const tmp = file + "." + process.pid;
+    writeFileSync(tmp, JSON.stringify({ at: Date.now(), tools: list }), { mode: 0o600 });
+    renameSync(tmp, file);
+  } catch { /* no cache */ }
   return list;
+}
+
+async function findTool(cfg, name) {
+  return (await tools(cfg)).find(t => t.name === name) || (await tools(cfg, true)).find(t => t.name === name);
 }
 
 async function call(cfg, name, args) {
@@ -102,7 +164,8 @@ async function call(cfg, name, args) {
 
 // --- rendering -------------------------------------------------------------------------------------------------------
 
-const NOISE = [/\s*keys: [^\n]*?Use structuredContent for data\.?/g, /\s*See structuredContent(\.[\w.]+)?\.?/g];
+const NOISE = [/\s*keys: [^\n]*?Use structuredContent for data\.?/g, /\s*See structuredContent(\.[\w.]+)?\.?/g,
+  /\s*Use structuredContent for data\.?/g];
 function clean(t) {
   let s = String(t || "");
   for (const r of NOISE) s = s.replace(r, "");
@@ -120,6 +183,10 @@ function texts(data) {
   return (data?.result?.content || []).filter(c => c.type === "text").map(c => clean(c.text)).filter(Boolean);
 }
 
+function show(v) {
+  return typeof v === "string" ? v : JSON.stringify(v);
+}
+
 function structured(data, printed) {
   const sc = data?.result?.structuredContent;
   if (!sc || typeof sc !== "object") return "";
@@ -127,83 +194,101 @@ function structured(data, printed) {
   const shown = printed.join("\n");
   for (const [k, v] of Object.entries(sc)) {
     if (k === "ok" && v === true) continue;
+    if (k === "unsavedSources" && v && v.count === 0) continue;
     if (typeof v === "string" && v.length > 20 && shown.includes(v)) continue;   // already in the text
-    if (k === "error" && failed(data) && printed.length) continue;              // the text says it
+    if (k === "error" && v && typeof v === "object" && printed.length) {          // the text says the message
+      const { message, code, hint, ...more } = v;
+      if (Object.keys(more).length) rest.error = more;
+      continue;
+    }
     if (typeof v === "string" && v.includes("\n") && v.length > 80) blocks.push(`--- ${k} ---\n${v.replace(/\n$/, "")}`);
     else rest[k] = v;
   }
-  const out = [];
-  if (Object.keys(rest).length) out.push(JSON.stringify(rest, null, 2));
-  return out.concat(blocks).join("\n");
+  return [Object.keys(rest).length ? JSON.stringify(rest, null, 2) : "", ...blocks].filter(Boolean).join("\n");
 }
 
 function generic(data) {
   const t = texts(data);
-  const s = structured(data, t);
-  return [...t, s].filter(Boolean).join("\n");
+  return [...t, structured(data, t)].filter(Boolean).join("\n");
 }
 
-function diagnostics(response) {
-  const found = [];
-  const walk = (v, depth) => {
-    if (!v || typeof v !== "object" || depth > 6) return;
-    if (Array.isArray(v)) { v.forEach(x => walk(x, depth + 1)); return; }
-    if (Array.isArray(v.diagnostics)) v.diagnostics.forEach(d => d && typeof d === "object" && found.push(d));
-    for (const [k, x] of Object.entries(v)) if (k !== "diagnostics") walk(x, depth + 1);
-  };
-  walk(response?.result?.structuredContent, 0);
-  return found;
+// The diagnostics of an error, where the server puts them (mcp.js errorDiagnosticLines).
+function errorOf(response) {
+  const sc = response?.result?.structuredContent;
+  return (sc && typeof sc.error === "object" && sc.error) || (response?.error && typeof response.error === "object" ? response.error : null);
 }
+function diagnostics(response) {
+  const sc = response?.result?.structuredContent || {};
+  const error = errorOf(response) || {}, details = error.details;
+  const list = Array.isArray(error.diagnostics) ? error.diagnostics : Array.isArray(details) ? details
+    : details && Array.isArray(details.diagnostics) ? details.diagnostics : Array.isArray(sc.diagnostics) ? sc.diagnostics : [];
+  return list.filter(d => d && typeof d === "object");
+}
+
+function diagnosticLines(path, d) {
+  const where = [d.block && d.block + (d.property ? "." + d.property : ""), typeof d.path === "string" ? d.path : ""].filter(Boolean).join(", ");
+  const out = [`${path}${d.line ? ":" + d.line + (d.column ? ":" + d.column : "") : ""}: ${d.severity || "error"}${d.code ? " " + d.code : ""}${where ? " (" + where + ")" : ""}: ${d.message || ""}`];
+  if (d.expression && !String(d.message || "").includes(d.expression)) out.push(`  expression: ${d.expression}`);
+  for (const k of ["expected", "candidates", "allowed"]) if (d[k] !== undefined) out.push(`  ${k}: ${show(d[k])}`);
+  if (d.hint) out.push(`  fix: ${d.hint}`);
+  if (d.proposedPatch) out.push(`  proposed patch: ${show(d.proposedPatch)}`);
+  return out;
+}
+
+const PENDING = /changed on disk during the sync/i;
 
 function renderSync(data, dry) {
   const sc = data?.result?.structuredContent;
-  if (!sc || !Array.isArray(sc.results)) return generic(data);
+  if (!sc || !Array.isArray(sc.results)) return { text: generic(data), bad: failed(data) };
   const out = [];
+  let bad = false;
   for (const e of sc.results) {
-    const bad = failed(e.response);
-    const state = bad ? "REFUSED" : dry ? "valid" : e.applied ? (e.rewritten ? "saved, normalized by the engine: read it again" : "saved") : "checked";
+    const refused = failed(e.response), pending = !refused && PENDING.test(e.note || "");
+    bad = bad || refused || pending;
+    const state = refused ? "REFUSED" : pending ? "PENDING (changed on disk during the sync: sync it again)"
+      : dry ? "valid" : e.applied ? (e.rewritten ? "saved, normalized by the engine: read it again" : "saved") : "checked";
     out.push(`${e.path}: ${state}${e.type ? " (" + e.type + ")" : ""}`);
     const ds = diagnostics(e.response);
-    for (const d of ds) {
-      const where = [d.block, d.property].filter(Boolean).join(".");
-      out.push(`${e.path}${d.line ? ":" + d.line : ""}: ${d.severity || "error"} ${d.code || ""}${where ? " (" + where + ")" : ""}: ${d.message || ""}`.replace(/\s+:/, ":"));
-      if (d.expression) out.push(`  expression: ${d.expression}`);
-      if (d.hint) out.push(`  fix: ${d.hint}`);
-      if (d.proposedPatch) out.push(`  proposed: ${typeof d.proposedPatch === "string" ? d.proposedPatch : JSON.stringify(d.proposedPatch)}`);
+    for (const d of ds) out.push(...diagnosticLines(e.path, d));
+    const error = errorOf(e.response) || {};
+    if (refused) {
+      if (!ds.length) texts(e.response).forEach(t => out.push("  " + t.replace(/\n/g, "\n  ")));
+      else {
+        if (error.hint && !ds.some(d => d.hint === error.hint)) out.push("  fix: " + error.hint);
+        const fields = error.details && !Array.isArray(error.details) && (error.details.errors || error.details.fields);
+        if (fields) out.push("  fields: " + show(fields));
+      }
+      out.push("  not saved: c8o run reads this file from disk, HTTP keeps the last synced version.");
+    } else {
+      // warnings and notes of the validator or the writer, never lost: the text minus the plain OK line
+      const seen = new Set(ds.map(d => d.message));
+      for (const t of texts(e.response)) {
+        const s = t.replace(/^OK\.(\s+[\w.-]+\.)?\s*/, "").trim();
+        if (s && !seen.has(s)) out.push("  " + s.replace(/\n/g, "\n  "));
+      }
+      const w = e.response?.result?.structuredContent?.warnings;
+      if (Array.isArray(w)) for (const x of w) {
+        const s = typeof x === "string" ? x : x.message || JSON.stringify(x);
+        if (!out.some(l => l.includes(s))) out.push("  warning: " + s);
+      }
+      if (e.note && !e.rewritten && !pending) out.push("  note: " + e.note);
     }
-    if (bad && !ds.length) texts(e.response).forEach(t => out.push("  " + t.replace(/\n/g, "\n  ")));
-    const w = e.response?.result?.structuredContent?.warnings;
-    if (Array.isArray(w)) w.forEach(x => out.push("  warning: " + (typeof x === "string" ? x : x.message || JSON.stringify(x))));
-    if (e.note && !bad && !e.rewritten) out.push("  note: " + e.note);  // a rewritten file already says: read it again
-    if (bad) out.push("  not saved: c8o run reads this file from disk, HTTP keeps the last synced version.");
   }
   const s = sc.summary || {};
   if (!sc.results.length) out.push("No changed source since the last sync.");
   else out.push(`${s.checked || 0} checked, ${dry ? "dry run, nothing saved" : (s.applied || 0) + " saved"}, ${s.refused || 0} refused${s.rewritten ? ", " + s.rewritten + " normalized" : ""}.`);
-  return out.join("\n");
+  return { text: out.join("\n"), bad };
 }
 
-function renderRun(data) {
-  const sc = data?.result?.structuredContent;
-  if (failed(data) || !sc) return generic(data);
-  const out = [];
-  if ("result" in sc) out.push(JSON.stringify(sc.result, null, 2));
-  for (const [k, v] of Object.entries(sc)) {
-    if (["ok", "result", "qname", "revision", "next"].includes(k)) continue;
-    out.push(`${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
-  }
-  return out.join("\n");
-}
+// --- output ----------------------------------------------------------------------------------------------------------
 
-function renderView(data) {
-  const sc = data?.result?.structuredContent || {};
-  if (failed(data)) return generic(data);
-  const out = [];
-  if (sc.openUrl) out.push(sc.openUrl);
-  const rest = Object.fromEntries(Object.entries(sc).filter(([k]) => !["ok", "openUrl"].includes(k)));
-  if (Object.keys(rest).length) out.push(JSON.stringify(rest, null, 2));
-  return out.join("\n") || generic(data);
+let secret = "";
+function emit(stream, text) {
+  if (!text) return;
+  if (secret) text = text.split(secret).join("<token>");
+  stream.write(text.endsWith("\n") ? text : text + "\n");
 }
+for (const s of [process.stdout, process.stderr]) s.on("error", e => { if (e.code === "EPIPE") process.exit(process.exitCode || 0); });
 
 // --- commands --------------------------------------------------------------------------------------------------------
 
@@ -216,72 +301,107 @@ function project(cfg, flags) {
 function guideUri(arg) {
   if (!arg) return "flow://guide/start";
   if (/^[a-z]+:\/\//.test(arg)) return arg;
-  const path = arg.replace(/^.*\/guide\//, "").replace(/^\/+/, "").replace(/\.md$/, "");
-  return "flow://guide/" + path;
+  return "flow://guide/" + arg.replace(/^.*\/guide\//, "").replace(/^\/+/, "").replace(/\.md$/, "");
+}
+
+function schemaLines(t, schema) {
+  const req = new Set(schema?.required || []);
+  const out = [`${t.name}: ${t.description || ""}`];
+  for (const [k, p] of Object.entries(schema?.properties || {}))
+    out.push(`  ${k} (${p.type || "any"}${req.has(k) ? ", required" : ""})${p.description ? ": " + p.description : ""}`);
+  return out.join("\n");
+}
+
+function findSchema(v, depth = 0) {
+  if (!v || typeof v !== "object" || depth > 4) return null;
+  if (v.inputSchema && typeof v.inputSchema === "object") return v.inputSchema;
+  if (v.type === "object" && v.properties) return v;
+  for (const x of Object.values(v)) { const s = findSchema(x, depth + 1); if (s) return s; }
+  return null;
 }
 
 async function main(argv) {
   const [cmd, ...rest] = argv;
-  if (!cmd || cmd === "-h" || cmd === "--help" || (cmd === "help" && !rest.length)) { console.log(USAGE); return 0; }
-  if (cmd === "--version" || cmd === "version") { console.log(VERSION); return 0; }
-  const { pos, kv, flags } = parseArgs(rest);
+  if (!cmd || cmd === "-h" || cmd === "--help" || (cmd === "help" && !rest.length)) { emit(process.stdout, USAGE); return 0; }
+  if (cmd === "--version" || cmd === "version") { emit(process.stdout, VERSION); return 0; }
+  const { pos, kv, flags } = parseArgs(rest, COMMANDS[cmd] || GENERIC);
   const cfg = config();
-  const print = (data, render) => {
-    console.log(flags.json ? JSON.stringify(data?.result?.structuredContent ?? data?.result ?? data?.error ?? data, null, 2) : render(data));
-    return failed(data) ? 1 : 0;
-  };
+  secret = cfg.token;
+  const json = data => emit(process.stdout, JSON.stringify(data?.result ?? data, null, 2));
   switch (cmd) {
     case "check":
     case "sync": {
       const args = { project: project(cfg, flags), dryRun: cmd === "check" };
       if (pos.length) args.paths = pos.map(p => p.replace(/^\.\//, "").replace(/^\/project\//, ""));
       if (flags.gateway) args.gateway = true;
-      return print(await call(cfg, "flow-source-sync", args), d => renderSync(d, cmd === "check"));
+      const data = await call(cfg, "flow-source-sync", args);
+      const r = renderSync(data, cmd === "check");
+      if (flags.json) json(data); else emit(process.stdout, r.text);
+      return r.bad || failed(data) ? 1 : 0;
     }
     case "run": {
-      if (!pos[0]) throw new Usage("c8o run <flow> [k=v...] [--input '<json>']");
       const input = Object.assign({}, flags.input || {}, kv);
-      return print(await call(cfg, "code-run", { project: project(cfg, flags), name: pos[0], input }), renderRun);
+      const data = await call(cfg, "code-run", { project: project(cfg, flags), name: pos[0], input });
+      if (flags.json) { json(data); return failed(data) ? 1 : 0; }
+      const sc = data?.result?.structuredContent;
+      if (failed(data) || !sc) { emit(process.stderr, generic(data)); return failed(data) ? 1 : 0; }
+      emit(process.stdout, JSON.stringify("result" in sc ? sc.result : null, null, 2));
+      const notes = Object.entries(sc).filter(([k, v]) => !["ok", "result", "qname", "revision", "next"].includes(k)
+        && !(k === "unsavedSources" && v && v.count === 0)).map(([k, v]) => `${k}: ${show(v)}`);
+      emit(process.stderr, notes.join("\n"));
+      return 0;
     }
-    case "view":
-      return print(await call(cfg, "frontend-svelte-action", { project: project(cfg, flags), actionId: kv.actionId || "dev.sync" }), renderView);
-    case "block":
-      if (!pos[0]) throw new Usage("c8o block <ns.name>");
-      return print(await call(cfg, "flow-block-get", { project: project(cfg, flags), name: pos[0] }), generic);
+    case "view": {
+      const data = await call(cfg, "frontend-svelte-action", { actionId: "dev.sync", ...kv, project: project(cfg, flags) });
+      if (flags.json) { json(data); return failed(data) || !data?.result?.structuredContent?.openUrl ? 1 : 0; }
+      const sc = data?.result?.structuredContent || {};
+      if (failed(data) || !sc.openUrl) { emit(process.stderr, generic(data) || "No viewer URL."); return 1; }
+      const extra = Object.fromEntries(Object.entries(sc).filter(([k]) => !["ok", "openUrl"].includes(k)));
+      emit(process.stdout, [sc.openUrl, Object.keys(extra).length ? JSON.stringify(extra, null, 2) : ""].filter(Boolean).join("\n"));
+      return 0;
+    }
+    case "block": {
+      const data = await call(cfg, "flow-block-get", { project: project(cfg, flags), name: pos[0] });
+      if (flags.json) json(data); else emit(failed(data) ? process.stderr : process.stdout, generic(data));
+      return failed(data) ? 1 : 0;
+    }
     case "guide": {
       const data = await call(cfg, "flow-resource-get", { uri: guideUri(pos[0]), format: "text" });
-      console.log(texts(data).join("\n\n"));
+      if (flags.json) json(data);
+      else if (failed(data)) emit(process.stderr, texts(data).join("\n"));
+      else emit(process.stdout, (data.result?.content || []).filter(c => c.type === "text").map(c => c.text).join("\n\n"));
       return failed(data) ? 1 : 0;
     }
     case "tools": {
-      const list = await tools(cfg);
       const word = (pos[0] || "").toLowerCase();
-      for (const t of list) {
-        const first = String(t.description || "").split(/(?<=\.)\s/)[0];
-        if (!word || (t.name + " " + first).toLowerCase().includes(word)) console.log(`${t.name}: ${first}`);
-      }
+      const lines = (await tools(cfg)).map(t => `${t.name}: ${String(t.description || "").split(/(?<=\.)\s/)[0]}`)
+        .filter(l => !word || l.toLowerCase().includes(word));
+      emit(process.stdout, lines.join("\n"));
       return 0;
     }
     case "help": {
-      const t = (await tools(cfg)).find(x => x.name === pos[0]);
+      const t = await findTool(cfg, pos[0]);
       if (!t) throw new Usage(`Unknown tool ${pos[0]}: see c8o tools.`);
-      const schema = t.inputSchema || {}, req = new Set(schema.required || []);
-      console.log(`${t.name}: ${t.description || ""}`);
-      for (const [k, p] of Object.entries(schema.properties || {}))
-        console.log(`  ${k} (${p.type || "any"}${req.has(k) ? ", required" : ""})${p.description ? ": " + p.description : ""}`);
+      let schema = t.inputSchema;
+      if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
+      emit(process.stdout, schemaLines(t, schema));
       return 0;
     }
     default: {
-      const t = (await tools(cfg)).find(x => x.name === cmd);
+      const t = await findTool(cfg, cmd);
       if (!t) throw new Usage(`Unknown command or tool: ${cmd}. See c8o help and c8o tools.`);
       const args = Object.assign({}, flags.args || {}, kv);
-      if (t.inputSchema?.properties?.project && args.project === undefined && (flags.project || cfg.project)) args.project = project(cfg, flags);
-      return print(await call(cfg, cmd, args), generic);
+      let schema = t.inputSchema;
+      if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
+      if (schema?.properties?.project && args.project === undefined && (flags.project || cfg.project)) args.project = project(cfg, flags);
+      const data = t.more ? await call(cfg, "tools-more", { name: t.name, arguments: args }) : await call(cfg, cmd, args);
+      if (flags.json) json(data); else emit(failed(data) ? process.stderr : process.stdout, generic(data));
+      return failed(data) ? 1 : 0;
     }
   }
 }
 
 main(process.argv.slice(2)).then(code => { process.exitCode = code; }, e => {
-  if (e instanceof Usage) { console.error("c8o: " + e.message); process.exitCode = 2; }
-  else { console.error("c8o: " + (e?.message || e)); process.exitCode = 2; }
+  emit(process.stderr, "c8o: " + (e?.message || e));
+  process.exitCode = 2;
 });
