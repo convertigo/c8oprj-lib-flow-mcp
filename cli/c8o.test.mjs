@@ -41,6 +41,10 @@ const SYNC = {
       { path: "_flow/flows/a.flow.js", type: "flow", note: "Not saved.",
         response: { result: { isError: true, content: [{ type: "text", text: "Error [FLOWSCRIPT_VALIDATION_FAILED]: at line 7" }],
           structuredContent: { ok: false, error: { code: "FLOWSCRIPT_VALIDATION_FAILED", diagnostics: [diag] } } } } },
+      { path: "_flow/data/model.yaml", type: "model", note: "Not saved.",
+        response: { result: { isError: true, content: [{ type: "text", text: "Error [ENTITY_MODEL_INVALID]" }],
+          structuredContent: { ok: false, error: { code: "ENTITY_MODEL_INVALID", proposedPatch: { type: "int64" }, diagnostics: [{
+            severity: "error", code: "ENTITY_MODEL_INVALID", path: "entities.Deal.fields.amount.type", message: "unknown type" }] } } } } },
       { path: "_flow/flows/b.flow.js", type: "flow", note: "Not saved.",
         response: { result: { isError: true, content: [{ type: "text", text: "Error [FLOWSCRIPT_V3_UNSUPPORTED]: line 5" }],
           structuredContent: { ok: false, error: { code: "FLOWSCRIPT_V3_UNSUPPORTED", details: [{ severity: "error",
@@ -81,6 +85,7 @@ before(async () => {
       const m = JSON.parse(body);
       calls.push({ url: req.url, headers: req.headers, body: m });
       if (m.params?.arguments?.name === "broken") { res.statusCode = 500; res.end("<html>oops</html>"); return; }
+      if (m.params?.arguments?.name === "both") { res.end(JSON.stringify({ jsonrpc: "2.0", id: m.id, result: {}, error: { code: 1 } })); return; }
       const result = m.method === "tools/list" ? { tools: TOOLS } : answer(m.params.name, m.params.arguments);
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ jsonrpc: "2.0", id: m.id, result }));
@@ -122,6 +127,9 @@ test("sync: refused, pending, normalized and warned files; file:line diagnostics
   assert.match(r.out, /warning: Move structural endpoints to config\./);
   assert.match(r.out, /^ {2}warnings=1: Put the related writes in one sql\.transaction\.$/m);
   assert.match(r.out, /4 checked, 3 saved, 2 refused, 1 normalized\./);
+  assert.match(r.out, /^_flow\/data\/model\.yaml: error ENTITY_MODEL_INVALID \(entities\.Deal\.fields\.amount\.type\): unknown type$/m);
+  assert.match(r.out, /^ {2}proposed patch: \{"type":"int64"\}$/m);
+  assert.match(r.out, /model\.yaml[^]*?not saved: the engine keeps the last synced version\./);
   assert.doesNotMatch(r.out, /structuredContent|keys: ok/);
   assert.deepEqual(last().body.params.arguments, { project: "P", dryRun: false });
   assert.equal(last().headers["x-convertigo-source-mode"], "sources");
@@ -137,7 +145,7 @@ test("check: dry run with normalized paths; options are checked per command", as
   assert.deepEqual(last().body.params.arguments,
     { project: "P", dryRun: true, paths: ["_flow/flows/a.flow.js", "_flow/data/model.yaml"], gateway: true });
   const n = calls.length;
-  for (const bad of [["sync", "paths=_flow/x"], ["run", "f", "g"], ["run"], ["view", "--gateway"], ["sync", "--nope"], ["block"]]) {
+  for (const bad of [["sync", "--project", "--json"], ["sync", "paths=_flow/x"], ["run", "f", "g"], ["run"], ["view", "--gateway"], ["sync", "--nope"], ["block"]]) {
     r = await c8o(bad);
     assert.equal(r.code, 2, bad.join(" "));
   }
@@ -171,6 +179,8 @@ test("guide: served as written, a file path of the guide folder read as its URI"
 test("tools behind tools-more: listed, described and called through tools-more with the project", async () => {
   let r = await c8o(["tools", "jobs"]);
   assert.equal(r.out.trim(), "scheduler-list: Lists jobs.");
+  r = await c8o(["tools", "jobs", "--json"]);
+  assert.deepEqual(JSON.parse(r.out).map(t => t.name), ["scheduler-list"]);
   r = await c8o(["help", "scheduler-list"]);
   assert.match(r.out, /^ {2}project \(string\): Project\.$/m);
   r = await c8o(["scheduler-list"]);
@@ -211,4 +221,6 @@ test("connection refused and protocol errors: exit 2 with a short message", asyn
   r = await c8o(["run", "broken"]);
   assert.equal(r.code, 2);
   assert.match(r.err, /^c8o: No JSON-RPC answer from the engine \(HTTP 500\)/);
+  r = await c8o(["run", "both"]);
+  assert.equal(r.code, 2);
 });

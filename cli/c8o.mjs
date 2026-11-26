@@ -3,11 +3,11 @@
 // A thin client of the Flow MCP endpoint in sources mode: each command is a tools/call (plus a cached tool list for
 // generic tools), printed as plain text. No dependency: Node 18+ (global fetch).
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.2.0";
+const VERSION = "0.2.1";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
@@ -16,7 +16,8 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
                                (k=v wins over --input); the result is printed as JSON on stdout, notes on stderr
   c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line
   c8o block <ns.name>          contract of a block (library or project)
-  c8o guide [path|uri]         a guide as the engine serves it (default: start); the same files are in /c8o/guide
+  c8o guide [path|uri]         a guide as the engine serves it (default: start, with the tree of guides; aliases
+                               and flow://lib/... resolved); the plain files are in /c8o/guide
   c8o tools [word]             list the engine tools
   c8o help <tool>              arguments of a tool
   c8o <tool> [k=v | k:=json]   call any tool of c8o tools; the project is added when the tool takes one
@@ -67,7 +68,7 @@ function parseArgs(argv, spec) {
       const name = a.slice(2);
       if (name === "json" || (name === "gateway" && spec.flags.includes("gateway"))) { flags[name] = true; continue; }
       if (name === "project" || spec.flags.includes(name)) {
-        if (i + 1 >= argv.length) throw new Usage(a + " needs a value");
+        if (i + 1 >= argv.length || argv[i + 1].startsWith("--")) throw new Usage(a + " needs a value");
         flags[name] = argv[++i];
         continue;
       }
@@ -113,8 +114,9 @@ async function rpc(cfg, method, params) {
   try { data = JSON.parse(text); } catch {
     for (const line of text.split(/\r?\n/)) if (line.startsWith("data:")) { try { data = JSON.parse(line.slice(5)); } catch { /* next */ } }
   }
-  if (!data || data.jsonrpc !== "2.0" || (data.id !== id && data.id !== null) || !("result" in data || "error" in data))
-    throw new Protocol(`No JSON-RPC answer from the engine (HTTP ${res.status}).`);
+  const valid = data && data.jsonrpc === "2.0" && (("result" in data) !== ("error" in data))
+    && ("result" in data ? res.ok && data.id === id : data.id === id || data.id === null);
+  if (!valid) throw new Protocol(`No JSON-RPC answer from the engine (HTTP ${res.status}).`);
   return data;
 }
 
@@ -129,6 +131,8 @@ async function tools(cfg, fresh) {
   const { dir, file } = cachePath(cfg);
   if (!fresh) {
     try {
+      const st = statSync(dir);
+      if (st.uid !== userInfo().uid || (st.mode & 0o077)) throw new Error("cache folder not private");
       const c = JSON.parse(readFileSync(file, "utf8"));
       if (Date.now() - c.at < 600_000 && Array.isArray(c.tools)) return c.tools;
     } catch { /* refresh */ }
@@ -140,13 +144,16 @@ async function tools(cfg, fresh) {
   if (core.result.tools.some(t => t.name === "tools-more")) {
     const more = await call(cfg, "tools-more", {});
     const extra = more.result?.structuredContent?.tools;
-    if (Array.isArray(extra)) for (const t of extra) {
+    if (failed(more) || !Array.isArray(extra)) throw new Protocol("tools-more failed: " + (texts(more).join(" ") || "no list"));
+    for (const t of extra) {
       const name = typeof t === "string" ? t : t?.name;
       if (name && !list.some(x => x.name === name)) list.push({ name, description: (typeof t === "object" && t.description) || "", more: true });
     }
   }
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const st = statSync(dir);
+    if (st.uid !== userInfo().uid || (st.mode & 0o077)) throw new Error("cache folder not private");
     const tmp = file + "." + process.pid;
     writeFileSync(tmp, JSON.stringify({ at: Date.now(), tools: list }), { mode: 0o600 });
     renameSync(tmp, file);
@@ -255,10 +262,13 @@ function renderSync(data, dry) {
       if (!ds.length) texts(e.response).forEach(t => out.push("  " + t.replace(/\n/g, "\n  ")));
       else {
         if (error.hint && !ds.some(d => d.hint === error.hint)) out.push("  fix: " + error.hint);
+        const patch = error.proposedPatch || (error.details && !Array.isArray(error.details) && error.details.proposedPatch);
+        if (patch && !ds.some(d => d.proposedPatch)) out.push("  proposed patch: " + show(patch));
         const fields = error.details && !Array.isArray(error.details) && (error.details.errors || error.details.fields);
         if (fields) out.push("  fields: " + show(fields));
       }
-      out.push("  not saved: c8o run reads this file from disk, HTTP keeps the last synced version.");
+      out.push(e.type === "flow" ? "  not saved: c8o run reads this file from disk, HTTP keeps the last synced version."
+        : "  not saved: the engine keeps the last synced version.");
     } else {
       // warnings and notes of the validator or the writer, never lost: the text minus the plain OK line
       const seen = new Set(ds.map(d => d.message));
@@ -376,7 +386,8 @@ async function main(argv) {
       const word = (pos[0] || "").toLowerCase();
       const lines = (await tools(cfg)).map(t => `${t.name}: ${String(t.description || "").split(/(?<=\.)\s/)[0]}`)
         .filter(l => !word || l.toLowerCase().includes(word));
-      emit(process.stdout, lines.join("\n"));
+      if (flags.json) json((await tools(cfg)).filter(t => !word || (t.name + " " + t.description).toLowerCase().includes(word)));
+      else emit(process.stdout, lines.join("\n"));
       return 0;
     }
     case "help": {
@@ -384,7 +395,8 @@ async function main(argv) {
       if (!t) throw new Usage(`Unknown tool ${pos[0]}: see c8o tools.`);
       let schema = t.inputSchema;
       if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
-      emit(process.stdout, schemaLines(t, schema));
+      if (flags.json) json({ name: t.name, description: t.description, inputSchema: schema || null });
+      else emit(process.stdout, schemaLines(t, schema));
       return 0;
     }
     default: {
