@@ -183,7 +183,8 @@ test("check: dry run with normalized paths; options are checked per command", as
 test("run: JSON result alone on stdout, notes on stderr, k=v over --input", async () => {
   const r = await c8o(["run", "f", "--input", '{"a":1,"b":"x"}', "b=y", "n:=3", "flag:=true"]);
   assert.equal(r.code, 0);
-  assert.deepEqual(last().body.params.arguments, { project: "P", name: "f", input: { a: 1, b: "y", n: 3, flag: true } });
+  assert.deepEqual(last().body.params.arguments, { project: "P", name: "f", input: { a: 1, b: "y", n: 3, flag: true },
+    detail: "full", includeFullResult: true, allowHugeResult: true });  // never the engine's shortened result
   assert.deepEqual(JSON.parse(r.out), { echo: { a: 1, b: "y", n: 3, flag: true } });
   assert.equal(r.err.trim(), "accessibilityNote: f is public.");
 });

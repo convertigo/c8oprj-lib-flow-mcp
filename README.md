@@ -677,7 +677,7 @@ user, endpoint, project and identity, and refreshed on an unknown name.
 file (`valid`, `saved`, `saved, normalized by the engine: read it again`,
 `PENDING` when it changed during the sync, `REFUSED`), a refusal as
 `path:line: severity CODE (block.property): message` with its `fix:`, warnings
-and notes kept. `c8o run <Flow> k=v` is `code-run`: the result alone as JSON on
+and notes kept. `c8o run <Flow> k=v` is `code-run`: the whole result (never the engine's shortened one) alone as JSON on
 stdout, notes on stderr. `c8o call <Flow> k=v` posts to the project's `.json` endpoint
 (`C8O_APP_URL`, `app` in `c8o.json`, or next to the MCP endpoint) as a browser does,
 with a private cookie jar per endpoint, project and `--as <name>`;

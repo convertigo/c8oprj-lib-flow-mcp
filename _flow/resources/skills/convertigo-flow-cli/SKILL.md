@@ -34,8 +34,10 @@ never edit them.
      `fix:`: nothing was saved. Fix the file and sync again before running it:
      `c8o run` reads the file on disk, HTTP keeps the last synced version.
    - `PENDING`: the file changed during the sync; sync it again.
-4. Prove it: `c8o run <Flow> key=value key:=<json>` prints the result alone as
-   JSON on stdout (notes on stderr): a test run in the engine, without a user
+   A Flow that uses a new block: sync them together; `check` does not see a
+   block it has not saved.
+4. Prove it: `c8o run <Flow> key=value key:=<json>` prints the whole result
+   alone as JSON on stdout (notes on stderr): a test run in the engine, without a user
    session. `c8o call <Flow> key=value` calls it over HTTP as a browser does, in
    a session kept between calls: sign in first with the app's own sign-in Flow,
    `--as manager` / `--as contributor` keep several sessions, and

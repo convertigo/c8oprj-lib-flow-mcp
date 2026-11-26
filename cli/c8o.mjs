@@ -7,13 +7,14 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
   c8o sync [path...]           validate and save them; --gateway also creates the EntityGateway of the data model
   c8o run <flow> [k=v...]      run a Flow in the engine, without a user session (a test run, private Flows too); k:=<json> for a typed value, --input '<json>' for the whole input
-                               (k=v wins over --input); the result is printed as JSON on stdout, notes on stderr
+                               (k=v wins over --input); the whole result is printed as JSON on stdout (never shortened:
+                               pipe it to node or jq), notes on stderr
   c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
@@ -432,7 +433,10 @@ async function main(argv) {
     }
     case "run": {
       const input = Object.assign({}, flags.input || {}, kv);
-      const data = await call(cfg, "code-run", { project: project(cfg, flags), name: pos[0], input });
+      // the whole result: the engine shortens a large one for a model's context (resultCompacted), which broke the
+      // checks an agent pipes into node or jq (i199, L3: 200 categories); a shell reads what it asks for
+      const data = await call(cfg, "code-run", { project: project(cfg, flags), name: pos[0], input,
+        detail: "full", includeFullResult: true, allowHugeResult: true });
       if (flags.json) { json(data); return failed(data) ? 1 : 0; }
       const sc = data?.result?.structuredContent;
       if (failed(data) || !sc) { emit(process.stderr, generic(data)); return failed(data) ? 1 : 0; }
