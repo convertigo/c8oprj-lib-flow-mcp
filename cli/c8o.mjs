@@ -7,14 +7,15 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.2.1";
+const VERSION = "0.2.2";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
   c8o sync [path...]           validate and save them; --gateway also creates the EntityGateway of the data model
   c8o run <flow> [k=v...]      run a Flow; k:=<json> for a typed value, --input '<json>' for the whole input
                                (k=v wins over --input); the result is printed as JSON on stdout, notes on stderr
-  c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line
+  c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line; a stopped
+                               viewer is started first (dev.ensure)
   c8o block <ns.name>          contract of a block (library or project)
   c8o guide [path|uri]         a guide as the engine serves it (default: start, with the tree of guides; aliases
                                and flow://lib/... resolved); the plain files are in /c8o/guide
@@ -362,7 +363,16 @@ async function main(argv) {
       return 0;
     }
     case "view": {
-      const data = await call(cfg, "frontend-svelte-action", { actionId: "dev.sync", ...kv, project: project(cfg, flags) });
+      const args = { actionId: "dev.sync", ...kv, project: project(cfg, flags) };
+      let data = await call(cfg, "frontend-svelte-action", args);
+      const stopped = d => !failed(d) && !d?.result?.structuredContent?.openUrl && d?.result?.structuredContent?.status === "stopped";
+      if (args.actionId === "dev.sync" && stopped(data)) {
+        // the viewer stops after 2 min without a page open (i195): start it, then sync, as its answer says
+        const ensure = await call(cfg, "frontend-svelte-action", { actionId: "dev.ensure", wait: true, project: args.project });
+        if (failed(ensure)) { emit(process.stderr, generic(ensure)); return 1; }
+        emit(process.stderr, "c8o: the viewer was stopped; started it (dev.ensure), then dev.sync.");
+        data = await call(cfg, "frontend-svelte-action", args);
+      }
       if (flags.json) { json(data); return failed(data) || !data?.result?.structuredContent?.openUrl ? 1 : 0; }
       const sc = data?.result?.structuredContent || {};
       if (failed(data) || !sc.openUrl) { emit(process.stderr, generic(data) || "No viewer URL."); return 1; }

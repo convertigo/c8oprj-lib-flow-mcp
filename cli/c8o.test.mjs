@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const C8O = join(dirname(fileURLToPath(import.meta.url)), "c8o.mjs");
 const calls = [];
-let server, url;
+let server, url, viewerRunning = false;
 
 const TOOLS = [
   { name: "flow-source-sync", description: "Checks and saves changed source files. More.", inputSchema: { type: "object", required: ["project"],
@@ -61,8 +61,13 @@ function answer(name, args) {
   if (name === "code-run") return { content: [{ type: "text", text: "OK. keys: ok, result, qname. Use structuredContent for data." }],
     structuredContent: { ok: true, qname: "P.f", revision: "abc", result: { echo: args.input }, accessibilityNote: "f is public.",
       unsavedSources: { count: 0 } } };
-  if (name === "frontend-svelte-action") return { content: [{ type: "text", text: "OK. keys: ok, openUrl. Use structuredContent for data." }],
-    structuredContent: args.wait === "nourl" ? { ok: true, pending: true } : { ok: true, openUrl: "http://127.0.0.1:1/app/", status: "ready", args } };
+  if (name === "frontend-svelte-action") {
+    if (args.actionId === "dev.ensure") { viewerRunning = true; return { content: [], structuredContent: { status: "running" } }; }
+    if (args.project === "Stopped" && !viewerRunning) return { content: [], structuredContent: { generated: false, status: "stopped",
+      stopReason: "not-started", next: "dev.ensure(wait:true)" } };
+    return { content: [{ type: "text", text: "OK. keys: ok, openUrl. Use structuredContent for data." }],
+      structuredContent: args.wait === "nourl" ? { ok: true, pending: true } : { ok: true, openUrl: "http://127.0.0.1:1/app/", status: "ready", args } };
+  }
   if (name === "flow-resource-get") return { content: [{ type: "text", text: "# Guide " + args.uri + "\nkeys: kept as written" }] };
   if (name === "scheduler-list") return { content: [{ type: "text", text: "OK. keys: ok, jobs. Use structuredContent for data." }],
     structuredContent: { ok: true, jobs: [{ name: "daily", project: args.project }] } };
@@ -167,6 +172,14 @@ test("view: the URL first, extra arguments passed; no URL is a failure", async (
   assert.deepEqual(last().body.params.arguments, { actionId: "dev.sync", wait: false, project: "P" });
   r = await c8o(["view", "wait=nourl"]);
   assert.equal(r.code, 1);
+  // a stopped viewer: dev.ensure (wait), then dev.sync again
+  const n = calls.length;
+  r = await c8o(["view", "--project", "Stopped"]);
+  assert.equal(r.code, 0);
+  assert.equal(r.out.split("\n")[0], "http://127.0.0.1:1/app/");
+  assert.deepEqual(calls.slice(n).map(c => c.body.params.arguments.actionId), ["dev.sync", "dev.ensure", "dev.sync"]);
+  assert.equal(calls[n + 1].body.params.arguments.wait, true);
+  assert.match(r.err, /viewer was stopped; started it \(dev\.ensure\)/);
 });
 
 test("guide: served as written, a file path of the guide folder read as its URI", async () => {

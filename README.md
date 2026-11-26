@@ -679,7 +679,8 @@ file (`valid`, `saved`, `saved, normalized by the engine: read it again`,
 `path:line: severity CODE (block.property): message` with its `fix:`, warnings
 and notes kept. `c8o run <Flow> k=v` is `code-run`: the result alone as JSON on
 stdout, notes on stderr. `c8o view` is `frontend-svelte-action` `dev.sync` and
-prints the viewer URL first (no URL: exit 1). `c8o block`, `c8o guide` (the
+prints the viewer URL first (no URL: exit 1); a stopped viewer is started first
+(`dev.ensure` with `wait`, then `dev.sync` again). `c8o block`, `c8o guide` (the
 guide as the engine serves it: `start` with the tree of guides, aliases and
 `flow://lib/...` resolved), `c8o tools`, `c8o help <tool>` (`--json` for both); any
 other tool is `c8o <tool> k=v` (`k:=<json>` for a typed value), the project
