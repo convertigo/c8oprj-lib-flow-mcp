@@ -31,15 +31,32 @@ const _meta = {
       }, ["project", "sequence", "name", "cron"])
     ];
   }
+  function nextFireTimes(cron, timeZone, after) {
+    var expression = new Packages.org.quartz.CronExpression(cron);
+    expression.setTimeZone(timeZone);
+    var format = new Packages.java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Packages.java.util.Locale.ROOT);
+    format.setTimeZone(timeZone);
+    var times = [];
+    for (var i = 0; i < 3; i++) {
+      after = expression.getNextValidTimeAfter(after);
+      if (after === null) break;
+      times.push(String(format.format(after)));
+    }
+    return times;
+  }
   function list(manager, project) {
+    var timeZone = Packages.java.util.TimeZone.getDefault(), now = new Packages.java.util.Date();
     var jobs = [], iterator = manager.getSchedulerXML().getScheduledJobs().iterator();
     while (iterator.hasNext()) {
       var item = iterator.next(), job = item.getJob(), schedule = item.getSchedule();
       if (!job || typeof job.getProjectName !== "function" || (project && String(job.getProjectName()) !== project)) continue;
-      jobs.push({ name: String(item.getName()), project: String(job.getProjectName()), sequence: typeof job.getSequenceName === "function" ? String(job.getSequenceName()) : "",
-        cron: schedule && typeof schedule.getCron === "function" ? String(schedule.getCron()) : "", enabled: Boolean(item.isAllEnabled()) });
+      var isCron = schedule && typeof schedule.getCron === "function", cron = isCron ? String(schedule.getCron()) : "";
+      var entry = { name: String(item.getName()), project: String(job.getProjectName()), sequence: typeof job.getSequenceName === "function" ? String(job.getSequenceName()) : "",
+        cron: cron, enabled: Boolean(item.isAllEnabled()) };
+      if (isCron) { try { entry.nextFireTimes = nextFireTimes(cron, timeZone, now); } catch (_storedCronInvalid) { entry.nextFireTimes = []; } }
+      jobs.push(entry);
     }
-    return { ok: true, jobs: jobs };
+    return { ok: true, timeZone: String(timeZone.getID()), jobs: jobs };
   }
   function target(engine, name) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) fail("PROJECT_REQUIRED", "A loaded project name is required.");
@@ -141,7 +158,9 @@ const _meta = {
     if (!Packages.org.quartz.CronExpression.isValidExpression(cron)) fail("SCHEDULER_CRON_INVALID", "Invalid Quartz cron expression.");
     ["enabled", "dryRun"].forEach(function (key) { if (args[key] !== undefined && typeof args[key] !== "boolean") fail("SCHEDULER_BOOLEAN_REQUIRED", key + " requires a boolean."); });
     var jobName = projectName + "." + localName, scheduleName = jobName + ".cron";
-    var result = { ok: true, project: projectName, sequence: sequenceName, name: jobName, cron: cron, enabled: args.enabled !== false, dryRun: args.dryRun !== false, saved: false };
+    var timeZone = Packages.java.util.TimeZone.getDefault();
+    var result = { ok: true, project: projectName, sequence: sequenceName, name: jobName, cron: cron, enabled: args.enabled !== false, dryRun: args.dryRun !== false, saved: false,
+      timeZone: String(timeZone.getID()), nextFireTimes: nextFireTimes(cron, timeZone, new Packages.java.util.Date()) };
     if (result.dryRun) return result;
     // Work on a detached snapshot; failed validation/publication must not mutate the active scheduler model.
     var Manager = Packages.com.twinsoft.convertigo.engine.scheduler.SchedulerManager;

@@ -7,9 +7,9 @@ Read for scheduled work, tracing and end-to-end proof.
 A standalone job does not depend on a browser cookie. It calls a dedicated,
 bounded private Flow that checks its configuration, uses
 `date.today`/`date.add` in the chosen time zone and returns a countable result.
-Inspect `scheduler-list`, then create the job with the relayed
-`scheduler-apply`; keep a name specific to the project. Test a real run and its
-idempotence before enabling a regular schedule.
+Inspect `scheduler-list`, then create the job with the advertised
+`scheduler-apply` using a project-specific name. Verify the Quartz zone as in
+`flow://guide/entities/jobs`. Test a real run and its idempotence before enabling.
 
 In a demonstration, record a `SIMULATED` notification and a journal entry in
 the same `sql.transaction`, with a unique replay key. Do not claim that a

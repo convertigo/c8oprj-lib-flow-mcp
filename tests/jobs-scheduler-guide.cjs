@@ -8,7 +8,8 @@ test('jobs guide uses the relayed legacy schema, lists first and creates disable
  assert.doesNotMatch(guide,/dryRun\s*:\s*(true|false)/);
  assert.match(guide,/supersedes the scheduler paragraph/);
 });
-test('scheduler zone is explicitly unavailable in the documented Flow contract',()=>{
- assert.match(guide,/no documented Flow operation to read\nit/);
- assert.match(guide,/not the\nQuartz trigger/);
+test('scheduler zone is read from timeZone and nextFireTimes; a mismatch keeps the job disabled',()=>{
+ assert.match(guide,/`timeZone`/);assert.match(guide,/`nextFireTimes`/);
+ assert.match(guide,/leave the job disabled/);
+ assert.match(guide,/`Échéance\.timeZone` controls deadline evaluation/);
 });

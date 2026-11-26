@@ -31,16 +31,35 @@ var bareError = null;
 try { tools.execute(ctx, engine, "requestable-execute", { requestable: "catalog_list" }); } catch (error) { bareError = error; }
 assert(bareError && bareError.code === "REQUESTABLE_REQUIRED" && /<project>\.catalog_list/.test(String(bareError.message) + " " + String(bareError.hint || "")),
   "Without a project, the refusal gives the exact qualified form");
-var plan = { project: "orders", sequence: "Job", name: "daily", cron: "0 0 9 * * ?" };
-assert(tools.execute(ctx, engine, "scheduler-apply", plan).dryRun && persisted === 0 && model.getJobs().isEmpty(), "Preview has no side effects");
+var plan = { project: "orders", sequence: "Job", name: "daily", cron: "0 0 6 * * ?" };
+var timeZone = java.util.TimeZone.getDefault();
+var beforeScheduling = Number(java.lang.System.currentTimeMillis());
+function assertDailyFireTimes(response, times) {
+  assert(response.timeZone === String(timeZone.getID()), "Scheduler reports the JVM default time zone");
+  assert(Array.isArray(times) && times.length === 3, "Scheduler reports three future fire times");
+  var previous = beforeScheduling;
+  times.forEach(function (value) {
+    var date = java.time.OffsetDateTime.parse(value);
+    var instant = Number(date.toInstant().toEpochMilli());
+    assert(date.getHour() === 6 && date.getMinute() === 0 && date.getSecond() === 0, "Cron fires at 06:00 local time");
+    assert(date.getOffset().getTotalSeconds() * 1000 === timeZone.getOffset(instant), "Fire time uses the JVM zone offset at that instant");
+    assert(instant > previous, "Fire times are strictly increasing and in the future");
+    previous = instant;
+  });
+}
+var preview = tools.execute(ctx, engine, "scheduler-apply", plan);
+assert(preview.dryRun && persisted === 0 && model.getJobs().isEmpty(), "Preview has no side effects");
+assertDailyFireTimes(preview, preview.nextFireTimes);
 refuses("SCHEDULER_PRIVATE_REQUIRED", function () { tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { sequence: "Public" })); });
 refuses("SCHEDULER_CRON_INVALID", function () { tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { cron: "bad" })); });
 refuses("SCHEDULER_BOOLEAN_REQUIRED", function () { tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { enabled: "true" })); });
 var applied = tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { dryRun: false }));
 assert(applied.saved && persisted === 1 && refreshed === 1, "Application persists and refreshes");
+assertDailyFireTimes(applied, applied.nextFireTimes);
 tools.execute(ctx, engine, "scheduler-apply", Object.assign({}, plan, { dryRun: false, enabled: false }));
 var listed = tools.execute(ctx, engine, "scheduler-list", { project: "orders" });
 assert(listed.jobs.length === 1 && !listed.jobs[0].enabled && model.getJobs().size() === 1, "Reapply updates a single owned job");
+assertDailyFireTimes(listed, listed.jobs[0].nextFireTimes);
 assert(tools.execute(ctx, engine, "scheduler-list", { project: "other" }).jobs.length === 0, "List respects project filter");
 var before = model, attempts = 0;
 manager.saveWithResult = function () { return ++attempts > 1; };

@@ -458,5 +458,16 @@
    "date.today({",
    "sql.query({"
   ]
+ },
+ {
+  "family": "multipage-entities",
+  "oldStart": "Inspect `scheduler-list`, then use the advertised relayed `scheduler-apply` to",
+  "keep": [
+   "Inspect `scheduler-list`, then use the advertised `scheduler-apply`",
+   "`<project>.DailyBookings`",
+   "Europe/Paris",
+   "Run it once and replay it before enabling the schedule.",
+   "For real sending, add an idempotent outbox"
+  ]
  }
 ]

@@ -69,11 +69,11 @@ function DailyBookings({ input, config, result }) {
 }
 ```
 
-Inspect `scheduler-list`, then use the advertised relayed `scheduler-apply` to
+Inspect `scheduler-list`, then use the advertised `scheduler-apply` to
 schedule the exact private `<project>.DailyBookings` requestable with a
-project-specific job name, Europe/Paris and a daily trigger. Read that tool's
-contract; scheduler availability is deployment-specific. Run it once and replay
-it before enabling the schedule. For real sending, add an idempotent outbox and
+project-specific job name and a daily cron. Use `flow://guide/entities/jobs` to
+verify that Quartz uses Europe/Paris. Run it once and replay it before enabling
+the schedule. For real sending, add an idempotent outbox and
 `email.send` with a capture server first; do not send external effects in a JDBC
 transaction. A manual run of a job for the ADMIN is a separate hidden Flow that
 checks the ADMIN role, then calls the private job with `requestable.call`;

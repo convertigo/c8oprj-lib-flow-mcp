@@ -92,8 +92,9 @@ the loop timeout cannot interrupt a blocked child call.
 Follow [the scheduler contract in jobs.md](flow://guide/entities/jobs): read the
 advertised `scheduler-apply` contract and inspect `scheduler-list` before creating a disabled job. Target
 `<project>.RunReminders` using `project`, `sequence:"RunReminders"`, a project-owned
-`name` and Quartz `cron:"0 0 9 * * ?"`. Create with `enabled:false`, using only the advertised parameters. Verify the scheduler's effective
-time zone (the tool has no timeZone option); `Échéance` uses Europe/Paris.
+`name` and Quartz `cron:"0 0 9 * * ?"`. Create with `enabled:false`, using only the
+advertised parameters. Check the scheduler's effective zone and cron occurrences
+as described in jobs.md. `Échéance` uses Europe/Paris for deadline evaluation.
 Reapplying that name updates the definition. After isolated run/replay proofs,
 enable the schedule and the application symbol separately. Keep scheduler output
 recording off. Log only fixed events and counts, never rows, titles, recipients,

@@ -116,9 +116,11 @@ For the legacy relay, create the project-owned definition **disabled**, with
 After isolated execution and replay tests, enable the schedule and the
 application symbol separately. Keep scheduler output recording off.
 
-Neither the relayed Flow tool contract nor the Flow fallback list exposes the
-scheduler's effective time zone; there is no documented Flow operation to read
-it. `Échéance.timeZone:"Europe/Paris"` controls deadline evaluation only, not the
-Quartz trigger. Have the runtime operator verify the effective scheduler zone
-before enabling a wall-clock schedule; do not infer it from the browser, cron
-expression or entity trait.
+In the Flow fallback `scheduler-list` and `scheduler-apply` (including preview),
+read `timeZone` for the effective JVM/Quartz zone and `nextFireTimes` for up to
+three upcoming cron occurrences with offsets, even for disabled jobs. If
+the zone differs from the specification, report the mismatch, keep the intended
+wall-clock cron, leave the job disabled and leave the JVM time zone setting to
+the runtime operator; enable it only once the reported zone matches.
+If the legacy relay omits these fields, ask the operator to verify the zone
+before enabling the job. `Échéance.timeZone` controls deadline evaluation.
