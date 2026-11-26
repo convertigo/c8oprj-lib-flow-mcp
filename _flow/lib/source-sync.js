@@ -105,8 +105,13 @@
 			function inner(name, a, op) {
 				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun; delete clean.gateway;
 				var req={jsonrpc:"2.0",id:request.id,method:"tools/call",__flowMcpTraceDeferred:true,params:{name:name,arguments:Object.assign(clean,a)}};
-				return ctx.callBlock(op ? "mcp.tool.code.dispatch" : "mcp.tool."+name.replace(/^flow-/,"flow.").replace(/-/g,"."),
-					{request:req,operation:op,out:"local.sourceSyncInner"},{trace:false});
+				// Literal block names (relayed-call-names of the engine): code tools through their dispatcher, the two
+				// entity model tools by their own blocks.
+				var props={request:req,operation:op,out:"local.sourceSyncInner"};
+				if (op) return ctx.callBlock("mcp.tool.code.dispatch",props,{trace:false});
+				if (name === "flow-entity-model-check") return ctx.callBlock("mcp.tool.flow.entity.model.check",props,{trace:false});
+				if (name === "flow-entity-model-set") return ctx.callBlock("mcp.tool.flow.entity.model.set",props,{trace:false});
+				throw {code:"INTERNAL_ERROR",message:"source sync: no inner tool "+name};
 			}
 			// Check, then save as is: blocks (contract) first, then the data model, the Flows and the pages, so
 			// that each file is checked against what it uses.
