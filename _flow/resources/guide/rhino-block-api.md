@@ -87,6 +87,10 @@ Rhino runs ES6 inside the Convertigo JVM. Java classes are available through
 `Packages`, for example `Packages.java.security.MessageDigest`; coerce Java
 values before JS operations (`var s = String(javaString);`). Node.js APIs
 (`require`, npm modules) and browser globals are not available.
+JSON results carry Java `BigDecimal` and `BigInteger` values as JavaScript
+numbers (double precision). Values outside the finite double range become
+`null` in JSON. Return decimal text to preserve every digit, as `lib_flow_sql`
+does for decimals.
 Inside a Rhino block loop, write `let`: a `const` there is corrected to `let`
 with the `RHINO_CONST_IN_LOOP_CORRECTED` warning.
 

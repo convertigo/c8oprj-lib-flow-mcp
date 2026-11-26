@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.5.1";
+const VERSION = "0.6.0";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
@@ -26,6 +26,7 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
   c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line; a stopped
                                viewer is started first (dev.ensure)
   c8o block <ns.name>          contract of a block (library or project)
+  c8o blocks [word]            list matching blocks; --namespace <ns> filters the catalog
   c8o guide [path|uri]         a guide as the engine serves it (default: start, with the tree of guides; aliases
                                and flow://lib/... resolved); the plain files are in /c8o/guide
   c8o tools [word]             list the engine tools
@@ -49,6 +50,7 @@ const COMMANDS = {
   session: { pos: 2, min: 1, flags: ["as", "url"], kv: false },
   view: { pos: 0, flags: [], kv: true },
   block: { pos: 1, min: 1, flags: [], kv: false },
+  blocks: { pos: 1, flags: ["namespace"], kv: false },
   guide: { pos: 1, flags: [], kv: false },
   tools: { pos: 1, flags: [], kv: false },
   skill: { pos: 0, flags: ["install"], kv: false },
@@ -210,7 +212,10 @@ function failed(data) {
 
 function texts(data) {
   if (data?.error) return [clean(data.error.message || JSON.stringify(data.error))];
-  return (data?.result?.content || []).filter(c => c.type === "text").map(c => clean(c.text)).filter(Boolean);
+  const lines = (data?.result?.content || []).filter(c => c.type === "text").map(c => clean(c.text)).filter(Boolean);
+  const hint = data?.result?.structuredContent?.error?.hint;
+  if (hint && !lines.join("\n").includes(hint)) lines.push(hint);
+  return lines;
 }
 
 function show(v) {
@@ -240,6 +245,20 @@ function structured(data, printed) {
 function generic(data) {
   const t = texts(data);
   return [...t, structured(data, t)].filter(Boolean).join("\n");
+}
+
+function referenceCommands(projectName, providers) {
+  const quote = value => /^[\w.-]+$/.test(value) ? value : "'" + value.replaceAll("'", "'\\''") + "'";
+  return [...new Set(providers.map(provider => provider.project))].map(reference =>
+    `c8o flow-project-reference project=${quote(projectName)} reference=${quote(reference)}`);
+}
+
+function workspaceBlockLines(providers, guides, commands) {
+  return [
+    ...providers.map(provider => `${provider.block}: provided by ${provider.project}`),
+    ...commands,
+    ...guides.map(uri => `Read ${uri}`),
+  ];
 }
 
 // The diagnostics of an error, where the server puts them (mcp.js errorDiagnosticLines).
@@ -536,9 +555,50 @@ async function main(argv) {
       return 0;
     }
     case "block": {
-      const data = await call(cfg, "flow-block-get", { project: project(cfg, flags), name: pos[0] });
-      if (flags.json) json(data); else emit(failed(data) ? process.stderr : process.stdout, generic(data));
+      const projectName = project(cfg, flags);
+      const data = await call(cfg, "flow-block-get", { project: projectName, name: pos[0] });
+      const details = data.result?.structuredContent?.error?.details;
+      const providers = details?.workspaceProviders || [];
+      if (providers.length) {
+        const commands = referenceCommands(projectName, providers);
+        if (flags.json) {
+          details.referenceCommands = commands;
+          json(data);
+        } else {
+          emit(process.stderr, [...texts(data), ...workspaceBlockLines(providers, details.workspaceGuides || [], commands)].join("\n"));
+        }
+      } else if (flags.json) json(data);
+      else emit(failed(data) ? process.stderr : process.stdout, generic(data));
       return failed(data) ? 1 : 0;
+    }
+    case "blocks": {
+      const args = { project: project(cfg, flags), detail: "summary" };
+      if (pos.length) args.query = pos[0];
+      if (flags.namespace) args.namespace = flags.namespace;
+      const blocks = [];
+      const providers = new Map(), guides = new Set();
+      do {
+        const data = await call(cfg, "flow-catalog", args);
+        if (failed(data)) {
+          if (flags.json) json(data); else emit(process.stderr, generic(data));
+          return 1;
+        }
+        const page = data.result?.structuredContent;
+        if (!Array.isArray(page?.blocks) || (page.nextCursor && page.nextCursor === args.cursor))
+          throw new Protocol("Invalid block catalog page.");
+        for (const block of page.blocks) blocks.push(block);
+        for (const provider of page.workspaceProviders || []) providers.set(`${provider.project}:${provider.block}`, provider);
+        for (const guide of page.workspaceGuides || []) guides.add(guide);
+        args.cursor = page.nextCursor;
+      } while (args.cursor);
+      const workspaceProviders = [...providers.values()], workspaceGuides = [...guides];
+      const commands = referenceCommands(args.project, workspaceProviders);
+      if (flags.json) json({ blocks, workspaceProviders, workspaceGuides, referenceCommands: commands });
+      else emit(process.stdout, [
+        ...blocks.map(block => [block.block, block.desc].filter(Boolean).join(": ")),
+        ...workspaceBlockLines(workspaceProviders, workspaceGuides, commands),
+      ].join("\n"));
+      return 0;
     }
     case "guide": {
       const data = await call(cfg, "flow-resource-get", { uri: guideUri(pos[0]), format: "text" });

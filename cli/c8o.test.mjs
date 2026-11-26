@@ -24,6 +24,8 @@ const SKILL = "---\nname: convertigo-flow-cli\ndescription: Build or change a Fl
 const MORE = [{ name: "scheduler-list", description: "Lists jobs." }];
 const MORE_SCHEMA = { "scheduler-list": { type: "object", properties: { project: { type: "string", description: "Project." } } } };
 
+const SQL_PROVIDER = { block: "sql.query", project: "lib_flow_sql" };
+const SQL_GUIDE = "flow://lib/lib_flow_sql/sql";
 const diag = { severity: "error", code: "INVALID_EXPRESSION", line: 7, block: "if", property: "condition",
   message: "Unknown expression function: date.add", expression: "!date.add({})", hint: "Call date.add on its own line." };
 const ok = (extra = {}) => ({ result: { content: [{ type: "text", text: "OK. app.x. keys: ok, name. Use structuredContent for data." }],
@@ -72,6 +74,16 @@ function answer(name, args) {
   if (name === "flow-resource-get" && args.uri === "flow://skills/convertigo-flow-cli/SKILL")
     return { content: [{ type: "text", text: SKILL }] };
   if (name === "flow-resource-get") return { content: [{ type: "text", text: "# Guide " + args.uri + "\nkeys: kept as written" }] };
+  if (name === "flow-catalog" && args.namespace === "sql") return ok({
+    blocks: [], workspaceProviders: [SQL_PROVIDER], workspaceGuides: [SQL_GUIDE],
+  }).result;
+  if (name === "flow-catalog") return ok(args.cursor ?
+    { blocks: [{ block: "json.parse", desc: "Parse JSON." }] } :
+    { blocks: [{ block: "json.object", desc: "Create an object." }], nextCursor: "next" }).result;
+  if (name === "flow-block-get") return { isError: true, content: [{ type: "text", text: "Error [UNKNOWN_BLOCK]: Unknown Flow block." }],
+    structuredContent: { error: { code: "UNKNOWN_BLOCK", ...(args.name === "sql.query" ?
+      { details: { workspaceProviders: [SQL_PROVIDER], workspaceGuides: [SQL_GUIDE] } } :
+      { hint: "Inspect json.object." }) } } };
   if (name === "scheduler-list") return { content: [{ type: "text", text: "OK. keys: ok, jobs. Use structuredContent for data." }],
     structuredContent: { ok: true, jobs: [{ name: "daily", project: args.project }] } };
   if (name === "flow-resource-search") return { content: [{ type: "text", text: "count=1. Use structuredContent for data." }],
@@ -119,7 +131,10 @@ before(async () => {
       res.end(JSON.stringify({ jsonrpc: "2.0", id: m.id, result }));
     });
   });
-  await new Promise(r => server.listen(0, "127.0.0.1", r));
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
   url = `http://127.0.0.1:${server.address().port}/flow`;
 });
 after(() => server.close());
@@ -141,6 +156,7 @@ test("help needs no endpoint", async () => {
   assert.equal(r.code, 0);
   assert.match(r.out, /c8o check \[path\.\.\.\]/);
   assert.match(r.out, /2 usage, connection or protocol error/);
+  assert.equal((await c8o(["--version"], { C8O_URL: "" })).out.trim(), "0.6.0");
 });
 
 test("sync: refused, pending, normalized and warned files; file:line diagnostics; exit 1", async () => {
@@ -211,6 +227,35 @@ test("guide: served as written, a file path of the guide folder read as its URI"
   assert.equal(r.out, "# Guide flow://guide/entities/model\nkeys: kept as written\n");
   await c8o(["guide"]);
   assert.equal(last().body.params.arguments.uri, "flow://guide/start");
+});
+
+test("blocks reuses the catalog filters and displays unknown-block guidance", async () => {
+  const start = calls.length;
+  const listed = await c8o(["blocks", "object", "--namespace", "json"]);
+  assert.equal(listed.code, 0);
+  assert.match(listed.out, /json\.object: Create an object\.\njson\.parse: Parse JSON\./);
+  assert.deepEqual(calls.slice(start).map(c => c.body.params), [
+    { name: "flow-catalog", arguments: { project: "P", detail: "summary", query: "object", namespace: "json" } },
+    { name: "flow-catalog", arguments: { project: "P", detail: "summary", query: "object", namespace: "json", cursor: "next" } },
+  ]);
+  const unknown = await c8o(["block", "json.value"]);
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.err, /Inspect json\.object/);
+  const reference = "c8o flow-project-reference project=NoSql reference=lib_flow_sql";
+  for (const command of [["blocks", "--namespace", "sql"], ["block", "sql.query"]]) {
+    const args = [...command, "--project", "NoSql"];
+    const isBlock = command[0] === "block";
+    const result = await c8o(args);
+    assert.equal(result.code, isBlock ? 1 : 0);
+    const output = isBlock ? result.err : result.out;
+    assert.match(output, /sql\.query: provided by lib_flow_sql/);
+    assert.ok(output.includes(reference) && output.includes(SQL_GUIDE));
+    const report = JSON.parse((await c8o([...args, "--json"])).out);
+    const discovery = isBlock ? report.structuredContent.error.details : report;
+    assert.deepEqual(discovery.workspaceProviders, [SQL_PROVIDER]);
+    assert.deepEqual(discovery.workspaceGuides, [SQL_GUIDE]);
+    assert.deepEqual(discovery.referenceCommands, [reference]);
+  }
 });
 
 test("tools behind tools-more: listed, described and called through tools-more with the project", async () => {

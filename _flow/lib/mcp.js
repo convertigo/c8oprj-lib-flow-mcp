@@ -300,6 +300,15 @@
 		return out;
 	}
 
+	function jsonNumber(value) {
+		if (typeof value === "bigint") return Number(value);
+		if (!value || typeof value !== "object" || typeof Packages === "undefined") return value;
+		var math = Packages.java && Packages.java.math;
+		if (math && (typeof math.BigDecimal === "function" && value instanceof math.BigDecimal ||
+			typeof math.BigInteger === "function" && value instanceof math.BigInteger)) return Number(value);
+		return value;
+	}
+
 	function sanitizeForMcp(value, ctx, key, parentKey) {
 		if (value === undefined) {
 			return undefined;
@@ -307,13 +316,14 @@
 		if (value === null) {
 			return null;
 		}
-		if (typeof value === "object" &&
+		if (typeof value === "object" && typeof Packages !== "undefined" &&
 			value instanceof Packages.java.lang.CharSequence) {
 			value = String(value);
 		}
 		if (isSensitiveKey(key)) {
 			return parentKey === "properties" && isPropertyDescriptor(value) ? sanitizeSensitiveDescriptor(value, ctx) : "[redacted]";
 		}
+		value = jsonNumber(value);
 		if (typeof value === "string") {
 			if (value === "" && EMPTY_METADATA_KEYS[key] === true) {
 				return undefined;
@@ -2609,7 +2619,7 @@
 		["normalizations", "argumentWarning", "operatorNote", "accessibilityNote"].forEach(function (key) {
 			if (value && value[key] !== undefined && value[key] !== null && value[key].length) notices[key] = value[key];
 		});
-		value = compactToolValue(request, value);
+		value = compactToolValue(request, value, ctx);
 		value = withUnsavedSources(request, value, ctx);
 		if (value && value.ok !== false && !value.error && entityPageGuidanceApplies(request, value)) {
 			value.entityPages = "Entity pages: EntityTable → flow://guide/entities/widgets/table; EntityForm → flow://guide/entities/widgets/form; EntityView → flow://guide/entities/widgets/view; EntityStat/EntityBreakdown → flow://guide/entities/widgets/stat.";
@@ -2783,6 +2793,10 @@
 		out.code = String(error.code || "FLOW_MCP_TOOL_ERROR");
 		out.message = String(error.message || error);
 		out.hint = error.hint ? String(error.hint) : "";
+		if (!out.hint && out.code === "DATA_INT64_ENCODING" && /int64 must be exact base-10 text/i.test(out.message)) {
+			out.hint = "Pass signed 64-bit values as quoted base-10 text, for example {id: \"42\"}. " +
+				"Use the same encoding in keys, filters and patches. Read flow://guide/multipage-roles/data.";
+		}
 		out.details = error.details === undefined ? null : error.details;
 		return out;
 	}
@@ -2865,7 +2879,7 @@
 		}
 		if (normalized.code === "UNKNOWN_BLOCK") {
 			var diagnostic = withBlockContract(request, withWorkspaceProviders(request,
-				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true));
+				Object.assign({}, normalized.details || {}, {code:normalized.code,message:normalized.message}), true, ctx));
 			normalized.details = diagnostic;
 			if (diagnostic.next) {
 				if (diagnostic.workspaceProviders && diagnostic.workspaceProviders.length) normalized.hint = diagnostic.next;
@@ -4339,58 +4353,61 @@
 			.filter(function (word) { return word.length >= 2; });
 	}
 
-	function workspaceBlockEntries() {
+	function workspaceBlockEntries(ctx) {
+		if (!ctx || typeof ctx.blockList !== "function") return [];
 		var now = Number(System.currentTimeMillis());
 		if (workspaceBlockIndex.entries && now - workspaceBlockIndex.at < 30000) {
 			return workspaceBlockIndex.entries;
 		}
-		var entries = [];
+		var entries = [], complete = true;
 		loadedProjectTargets().forEach(function (target) {
 			if (WORKSPACE_BLOCK_SKIPPED[target.project]) return;
-			var root = new File(new File(String(target.projectDir), "_flow"), "blocks");
-			(function walk(dir, namespace) {
-				var files = dir.isDirectory() ? dir.listFiles() : null;
-				for (var i = 0; files && i < files.length; i++) {
-					var name = String(files[i].getName());
-					if (files[i].isDirectory()) {
-						walk(files[i], namespace.concat([name]));
-						continue;
-					}
-					var match = /^(.+)\.block\.js$/.exec(name);
-					if (!match) continue;
-					var head = "";
-					try {
-						head = String(new Packages.java.lang.String(Files.readAllBytes(files[i].toPath()), StandardCharsets.UTF_8)).substring(0, 4000);
-					} catch (e) {
-					}
-					if (/"private"\s*:\s*true/.test(head)) continue;
-					var description = /"description"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(head);
-					entries.push({ project: target.project, block: namespace.concat([match[1]]).join("."),
-						description: description ? description[1] : "" });
-				}
-			})(root, []);
+			var args = { projectDir: target.projectDir, origin: "project", detail: "summary",
+				limit: 100, doc: false, hints: false, includePrivate: false, includeInternal: false };
+			try {
+				do {
+					var page = ctx.blockList(args);
+					(page.blocks || []).forEach(function (item) {
+						entries.push({ project: target.project, block: item.block, description: item.desc || "" });
+					});
+					if (page.nextCursor === args.cursor) break;
+					args.cursor = page.nextCursor;
+				} while (args.cursor);
+			} catch (_unavailableCatalog) {
+				complete = false;
+			}
 		});
-		workspaceBlockIndex = { at: now, entries: entries };
+		// A partial index serves this call only: caching it would hide the missing pages for the next 30 seconds.
+		if (complete) workspaceBlockIndex = { at: now, entries: entries };
 		return entries;
 	}
 
 	// The best workspace blocks for a block id or a need, outside the target project.
-	function workspaceBlockProviders(targetProject, query, limit) {
+	function workspaceBlockProviders(ctx, targetProject, query, limit, namespace) {
 		var exact = String(query || "");
+		var referenced = Object.create(null);
+		try {
+			var project = runtimeProjectFromArgs({ project: targetProject });
+			project.getReferenceList().toArray().forEach(function (ref) {
+				if (ref.getParser) referenced[String(ref.getParser().getProjectName())] = true;
+			});
+		} catch (_noProjectReferences) {
+		}
 		var words = {};
 		blockWords(query).forEach(function (word) {
 			words[word] = true;
 			(WORKSPACE_BLOCK_SYNONYMS[word] || []).forEach(function (synonym) { words[synonym] = true; });
 		});
-		return workspaceBlockEntries().filter(function (entry) {
-			return entry.project !== String(targetProject || "");
+		return workspaceBlockEntries(ctx).filter(function (entry) {
+			return entry.project !== String(targetProject || "") && !referenced[entry.project] &&
+				(!namespace || entry.block.indexOf(namespace + ".") === 0);
 		}).map(function (entry) {
 			var score = entry.block === exact ? 1000 : 0;
 			blockWords(entry.block).forEach(function (word) { if (words[word]) score += 3; });
 			blockWords(entry.description).forEach(function (word) { if (words[word]) score += 1; });
 			return { entry: entry, score: score };
 		}).filter(function (item) {
-			return item.score >= 3;
+			return item.score >= 3 || (!exact && namespace);
 		}).sort(function (a, b) {
 			return b.score - a.score || a.entry.block.localeCompare(b.entry.block);
 		}).slice(0, limit || 3).map(function (item) {
@@ -4755,13 +4772,13 @@
 		return guideAlias(uri, guides, names).uri || "";
 	}
 
-	function withWorkspaceProviders(request, diagnostic, exactOnly) {
+	function withWorkspaceProviders(request, diagnostic, exactOnly, ctx) {
 		if (!diagnostic || diagnostic.code !== "UNKNOWN_BLOCK") return diagnostic;
 		var block = String(diagnostic.block || (/Unknown Flow block:\s*([A-Za-z0-9_.$-]+)/.exec(String(diagnostic.message || "")) || [])[1] || "");
 		var target = String(toolArguments(request).project || "");
 		var providers = [];
 		try {
-			providers = block ? workspaceBlockProviders(target, block, 3) : [];
+			providers = block ? workspaceBlockProviders(ctx, target, block, 3) : [];
 		} catch (e) {
 			providers = [];
 		}
@@ -4968,7 +4985,7 @@
 		return out;
 	}
 
-	function compactFlowCodeDiagnosticReport(request, details) {
+	function compactFlowCodeDiagnosticReport(request, details, ctx) {
 		var diagnostics = [];
 		var diagnosticCount = 0;
 		var hasMore = false;
@@ -4982,7 +4999,7 @@
 		}
 		var limit = diagnosticLimit(request);
 		var shown = diagnostics.slice(0, limit).map(function (diagnostic) {
-			return compactFlowCodeDiagnostic(withBlockContract(request, withWorkspaceProviders(request, diagnostic)));
+			return compactFlowCodeDiagnostic(withBlockContract(request, withWorkspaceProviders(request, diagnostic, false, ctx)));
 		});
 		diagnosticCount = Math.max(diagnosticCount, diagnostics.length);
 		return {
@@ -4993,7 +5010,7 @@
 		};
 	}
 
-	function compactFlowCodeError(request, error) {
+	function compactFlowCodeError(request, error, ctx) {
 		if (!error || typeof error !== "object") {
 			return error;
 		}
@@ -5009,7 +5026,7 @@
 				if (error.details.copySlip === true) out.details.copySlip = true;
 				return out;
 			}
-			var report = compactFlowCodeDiagnosticReport(request, error.details);
+			var report = compactFlowCodeDiagnosticReport(request, error.details, ctx);
 			out.details = report;
 			out.diagnosticCount = report.diagnosticCount;
 			out.diagnosticsShown = report.diagnosticsShown;
@@ -5070,7 +5087,7 @@
 		if (found.length) value.warnings = found.concat(value.warnings || []);
 	}
 
-	function compactFlowCodeWriteToolValue(request, value) {
+	function compactFlowCodeWriteToolValue(request, value, ctx) {
 		if (!value || typeof value !== "object" || responseDetail(request) === "full") {
 			return value;
 		}
@@ -5115,14 +5132,14 @@
 			out.officialCodeFile = value.officialCodeFile;
 		}
 		if (value.error) {
-			out.error = compactFlowCodeError(request, value.error);
+			out.error = compactFlowCodeError(request, value.error, ctx);
 		}
 		if (value.diagnostics) {
 			var report = compactFlowCodeDiagnosticReport(request, {
 				diagnostics: value.diagnostics,
 				diagnosticCount: value.diagnosticCount,
 				hasMore: value.hasMore
-			});
+			}, ctx);
 			out.diagnosticCount = report.diagnosticCount;
 			out.diagnosticsShown = report.diagnosticsShown;
 			out.hasMore = report.hasMore;
@@ -5282,6 +5299,7 @@
 	function compactJsonPreview(value, options, depth) {
 		options = options || {};
 		depth = depth || 0;
+		value = jsonNumber(value);
 		if (typeof value === "string") {
 			var maxStringChars = argInt(options.maxStringChars, 500, 20, 5000);
 			if (value.length > maxStringChars) {
@@ -5394,14 +5412,14 @@
 		};
 	}
 
-	function compactRuntimeToolValue(request, value) {
+	function compactRuntimeToolValue(request, value, ctx) {
 		var args = toolArguments(request);
 		var name = toolName(request);
 		if (!value || typeof value !== "object") {
 			return value;
 		}
 		if (value.error && (name === "flow-code-run" || name === "code-run")) {
-			return compactFlowCodeWriteToolValue(request, value);
+			return compactFlowCodeWriteToolValue(request, value, ctx);
 		}
 		var out = null;
 		function mutableOut() {
@@ -5739,7 +5757,7 @@
 		return out;
 	}
 
-	function compactFrontendWriteToolValue(request, value) {
+	function compactFrontendWriteToolValue(request, value, ctx) {
 		if (wantsFullMutationResponse(request) || !value || typeof value !== "object") {
 			return value;
 		}
@@ -5756,7 +5774,7 @@
 			out.diagnostics = (Array.isArray(value.diagnostics) ? value.diagnostics : []).slice(0, 20);
 			if (value.diagnostics.length > 20) out.omittedDiagnostics = value.diagnostics.length - 20;
 		}
-		if (value.error) out.error = compactFlowCodeError(request, value.error);
+		if (value.error) out.error = compactFlowCodeError(request, value.error, ctx);
 		if (value.schema) out.schema = compactSchemaSummary(value.schema, 20);
 		if (value.debug) out.debug = compactJsonPreview(value.debug, { maxDepth: 2, maxObjectKeys: 12, maxArrayItems: 8 });
 		if (value.studioRefresh) {
@@ -6052,7 +6070,7 @@
 		return out;
 	}
 
-	function compactToolValue(request, value) {
+	function compactToolValue(request, value, ctx) {
 		var name = toolName(request);
 		if (name === "code-get" || name === "frontend-svelte-code-get" || name === "flow-code-get" || name === "flow-block-code-get") return compactCodeGetContract(request, boundedCodeRead(request, value));
 		if ((name === "frontend-svelte-tree" || name === "authoring-tree") && value && typeof value === "object") {
@@ -6127,9 +6145,10 @@
 		if (name === "flow-catalog" && value && typeof value === "object") {
 			var catalogArgs = toolArguments(request);
 			var need = String(catalogArgs.query || catalogArgs.q || catalogArgs.search || "");
-			if (need) {
+			var namespace = String(catalogArgs.namespace || "").trim();
+			if (!value.error && (need || namespace)) {
 				try {
-					var providers = workspaceBlockProviders(catalogArgs.project, need, 5);
+					var providers = workspaceBlockProviders(ctx, catalogArgs.project, need, 5, namespace);
 					if (providers.length) {
 						value.workspaceProviders = providers;
 						var catalogGuides = libraryGuides().filter(function (guide) {
@@ -6149,20 +6168,20 @@
 			(String(codeArgs.target || "").toLowerCase() === "frontend" && !codeArgs.block && !codeArgs.blockName));
 		if (sourceCodeRequest && name === "code-promote") return value;
 		if (sourceCodeRequest && (name === "code-set" || name === "code-patch" || name === "code-check")) {
-			return compactFrontendWriteToolValue(request, value);
+			return compactFrontendWriteToolValue(request, value, ctx);
 		}
 		if (name === "flow-code-set" || name === "flow-code-patch" || name === "flow-code-check" ||
 				name === "flow-code-promote" || name === "flow-code-status" || name === "flow-code-discard" ||
 				name === "code-set" || name === "code-patch" || name === "code-check" ||
 				name === "code-promote" || name === "code-status" || name === "code-discard") {
 			if (/^(flow-)?code-(set|patch|check)$/.test(name)) addEntityListPageWarnings(request, value);
-			return compactFlowCodeWriteToolValue(request, value);
+			return compactFlowCodeWriteToolValue(request, value, ctx);
 		}
 		if (name === "flow-block-code-set" || name === "flow-block-code-patch") {
-			return compactFlowCodeWriteToolValue(request, value);
+			return compactFlowCodeWriteToolValue(request, value, ctx);
 		}
 		if (name === "flow-test" || name === "flow-code-run" || name === "code-run") {
-			return compactRuntimeToolValue(request, value);
+			return compactRuntimeToolValue(request, value, ctx);
 		}
 		if (name === "flow-code-analyze" || name === "code-analyze") {
 			return compactAnalyzeToolValue(request, value);
@@ -6174,7 +6193,7 @@
 				name === "frontend-svelte-code-patch" || name === "frontend-svelte-fullsync-schema" ||
 				name === "frontend-svelte-mutate" ||
 				(name === "authoring-mutate" && String(toolArguments(request).surface || "") === "frontend")) {
-			return compactFrontendWriteToolValue(request, value);
+			return compactFrontendWriteToolValue(request, value, ctx);
 		}
 		return value;
 	}

@@ -10,11 +10,14 @@ proposes: `lib_flow_sql`, `lib_flow_crud_data`, `lib_flow_frontend_data_svelte`
 and the Svelte frontbuilder. Read `flow://lib/lib_flow_sql/sql` for the
 configuration and `flow://lib/lib_flow_crud_data/csv` for the export. Inspect
 the real contracts before writing the calls, with `flow-block-get` for each
-block (`sql.write`, `data.read`, `date.add`...), never in the library sources;
+block (`sql.mutate`, `data.read`, `date.add`...), never in the library sources;
 an available catalog does not prove that a connection is configured.
 
 Create the schema, the demonstration data and the server Flows first, then the
-pages. Declare typed parameters; `int64` identifiers stay strings. Declare
+pages. For `data.read` and `data.write`, pass `int64` fields in keys, filters
+and patches as decimal strings, for example `{id: "42"}`. Page `offset` and
+`limit` are numbers. Named SQL parameters of type `int64` also accept safe
+integer numbers. Declare
 `items: {type:"object"}` for an array of objects. Platform symbols belong to
 the configuration, with demonstration values disabled by default; no secret in
 the source, the outputs or the logs.

@@ -690,7 +690,11 @@ session's cookies as JSON for Playwright's `addCookies`, so that a browser sees 
 that session (domain from `--url`, `C8O_BROWSER_URL`, `browser` in `c8o.json`, or the app's
 server; path from the `Set-Cookie`). `c8o view` is `frontend-svelte-action` `dev.sync` and
 prints the viewer URL first (no URL: exit 1); a stopped viewer is started first
-(`dev.ensure` with `wait`, then `dev.sync` again). `c8o block`, `c8o guide` (the
+(`dev.ensure` with `wait`, then `dev.sync` again). `c8o block <name>` reads a
+block contract. `c8o blocks [word] --namespace <ns>` searches the catalog
+by word, namespace, or both. Both commands show available workspace providers,
+their guides and the reference command when a library is missing, including with
+`--json`. `c8o guide` (the
 guide as the engine serves it: `start` with the tree of guides, aliases and
 `flow://lib/...` resolved), `c8o tools`, `c8o help <tool>` (`--json` for both); `c8o skill` prints the
 `convertigo-flow-cli` skill (`_flow/resources/skills/convertigo-flow-cli`) as this

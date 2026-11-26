@@ -147,4 +147,140 @@ guideFiles.forEach(function (file) {
     file + " mentions a removed source layout");
 });
 
+// Register workspace directories with the host double. App has no project references.
+var Engine = Packages.com.twinsoft.convertigo.engine.Engine;
+var Project = Packages.com.twinsoft.convertigo.beans.core.Project;
+var previousApp = Engine.theApp;
+var previousLog = Engine.logEngine;
+var appDir = java.nio.file.Files.createTempDirectory("mcp-guide-catalog-").toFile();
+try {
+  var sqlDir = new java.io.File(projectDir, "../lib_flow_sql").getCanonicalFile();
+  if (!sqlDir.isDirectory()) sqlDir = new java.io.File(projectDir, "../c8oprj-lib-flow-sql").getCanonicalFile();
+  assertTrue(sqlDir.isDirectory(), "The sibling SQL library is required for provider and guide checks");
+  var target = { project: "App", projectDir: String(appDir) };
+  var sqlBlocks = ["sql.query", "sql.write", "sql.transaction"];
+  var blockErrors = sqlBlocks.concat(["sql.errorOutput"]).map(function (name, i) {
+    return tool(301 + i, "flow-block-get", Object.assign({ name: name }, target)).error;
+  });
+  var filters = [{ query: "sql.query" }, { namespace: "sql" }];
+  var catalogs = filters.map(function (filter, i) {
+    return tool(310 + i, "flow-catalog", Object.assign({ detail: "summary" }, filter, target));
+  });
+  var projects = {};
+  function projectAt(name, dir) {
+    var bean = new JavaAdapter(Project, { getDirPath: function () { return String(dir.getPath()); } });
+    bean.setName(name);
+    bean.isSubLoaded = true;
+    projects[name] = bean;
+  }
+  projectAt("App", appDir);
+  projectAt("lib_flow_sql", sqlDir);
+  var privateDir = new java.io.File(appDir, "private-provider");
+  ["private: true", '"private": true', "'private' /* flag */ : true", 'visibility: "private"', 'visibility: "internal"'].forEach(function (flag, i) {
+    FileUtils.writeStringToFile(new java.io.File(privateDir, "_flow/blocks/sql/aaa" + i + ".block.js"),
+      "const _meta = { sourceVersion: 2, " + flag + " };\nfunction hidden({ input, result }) {}\n", "UTF-8");
+  });
+  FileUtils.writeStringToFile(new java.io.File(privateDir, "_flow/blocks/discovery/publicBody.block.js"),
+    "const _meta = { sourceVersion: 3, description: 'Public block' };\n" +
+    "function publicBody({ input, result }) {\n  return {private: true}\n}\n", "UTF-8");
+  projectAt("PrivateBlocks", privateDir);
+  Engine.logEngine = Packages.org.apache.log4j.Logger.getLogger("mcp-guide-catalog-test");
+  Engine.theApp = new Engine();
+  Engine.theApp.databaseObjectsManager = new JavaAdapter(Packages.com.twinsoft.convertigo.engine.DatabaseObjectsManager, {
+    getAllProjectNamesList: function () {
+      var names = new java.util.ArrayList();
+      Object.keys(projects).forEach(function (name) { names.add(name); });
+      return names;
+    },
+    getOriginalProjectByName: function (name) { return projects[String(name)] || null; }
+  });
+  // Use a fresh library instance so the workspace index reflects the host double.
+  var mcp = eval(readText("_flow/lib/mcp.js"));
+  var laterPages = 0;
+  var ctx = { blockList: function (args) {
+    assertTrue(args.origin === "project" && args.includePrivate === false && args.includeInternal === false,
+      "The workspace index must use the public project catalog");
+    if (args.cursor) laterPages++;
+    var previousDir = __flowProjectDir, host = Engine.theApp;
+    try {
+      Engine.theApp = null;
+      __flowProjectDir = args.projectDir;
+      return JSON.parse(engine.catalog(JSON.stringify(Object.assign({}, args, { limit: 2 }))));
+    } finally {
+      __flowProjectDir = previousDir;
+      Engine.theApp = host;
+    }
+  } };
+  var sqlGuide = "flow://lib/lib_flow_sql/sql";
+  function request(name, args) {
+    return { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: name, arguments: Object.assign({}, target, args) } };
+  }
+  sqlBlocks.forEach(function (name, i) {
+    var missing = mcp.toolError(request("flow-block-get", { name: name }), blockErrors[i], ctx).result.structuredContent.error;
+    assertTrue(missing.code === "UNKNOWN_BLOCK" && missing.details.workspaceProviders[0].block === name &&
+      missing.details.workspaceProviders[0].project === "lib_flow_sql" && missing.details.workspaceGuides.indexOf(sqlGuide) >= 0 &&
+      /flow-project-reference\(\{project:"App", reference:"lib_flow_sql"\}\)/.test(missing.hint),
+      name + " must identify the missing SQL reference and the provider guide: " + JSON.stringify(missing));
+  });
+  var privateBlock = mcp.toolError(request("flow-block-get", { name: "sql.errorOutput" }), blockErrors[sqlBlocks.length], ctx).result.structuredContent.error;
+  assertTrue(privateBlock.code === "UNKNOWN_BLOCK" && !privateBlock.details.workspaceProviders &&
+    privateBlock.hint.indexOf("flow-project-reference") < 0, "Block lookup must not recommend referencing a private SQL block");
+  filters.forEach(function (filter, i) {
+    var catalog = mcp.toolResponse(request("flow-catalog", filter), catalogs[i], ctx).result.structuredContent;
+    assertTrue(catalog.blocks.length === 0 && catalog.workspaceProviders.length &&
+      catalog.workspaceProviders.every(function (provider) {
+        return provider.project === "lib_flow_sql" && /^sql\./.test(provider.block) && provider.block !== "sql.errorOutput";
+      }) &&
+      (i !== 0 || catalog.workspaceProviders.some(function (provider) { return provider.block === "sql.query"; })) &&
+      catalog.workspaceGuides.indexOf(sqlGuide) >= 0 && /flow-project-reference/.test(catalog.workspaceNext),
+      "Catalog must describe unreferenced SQL blocks for " + JSON.stringify(filter));
+  });
+  var publicBody = mcp.toolResponse(request("flow-catalog", { namespace: "discovery" }), { blocks: [] }, ctx).result.structuredContent;
+  assertTrue(laterPages > 0 && publicBody.workspaceProviders[0].block === "discovery.publicBody",
+    "Workspace discovery follows catalog pages and ignores data keys in public block bodies");
+  // A partial index (a later catalog page failed) serves its own call only; a complete index is cached.
+  var mcpPartial = eval(readText("_flow/lib/mcp.js"));
+  var listCalls = 0, failLaterPages = true;
+  var flaky = { blockList: function (args) {
+    listCalls++;
+    if (failLaterPages && args.cursor) throw new Error("catalog page unavailable");
+    return ctx.blockList(args);
+  } };
+  function discoverSql() { return mcpPartial.toolResponse(request("flow-catalog", { namespace: "sql" }), { blocks: [] }, flaky); }
+  discoverSql();
+  var afterPartial = listCalls;
+  failLaterPages = false;
+  discoverSql();
+  var afterComplete = listCalls;
+  discoverSql();
+  assertTrue(afterPartial > 0 && afterComplete > afterPartial && listCalls === afterComplete,
+    "A partial workspace block index must not be cached, a complete one must: " + [afterPartial, afterComplete, listCalls]);
+  function cliResource(id, uri) {
+    var reply = call(id, "tools/call", { name: "flow-resource-get", arguments: { uri: uri, format: "text" } }).result;
+    assertTrue(reply && !reply.isError && reply.content.length > 0, "CLI cannot read " + uri);
+    return reply.content.map(function (item) { return item.text; }).join("\n\n");
+  }
+  var cliSkill = cliResource(320, "flow://skills/convertigo-flow-cli/SKILL");
+  assertTrue(cliSkill.length <= 4500, "CLI skill exceeds its size budget");
+  var guideCommand = /`c8o guide(?: ([a-z][\w/-]*))?`/g, cited = {}, command;
+  while ((command = guideCommand.exec(cliSkill))) cited[command[1] || "start"] = true;
+  var expectedGuides = ["start", "sources", "sql", "authoring/source", "authoring/data", "entities", "frontend-svelte/loop"];
+  assertTrue(expectedGuides.every(function (name) { return cited[name]; }), "The CLI skill is missing a family guide");
+  Object.keys(cited).forEach(function (name, i) {
+    var uri = name === "sql" ? sqlGuide : "flow://guide/" + name;
+    var served = cliResource(321 + i, "flow://guide/" + name);
+    var expected = name === "sql" ? String(FileUtils.readFileToString(new java.io.File(sqlDir, "_flow/resources/guide/sql.md"), "UTF-8"))
+      : readText("_flow/resources/guide/" + name + ".md");
+    if (name === "sql") {
+      assertTrue(served.indexOf("Note: flow://guide/sql is read as " + sqlGuide) === 0, "The CLI resolves the SQL guide alias");
+      served = served.replace(/^Note:[^\n]*\n+/, "");
+    }
+    assertTrue(sameGuideText(served, expected), "c8o guide " + name + " must read " + uri);
+  });
+} finally {
+  Engine.theApp = previousApp;
+  Engine.logEngine = previousLog;
+  FileUtils.deleteDirectory(appDir);
+}
+
 print(JSON.stringify({ ok: true, guides: guideFiles.length, tools: Object.keys(tools).length }));

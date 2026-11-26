@@ -170,6 +170,8 @@ Rare, explicit choices for a client outside the SDK; by default write
   the Flow or setting a status.
 - `response.status({code})` (100 to 599) sets the response status, also from a
   called Flow; without HTTP request (schedule, FullSync) it has no effect.
+  For an exact HTTP error body, set the status and `return { ... }` with the
+  required fields; `throw` adds the standard error envelope.
 - `response.header({name,value})` sets one header the same way; CR/LF and
   engine-owned headers (`Set-Cookie`, `Content-Length`, CORS, security) are refused.
 

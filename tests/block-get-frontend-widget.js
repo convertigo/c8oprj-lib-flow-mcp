@@ -64,6 +64,14 @@ try {
 		"without project the general answer stays: " + JSON.stringify(noProject).substring(0, 400));
 	var backend = call("flow-block-get", Object.assign({ name: "sql.execute" }, base)).error;
 	assert(/^sql\.execute is not a block: sql\.query/.test(backend.hint) && !backend.details.frontendWidget, "backend guesses are unchanged: " + backend.hint);
+	var missing = call("flow-block-get", Object.assign({ name: "json.value" }, base)).error;
+	assert(missing.code === "UNKNOWN_BLOCK" && missing.details.candidates.length &&
+		missing.hint.indexOf(missing.details.candidates[0].block) >= 0 && !missing.details.workspaceGuides,
+		"unknown backend block identifies available alternatives without an unrelated guide");
+	var catalog = call("flow-catalog", Object.assign({ namespace: "json", query: "object", detail: "summary" }, base));
+	assert(catalog.blocks.some(function (item) { return item.block === "json.object"; }) &&
+		catalog.blocks.every(function (item) { return item.block.indexOf("json.") === 0; }),
+		"the public catalog returns real block names filtered by namespace and query");
 	print("block-get-frontend-widget OK (" + checks + " checks)");
 } finally {
 	io.deleteQuietly(targetDir);

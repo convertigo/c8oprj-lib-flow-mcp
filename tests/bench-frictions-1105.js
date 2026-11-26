@@ -22,9 +22,14 @@ try {
  assert(refusal.details.pendingDrafts[0]===pending[0]&&refusal.details.requiresChoice,'lists exact draft without discarding it');
  pending=[];assert(mcp.assertProjectSaveAllowed({project:'App',saveProject:true},'')===true,'resolved drafts allow save');
  var __flowEngineDir=engineDir,__flowProjectDir=String(temp),engine=eval(read(engineDir+'/Engine.js'));
+ var catalogCtx={blockList:function(args){
+  var previous=__flowProjectDir;
+  try {__flowProjectDir=args.projectDir;return JSON.parse(engine.catalog(JSON.stringify(args)));}
+  finally {__flowProjectDir=previous;}
+ }};
  ['data.read','data.write','list.slice','list.concat'].forEach(function(name){
   var raw=JSON.parse(engine.blockGet(JSON.stringify({name:name})));assert(!raw.ok&&raw.error.code==='UNKNOWN_BLOCK','unknown stays refused '+name);
-  var response=mcp.toolError({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'flow-block-get',arguments:{project:'App',name:name}}},raw.error).result.structuredContent;
+  var response=mcp.toolError({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'flow-block-get',arguments:{project:'App',name:name}}},raw.error,catalogCtx).result.structuredContent;
   if(name.indexOf('data.')===0){
    assert(response.error.details.workspaceProviders[0].project==='lib_flow_crud_data','real workspace provider '+name);
    assert(response.error.hint.indexOf('flow-project-reference')>=0&&response.error.hint.indexOf(name)>=0,'reference recovery '+name);

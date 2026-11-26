@@ -27,6 +27,8 @@ never edit them.
 2. `c8o check` validates the changed files and saves nothing; `c8o sync`
    validates and saves them (blocks, model, Flows, then pages). After a model
    change, `c8o sync --gateway` also creates the `EntityGateway` of its pages.
+   `c8o sync` declares and publishes the Flow with its inputs and `_flow` accessibility;
+   no separate `flow-sync-inputs` or `project-save` step is needed.
 3. Read every line of the answer:
    - `saved`: done. `saved, normalized by the engine`: read the file again
      before your next edit.
@@ -62,6 +64,13 @@ Chain with `&&`; in a pipe, `set -o pipefail`. `--json` gives the whole result.
   explains this mode and how to read the other guides in it;
   `flow://guide/<path>` is `c8o guide <path>`, `flow://lib/...` is
   `c8o guide flow://lib/...`.
+- Before editing, read the relevant guide: `c8o guide sql` for direct SQL,
+  `c8o guide authoring/source` for public Flow accessibility and
+  `c8o guide authoring/data` for HTTP inputs, status and error body,
+  `c8o guide entities` for entities,
+  or `c8o guide frontend-svelte/loop` for Svelte.
+- Find blocks with `c8o blocks <word>` or `c8o blocks --namespace <ns>`.
+  A library's blocks enter the project catalog once the project references it.
 - `c8o block <ns.name>`: the contract of a block. `c8o tools [word]` lists the
   engine tools, `c8o help <tool>` gives their arguments, and any tool a guide
   names runs as `c8o <tool> key=value` (the project is added).
