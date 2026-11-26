@@ -90,6 +90,16 @@ before(async () => {
     let body = "";
     req.on("data", d => body += d);
     req.on("end", () => {
+      if (req.url === "/demo-session") {  // the bench relay: demo accounts opened without their password
+        res.setHeader("Content-Type", "application/json");
+        if (req.method === "GET") { res.end(JSON.stringify({ accounts: ["m@example.com"] })); return; }
+        const form = Object.fromEntries(new URLSearchParams(body));
+        appCalls.push({ url: req.url, cookie: req.headers.cookie || "", form });
+        if (form.user !== "m@example.com") { res.statusCode = 404; res.end(JSON.stringify({ error: { code: "DEMO_ACCOUNT_UNKNOWN", accounts: ["m@example.com"] } })); return; }
+        res.setHeader("Set-Cookie", "JSESSIONID=s" + appCalls.length + "; Path=/convertigo");
+        res.end(JSON.stringify({ user: form.user, signedIn: true }));
+        return;
+      }
       if (req.url.startsWith("/app/")) {  // the project's HTTP endpoint (c8o call), with a cookie session
         const form = Object.fromEntries(new URLSearchParams(body));
         appCalls.push({ url: req.url, cookie: req.headers.cookie || "", form });
@@ -262,6 +272,24 @@ test("call: a cookie session kept between calls, named sessions, ended by __remo
   assert.equal(appCalls[appCalls.length - 1].form.__removeSession, "true");
   r = await c8o(["session", "show", "--as", "m"], { TMPDIR: tmp });
   assert.equal(r.out.trim(), "no session");
+});
+
+test("session demo: accounts listed, a session opened without a password, an unknown account refused", async () => {
+  const tmp = freshTmp();
+  let r = await c8o(["session", "demo"], { TMPDIR: tmp });
+  assert.equal(r.out.trim(), "demo accounts: m@example.com");
+  r = await c8o(["session", "demo", "m@example.com", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.code, 0);
+  assert.equal(r.out.trim(), "session opened: m@example.com (--as m)");
+  assert.deepEqual(appCalls[appCalls.length - 1].form, { user: "m@example.com" });
+  r = await c8o(["call", "whoami", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.code, 0);
+  r = await c8o(["session", "demo", "x@example.com", "--as", "x"], { TMPDIR: tmp });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /no demo session for x@example\.com \(demo accounts: m@example\.com\)\. Never guess a password/);
+  r = await c8o(["session", "demo"], { TMPDIR: tmp, C8O_URL: url.replace("/flow", "/mcp-elsewhere") });
+  assert.equal(r.code, 2);
+  assert.match(r.err, /provides no demo session/);
 });
 
 test("the tool list is cached per user and identity", async () => {

@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
@@ -18,6 +18,8 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
   c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
+  c8o session demo [<account>] list the demo accounts of this server, or open a session of one without its password
+                               (--as <name>), when the server provides them; never guess a password
   c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line; a stopped
                                viewer is started first (dev.ensure)
   c8o block <ns.name>          contract of a block (library or project)
@@ -41,7 +43,7 @@ const COMMANDS = {
   sync: { pos: Infinity, flags: ["gateway"], kv: false },
   run: { pos: 1, min: 1, flags: ["input"], kv: true },
   call: { pos: 1, min: 1, flags: ["input", "as"], bool: ["end"], kv: true },
-  session: { pos: 1, min: 1, flags: ["as"], kv: false },
+  session: { pos: 2, min: 1, flags: ["as"], kv: false },
   view: { pos: 0, flags: [], kv: true },
   block: { pos: 1, min: 1, flags: [], kv: false },
   guide: { pos: 1, flags: [], kv: false },
@@ -69,7 +71,7 @@ function config() {
   // the bench relay's /flow -> /app)
   const app = process.env.C8O_APP_URL || cfg.app || (/\/api\/flow-mcp\/?$/.test(url) ? url.replace(/\/api\/flow-mcp\/?$/, "/projects")
     : /\/flow\/?$/.test(url) ? url.replace(/\/flow\/?$/, "/app") : "");
-  return { url, app, project: process.env.C8O_PROJECT || cfg.project || "", token };
+  return { url, app, demo: cfg.demo || "", project: process.env.C8O_PROJECT || cfg.project || "", token };
 }
 
 function parseArgs(argv, spec) {
@@ -341,15 +343,19 @@ function writeJar(file, jar) {
   renameSync(tmp, file);
 }
 
-async function appPost(cfg, file, form) {
-  if (!cfg.app) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
+function demoUrl(cfg) {
+  return process.env.C8O_DEMO_URL || cfg.demo || (/\/app\/?$/.test(cfg.app || "") ? cfg.app.replace(/\/app\/?$/, "/demo-session") : "");
+}
+
+async function appPost(cfg, file, form, target) {
+  if (!cfg.app && !target) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
   const jar = readJar(file);
   const headers = { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json, */*" };
   const cookie = Object.entries(jar).map(([k, v]) => k + "=" + v).join("; ");
   if (cookie) headers.Cookie = cookie;
   let res;
   try {
-    res = await fetch(cfg.app.replace(/\/$/, "") + "/" + encodeURIComponent(project(cfg, {})) + "/.json",
+    res = await fetch(target || cfg.app.replace(/\/$/, "") + "/" + encodeURIComponent(project(cfg, {})) + "/.json",
       { method: "POST", headers, body: new URLSearchParams(form).toString(), redirect: "manual", signal: AbortSignal.timeout(900_000) });
   } catch (e) {
     throw new Protocol("Cannot reach the project endpoint (" + (e.cause?.code || e.name) + ").");
@@ -450,7 +456,29 @@ async function main(argv) {
         emit(process.stdout, names.length ? "session cookies: " + names.join(", ") : "no session");
         return 0;
       }
-      if (pos[0] !== "end") throw new Usage("c8o session end|show [--as <name>]");
+      if (pos[0] === "demo") {
+        const url = demoUrl(cfg);
+        if (!url) throw new Usage("This server provides no demo session. Never guess a password: report it.");
+        if (!pos[1]) {
+          let res;
+          try { res = await fetch(url, { signal: AbortSignal.timeout(60_000) }); } catch (e) { throw new Protocol("Cannot reach the demo sessions (" + (e.cause?.code || e.name) + ")."); }
+          if (!res.ok) throw new Usage("This server provides no demo session. Never guess a password: report it.");
+          const j = await res.json();
+          emit(process.stdout, (j.accounts || []).length ? "demo accounts: " + j.accounts.join(", ") : "no demo account");
+          return 0;
+        }
+        const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, { user: pos[1] }, url);
+        let j = {};
+        try { j = JSON.parse(r.text); } catch { /* reported below */ }
+        if (r.status !== 200 || !j.signedIn) {
+          emit(process.stderr, "c8o: no demo session for " + pos[1] + (j.error?.accounts ? " (demo accounts: " + j.error.accounts.join(", ") + ")" : "") + ". Never guess a password: report it.");
+          return 1;
+        }
+        emit(process.stdout, "session opened: " + pos[1] + (flags.as ? " (--as " + flags.as + ")" : ""));
+        return 0;
+      }
+      if (pos.length > 1) throw new Usage("c8o session end|show [--as <name>]");
+      if (pos[0] !== "end") throw new Usage("c8o session end|show|demo [--as <name>]");
       if (!Object.keys(readJar(file)).length) { emit(process.stdout, "no session"); return 0; }
       // the engine removes the session at the end of any request that carries __removeSession (GenericServlet)
       await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, { __removeSession: "true" });
