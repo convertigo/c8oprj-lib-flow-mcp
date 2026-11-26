@@ -685,7 +685,10 @@ with a private cookie jar per endpoint, project and `--as <name>`;
 session with a call.
 `c8o session demo [<account>]` lists or opens the demo accounts a server provides
 (`C8O_DEMO_URL`, `demo` in `c8o.json`; the bench relay signs in with the password
-kept on the host and returns the cookie only). `c8o view` is `frontend-svelte-action` `dev.sync` and
+kept on the host and returns the cookie only). `c8o session cookie [--as <name>]` prints the
+session's cookies as JSON for Playwright's `addCookies`, so that a browser sees the pages as
+that session (domain from `--url`, `C8O_BROWSER_URL`, `browser` in `c8o.json`, or the app's
+server; path from the `Set-Cookie`). `c8o view` is `frontend-svelte-action` `dev.sync` and
 prints the viewer URL first (no URL: exit 1); a stopped viewer is started first
 (`dev.ensure` with `wait`, then `dev.sync` again). `c8o block`, `c8o guide` (the
 guide as the engine serves it: `start` with the tree of guides, aliases and

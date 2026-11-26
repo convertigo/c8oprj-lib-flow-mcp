@@ -292,6 +292,32 @@ test("session demo: accounts listed, a session opened without a password, an unk
   assert.match(r.err, /provides no demo session/);
 });
 
+test("session cookie: the session's cookies for Playwright's addCookies, with their path; none without a session", async () => {
+  const tmp = freshTmp();
+  let r = await c8o(["session", "cookie", "--as", "m"], { TMPDIR: tmp, C8O_BROWSER_URL: "http://127.0.0.1:19600" });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /no session --as m: open one first/);
+  await c8o(["session", "demo", "m@example.com", "--as", "m"], { TMPDIR: tmp });
+  r = await c8o(["session", "cookie", "--as", "m"], { TMPDIR: tmp });  // the relay's endpoint says nothing of the browser
+  assert.equal(r.code, 2);
+  assert.match(r.err, /--url <viewer URL>/);
+  r = await c8o(["session", "cookie", "--as", "m"], { TMPDIR: tmp, C8O_BROWSER_URL: "http://127.0.0.1:19600" });
+  assert.equal(r.code, 0);
+  const [cookie, ...more] = JSON.parse(r.out);
+  assert.equal(more.length, 0);
+  assert.deepEqual({ ...cookie, value: "*" }, { name: "JSESSIONID", value: "*", domain: "127.0.0.1", path: "/convertigo",
+    httpOnly: true, secure: false, sameSite: "Lax" });
+  assert.match(r.err, /addCookies/);
+  r = await c8o(["session", "cookie", "--as", "m", "--url", "https://viewer.example.com:8443/convertigo/gw/x/"], { TMPDIR: tmp });
+  assert.equal(JSON.parse(r.out)[0].domain, "viewer.example.com");
+  assert.equal(JSON.parse(r.out)[0].secure, true);
+  r = await c8o(["call", "whoami", "--as", "m"], { TMPDIR: tmp });  // the session itself is unchanged
+  assert.equal(r.code, 0);
+  r = await c8o(["session", "end", "--as", "m"], { TMPDIR: tmp });
+  r = await c8o(["session", "cookie", "--as", "m"], { TMPDIR: tmp, C8O_BROWSER_URL: "http://127.0.0.1:19600" });
+  assert.equal(r.code, 1);
+});
+
 test("the tool list is cached per user and identity", async () => {
   const tmp = freshTmp();
   await c8o(["tools"], { TMPDIR: tmp });

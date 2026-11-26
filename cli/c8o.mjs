@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
@@ -20,6 +20,8 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
   c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
   c8o session demo [<account>] list the demo accounts of this server, or open a session of one without its password
                                (--as <name>), when the server provides them; never guess a password
+  c8o session cookie           the session's cookies for the browser, as JSON for Playwright's addCookies (--as <name>,
+                               --url <viewer URL> when the browser reaches the server at another address)
   c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line; a stopped
                                viewer is started first (dev.ensure)
   c8o block <ns.name>          contract of a block (library or project)
@@ -43,7 +45,7 @@ const COMMANDS = {
   sync: { pos: Infinity, flags: ["gateway"], kv: false },
   run: { pos: 1, min: 1, flags: ["input"], kv: true },
   call: { pos: 1, min: 1, flags: ["input", "as"], bool: ["end"], kv: true },
-  session: { pos: 2, min: 1, flags: ["as"], kv: false },
+  session: { pos: 2, min: 1, flags: ["as", "url"], kv: false },
   view: { pos: 0, flags: [], kv: true },
   block: { pos: 1, min: 1, flags: [], kv: false },
   guide: { pos: 1, flags: [], kv: false },
@@ -71,7 +73,9 @@ function config() {
   // the bench relay's /flow -> /app)
   const app = process.env.C8O_APP_URL || cfg.app || (/\/api\/flow-mcp\/?$/.test(url) ? url.replace(/\/api\/flow-mcp\/?$/, "/projects")
     : /\/flow\/?$/.test(url) ? url.replace(/\/flow\/?$/, "/app") : "");
-  return { url, app, demo: cfg.demo || "", project: process.env.C8O_PROJECT || cfg.project || "", token };
+  // where the browser reaches the server (c8o session cookie): configured, or the app's own server
+  const browser = process.env.C8O_BROWSER_URL || cfg.browser || (/\/projects\/?$/.test(app) ? app : "");
+  return { url, app, browser, demo: cfg.demo || "", project: process.env.C8O_PROJECT || cfg.project || "", token };
 }
 
 function parseArgs(argv, spec) {
@@ -333,8 +337,12 @@ function jarFile(cfg, name) {
   return join(privateDir(), "session-" + key + ".json");
 }
 
+// { cookies: {name: value}, paths: {name: path} } (0.4: a plain {name: value} map)
 function readJar(file) {
-  try { const j = JSON.parse(readFileSync(file, "utf8")); return j && typeof j === "object" ? j : {}; } catch { return {}; }
+  let j = {};
+  try { j = JSON.parse(readFileSync(file, "utf8")) || {}; } catch { /* no session */ }
+  if (typeof j !== "object") j = {};
+  return j.cookies && typeof j.cookies === "object" ? { cookies: j.cookies, paths: j.paths || {} } : { cookies: j, paths: {} };
 }
 
 function writeJar(file, jar) {
@@ -351,7 +359,7 @@ async function appPost(cfg, file, form, target) {
   if (!cfg.app && !target) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
   const jar = readJar(file);
   const headers = { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json, */*" };
-  const cookie = Object.entries(jar).map(([k, v]) => k + "=" + v).join("; ");
+  const cookie = Object.entries(jar.cookies).map(([k, v]) => k + "=" + v).join("; ");
   if (cookie) headers.Cookie = cookie;
   let res;
   try {
@@ -365,7 +373,9 @@ async function appPost(cfg, file, form, target) {
     const at = pair.indexOf("="), k = pair.slice(0, at).trim(), v = pair.slice(at + 1).trim();
     if (!k) continue;
     const gone = attrs.some(a => /^\s*max-age=0\s*$/i.test(a) || (/^\s*expires=/i.test(a) && Date.parse(a.split("=")[1]) < Date.now()));
-    if (gone || !v) delete jar[k]; else jar[k] = v;
+    const path = attrs.map(a => /^\s*path=(.*)$/i.exec(a)).find(Boolean);
+    if (gone || !v) { delete jar.cookies[k]; delete jar.paths[k]; }
+    else { jar.cookies[k] = v; jar.paths[k] = path ? path[1].trim() || "/" : "/"; }
   }
   writeJar(file, jar);
   return { status: res.status, text: await res.text() };
@@ -439,7 +449,7 @@ async function main(argv) {
       if (flags.end) form.__removeSession = "true";
       const file = jarFile(cfg, flags.as);
       const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, form);
-      if (flags.end) writeJar(file, {});
+      if (flags.end) writeJar(file, { cookies: {}, paths: {} });
       let body = r.text, bad = r.status >= 400;
       try {
         const j = JSON.parse(r.text);
@@ -452,7 +462,7 @@ async function main(argv) {
     case "session": {
       const file = jarFile(cfg, flags.as);
       if (pos[0] === "show") {
-        const names = Object.keys(readJar(file));
+        const names = Object.keys(readJar(file).cookies);
         emit(process.stdout, names.length ? "session cookies: " + names.join(", ") : "no session");
         return 0;
       }
@@ -477,12 +487,29 @@ async function main(argv) {
         emit(process.stdout, "session opened: " + pos[1] + (flags.as ? " (--as " + flags.as + ")" : ""));
         return 0;
       }
-      if (pos.length > 1) throw new Usage("c8o session end|show [--as <name>]");
-      if (pos[0] !== "end") throw new Usage("c8o session end|show|demo [--as <name>]");
-      if (!Object.keys(readJar(file)).length) { emit(process.stdout, "no session"); return 0; }
+      if (pos[0] === "cookie") {
+        if (pos.length > 1) throw new Usage("c8o session cookie [--as <name>] [--url <viewer URL>]");
+        const jar = readJar(file);
+        if (!Object.keys(jar.cookies).length) {
+          emit(process.stderr, "c8o: no session" + (flags.as ? " --as " + flags.as : "") + ": open one first (c8o session demo <account>, or c8o call <sign-in Flow>).");
+          return 1;
+        }
+        let origin;
+        try { origin = new URL(flags.url || cfg.browser); } catch {
+          throw new Usage("Where does the browser reach the server? Add --url <viewer URL> (the first line of c8o view).");
+        }
+        const cookies = Object.entries(jar.cookies).map(([name, value]) => ({ name, value, domain: origin.hostname,
+          path: jar.paths[name] || "/", httpOnly: true, secure: origin.protocol === "https:", sameSite: "Lax" }));
+        emit(process.stdout, JSON.stringify(cookies));
+        emit(process.stderr, "c8o: in the browser, run (browser_run_code_unsafe): async (page) => { await page.context().addCookies(<this JSON>); }, then open or reload the page.");
+        return 0;
+      }
+      if (pos.length > 1) throw new Usage("c8o session end|show|cookie [--as <name>]");
+      if (pos[0] !== "end") throw new Usage("c8o session end|show|cookie|demo [--as <name>]");
+      if (!Object.keys(readJar(file).cookies).length) { emit(process.stdout, "no session"); return 0; }
       // the engine removes the session at the end of any request that carries __removeSession (GenericServlet)
       await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, { __removeSession: "true" });
-      writeJar(file, {});
+      writeJar(file, { cookies: {}, paths: {} });
       emit(process.stdout, "session ended");
       return 0;
     }

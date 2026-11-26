@@ -45,7 +45,11 @@ never edit them.
    Never guess a password, never create an account, never work around
    authentication: if access fails, stop and report it.
    `c8o view` prints the viewer URL on its first line (it starts a stopped
-   viewer); then check the page in the browser.
+   viewer); then check the page in the browser. To see it as a session,
+   `c8o session cookie --as <name>` prints its cookies: add them with
+   `browser_run_code_unsafe`
+   (`async (page) => { await page.context().addCookies(<cookies>); }`), then
+   open or reload the page.
 
 Exit code: 0 ok, 1 refused, pending or failed, 2 usage or connection error.
 Chain with `&&`; in a pipe, `set -o pipefail`. `--json` gives the whole result.
