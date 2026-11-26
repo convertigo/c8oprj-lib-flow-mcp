@@ -7,13 +7,17 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "no
 import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
   c8o check [path...]          validate the changed files (or the given ones) without saving them
   c8o sync [path...]           validate and save them; --gateway also creates the EntityGateway of the data model
-  c8o run <flow> [k=v...]      run a Flow; k:=<json> for a typed value, --input '<json>' for the whole input
+  c8o run <flow> [k=v...]      run a Flow in the engine, without a user session (a test run, private Flows too); k:=<json> for a typed value, --input '<json>' for the whole input
                                (k=v wins over --input); the result is printed as JSON on stdout, notes on stderr
+  c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
+                               (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
+                               sessions (a manager, a contributor); --end ends the session with this call
+  c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
   c8o view [k=v...]            build the frontend (dev.sync) and print the viewer URL on the first line; a stopped
                                viewer is started first (dev.ensure)
   c8o block <ns.name>          contract of a block (library or project)
@@ -36,6 +40,8 @@ const COMMANDS = {
   check: { pos: Infinity, flags: ["gateway"], kv: false },
   sync: { pos: Infinity, flags: ["gateway"], kv: false },
   run: { pos: 1, min: 1, flags: ["input"], kv: true },
+  call: { pos: 1, min: 1, flags: ["input", "as"], bool: ["end"], kv: true },
+  session: { pos: 1, min: 1, flags: ["as"], kv: false },
   view: { pos: 0, flags: [], kv: true },
   block: { pos: 1, min: 1, flags: [], kv: false },
   guide: { pos: 1, flags: [], kv: false },
@@ -59,7 +65,11 @@ function config() {
   let token = "";
   const tokenFile = process.env.C8O_TOKEN_FILE || cfg.tokenFile;
   if (tokenFile) token = readFileSync(tokenFile, "utf8").trim();
-  return { url, project: process.env.C8O_PROJECT || cfg.project || "", token };
+  // the project's own HTTP endpoint (c8o call): configured, or next to the MCP endpoint (.../api/flow-mcp -> .../projects,
+  // the bench relay's /flow -> /app)
+  const app = process.env.C8O_APP_URL || cfg.app || (/\/api\/flow-mcp\/?$/.test(url) ? url.replace(/\/api\/flow-mcp\/?$/, "/projects")
+    : /\/flow\/?$/.test(url) ? url.replace(/\/flow\/?$/, "/app") : "");
+  return { url, app, project: process.env.C8O_PROJECT || cfg.project || "", token };
 }
 
 function parseArgs(argv, spec) {
@@ -70,7 +80,9 @@ function parseArgs(argv, spec) {
     if (!rest && a === "--") { rest = true; continue; }
     if (!rest && a.startsWith("--")) {
       const name = a.slice(2);
-      if (name === "json" || (name === "gateway" && spec.flags.includes("gateway"))) { flags[name] = true; continue; }
+      if (name === "json" || (name === "gateway" && spec.flags.includes("gateway")) || (spec.bool || []).includes(name)) {
+        flags[name] = true; continue;
+      }
       if (name === "project" || spec.flags.includes(name)) {
         if (i + 1 >= argv.length || argv[i + 1].startsWith("--")) throw new Usage(a + " needs a value");
         flags[name] = argv[++i];
@@ -304,6 +316,55 @@ function emit(stream, text) {
 }
 for (const s of [process.stdout, process.stderr]) s.on("error", e => { if (e.code === "EPIPE") process.exit(process.exitCode || 0); });
 
+// --- sessions (c8o call) ---------------------------------------------------------------------------------------------
+
+function privateDir() {
+  const dir = join(tmpdir(), "c8o-" + userInfo().uid);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const st = statSync(dir);
+  if (st.uid !== userInfo().uid || (st.mode & 0o077)) throw new Protocol("The folder " + dir + " is not private.");
+  return dir;
+}
+
+function jarFile(cfg, name) {
+  const key = createHash("sha256").update([cfg.app, cfg.project, name || "default"].join("\n")).digest("hex").slice(0, 16);
+  return join(privateDir(), "session-" + key + ".json");
+}
+
+function readJar(file) {
+  try { const j = JSON.parse(readFileSync(file, "utf8")); return j && typeof j === "object" ? j : {}; } catch { return {}; }
+}
+
+function writeJar(file, jar) {
+  const tmp = file + "." + process.pid;
+  writeFileSync(tmp, JSON.stringify(jar), { mode: 0o600 });
+  renameSync(tmp, file);
+}
+
+async function appPost(cfg, file, form) {
+  if (!cfg.app) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
+  const jar = readJar(file);
+  const headers = { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json, */*" };
+  const cookie = Object.entries(jar).map(([k, v]) => k + "=" + v).join("; ");
+  if (cookie) headers.Cookie = cookie;
+  let res;
+  try {
+    res = await fetch(cfg.app.replace(/\/$/, "") + "/" + encodeURIComponent(project(cfg, {})) + "/.json",
+      { method: "POST", headers, body: new URLSearchParams(form).toString(), redirect: "manual", signal: AbortSignal.timeout(900_000) });
+  } catch (e) {
+    throw new Protocol("Cannot reach the project endpoint (" + (e.cause?.code || e.name) + ").");
+  }
+  for (const c of res.headers.getSetCookie ? res.headers.getSetCookie() : []) {
+    const [pair, ...attrs] = c.split(";");
+    const at = pair.indexOf("="), k = pair.slice(0, at).trim(), v = pair.slice(at + 1).trim();
+    if (!k) continue;
+    const gone = attrs.some(a => /^\s*max-age=0\s*$/i.test(a) || (/^\s*expires=/i.test(a) && Date.parse(a.split("=")[1]) < Date.now()));
+    if (gone || !v) delete jar[k]; else jar[k] = v;
+  }
+  writeJar(file, jar);
+  return { status: res.status, text: await res.text() };
+}
+
 // --- commands --------------------------------------------------------------------------------------------------------
 
 function project(cfg, flags) {
@@ -363,6 +424,38 @@ async function main(argv) {
       const notes = Object.entries(sc).filter(([k, v]) => !["ok", "result", "qname", "revision", "next"].includes(k)
         && !(k === "unsavedSources" && v && v.count === 0)).map(([k, v]) => `${k}: ${show(v)}`);
       emit(process.stderr, notes.join("\n"));
+      return 0;
+    }
+    case "call": {
+      const form = { __sequence: pos[0] };
+      for (const [k, v] of Object.entries(Object.assign({}, flags.input || {}, kv)))
+        form[k] = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v);
+      if (flags.end) form.__removeSession = "true";
+      const file = jarFile(cfg, flags.as);
+      const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, form);
+      if (flags.end) writeJar(file, {});
+      let body = r.text, bad = r.status >= 400;
+      try {
+        const j = JSON.parse(r.text);
+        body = JSON.stringify(j, null, 2);
+        bad = bad || (j && typeof j === "object" && !Array.isArray(j) && ("error" in j || "errors" in j));
+      } catch { /* not JSON: printed as is */ }
+      emit(bad ? process.stderr : process.stdout, (r.status >= 400 ? "HTTP " + r.status + "\n" : "") + body);
+      return bad ? 1 : 0;
+    }
+    case "session": {
+      const file = jarFile(cfg, flags.as);
+      if (pos[0] === "show") {
+        const names = Object.keys(readJar(file));
+        emit(process.stdout, names.length ? "session cookies: " + names.join(", ") : "no session");
+        return 0;
+      }
+      if (pos[0] !== "end") throw new Usage("c8o session end|show [--as <name>]");
+      if (!Object.keys(readJar(file)).length) { emit(process.stdout, "no session"); return 0; }
+      // the engine removes the session at the end of any request that carries __removeSession (GenericServlet)
+      await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, { __removeSession: "true" });
+      writeJar(file, {});
+      emit(process.stdout, "session ended");
       return 0;
     }
     case "view": {

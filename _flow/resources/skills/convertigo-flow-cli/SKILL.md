@@ -35,8 +35,13 @@ never edit them.
      `c8o run` reads the file on disk, HTTP keeps the last synced version.
    - `PENDING`: the file changed during the sync; sync it again.
 4. Prove it: `c8o run <Flow> key=value key:=<json>` prints the result alone as
-   JSON on stdout (notes on stderr); `c8o view` prints the viewer URL on its
-   first line (it starts a stopped viewer), then check the page in the browser.
+   JSON on stdout (notes on stderr): a test run in the engine, without a user
+   session. `c8o call <Flow> key=value` calls it over HTTP as a browser does, in
+   a session kept between calls: sign in first with the app's own sign-in Flow,
+   `--as manager` / `--as contributor` keep several sessions, and
+   `c8o session end --as <name>` ends one (it frees its licence session).
+   `c8o view` prints the viewer URL on its first line (it starts a stopped
+   viewer); then check the page in the browser.
 
 Exit code: 0 ok, 1 refused, pending or failed, 2 usage or connection error.
 Chain with `&&`; in a pipe, `set -o pipefail`. `--json` gives the whole result.

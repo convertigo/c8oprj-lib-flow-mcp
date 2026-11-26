@@ -9,7 +9,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const C8O = join(dirname(fileURLToPath(import.meta.url)), "c8o.mjs");
-const calls = [];
+const calls = [], appCalls = [];
 let server, url, viewerRunning = false;
 
 const TOOLS = [
@@ -90,6 +90,16 @@ before(async () => {
     let body = "";
     req.on("data", d => body += d);
     req.on("end", () => {
+      if (req.url.startsWith("/app/")) {  // the project's HTTP endpoint (c8o call), with a cookie session
+        const form = Object.fromEntries(new URLSearchParams(body));
+        appCalls.push({ url: req.url, cookie: req.headers.cookie || "", form });
+        res.setHeader("Content-Type", "application/json");
+        if (form.__removeSession) { res.setHeader("Set-Cookie", "JSESSIONID=; Max-Age=0; Path=/"); res.end("{}"); return; }
+        if (form.__sequence === "login") { res.setHeader("Set-Cookie", "JSESSIONID=s" + appCalls.length + "; Path=/convertigo; HttpOnly"); res.end(JSON.stringify({ ok: true })); return; }
+        if (/JSESSIONID=s\d+/.test(req.headers.cookie || "")) { res.end(JSON.stringify({ user: "manager", n: form.n, list: form.list })); return; }
+        res.end(JSON.stringify({ error: { message: "session required" } }));
+        return;
+      }
       const m = JSON.parse(body);
       calls.push({ url: req.url, headers: req.headers, body: m });
       if (m.params?.arguments?.name === "broken") { res.statusCode = 500; res.end("<html>oops</html>"); return; }
@@ -223,6 +233,35 @@ test("skill: printed as served, or installed in a skills folder", async () => {
   assert.equal(readFileSync(join(dir, "convertigo-flow-cli", "SKILL.md"), "utf8"), SKILL);
   r = await c8o(["skill", "x=1"]);
   assert.equal(r.code, 2);
+});
+
+test("call: a cookie session kept between calls, named sessions, ended by __removeSession", async () => {
+  const tmp = freshTmp();
+  let r = await c8o(["call", "whoami"], { TMPDIR: tmp });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /session required/);
+  r = await c8o(["call", "login", "user=m@example.com", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.code, 0);
+  assert.equal(appCalls[appCalls.length - 1].url, "/app/P/.json");
+  assert.deepEqual(appCalls[appCalls.length - 1].form, { __sequence: "login", user: "m@example.com" });
+  r = await c8o(["session", "show", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.out.trim(), "session cookies: JSESSIONID");
+  r = await c8o(["call", "whoami", "--as", "m", "n:=3", "list:=[1,2]"], { TMPDIR: tmp });
+  assert.equal(r.code, 0);
+  assert.deepEqual(JSON.parse(r.out), { user: "manager", n: "3", list: "[1,2]" });
+  assert.match(appCalls[appCalls.length - 1].cookie, /^JSESSIONID=s\d+$/);
+  r = await c8o(["call", "whoami"], { TMPDIR: tmp });  // another session: not signed in
+  assert.equal(r.code, 1);
+  r = await c8o(["session", "end", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.out.trim(), "session ended");
+  assert.equal(appCalls[appCalls.length - 1].form.__removeSession, "true");
+  assert.match(appCalls[appCalls.length - 1].cookie, /^JSESSIONID=s\d+$/);
+  r = await c8o(["session", "show", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.out.trim(), "no session");
+  r = await c8o(["call", "login", "--as", "m", "--end"], { TMPDIR: tmp });
+  assert.equal(appCalls[appCalls.length - 1].form.__removeSession, "true");
+  r = await c8o(["session", "show", "--as", "m"], { TMPDIR: tmp });
+  assert.equal(r.out.trim(), "no session");
 });
 
 test("the tool list is cached per user and identity", async () => {
