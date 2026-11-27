@@ -160,12 +160,14 @@ and retained on reload. An omitted property preserves its native value; an
 explicit false/zero resets it. `flow-sync-inputs({project,name})` also accepts
 `qname` instead of name. It requires a target Flow, not just a project.
 An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED`
-before the Flow runs. To validate it in the Flow, keep the input optional.
-Use `throw { code, message }` for the standard `error` envelope (HTTP 200 on .json, SDK and frontbuilder).
-When the public contract fixes the business error body, return exactly its keys, for example
-`return { error: { code: "BAD_INPUT", message: "Name is required" } }`.
-HTTP 200 is the default. If a client outside the SDK requires another status, call
-`response.status({code})` before returning. URL mapper operations use standard REST codes.
+before the Flow runs. When the API needs its own error code, keep the
+input optional and validate it in the Flow with `throw { code, message }`.
+On the requester (.json, SDK, frontbuilder), an application error answers with
+200 and the `error` envelope; do not set `status` by habit, only when a client
+outside the SDK requires one (standard REST codes: URL mapper operations).
+When the public contract fixes the business error body, return exactly its keys
+instead, for example `return { error: { code: "BAD_INPUT", message: "Name is required" } }`;
+for another status, call `response.status({code})` before returning.
 
 - `response.error({code,message,details})` writes that structure at
   `result.error` (or `path`) beside the rest of the result, without stopping

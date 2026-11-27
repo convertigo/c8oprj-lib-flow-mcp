@@ -461,7 +461,6 @@ test("call --anonymous --json: defaults to a stateless POST without touching the
   for (const explicit of [
     ["__removeSession=false"],
     ["--input", '{"__removeSession":false}'],
-    ["--end", "__removeSession=false"],
   ]) {
     r = await c8o([...args, ...explicit], env);
     assert.equal(r.code, 0, r.err);
@@ -471,6 +470,11 @@ test("call --anonymous --json: defaults to a stateless POST without touching the
     assert.deepEqual(readFileSync(file), before);
     assert.equal(statSync(file).ino, inode);
   }
+  r = await c8o([...args, "--end", "__removeSession=false"], env);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(appCalls.at(-1).form.__removeSession, "true");
+  assert.equal(appCalls.at(-1).hasCookie, false);
+  assert.deepEqual(readFileSync(file), before);
   r = await c8o(args.filter(arg => arg !== "--anonymous"), env);
   assert.equal(r.code, 0, r.err);
   assert.equal(appCalls.at(-1).hasCookie, true);
@@ -494,7 +498,7 @@ test("call: an unavailable requestable in an existing named session suggests sig
   const open = await c8o(["call", "login", "--as", "reviewer"], env);
   assert.equal(open.code, 0, open.err);
   const args = ["call", "new_flow", "--as", "reviewer"];
-  const hint = "c8o: A session keeps the project version from its first call. If this Flow was added later, run c8o session end --as reviewer, then sign in again.\n";
+  const hint = "c8o: Check the Flow name and that the Flow is public. A session keeps the project version from its first call: if this Flow was added later, run c8o session end --as reviewer, then sign in again.\n";
   const before = appCalls.length;
   let r = await c8o(args, env);
   assert.equal(r.code, 1);

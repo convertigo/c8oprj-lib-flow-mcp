@@ -5,7 +5,7 @@ description: Build or change a Convertigo Flow project as files on disk with the
 
 # Convertigo Flow with c8o
 
-Start with `c8o guide sources` to publish your first public Flow.
+Start with `c8o guide sources` to create or edit a Flow.
 Project files are authoritative. List commands with `c8o help`.
 
 ## The files

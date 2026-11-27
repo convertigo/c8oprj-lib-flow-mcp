@@ -530,7 +530,7 @@ async function main(argv) {
       const form = { __sequence: pos[0] };
       for (const [k, v] of Object.entries(Object.assign({}, flags.input || {}, kv)))
         form[k] = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v);
-      if (flags.anonymous ? !Object.hasOwn(form, "__removeSession") : flags.end) form.__removeSession = "true";
+      if (flags.end || (flags.anonymous && !Object.hasOwn(form, "__removeSession"))) form.__removeSession = "true";
       const file = flags.anonymous ? null : jarFile(cfg, flags.as);
       const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, form);
       if (file && flags.end) writeJar(file, { cookies: {}, paths: {} });
@@ -549,7 +549,7 @@ async function main(argv) {
           && body.error.message === "Unable to execute the requested requestable.") {
         const shellArg = value => /^[\w.-]+$/.test(value) ? value : "'" + value.replaceAll("'", "'\\''") + "'";
         const end = `c8o session end --as ${shellArg(flags.as)}${flags.project ? " --project " + shellArg(flags.project) : ""}`;
-        emit(process.stderr, `c8o: A session keeps the project version from its first call. If this Flow was added later, run ${end}, then sign in again.`);
+        emit(process.stderr, `c8o: Check the Flow name and that the Flow is public. A session keeps the project version from its first call: if this Flow was added later, run ${end}, then sign in again.`);
       }
       return bad ? 1 : 0;
     }
