@@ -131,6 +131,9 @@ becomes empty and marks the project.
 
 ## Output schemas
 
+For numeric outputs, `flow://guide/rhino-block-api` explains how Java `BigDecimal` values become double precision JSON numbers and why overflow yields `null`.
+For example, return the amount 1000000000000.25 and check the parsed JSON body with `body.amount === 1000000000000.25` to verify both value and type.
+
 - `flow-output-schema({ project, qname })` combines the explicit contract,
   static analysis of `result.*` writes and optional learned samples; add
   `detail:"full"` to compare declared/static/learned/effective sources and
@@ -157,21 +160,18 @@ and retained on reload. An omitted property preserves its native value; an
 explicit false/zero resets it. `flow-sync-inputs({project,name})` also accepts
 `qname` instead of name. It requires a target Flow, not just a project.
 An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED`
-before the Flow runs. When the API needs its own error code, keep the
-input optional and validate it in the Flow with `throw { code, message }`.
-On the requester (.json, SDK, frontbuilder), an application error answers with
-200 and the `error` envelope; do not set `status` by habit, only when a client
-outside the SDK requires one (standard REST codes: URL mapper operations).
+before the Flow runs. To validate it in the Flow, keep the input optional.
+Use `throw { code, message }` for the standard `error` envelope (HTTP 200 on .json, SDK and frontbuilder).
+When the public contract fixes the business error body, return exactly its keys, for example
+`return { error: { code: "BAD_INPUT", message: "Name is required" } }`.
+HTTP 200 is the default. If a client outside the SDK requires another status, call
+`response.status({code})` before returning. URL mapper operations use standard REST codes.
 
-Rare, explicit choices for a client outside the SDK; by default write
-`throw { code, message }` and the SDK receives 200 with the error envelope.
 - `response.error({code,message,details})` writes that structure at
   `result.error` (or `path`) beside the rest of the result, without stopping
   the Flow or setting a status.
 - `response.status({code})` (100 to 599) sets the response status, also from a
   called Flow; without HTTP request (schedule, FullSync) it has no effect.
-  For an exact HTTP error body, set the status and `return { ... }` with the
-  required fields; `throw` adds the standard error envelope.
 - `response.header({name,value})` sets one header the same way; CR/LF and
   engine-owned headers (`Set-Cookie`, `Content-Length`, CORS, security) are refused.
 

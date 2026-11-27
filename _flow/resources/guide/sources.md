@@ -2,6 +2,27 @@
 
 When `tools/list` starts with `flow-source-sync`: edit the project files on disk, then sync them.
 
+## Publish your first public Flow
+
+From the Flow project root, run `mkdir -p _flow/flows` and save this as `_flow/flows/Ping.flow.js`.
+If the Flow uses SQL files, create them under `_flow/resources/sql/`. Ping needs only the Flow file.
+
+```javascript
+const _flow = { sourceVersion: 3, accessibility: "public" }
+
+function Ping({ input, config, result }) {
+  return { ok: true }
+}
+```
+
+```sh
+c8o check && c8o sync && c8o call Ping --anonymous --json
+```
+
+The anonymous HTTP call should report `status: 200` and `body: { "ok": true }`.
+
+## Source validation
+
 With the `c8o` command instead of an MCP client, the same loop is `c8o sync`
 (`c8o check` for `dryRun: true`), `c8o run <Flow> k=v` for `code-run`, `c8o view`
 for `dev.sync`, and `c8o <tool> k=v` for any other tool this guide names

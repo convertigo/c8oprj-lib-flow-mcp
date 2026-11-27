@@ -30,3 +30,34 @@ test("the anonymous HTTP contract example requests a stateless session in the PO
   const body = section.match(/`body:\s*\{([^}]*)\}`/)?.[1] ?? "";
   assert.match(body, /\b__removeSession:\s*"true"/);
 });
+
+test("the first throw example also shows how to return exact public error fields", () => {
+  const data = guide("authoring/data.md");
+  const firstThrow = data.match(/\bthrow\s+\{[^}]+\}.*?(?=`response\.| ## |$)/)?.[0] ?? "";
+  assert.match(firstThrow, /\benvelope\b/);
+  assert.match(firstThrow, /return\s+\{\s*error:\s*\{\s*code:\s*"[^"]+",\s*message:\s*"[^"]+"\s*\}\s*\}/);
+});
+
+test("the CLI skill opens with a sources example that publishes and calls its public Flow", () => {
+  const skill = readFileSync(join(__dirname, "../_flow/resources/skills/convertigo-flow-cli/SKILL.md"), "utf8");
+  assert.ok(Buffer.byteLength(skill) < 4500, "CLI skill exceeds its byte budget");
+  assert.equal(skill.match(/`(c8o [^`]+)`/)?.[1], "c8o guide sources");
+  const example = guide("sources.md").split(" ## ")[1] ?? "";
+  const name = example.match(/_flow\/flows\/(\w+)\.flow\.js/)?.[1];
+  assert.ok(name, "missing Flow filename");
+  assert.match(example, /_flow\/resources\/sql\//);
+  assert.match(example, /sourceVersion:\s*3\b/);
+  assert.match(example, /accessibility:\s*"public"/);
+  assert.ok(example.includes("function " + name + "("));
+  assert.match(example, /return\s+\{[^}]+\}/);
+  assert.match(example, new RegExp("\\bc8o check\\b.*?\\bc8o sync\\b.*?\\bc8o call " + name + "\\b"));
+});
+
+test("numeric output guidance checks a large decimal as a JSON number", () => {
+  const outputs = guide("authoring/data.md").split("## Output schemas")[1]?.split(" ## ")[0] ?? "";
+  assert.match(outputs, /flow:\/\/guide\/rhino-block-api/);
+  assert.match(outputs, /BigDecimal/);
+  assert.match(outputs, /double precision/i);
+  assert.match(outputs, /`null`/);
+  assert.match(outputs, /\.\w+\s*===\s*\d{10,}\.\d+\b/);
+});
