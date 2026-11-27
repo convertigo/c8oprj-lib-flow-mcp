@@ -393,10 +393,8 @@ async function appPost(cfg, file, form, target) {
   if (!cfg.app && !target) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
   const jar = file ? readJar(file) : null;
   const headers = { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json, */*" };
-  if (jar) {
-    const cookie = Object.entries(jar.cookies).map(([k, v]) => k + "=" + v).join("; ");
-    if (cookie) headers.Cookie = cookie;
-  }
+  const cookie = jar && Object.entries(jar.cookies).map(([k, v]) => k + "=" + v).join("; ");
+  if (cookie) headers.Cookie = cookie;
   let res;
   try {
     res = await fetch(target || cfg.app.replace(/\/$/, "") + "/" + encodeURIComponent(project(cfg, {})) + "/.json",
@@ -422,7 +420,7 @@ async function appPost(cfg, file, form, target) {
     else { jar.cookies[k] = v; jar.paths[k] = path ? path[1].trim() || "/" : "/"; }
   }
   if (jar) writeJar(file, jar);
-  return { status: res.status, setCookie, text: await res.text() };
+  return { status: res.status, setCookie, sentCookies: Boolean(cookie), text: await res.text() };
 }
 
 // --- commands --------------------------------------------------------------------------------------------------------
@@ -545,6 +543,12 @@ async function main(argv) {
         json({ status: r.status, setCookie: r.setCookie, body });
       } else {
         emit(bad ? process.stderr : process.stdout, (r.status >= 400 ? "HTTP " + r.status + "\n" : "") + output);
+      }
+      if (flags.as && !flags.end && r.sentCookies && r.status === 200 && body?.error?.code === "-1"
+          && body.error.message === "Unable to execute the requested requestable.") {
+        const shellArg = value => /^[\w.-]+$/.test(value) ? value : "'" + value.replaceAll("'", "'\\''") + "'";
+        const end = `c8o session end --as ${shellArg(flags.as)}${flags.project ? " --project " + shellArg(flags.project) : ""}`;
+        emit(process.stderr, `c8o: A session keeps the project version from its first call. If this Flow was added later, run ${end}, then sign in again.`);
       }
       return bad ? 1 : 0;
     }

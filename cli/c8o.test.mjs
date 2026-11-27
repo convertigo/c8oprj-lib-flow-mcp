@@ -11,6 +11,8 @@ import { fileURLToPath } from "node:url";
 const C8O = join(dirname(fileURLToPath(import.meta.url)), "c8o.mjs");
 const calls = [], appCalls = [];
 let server, serverReady, url, viewerRunning = false;
+const unavailableRequestable = { error: { code: "-1", message: "Unable to execute the requested requestable.",
+  details: "", context: "", exception: "", stacktrace: "", attr: { project: "P", sequence: "new_flow", type: "c8o" } } };
 
 const TOOLS = [
   { name: "flow-source-sync", description: "Checks and saves changed source files. More.", inputSchema: { type: "object", required: ["project"],
@@ -144,6 +146,7 @@ async function startServer() {
           res.end("not found\n");
           return;
         }
+        if (form.__sequence === "new_flow") { res.end(JSON.stringify(unavailableRequestable)); return; }
         if (form.__sequence === "login") { res.setHeader("Set-Cookie", "JSESSIONID=s" + appCalls.length + "; Path=/convertigo; HttpOnly"); res.end(JSON.stringify({ ok: true })); return; }
         if (/JSESSIONID=s\d+/.test(req.headers.cookie || "")) { res.end(JSON.stringify({ user: "manager", n: form.n, list: form.list })); return; }
         res.end(JSON.stringify({ error: { message: "session required" } }));
@@ -461,6 +464,36 @@ test("call --json: HTTP 200 application errors and HTTP 404 text are both on std
   assert.equal(r.code, 1);
   assert.equal(r.err, "");
   assert.deepEqual(JSON.parse(r.out), { status: 404, setCookie: [], body: "not found\n" });
+});
+
+test("call: an unavailable requestable in an existing named session suggests signing in again", async () => {
+  const env = { TMPDIR: freshTmp() };
+  const open = await c8o(["call", "login", "--as", "reviewer"], env);
+  assert.equal(open.code, 0, open.err);
+  const args = ["call", "new_flow", "--as", "reviewer"];
+  const hint = "c8o: A session keeps the project version from its first call. If this Flow was added later, run c8o session end --as reviewer, then sign in again.\n";
+  const before = appCalls.length;
+  let r = await c8o(args, env);
+  assert.equal(r.code, 1);
+  assert.equal(r.out, "");
+  assert.equal(appCalls.length, before + 1);
+  assert.equal(r.err, JSON.stringify(unavailableRequestable, null, 2) + "\n" + hint);
+
+  r = await c8o([...args, "--json"], env);
+  assert.equal(r.code, 1);
+  assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: [], body: unavailableRequestable });
+  assert.equal(r.err, hint);
+  assert.equal(appCalls.length, before + 2);
+
+  for (const [otherwise, otherEnv] of [
+    [args, { TMPDIR: freshTmp() }],
+    [[...args, "--anonymous"], env],
+    [["call", "missing", "--as", "reviewer"], env],
+  ]) {
+    r = await c8o([...otherwise, "--json"], otherEnv);
+    assert.equal(r.code, 1);
+    assert.equal(r.err, "");
+  }
 });
 
 test("session demo: accounts listed, a session opened without a password, an unknown account refused", async () => {
