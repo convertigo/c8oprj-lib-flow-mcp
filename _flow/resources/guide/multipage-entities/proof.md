@@ -22,6 +22,14 @@ avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
 checks, and report which visible assertion failed instead of treating an HTTP
 200 or a rendered anonymous page as proof of the authenticated path.
 
+In file mode, check the JSON refusal with `c8o call ExportBookings --anonymous --json`
+and the authorized result with `c8o call ExportBookings --as member --json`
+after signing in under that name. To prove the served CSV, fetch the `.bin`
+endpoint that calls `file.respond` with the same signed-in session. Check that
+the media type in `Content-Type` is `text/csv`, then read the body and compare
+the header and rows with the selected records, including the absence of a row
+outside the caller's scope. A JSON manifest alone cannot prove those bytes.
+
 A verifier gets at most two reruns after focused repairs, on failed paths only;
 collecting its `runId` is still the same run. Report any paths left unverified.
 

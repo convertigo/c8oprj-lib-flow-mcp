@@ -6,6 +6,20 @@ Use `EntityTable` for lists and `EntityForm` for create/edit through the local E
 
 ## 3. Build pages with ordinary events
 
+On a manager page, place these two widgets inside the guarded page structure to
+create a room and return to the bookings list. Set the field caption in `fields`.
+
+```svelte
+<EntityForm $$id="roomForm" entity="Room" fields={[{ name: "name", label: "Room name" }]} />
+<Button $$id="backToBookings" label="My bookings" variant="secondary">
+  <Events><OnClick><Actions><Navigate page="mine" /></Actions></OnClick></Events>
+</Button>
+```
+
+For the accepted properties, read the page with `code-get` and
+`contractBlocks: ["EntityForm", "Button"]`. The four button variants are
+`primary`, `secondary`, `ghost` and `danger`.
+
 Use `BookingApp` below as the target project name (adapt it to your project).
 Create home/sign-in, `mine`, `manage` and `journal` pages **before** links. The
 root Layout refreshes `CurrentUser` after navigation. Show management and journal

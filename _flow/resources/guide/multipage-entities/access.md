@@ -69,32 +69,37 @@ const _meta = {sourceVersion:3,version:1,private:true,properties:{request:{type:
 const _flow = { sourceVersion: 3 }
 
 function block({ input, config, result }) {
+  const req = input.request
   // Explicit public catalog reads only; leave empty for authenticated reads.
   const publicRead = []
-  if (!input.request.user) {
-    if (!input.request.write && (publicRead.includes("*") || publicRead.includes(input.request.entity))) {
+  if (!req.user) {
+    if (!req.write && (publicRead.includes("*") || publicRead.includes(req.entity))) {
       return {}
     }
     throw { code: "UNAUTHENTICATED", message: "Sign in first" }
   }
-  const roles = input.request.roles || []
+  const roles = req.roles || []
   const manager = roles.includes("MANAGER") || roles.includes("ADMIN")
   if (!manager && !roles.includes("USER")) {
     throw { code: "FORBIDDEN", message: "Booking role required" }
   }
-  if (input.request.entity === "APP_USER" || (input.request.entity === "Audit" && !manager)) {
+  if (req.entity === "APP_USER" || (req.entity === "Audit" && !manager)) {
     throw { code: "FORBIDDEN", message: "Directory or audit unavailable" }
   }
-  if (input.request.write && ((input.request.entity === "Room" && !manager) || (input.request.operation ===
-    "delete" && !manager))) {
+  if (req.write && !manager && (req.entity === "Room" || req.operation === "delete")) {
     throw { code: "FORBIDDEN", message: "Manager action required" }
   }
-  if (input.request.entity === "Reservation" && !manager) {
-    return { scope: { owner: input.request.user } }
+  if (req.entity === "Reservation" && !manager) {
+    return { scope: { owner: req.user } }
   }
   return {}
 }
 ```
+
+From the project root, run `c8o check _flow/blocks/app/entityAccess.block.js`
+before syncing. FlowScript reserves `request` as a local name. Read the block
+input through `req`. The entity names and owner field come from
+`flow://guide/multipage-entities/setup`.
 
 `publicRead` is the single explicit opt-in for anonymous reads. Carefully choose
 public entities, including their fields and relations. Server scope is also

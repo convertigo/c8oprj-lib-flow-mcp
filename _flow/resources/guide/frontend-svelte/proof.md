@@ -45,6 +45,23 @@ images and documented `data-*` attributes; `$$id`s are not DOM ids. On failure, 
 container size: for maps, confirm one tile image has `naturalWidth > 0`, and
 apply the equivalent resource check to other visualizations.
 
+In a Playwright Test with the export page open, use the accessible names and
+option labels from that page. This example uses an English booking form.
+
+```javascript
+const form = page.getByRole("form", { name: "Export bookings", exact: true })
+const status = form.getByRole("combobox", { name: "Status", exact: true })
+await expect(status.locator("option")).toHaveText(["All statuses", "Open", "Cancelled"])
+await status.selectOption({ label: "Open" })
+const download = page.waitForEvent("download")
+await form.getByRole("button", { name: "Export CSV", exact: true }).click()
+const file = await download
+expect(await file.failure()).toBeNull()
+```
+
+The option assertion reports a missing or changed label before a 30-second
+selection timeout, and subscribing before the click catches a fast download.
+
 Delegate a multi-step proof (sign-in, a path through several pages, a form
 submitted then the list that shows the result) to a verifier sub-agent: its
 clicks, snapshots and waits stay out of your context, and its vision model

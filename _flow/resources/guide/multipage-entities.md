@@ -4,6 +4,9 @@ Role-based multi-page application by entities: quick path and declarations; acce
 
 For the simplest compliant start with persisted business data and roles, use **Short path** in `flow://guide/entities`, then follow this recipe.
 
+For a CSV export, use `data.csv` to encode the rows and `file.respond` to serve
+the attachment through `.bin`. For a SQL transaction, use `sql.transaction`.
+
 ## Quick path: contract first, details below
 
 Before writing pages that display, create or edit entity data, read `flow://guide/entities/widgets`. Use `EntityTable`, `EntityForm`, `EntityView`, `EntityStat` and `EntityBreakdown`; `flow://guide/entities/widgets/stat` covers dashboards and `flow://guide/entities/widgets/view` covers record views. Build custom tables, forms or KPIs only when these widgets cannot cover the need.
