@@ -203,7 +203,7 @@
 				} catch(e) {response=mcp.toolError(Object.assign({},request,{__flowMcpTraceDeferred:true}),e,ctx);count.refused++;}
 				// Preserve the complete code-check/code-set envelope, including text, hints and guide drawers.
 				entry.response=response;
-				if (failed(response)) entry.note="Not saved. code-run reads this file from disk while HTTP keeps the last synced version: fix it and sync again before running it.";
+				if (failed(response)) entry.note="Not saved: code-run (c8o run) reads the file from disk, c8o call and the pages keep the last synced version. Fix it and sync again before running it.";
 				results.push(entry);
 			});
 			if (!dry) {

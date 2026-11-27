@@ -325,7 +325,7 @@ function renderSync(data, dry) {
         const fields = error.details && !Array.isArray(error.details) && (error.details.errors || error.details.fields);
         if (fields) out.push("  fields: " + show(fields));
       }
-      out.push(e.type === "flow" ? "  not saved: c8o run reads this file from disk, HTTP keeps the last synced version."
+      out.push(e.type === "flow" ? "  not saved: code-run (c8o run) reads the file from disk, c8o call and the pages keep the last synced version."
         : "  not saved: the engine keeps the last synced version.");
     } else {
       // warnings and notes of the validator or the writer, never lost: the text minus the plain OK line
@@ -522,8 +522,9 @@ async function main(argv) {
       const sc = data?.result?.structuredContent;
       if (failed(data) || !sc) { emit(process.stderr, generic(data)); return failed(data) ? 1 : 0; }
       emit(process.stdout, JSON.stringify("result" in sc ? sc.result : null, null, 2));
-      const notes = Object.entries(sc).filter(([k, v]) => !["ok", "result", "qname", "revision", "next"].includes(k)
-        && !(k === "unsavedSources" && v && v.count === 0)).map(([k, v]) => `${k}: ${show(v)}`);
+      // next is shown only with unsaved sources: it says where their list is
+      const notes = Object.entries(sc).filter(([k, v]) => !["ok", "result", "qname", "revision"].includes(k)
+        && !(k === "next" && !(sc.unsavedSources?.count > 0)) && !(k === "unsavedSources" && v && v.count === 0)).map(([k, v]) => `${k}: ${show(v)}`);
       emit(process.stderr, notes.join("\n"));
       return 0;
     }

@@ -54,7 +54,15 @@ test("the entity proof and the sources loop rely on the execution tools, not on 
   assert.match(proof.split(/\n\s*\n/).find(text => text.startsWith("Test anonymous")) ?? "", /flow:\/\/guide\/authoring\/blocks/);
   const sources = guide("sources.md");
   assert.doesNotMatch(sources, /\bHTTP keeps\b/);
-  assert.match(sources, /refused: nothing was saved[\s\S]{0,80}keeps the\s+last synced version/);
+  // one wording for a refused sync: the guide, the note of flow-source-sync, the line of c8o sync and the README
+  const refused = "code-run (c8o run) reads the file from disk, c8o call and the pages keep the last synced version";
+  for (const file of ["_flow/resources/guide/sources.md", "_flow/lib/source-sync.js", "cli/c8o.mjs", "README.md"]) {
+    const text = readFileSync(join(__dirname, "..", file), "utf8").replace(/`/g, "").replace(/\s+/g, " ");
+    assert.ok(text.toLowerCase().includes("not saved: " + refused), file);
+    assert.doesNotMatch(text, /HTTP keeps/, file);
+  }
+  assert.doesNotMatch(proof, /old cookie/);
+  assert.match(proof.replace(/\s+/g, " "), /a call in the same session after logout is refused/);
 });
 
 test("the Studio version note on private Flows is written once", () => {

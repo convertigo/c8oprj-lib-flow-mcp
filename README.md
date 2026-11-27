@@ -657,10 +657,9 @@ unchanged or not listed in `paths`. The model base needs the harness snapshot:
 without it, the entity tools compare the edited model with itself (the stored
 schema marker still refuses a removed or retyped stored field).
 
-A refused file is not saved and stays on disk for repair. This is not a runtime
-barrier: `code-run` reads the disk and fails on it, while HTTP keeps the last
-synced version; a Flow never synced is not declared (no HTTP). Fix it and sync
-again before running it.
+A refused file stays on disk for repair. Not saved: `code-run` (`c8o run`) reads
+the file from disk, `c8o call` and the pages keep the last synced version; a
+Flow never synced is not declared. Fix it and sync again before running it.
 
 Model-free checks: `node tests/source-sync-contract.cjs`, and the live regression
 `tests/source-sync-http.py` (a disposable project's authenticated test harness

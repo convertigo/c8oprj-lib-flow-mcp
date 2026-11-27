@@ -1129,6 +1129,11 @@
  {
   "family": "multipage-entities",
   "old": "Test anonymous, two USER sessions and a manager in distinct cookie jars;",
-  "new": "Test anonymous, two USER sessions and a manager, each signed in as `flow://guide/authoring/blocks` (Proving a Flow's result) tells;"
+  "new": "Test anonymous, two USER sessions and a manager, each signed in as described in `flow://guide/authoring/blocks` (Proving a Flow's result);"
+ },
+ {
+  "family": "multipage-entities",
+  "old": "and logout with the old cookie.",
+  "new": "and that a call in the same session after logout is refused."
  }
 ]

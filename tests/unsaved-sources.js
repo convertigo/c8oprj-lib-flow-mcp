@@ -29,7 +29,7 @@ function answer(name,args,value){args.project='App';args.projectDir=String(root)
  var run=answer('code-run',{detail:detail},{ok:true,qname:'App.Existing',draft:true,result:{done:true}});
  assert(run.unsavedSources.count===4 && /code-promote/.test(run.next),'code-run retains all drafts');
  // a run is repeated many times: it keeps the count, not the list, and one short next
- assert(run.unsavedSources.items===undefined && !/Save project/.test(run.next) && /^UNSAVED SOURCES: [^.]{1,60}\./.test(run.next),'code-run answers the count and a short next: '+JSON.stringify(run));
+ assert(run.unsavedSources.items===undefined && !/Save project/.test(run.next) && /^UNSAVED SOURCES: [^.]{1,60}; flow-app-progress lists them\./.test(run.next),'code-run answers the count and a short next: '+JSON.stringify(run));
 });
 var byQName=mcp.toolResponse({id:1,params:{name:'code-run',arguments:{qname:'App.Existing'}}},{ok:true,qname:'App.Existing',draft:true,result:{}},{}).result.structuredContent;
 assert(byQName.unsavedSources.count===4,'qname alone selects the project for all unsaved sources');

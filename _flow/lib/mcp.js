@@ -3787,7 +3787,7 @@
 		// a run is repeated many times: the count alone (unsaved:true names its own draft), and a short next
 		if (isRun) value.unsavedSources = { count: value.unsavedSources.count };
 		if (value.unsavedSources.count > 0 && !onlyThisRun) {
-			value.next = (isRun ? "UNSAVED SOURCES: save or code-discard each draft (code-promote a Flow)."
+			value.next = (isRun ? "UNSAVED SOURCES: save or code-discard each draft (code-promote a Flow); flow-app-progress lists them."
 				: "UNSAVED SOURCES: code-promote each Flow; save Studio pages/blocks with Save project, or code-get then code-set to save Svelte sources directly. Use code-discard to abandon a draft.") +
 				(value.next && name !== "flow-app-progress" ? " " + value.next : "");
 			if (name === "flow-app-progress") {

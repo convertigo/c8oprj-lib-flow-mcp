@@ -27,7 +27,7 @@ JSON and object functions are blocks written as JavaScript, in a declaration, an
 <!-- /generated -->
 
 For an all-or-nothing batch, parse first, then validate every item in a `for…of`, pushing refusals and valid items to separate typed arrays, without writing.
-Only when no item is refused, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call: `items` repeats the configured write `statement` in that transaction.
+Only when no item is refused, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call: `items` repeats the configured write `statement`.
 
 ## Lists, maps and config
 
@@ -133,7 +133,7 @@ becomes empty and marks the project.
 
 A Java `BigDecimal` output becomes a double precision JSON number, `null` on overflow
 (`flow://guide/rhino-block-api`); check `result.amount === 1000000000000.25`.
-`lib_flow_sql` decimals stay exact text.
+`lib_flow_sql` int64 and decimals stay exact text.
 
 - `flow-output-schema({ project, qname })` combines the explicit contract,
   static analysis of `result.*` writes and optional learned samples; add
@@ -168,7 +168,7 @@ On the requester (.json, SDK, frontbuilder), an application error answers with
 outside the SDK requires one (standard REST codes: URL mapper operations).
 When the public contract fixes the business error body, return exactly its keys
 instead, for example `return { error: { code: "BAD_INPUT", message: "Name is required" } }`.
-A `return` does not roll back a `sql.transaction` or stop a calling Flow: `throw` does.
+A `return` commits a `sql.transaction` scope (only `throw` rolls back) and does not stop a calling Flow.
 
 - `response.error({code,message,details})` writes that structure at
   `result.error` (or `path`) beside the rest of the result, without stopping

@@ -62,8 +62,9 @@ managed by `flow-output-schema` and `flow-schema-reset`.
    implementations, data model, Flows, pages. `dryRun: true` checks without
    saving.
 4. Read each result:
-   - refused: nothing was saved and the engine keeps the last synced version.
-     Fix the file and sync again before running. The diagnostics, hints and
+   - refused: not saved: `code-run` (`c8o run`) reads the file from disk,
+     `c8o call` and the pages keep the last synced version. Fix the file and
+     sync again before running. The diagnostics, hints and
      guide links are those of `code-check`; apply a `proposedPatch` to the
      file. A data model that removes or retypes a field already stored in the
      database is refused.

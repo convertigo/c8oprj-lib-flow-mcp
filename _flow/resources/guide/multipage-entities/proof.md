@@ -4,12 +4,12 @@ Read before final verification and delivery.
 
 ## 4. Prove and deliver
 
-Test anonymous, two USER sessions and a manager, each signed in as
-`flow://guide/authoring/blocks` (Proving a Flow's result) tells; check
+Test anonymous, two USER sessions and a manager, each signed in as described in
+`flow://guide/authoring/blocks` (Proving a Flow's result); check
 own/foreign reads and writes, client role forgery, revoked roles, two overlapping
 bookings by different users, adjoining dates, partial updates, stale revision,
 CSV perimeter/formulas/dates/limits, job off/on/replay, journal contents and
-rollback, and logout with the old cookie. A page guard complements server checks.
+rollback, and that a call in the same session after logout is refused. A page guard complements server checks.
 Use `frontend-svelte-action` dev.open, then one relayed verifier for the roles;
 a successful build or HTTP 200 alone is not interaction proof. Sign-in errors
 return HTTP 200 with an `error` envelope: show `Status`, not only a result field.

@@ -75,6 +75,8 @@ function answer(name, args) {
       structuredContent: { ok: true, dryRun: true, results: [], summary: { checked: 0, applied: 0, refused: 0, rewritten: 0 } } };
     return SYNC;
   }
+  if (name === "code-run" && args.name === "drafts") return { content: [], structuredContent: { ok: true, qname: "P.drafts", result: 1,
+    next: "UNSAVED SOURCES: flow-app-progress lists them.", unsavedSources: { count: 2 } } };
   if (name === "code-run") return { content: [{ type: "text", text: "OK. keys: ok, result, qname. Use structuredContent for data." }],
     structuredContent: { ok: true, qname: "P.f", revision: "abc", result: { echo: args.input }, accessibilityNote: "f is public.",
       unsavedSources: { count: 0 } } };
@@ -239,6 +241,7 @@ test("sync: refused, pending, normalized and warned files; file:line diagnostics
   assert.match(r.out, /^_flow\/data\/model\.yaml: error ENTITY_MODEL_INVALID \(entities\.Deal\.fields\.amount\.type\): unknown type$/m);
   assert.match(r.out, /^ {2}proposed patch: \{"type":"int64"\}$/m);
   assert.match(r.out, /model\.yaml[^]*?not saved: the engine keeps the last synced version\./);
+  assert.match(r.out, /a\.flow\.js[^]*?not saved: code-run \(c8o run\) reads the file from disk, c8o call and the pages keep the last synced version\./);
   assert.doesNotMatch(r.out, /structuredContent|keys: ok/);
   assert.deepEqual(last().body.params.arguments, { project: "P", dryRun: false });
   assert.equal(last().headers["x-convertigo-source-mode"], "sources");
@@ -268,6 +271,9 @@ test("run: JSON result alone on stdout, notes on stderr, k=v over --input", asyn
     detail: "full", includeFullResult: true, allowHugeResult: true });  // never the engine's shortened result
   assert.deepEqual(JSON.parse(r.out), { echo: { a: 1, b: "y", n: 3, flag: true } });
   assert.equal(r.err.trim(), "accessibilityNote: f is public.");
+  const drafts = await c8o(["run", "drafts"]);   // unsaved sources: the count and where to read the list
+  assert.equal(drafts.out.trim(), "1");
+  assert.equal(drafts.err.trim(), 'next: UNSAVED SOURCES: flow-app-progress lists them.\nunsavedSources: {"count":2}');
 });
 
 test("view: the URL first, extra arguments passed; no URL is a failure", async () => {
