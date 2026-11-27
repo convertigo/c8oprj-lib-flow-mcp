@@ -72,3 +72,16 @@ conversion is distinct from native authoring property validation.
 
 `flow-project-metadata` edits only `version` (one line, at most 64 characters)
 and `description` (at most 4000). It does not edit timeouts or CORS.
+
+## Proving an HTTP contract
+
+To verify an anonymous HTTP contract without a browser or shell, use a private
+test Flow. First bind `const here = endpoint.current({})` on its own line, then
+call `http.request` with `url: here.convertigoUrl + "/projects/<project>/.json"`,
+`method: "POST"`, `headers: { "Content-Type": "application/x-www-form-urlencoded" }`,
+`body: { __sequence: "<Flow>" }` plus any other form fields in that object, and
+`cookies: "request"` to start with an empty cookie store. Omit the `Cookie`
+header and credentials. Check the returned `status` and `body`. Never guess the
+host or port. If that host resolves to a loopback or private address, the server
+must allow it explicitly in `convertigo.flow.http.allowedHosts`. Delete the test
+Flow afterward or keep it private.

@@ -46,8 +46,8 @@ never edit them.
    `c8o session end --as <name>` ends one (it frees its licence session).
    `c8o session demo` lists the demo accounts a server provides and
    `c8o session demo <account> --as <name>` opens one without its password.
-   Never guess a password, never create an account, never work around
-   authentication: if access fails, stop and report it.
+   Never guess a password, never create an account the spec does not ask
+   for, never work around authentication: if access fails, stop and report it.
    `c8o view` prints the viewer URL on its first line (it starts a stopped
    viewer); then check the page in the browser. To see it as a session,
    `c8o session cookie --as <name>` prints its cookies: add them with

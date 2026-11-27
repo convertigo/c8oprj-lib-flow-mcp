@@ -289,6 +289,8 @@ Project-local blocks are saved directly by `code-set`/`code-patch`; they have
 no promote step. Prefer standard blocks, then a project-local FlowScript block.
 Use Rhino only for Java integration or a genuinely low-level primitive.
 
+For an anonymous HTTP test without a browser or shell, see `flow://guide/authoring/blocks` under “Proving an HTTP contract”.
+
 ## Frontend Source Loop
 
 On an existing frontend, start with one `code-get`. Immediately call
