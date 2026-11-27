@@ -18,6 +18,8 @@ const COMMAND_USAGE = `  c8o check [path...]          validate the changed files
   c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
+                               --anonymous skips sending and saving cookies; --json prints status, received cookie names
+                               (setCookie), and body on stdout, including HTTP and application errors
                                k:=<json> for a typed value, --input '<json>' for the whole input (k=v wins)
   c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
                                (--as <name> selects the session)
@@ -52,7 +54,7 @@ const COMMANDS = {
   check: { pos: Infinity, flags: ["gateway"], kv: false },
   sync: { pos: Infinity, flags: ["gateway"], kv: false },
   run: { pos: 1, min: 1, flags: ["input"], kv: true },
-  call: { pos: 1, min: 1, flags: ["input", "as"], bool: ["end"], kv: true },
+  call: { pos: 1, min: 1, flags: ["input", "as"], bool: ["end", "anonymous"], kv: true },
   session: { pos: 2, min: 1, flags: ["as", "url"], kv: false },
   view: { pos: 0, flags: [], kv: true },
   block: { pos: 1, min: 1, flags: [], kv: false },
@@ -384,10 +386,12 @@ function demoUrl(cfg) {
 
 async function appPost(cfg, file, form, target) {
   if (!cfg.app && !target) throw new Usage("No HTTP endpoint of the project: set C8O_APP_URL or \"app\" in /c8o/c8o.json.");
-  const jar = readJar(file);
+  const jar = file ? readJar(file) : null;
   const headers = { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json, */*" };
-  const cookie = Object.entries(jar.cookies).map(([k, v]) => k + "=" + v).join("; ");
-  if (cookie) headers.Cookie = cookie;
+  if (jar) {
+    const cookie = Object.entries(jar.cookies).map(([k, v]) => k + "=" + v).join("; ");
+    if (cookie) headers.Cookie = cookie;
+  }
   let res;
   try {
     res = await fetch(target || cfg.app.replace(/\/$/, "") + "/" + encodeURIComponent(project(cfg, {})) + "/.json",
@@ -395,17 +399,25 @@ async function appPost(cfg, file, form, target) {
   } catch (e) {
     throw new Protocol("Cannot reach the project endpoint (" + (e.cause?.code || e.name) + ").");
   }
-  for (const c of res.headers.getSetCookie ? res.headers.getSetCookie() : []) {
+  // Node 18 can expose a combined header. Split at cookie pairs, keeping Expires dates intact.
+  const received = res.headers.getSetCookie?.() ?? (res.headers.get("set-cookie") || "").split(/,(?=\s*[^=;,\s]+=)/);
+  const setCookie = [];
+  for (const c of received) {
     const [pair, ...attrs] = c.split(";");
-    const at = pair.indexOf("="), k = pair.slice(0, at).trim(), v = pair.slice(at + 1).trim();
+    const at = pair.indexOf("=");
+    if (at < 1) continue;
+    const k = pair.slice(0, at).trim();
     if (!k) continue;
+    setCookie.push(k);
+    if (!jar) continue;
+    const v = pair.slice(at + 1).trim();
     const gone = attrs.some(a => /^\s*max-age=0\s*$/i.test(a) || (/^\s*expires=/i.test(a) && Date.parse(a.split("=")[1]) < Date.now()));
     const path = attrs.map(a => /^\s*path=(.*)$/i.exec(a)).find(Boolean);
     if (gone || !v) { delete jar.cookies[k]; delete jar.paths[k]; }
     else { jar.cookies[k] = v; jar.paths[k] = path ? path[1].trim() || "/" : "/"; }
   }
-  writeJar(file, jar);
-  return { status: res.status, text: await res.text() };
+  if (jar) writeJar(file, jar);
+  return { status: res.status, setCookie, text: await res.text() };
 }
 
 // --- commands --------------------------------------------------------------------------------------------------------
@@ -484,16 +496,20 @@ async function main(argv) {
       for (const [k, v] of Object.entries(Object.assign({}, flags.input || {}, kv)))
         form[k] = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v);
       if (flags.end) form.__removeSession = "true";
-      const file = jarFile(cfg, flags.as);
+      const file = flags.anonymous ? null : jarFile(cfg, flags.as);
       const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, form);
-      if (flags.end) writeJar(file, { cookies: {}, paths: {} });
-      let body = r.text, bad = r.status >= 400;
+      if (file && flags.end) writeJar(file, { cookies: {}, paths: {} });
+      let body = r.text, output = r.text, bad = r.status >= 400;
       try {
-        const j = JSON.parse(r.text);
-        body = JSON.stringify(j, null, 2);
-        bad = bad || (j && typeof j === "object" && !Array.isArray(j) && ("error" in j || "errors" in j));
+        body = JSON.parse(r.text);
+        if (!flags.json) output = JSON.stringify(body, null, 2);
+        bad = bad || (body && typeof body === "object" && !Array.isArray(body) && ("error" in body || "errors" in body));
       } catch { /* not JSON: printed as is */ }
-      emit(bad ? process.stderr : process.stdout, (r.status >= 400 ? "HTTP " + r.status + "\n" : "") + body);
+      if (flags.json) {
+        json({ status: r.status, setCookie: r.setCookie, body });
+      } else {
+        emit(bad ? process.stderr : process.stdout, (r.status >= 400 ? "HTTP " + r.status + "\n" : "") + output);
+      }
       return bad ? 1 : 0;
     }
     case "session": {

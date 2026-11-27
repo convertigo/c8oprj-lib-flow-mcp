@@ -3,8 +3,8 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { tmpdir, userInfo } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -114,9 +114,20 @@ async function startServer() {
       }
       if (req.url.startsWith("/app/")) {  // the project's HTTP endpoint (c8o call), with a cookie session
         const form = Object.fromEntries(new URLSearchParams(body));
-        appCalls.push({ url: req.url, cookie: req.headers.cookie || "", form });
+        appCalls.push({ url: req.url, method: req.method, hasCookie: Object.hasOwn(req.headers, "cookie"), cookie: req.headers.cookie || "", form });
         res.setHeader("Content-Type", "application/json");
         if (form.__removeSession) { res.setHeader("Set-Cookie", "JSESSIONID=; Max-Age=0; Path=/"); res.end("{}"); return; }
+        if (form.__sequence === "public") {
+          res.setHeader("Set-Cookie", ["JSESSIONID=s" + appCalls.length + "; Path=/convertigo", "theme=light; Expires=Wed, 21 Oct 2037 07:28:00 GMT"]);
+          res.end(JSON.stringify({ message: form.message }));
+          return;
+        }
+        if (form.__sequence === "missing") {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain");
+          res.end("not found\n");
+          return;
+        }
         if (form.__sequence === "login") { res.setHeader("Set-Cookie", "JSESSIONID=s" + appCalls.length + "; Path=/convertigo; HttpOnly"); res.end(JSON.stringify({ ok: true })); return; }
         if (/JSESSIONID=s\d+/.test(req.headers.cookie || "")) { res.end(JSON.stringify({ user: "manager", n: form.n, list: form.list })); return; }
         res.end(JSON.stringify({ error: { message: "session required" } }));
@@ -162,7 +173,7 @@ test("help needs no endpoint", async () => {
 
 test("help lists each local command and its options without an endpoint", async () => {
   const options = {
-    check: ["--gateway"], sync: ["--gateway"], run: ["--input"], call: ["--input", "--as", "--end"],
+    check: ["--gateway"], sync: ["--gateway"], run: ["--input"], call: ["--input", "--as", "--end", "--anonymous", "--json"],
     session: ["--as", "--url"], view: [], block: [], blocks: ["--namespace"], guide: [], tools: [],
     skill: ["--install"], help: [], version: [],
   };
@@ -353,6 +364,45 @@ test("call: a cookie session kept between calls, named sessions, ended by __remo
   assert.equal(appCalls[appCalls.length - 1].form.__removeSession, "true");
   r = await c8o(["session", "show", "--as", "m"], { TMPDIR: tmp });
   assert.equal(r.out.trim(), "no session");
+});
+
+test("call --anonymous --json: sends no cookie and reports HTTP status, cookie names and body without writing the jar", async () => {
+  const tmp = freshTmp();
+  const env = { TMPDIR: tmp };
+  const args = ["call", "public", "message=hello", "--as", "m", "--anonymous", "--json"];
+  let r = await c8o(args, env);
+  assert.equal(r.code, 0, r.err);
+  assert.deepEqual(readdirSync(tmp), []);
+
+  r = await c8o(["call", "login", "--as", "m"], env);
+  assert.equal(r.code, 0, r.err);
+  const dir = join(tmp, "c8o-" + userInfo().uid);
+  const [name] = readdirSync(dir);
+  const file = join(dir, name);
+  const before = readFileSync(file);
+  const inode = statSync(file).ino;
+
+  r = await c8o(args, env);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.err, "");
+  assert.equal(appCalls.at(-1).method, "POST");
+  assert.equal(appCalls.at(-1).hasCookie, false);
+  assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: ["JSESSIONID", "theme"], body: { message: "hello" } });
+  assert.deepEqual(readdirSync(dir), [name]);
+  assert.deepEqual(readFileSync(file), before);
+  assert.equal(statSync(file).ino, inode);
+});
+
+test("call --json: HTTP 200 application errors and HTTP 404 text are both on stdout with exit 1", async () => {
+  let r = await c8o(["call", "whoami", "--anonymous", "--json"]);
+  assert.equal(r.code, 1);
+  assert.equal(r.err, "");
+  assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: [], body: { error: { message: "session required" } } });
+
+  r = await c8o(["call", "missing", "--json"]);
+  assert.equal(r.code, 1);
+  assert.equal(r.err, "");
+  assert.deepEqual(JSON.parse(r.out), { status: 404, setCookie: [], body: "not found\n" });
 });
 
 test("session demo: accounts listed, a session opened without a password, an unknown account refused", async () => {

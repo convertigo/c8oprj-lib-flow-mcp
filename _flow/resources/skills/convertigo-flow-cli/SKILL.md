@@ -5,8 +5,8 @@ description: Build or change a Convertigo Flow project as files on disk with the
 
 # Convertigo Flow with c8o
 
-The project files are the truth: read and edit them with your own tools; `c8o`
-talks to the engine. Start with `c8o help`.
+Project files are authoritative. Edit them and use `c8o` to talk to the engine.
+Start with `c8o help`.
 
 ## The files
 
@@ -23,12 +23,12 @@ never edit them.
 
 ## The loop
 
-1. Read the project (`rg`, `cat`), then edit its files.
+1. Read (`rg`, `cat`) and edit the project files.
 2. `c8o check` validates the changed files and saves nothing; `c8o sync`
    validates and saves them (blocks, model, Flows, then pages). After a model
    change, `c8o sync --gateway` also creates the `EntityGateway` of its pages.
-   `c8o sync` declares and publishes the Flow with its inputs and `_flow` accessibility;
-   no separate `flow-sync-inputs` or `project-save` step is needed.
+   `c8o sync` declares the Flow, then publishes it with its inputs and `_flow` accessibility,
+   replacing separate `flow-sync-inputs` and `project-save` steps.
 3. Read every line of the answer:
    - `saved`: done. `saved, normalized by the engine`: read the file again
      before your next edit.
@@ -38,16 +38,16 @@ never edit them.
    - `PENDING`: the file changed during the sync; sync it again.
    A Flow that uses a new block: sync them together; `check` does not see a
    block it has not saved.
-4. Prove it: `c8o run <Flow> key=value key:=<json>` prints the whole result
-   alone as JSON on stdout (notes on stderr): a test run in the engine, without a user
-   session. `c8o call <Flow> key=value` calls it over HTTP as a browser does, in
-   a session kept between calls: sign in first with the app's own sign-in Flow,
-   `--as manager` / `--as contributor` keep several sessions, and
-   `c8o session end --as <name>` ends one (it frees its licence session).
+4. `c8o run <Flow> key=value key:=<json>` tests in the engine without a session,
+   with the full result as JSON on stdout and notes on stderr. `c8o call <Flow>
+   key=value` makes an HTTP call with a reusable session. Sign in with the app's
+   sign-in Flow, use `--as manager` / `--as contributor` for separate sessions,
+   and free a licence session with `c8o session end --as <name>`.
+   `c8o call <Flow> k=v --anonymous --json` proves a POST without cookies and reports status, received cookie names and body.
    `c8o session demo` lists the demo accounts a server provides and
    `c8o session demo <account> --as <name>` opens one without its password.
-   Never guess a password, never create an account the spec does not ask
-   for, never work around authentication: if access fails, stop and report it.
+   Never guess passwords, create unrequested accounts or bypass authentication.
+   If access fails, stop and report it.
    `c8o view` prints the viewer URL on its first line (it starts a stopped
    viewer); then check the page in the browser. To see it as a session,
    `c8o session cookie --as <name>` prints its cookies: add them with
