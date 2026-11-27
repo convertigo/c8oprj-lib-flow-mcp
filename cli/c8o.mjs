@@ -18,8 +18,9 @@ const COMMAND_USAGE = `  c8o check [path...]          validate the changed files
   c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
-                               --anonymous skips sending and saving cookies; --json prints status, received cookie names
-                               (setCookie), and body on stdout, including HTTP and application errors
+                               --anonymous skips sending and saving cookies and defaults to __removeSession=true
+                               --json prints status, received cookie names (setCookie), and body on stdout, including
+                               HTTP and application errors
                                k:=<json> for a typed value, --input '<json>' for the whole input (k=v wins)
   c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
                                (--as <name> selects the session)
@@ -529,7 +530,7 @@ async function main(argv) {
       const form = { __sequence: pos[0] };
       for (const [k, v] of Object.entries(Object.assign({}, flags.input || {}, kv)))
         form[k] = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v);
-      if (flags.end) form.__removeSession = "true";
+      if (flags.anonymous ? !Object.hasOwn(form, "__removeSession") : flags.end) form.__removeSession = "true";
       const file = flags.anonymous ? null : jarFile(cfg, flags.as);
       const r = await appPost(Object.assign({}, cfg, { project: project(cfg, flags) }), file, form);
       if (file && flags.end) writeJar(file, { cookies: {}, paths: {} });

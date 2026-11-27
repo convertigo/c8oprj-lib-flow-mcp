@@ -134,9 +134,12 @@ async function startServer() {
         const form = Object.fromEntries(new URLSearchParams(body));
         appCalls.push({ url: req.url, method: req.method, hasCookie: Object.hasOwn(req.headers, "cookie"), cookie: req.headers.cookie || "", form });
         res.setHeader("Content-Type", "application/json");
-        if (form.__removeSession) { res.setHeader("Set-Cookie", "JSESSIONID=; Max-Age=0; Path=/"); res.end("{}"); return; }
+        const removeSession = Object.hasOwn(form, "__removeSession") && form.__removeSession !== "false";
+        if (removeSession && req.headers.cookie) { res.setHeader("Set-Cookie", "JSESSIONID=; Max-Age=0; Path=/"); res.end("{}"); return; }
         if (form.__sequence === "public") {
-          res.setHeader("Set-Cookie", ["JSESSIONID=s" + appCalls.length + "; Path=/convertigo", "theme=light; Expires=Wed, 21 Oct 2037 07:28:00 GMT"]);
+          if (!removeSession) {
+            res.setHeader("Set-Cookie", ["JSESSIONID=s" + appCalls.length + "; Path=/convertigo", "theme=light; Expires=Wed, 21 Oct 2037 07:28:00 GMT"]);
+          }
           res.end(JSON.stringify({ message: form.message }));
           return;
         }
@@ -427,12 +430,13 @@ test("call: a cookie session kept between calls, named sessions, ended by __remo
   assert.equal(r.out.trim(), "no session");
 });
 
-test("call --anonymous --json: sends no cookie and reports HTTP status, cookie names and body without writing the jar", async () => {
+test("call --anonymous --json: defaults to a stateless POST without touching the jar", async () => {
   const tmp = freshTmp();
   const env = { TMPDIR: tmp };
   const args = ["call", "public", "message=hello", "--as", "m", "--anonymous", "--json"];
   let r = await c8o(args, env);
   assert.equal(r.code, 0, r.err);
+  assert.equal(appCalls.at(-1).form.__removeSession, "true");
   assert.deepEqual(readdirSync(tmp), []);
 
   r = await c8o(["call", "login", "--as", "m"], env);
@@ -448,10 +452,29 @@ test("call --anonymous --json: sends no cookie and reports HTTP status, cookie n
   assert.equal(r.err, "");
   assert.equal(appCalls.at(-1).method, "POST");
   assert.equal(appCalls.at(-1).hasCookie, false);
-  assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: ["JSESSIONID", "theme"], body: { message: "hello" } });
+  assert.equal(appCalls.at(-1).form.__removeSession, "true");
+  assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: [], body: { message: "hello" } });
   assert.deepEqual(readdirSync(dir), [name]);
   assert.deepEqual(readFileSync(file), before);
   assert.equal(statSync(file).ino, inode);
+
+  for (const explicit of [
+    ["__removeSession=false"],
+    ["--input", '{"__removeSession":false}'],
+    ["--end", "__removeSession=false"],
+  ]) {
+    r = await c8o([...args, ...explicit], env);
+    assert.equal(r.code, 0, r.err);
+    assert.equal(appCalls.at(-1).form.__removeSession, "false");
+    assert.equal(appCalls.at(-1).hasCookie, false);
+    assert.deepEqual(JSON.parse(r.out), { status: 200, setCookie: ["JSESSIONID", "theme"], body: { message: "hello" } });
+    assert.deepEqual(readFileSync(file), before);
+    assert.equal(statSync(file).ino, inode);
+  }
+  r = await c8o(args.filter(arg => arg !== "--anonymous"), env);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(appCalls.at(-1).hasCookie, true);
+  assert.equal(Object.hasOwn(appCalls.at(-1).form, "__removeSession"), false);
 });
 
 test("call --json: HTTP 200 application errors and HTTP 404 text are both on stdout with exit 1", async () => {

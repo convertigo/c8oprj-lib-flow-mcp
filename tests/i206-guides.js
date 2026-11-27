@@ -24,3 +24,9 @@ test("EntityForm leaves the trimmed note validation to the server", () => {
   assert.match(form, /\brequired:\s*false\b/);
   assert.match(form, /`beforeSave`.*?\btrim\(\)/);
 });
+
+test("the anonymous HTTP contract example requests a stateless session in the POST body", () => {
+  const section = guide("authoring/blocks.md").split("## Proving an HTTP contract")[1]?.split("## ")[0] ?? "";
+  const body = section.match(/`body:\s*\{([^}]*)\}`/)?.[1] ?? "";
+  assert.match(body, /\b__removeSession:\s*"true"/);
+});
