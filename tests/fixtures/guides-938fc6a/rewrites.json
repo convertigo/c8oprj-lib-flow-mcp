@@ -1,5 +1,20 @@
 [
  {
+  "family": "frontend-svelte",
+  "old": "`OnAfterNavigate` runs after each navigation, the first display included, as SvelteKit `afterNavigate`: load there what depends on the address, with `@event.to.params.id`, `@event.to.query.tab`, `@event.to.path` or `@event.to.route`, `@event.from` (null on the first display) and `@event.type` (`enter`, `link`, `goto`, `popstate`, `form`). A newer navigation cancels the run of an older one still going.",
+  "new": "`OnAfterNavigate` follows SvelteKit `afterNavigate` and skips shallow navigation. Its first call occurs only if the component is mounted during that navigation. Use it for address, parameter or query changes while the page stays mounted. Read `@event.to.params.id`, `@event.to.query.tab`, `@event.to.path`, `@event.to.route`, `@event.from` (null only on initial app entry) or `@event.type` (`enter`, `link`, `goto`, `popstate`, `form`). A newer non-shallow navigation cancels the previous run of this handler if it is still going."
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "```svelte <OnAfterNavigate $$id=\"load\"><Actions> <FullSyncGet $$id=\"readProduct\" database=\"retail\" docid=\"@event.to.params.id\" /> </Actions></OnAfterNavigate> ```",
+  "new": "```svelte <EntityView $$id=\"record\" entity=\"Record\" routeId=\"@route.params.id\" /> ```"
+ },
+ {
+  "family": "frontend-svelte",
+  "old": "refresh the session on each navigation:",
+  "new": "refresh the session after non-shallow navigation:"
+ },
+ {
   "family": "authoring",
   "old": "It requires a target Flow, not just a project.",
   "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status` by habit, only when a client\noutside the SDK requires one (standard REST codes: URL mapper operations)."

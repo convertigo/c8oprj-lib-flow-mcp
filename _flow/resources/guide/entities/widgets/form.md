@@ -19,4 +19,9 @@ Never add a model `default` to an existing field for that: the model write refus
 Business rules stay in the model hooks: a hidden or absent field is never a
 server check.
 
+For example, keep a text field `note` at `required: false` in the model so
+`describe` leaves off HTML `required` for that field. In the server `beforeSave` hook,
+reject missing notes and notes that are empty after `trim()`. `EntityForm`
+displays the error and keeps the entered values, including the selected period.
+
 For custom operation Flows read `flow://guide/entities/widgets/flows`.

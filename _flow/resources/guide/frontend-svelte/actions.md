@@ -88,12 +88,14 @@ Page lifecycle goes in the root `Events` slot, with the Svelte meaning of each
 event. `OnMount` runs when the page or component mounts: its first display,
 each entry on its route and a live reload; a navigation that keeps the page
 shown (other route parameters, another query) does not run it again.
-`OnAfterNavigate` runs after each navigation, the first display included, as
-SvelteKit `afterNavigate`: load there what depends on the address, with
-`@event.to.params.id`, `@event.to.query.tab`, `@event.to.path` or
-`@event.to.route`, `@event.from` (null on the first display) and `@event.type`
-(`enter`, `link`, `goto`, `popstate`, `form`). A newer navigation cancels the
-run of an older one still going.
+`OnAfterNavigate` follows SvelteKit `afterNavigate` and skips shallow
+navigation. Its first call occurs only if the component is mounted during
+that navigation. Use it for address, parameter or query changes while the
+page stays mounted. Read
+`@event.to.params.id`, `@event.to.query.tab`, `@event.to.path`,
+`@event.to.route`, `@event.from` (null only on initial app entry) or `@event.type`
+(`enter`, `link`, `goto`, `popstate`, `form`). A newer non-shallow navigation
+cancels the previous run of this handler if it is still going.
 `@event.to.route` is the route of the Page as SvelteKit names it (`/login`,
 `/deals/[id]`, a `(group)` folder included: `/(app)/deals`), without base nor
 final `/`: compare it to know the Page. `@event.to.path` is the address in the
@@ -105,9 +107,34 @@ browser, after the base of the viewer or of the build, and ends with `/`.
 </Actions></OnAfterNavigate>
 ```
 
+When a session guard reveals `PageContent` after sign-in at the same URL,
+the detail page mounts after navigation. Use its native record read when
+it meets the page's needs:
+
+```svelte
+<EntityView $$id="record" entity="Record" routeId="@route.params.id" />
+```
+
+For a custom server read where the ID stays fixed for the life of the mounted
+page, use `OnMount` for the first read. Declare `page.record` as an object
+State and have `.ReadRecord` accept an `id`. Use the `EntityView` binding
+above to read again when the route ID changes on a mounted page. Do not
+write the same target from both `OnMount` and `OnAfterNavigate`: an older
+response could overwrite a newer one.
+
+```svelte
+<Events>
+  <OnMount $$id="load"><Actions>
+    <CallSequence $$id="readInitial" requestable=".ReadRecord" $$out="page.record">
+      <Variables><Variable $$id="id" name="id" value="@route.params.id" /></Variables>
+    </CallSequence>
+  </Actions></OnMount>
+</Events>
+```
+
 A Layout can remain mounted across sign-in, sign-out and navigation between
 pages. `OnMount` alone therefore leaves its session stale. In the root
-`src/routes/+layout.flow.svelte`, refresh the session on each navigation:
+`src/routes/+layout.flow.svelte`, refresh the session after non-shallow navigation:
 
 ```svelte
 <script module>export const _flow = { sourceVersion: 2 };</script>
@@ -132,6 +159,9 @@ or sign-out in that command's chain, or guard a protected page separately.
 Redirecting to login on every navigation would undo a successful sign-in.
 A group Layout at `(app)/+layout.flow.svelte` only wraps pages inside `(app)`;
 put the anonymous login page outside that group when it needs no shell.
+
+For sign-in at the same URL, update the session in the sign-in chain so the
+guard can reveal `PageContent` and the page can load on mount.
 
 `Interval` and `Timeout` register on mount and clean up on teardown; nest them
 under `OnMount` only inside a larger explicit mount chain. `OnMount once={true}`

@@ -15,6 +15,9 @@ Create the route `dossiers/[id]` and bind its parameter directly:
 </Structure></FlowComponent>
 ```
 
+If a session guard reveals `PageContent` after sign-in at the same URL,
+`EntityView` reads when it mounts and again when `routeId` changes.
+
 A selected `row` or an exact `recordKey` also works. Composite identities need
 `recordKey`. The widget always re-reads the record; parent row values are never
 authorization evidence. `active` defaults to active rows; admin histories may
