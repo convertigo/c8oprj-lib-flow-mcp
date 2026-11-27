@@ -521,6 +521,13 @@ test("call: an unavailable requestable in an existing named session suggests sig
     assert.equal(r.code, 1);
     assert.equal(r.err, "");
   }
+
+  // the default kept session (no --as) gets the same hint, without --as in the command
+  const plain = { TMPDIR: freshTmp() };
+  assert.equal((await c8o(["call", "login"], plain)).code, 0);
+  r = await c8o(["call", "new_flow", "--json"], plain);
+  assert.equal(r.code, 1);
+  assert.equal(r.err, hint.replace(" --as reviewer", ""));
 });
 
 test("session demo: accounts listed, a session opened without a password, an unknown account refused", async () => {

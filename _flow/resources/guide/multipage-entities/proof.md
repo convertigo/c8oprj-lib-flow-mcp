@@ -22,7 +22,7 @@ avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
 checks, and report which visible assertion failed instead of treating an HTTP
 200 or a rendered anonymous page as proof of the authenticated path.
 
-In file mode, check the refusal with `c8o call ExportBookings --as guest` in a fresh session.
+In file mode, check the refusal with `c8o call ExportBookings --anonymous`.
 Call the app's login Flow with `--as member`, then check the manifest with `c8o call ExportBookings --as member`.
 With the relayed `requestable-execute`, call the export anonymously for the refusal.
 For the member's manifest, run the member login in `before` on the export call.

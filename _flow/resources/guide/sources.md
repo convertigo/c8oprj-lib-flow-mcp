@@ -70,7 +70,8 @@ managed by `flow-output-schema` and `flow-schema-reset`.
      database is refused.
    - `rewritten: true`: the engine normalized the file when saving it. Read it
      again before your next edit.
-5. Prove it: `code-run` for a Flow; for a page, `frontend-svelte-action`
+5. Prove it: `code-run` for a Flow (`c8o run`, or `c8o call` as a client would);
+   for a page, `frontend-svelte-action`
    `dev.sync`, then the browser.
 
 ## Reading the other guides in this mode

@@ -545,10 +545,10 @@ async function main(argv) {
       } else {
         emit(bad ? process.stderr : process.stdout, (r.status >= 400 ? "HTTP " + r.status + "\n" : "") + output);
       }
-      if (flags.as && !flags.end && r.sentCookies && r.status === 200 && body?.error?.code === "-1"
+      if (!flags.anonymous && !flags.end && r.sentCookies && r.status === 200 && body?.error?.code === "-1"
           && body.error.message === "Unable to execute the requested requestable.") {
         const shellArg = value => /^[\w.-]+$/.test(value) ? value : "'" + value.replaceAll("'", "'\\''") + "'";
-        const end = `c8o session end --as ${shellArg(flags.as)}${flags.project ? " --project " + shellArg(flags.project) : ""}`;
+        const end = `c8o session end${flags.as ? " --as " + shellArg(flags.as) : ""}${flags.project ? " --project " + shellArg(flags.project) : ""}`;
         emit(process.stderr, `c8o: Check the Flow name and that the Flow is public. A session keeps the project version from its first call: if this Flow was added later, run ${end}, then sign in again.`);
       }
       return bad ? 1 : 0;
