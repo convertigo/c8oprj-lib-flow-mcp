@@ -7,6 +7,8 @@ const _meta = {
 
 (function () {
   var names = ["project-save", "requestable-execute", "scheduler-list", "scheduler-apply"];
+  var nameRule = "start with an ASCII letter or _, followed by ASCII letters, digits or _";
+  var jobNameLimit = "Job names are limited to 64 characters.";
   function fail(code, message) { var e = new Error(message); e.code = code; throw e; }
   function enabled(engine) {
     return !!engine && typeof engine.isEngineMode === "function" && engine.isEngineMode() === true && !!engine.theApp &&
@@ -26,7 +28,8 @@ const _meta = {
       }, ["requestable"]),
       descriptor("scheduler-list", "List server scheduled sequence jobs, optionally filtered by project.", { project: project }),
       descriptor("scheduler-apply", "Preview or upsert a project-owned private sequence job and its Quartz cron schedule. dryRun defaults to true. Names are scoped to the project; no deletion.", {
-        project: project, sequence: { type: "string" }, name: { type: "string", description: "Project-local job name." },
+        project: project, sequence: { type: "string", description: "Sequence names must " + nameRule + "." },
+        name: { type: "string", description: "Project-local job names must " + nameRule + ". " + jobNameLimit },
         cron: { type: "string", description: "Quartz cron expression." }, enabled: { type: "boolean", default: true }, dryRun: { type: "boolean", default: true }
       }, ["project", "sequence", "name", "cron"])
     ];
@@ -151,7 +154,9 @@ const _meta = {
     if (!manager) fail("SCHEDULER_UNAVAILABLE", "The server scheduler is unavailable.");
     if (name === "scheduler-list") return list(manager, projectName);
     var owner = target(engine, projectName), sequenceName = String(args.sequence || ""), localName = String(args.name || "");
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(sequenceName) || !/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(localName)) fail("SCHEDULER_NAME_INVALID", "Use simple sequence and job names.");
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(sequenceName) || !/^[A-Za-z_][A-Za-z0-9_]{0,63}$/.test(localName)) {
+      fail("SCHEDULER_NAME_INVALID", "Sequence and job names must " + nameRule + ". " + jobNameLimit);
+    }
     var sequence = owner.getSequenceByName(sequenceName);
     if (!sequence || !sequence.isPrivateAccessibility()) fail("SCHEDULER_PRIVATE_REQUIRED", "A scheduled job must target a private sequence or Flow.");
     var cron = String(args.cron || "");
@@ -161,7 +166,10 @@ const _meta = {
     var timeZone = Packages.java.util.TimeZone.getDefault();
     var result = { ok: true, project: projectName, sequence: sequenceName, name: jobName, cron: cron, enabled: args.enabled !== false, dryRun: args.dryRun !== false, saved: false,
       timeZone: String(timeZone.getID()), nextFireTimes: nextFireTimes(cron, timeZone, new Packages.java.util.Date()) };
-    if (result.dryRun) return result;
+    if (result.dryRun) {
+      result.hint = "Preview only, nothing saved. Set dryRun to false (JSON boolean) to save.";
+      return result;
+    }
     // Work on a detached snapshot; failed validation/publication must not mutate the active scheduler model.
     var Manager = Packages.com.twinsoft.convertigo.engine.scheduler.SchedulerManager;
     var bytes = new Packages.java.io.ByteArrayOutputStream();

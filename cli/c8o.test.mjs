@@ -16,13 +16,25 @@ const TOOLS = [
   { name: "flow-source-sync", description: "Checks and saves changed source files. More.", inputSchema: { type: "object", required: ["project"],
     properties: { project: { type: "string", description: "Project." }, paths: { type: "array" }, dryRun: { type: "boolean" } } } },
   { name: "code-run", description: "Runs a Flow.", inputSchema: { type: "object", properties: { project: { type: "string" }, name: { type: "string" } } } },
+  { name: "numeric-tool", inputSchema: { type: "object", properties: {
+    count: { type: "integer" }, rate: { type: "number" },
+    nullableFlag: { type: ["boolean", "null"] }, nullableCount: { type: ["null", "integer"] },
+    nullableRate: { type: ["number", "null"] }, nullableText: { type: ["string", "null"] },
+    mixed: { type: ["boolean", "integer", "null"] },
+  } } },
   { name: "flow-resource-search", description: "Searches guides.", inputSchema: { type: "object", properties: { query: { type: "string" } } } },
   { name: "echo-secret", description: "Echoes.", inputSchema: { type: "object", properties: {} } },
   { name: "tools-more", description: "The tools outside this list.", inputSchema: { type: "object", properties: { name: { type: "string" } } } },
 ];
 const SKILL = "---\nname: convertigo-flow-cli\ndescription: Build or change a Flow project with c8o.\n---\n\n# Convertigo Flow with c8o\n";
-const MORE = [{ name: "scheduler-list", description: "Lists jobs." }];
-const MORE_SCHEMA = { "scheduler-list": { type: "object", properties: { project: { type: "string", description: "Project." } } } };
+const MORE = [{ name: "scheduler-list", description: "Lists jobs." }, { name: "scheduler-apply", description: "Preview or save jobs." }];
+const MORE_SCHEMA = {
+  "scheduler-list": { type: "object", properties: { project: { type: "string", description: "Project." } } },
+  "scheduler-apply": { type: "object", properties: {
+    project: { type: "string" }, dryRun: { type: "boolean", default: true }, enabled: { type: "boolean", default: true },
+    name: { type: "string" },
+  } },
+};
 
 const SQL_PROVIDER = { block: "sql.query", project: "lib_flow_sql" };
 const SQL_GUIDE = "flow://lib/lib_flow_sql/sql";
@@ -86,12 +98,16 @@ function answer(name, args) {
       { hint: "Inspect json.object." }) } } };
   if (name === "scheduler-list") return { content: [{ type: "text", text: "OK. keys: ok, jobs. Use structuredContent for data." }],
     structuredContent: { ok: true, jobs: [{ name: "daily", project: args.project }] } };
+  if (name === "scheduler-apply") return ok({ saved: args.dryRun === false }).result;
+  if (name === "numeric-tool") return ok().result;
   if (name === "flow-resource-search") return { content: [{ type: "text", text: "count=1. Use structuredContent for data." }],
     structuredContent: { count: 1, hadProject: "project" in args } };
   if (name === "echo-secret") return { content: [{ type: "text", text: "header was Bearer secret-value" }] };
   if (name === "tools-more") {
     if (!args.name) return { content: [], structuredContent: { ok: true, tools: MORE } };
-    if (!args.arguments) return { content: [], structuredContent: { ok: true, tool: { name: args.name, inputSchema: MORE_SCHEMA[args.name] } } };
+    if (!args.arguments) return { content: [], structuredContent: { ok: true, tool: { name: args.name,
+      description: args.name === "scheduler-apply" ? "Preview or save jobs. Preview is the default." : undefined,
+      inputSchema: MORE_SCHEMA[args.name] } } };
     return answer(args.name, args.arguments);
   }
   return { isError: true, content: [{ type: "text", text: "Unknown tool" }] };
@@ -298,9 +314,9 @@ test("blocks reuses the catalog filters and displays unknown-block guidance", as
 });
 
 test("tools behind tools-more: listed, described and called through tools-more with the project", async () => {
-  let r = await c8o(["tools", "jobs"]);
+  let r = await c8o(["tools", "scheduler-list"]);
   assert.equal(r.out.trim(), "scheduler-list: Lists jobs.");
-  r = await c8o(["tools", "jobs", "--json"]);
+  r = await c8o(["tools", "scheduler-list", "--json"]);
   assert.deepEqual(JSON.parse(r.out).map(t => t.name), ["scheduler-list"]);
   r = await c8o(["help", "scheduler-list"]);
   assert.equal(r.code, 0);
@@ -321,6 +337,48 @@ test("tools behind tools-more: listed, described and called through tools-more w
   r = await c8o(["code-set", "x=1"]);
   assert.equal(r.code, 2);
   assert.match(r.err, /Unknown command or tool: code-set/);
+});
+
+test("scheduler help uses the detailed description and shows boolean defaults", async () => {
+  const r = await c8o(["help", "scheduler-apply"]);
+  assert.equal(r.code, 0);
+  assert.match(r.out, /\bdryRun \(boolean, default: true\)/);
+  assert.match(r.out, /\benabled \(boolean, default: true\)/);
+  assert.match(r.out, /^scheduler-apply: Preview or save jobs\. Preview is the default\./m);
+});
+
+test("scheduler key=value uses the advertised types and preserves explicit JSON", async () => {
+  const r = await c8o(["scheduler-apply", "dryRun=false", 'enabled:="true"', "name=42", "--json"]);
+  assert.equal(r.code, 0);
+  assert.deepEqual(last().body.params.arguments.arguments, { dryRun: false, enabled: "true", name: "42", project: "P" });
+  assert.equal(JSON.parse(r.out).structuredContent.saved, true);
+  const invalid = await c8o(["scheduler-apply", "dryRun=no"]);
+  assert.equal(invalid.code, 2);
+  assert.match(invalid.err, /dryRun.*boolean.*dryRun:=<json>/);
+  assert.equal(last().body.params.arguments.arguments, undefined);
+});
+
+test("numeric key=value accepts finite numbers and rejects invalid integers and numbers", async () => {
+  for (const [key, value] of [
+    ["count", "1.0000000000000001"], ["count", "1.5"], ["count", "1.0"], ["count", "1e3"],
+    ["count", "9007199254740992"], ["rate", ""], ["rate", "1e999"],
+  ]) {
+    const invalid = await c8o(["numeric-tool", key + "=" + value]);
+    assert.equal(invalid.code, 2);
+    assert.ok(invalid.err.includes(key + ":=<json>"));
+  }
+  const r = await c8o(["numeric-tool", "count=-3", "rate=1.25e-2"]);
+  assert.equal(r.code, 0);
+  assert.deepEqual(last().body.params.arguments, { count: -3, rate: 0.0125 });
+});
+
+test("key=value coerces nullable scalars and preserves other unions as strings", async () => {
+  const r = await c8o(["numeric-tool", "nullableFlag=false", "nullableCount=+0012",
+    "nullableRate=1e3", "nullableText=0012", "mixed=false"]);
+  assert.equal(r.code, 0);
+  assert.deepEqual(last().body.params.arguments, {
+    nullableFlag: false, nullableCount: 12, nullableRate: 1000, nullableText: "0012", mixed: "false",
+  });
 });
 
 test("skill: printed as served, or installed in a skills folder", async () => {

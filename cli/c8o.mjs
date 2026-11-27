@@ -92,6 +92,7 @@ function config() {
 
 function parseArgs(argv, spec) {
   const pos = [], kv = {}, flags = {};
+  const plainKeys = new Set();
   let rest = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -113,7 +114,11 @@ function parseArgs(argv, spec) {
       if (!spec.kv) throw new Usage(`${m[1]}${m[2]}… is not an argument of this command. See c8o help.`);
       if (m[2] === ":=") {
         try { kv[m[1]] = JSON.parse(m[3]); } catch { throw new Usage(`${m[1]}:= needs JSON, got: ${m[3]}`); }
-      } else kv[m[1]] = m[3];
+        plainKeys.delete(m[1]);
+      } else {
+        kv[m[1]] = m[3];
+        plainKeys.add(m[1]);
+      }
       continue;
     }
     pos.push(a);
@@ -125,7 +130,7 @@ function parseArgs(argv, spec) {
     try { flags[k] = JSON.parse(flags[k]); } catch { throw new Usage(`--${k} needs JSON`); }
     if (!flags[k] || typeof flags[k] !== "object" || Array.isArray(flags[k])) throw new Usage(`--${k} needs a JSON object`);
   }
-  return { pos, kv, flags };
+  return { pos, kv, flags, plainKeys };
 }
 
 let rpcId = 0;
@@ -437,8 +442,12 @@ function guideUri(arg) {
 function schemaLines(t, schema) {
   const req = new Set(schema?.required || []);
   const out = [`${t.name}: ${t.description || ""}`];
-  for (const [k, p] of Object.entries(schema?.properties || {}))
-    out.push(`  ${k} (${p.type || "any"}${req.has(k) ? ", required" : ""})${p.description ? ": " + p.description : ""}`);
+  for (const [k, p] of Object.entries(schema?.properties || {})) {
+    const qualifiers = [p.type || "any"];
+    if (req.has(k)) qualifiers.push("required");
+    if (Object.hasOwn(p, "default")) qualifiers.push("default: " + JSON.stringify(p.default));
+    out.push(`  ${k} (${qualifiers.join(", ")})${p.description ? ": " + p.description : ""}`);
+  }
   return out.join("\n");
 }
 
@@ -450,11 +459,38 @@ function findSchema(v, depth = 0) {
   return null;
 }
 
+async function toolDetails(cfg, tool) {
+  if (!tool.more) return tool;
+  const details = (await call(cfg, "tools-more", { name: tool.name })).result?.structuredContent;
+  return { ...tool, description: details?.tool?.description || tool.description,
+    inputSchema: findSchema(details) };
+}
+
+function typedValue(key, value, type) {
+  if (Array.isArray(type) && type.length === 2 && type.includes("null")) {
+    type = type.find(item => item !== "null");
+  }
+  if (type === "boolean") {
+    if (value === "true" || value === "false") return value === "true";
+  } else if (type === "integer") {
+    const number = Number(value);
+    if (/^[+-]?\d+$/.test(value) && Number.isSafeInteger(number)) return number;
+  } else if (type === "number") {
+    if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) {
+      const number = Number(value);
+      if (Number.isFinite(number)) return number;
+    }
+  } else {
+    return value;
+  }
+  throw new Usage(`${key}= expects a ${type} value. Use ${key}:=<json> to supply an explicit JSON value.`);
+}
+
 async function main(argv) {
   const [cmd, ...rest] = argv;
   if (!cmd || cmd === "-h" || cmd === "--help" || (cmd === "help" && !rest.length)) { emit(process.stdout, USAGE); return 0; }
   if (cmd === "--version" || cmd === "version") { emit(process.stdout, VERSION); return 0; }
-  const { pos, kv, flags } = parseArgs(rest, COMMANDS[cmd] || GENERIC);
+  const { pos, kv, flags, plainKeys } = parseArgs(rest, COMMANDS[cmd] || GENERIC);
   const json = data => emit(process.stdout, JSON.stringify(data?.result ?? data, null, 2));
   if (cmd === "help" && Object.hasOwn(COMMANDS, pos[0])) {
     const lines = COMMAND_USAGE.split(/\n(?=  c8o )/).filter(usage => usage.startsWith(`  c8o ${pos[0]} `));
@@ -661,19 +697,19 @@ async function main(argv) {
     case "help": {
       const t = await findTool(cfg, pos[0]);
       if (!t) throw new Usage(`Unknown command or tool: ${pos[0]}. See c8o help and c8o tools.`);
-      let schema = t.inputSchema;
-      if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
-      if (flags.json) json({ name: t.name, description: t.description, inputSchema: schema || null });
-      else emit(process.stdout, schemaLines(t, schema));
+      const details = await toolDetails(cfg, t);
+      if (flags.json) json({ name: t.name, description: t.description, inputSchema: details.inputSchema || null });
+      else emit(process.stdout, schemaLines(details, details.inputSchema));
       return 0;
     }
     default: {
       const t = await findTool(cfg, cmd);
       if (!t) throw new Usage(`Unknown command or tool: ${cmd}. See c8o help and c8o tools.`);
       const args = Object.assign({}, flags.args || {}, kv);
-      let schema = t.inputSchema;
-      if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
-      if (schema?.properties?.project && args.project === undefined && (flags.project || cfg.project)) args.project = project(cfg, flags);
+      const { inputSchema } = await toolDetails(cfg, t);
+      const properties = inputSchema?.properties;
+      for (const key of plainKeys) args[key] = typedValue(key, args[key], properties?.[key]?.type);
+      if (properties?.project && args.project === undefined && (flags.project || cfg.project)) args.project = project(cfg, flags);
       const data = t.more ? await call(cfg, "tools-more", { name: t.name, arguments: args }) : await call(cfg, cmd, args);
       if (flags.json) json(data); else emit(failed(data) ? process.stderr : process.stdout, generic(data));
       return failed(data) ? 1 : 0;
