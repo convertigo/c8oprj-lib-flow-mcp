@@ -125,12 +125,9 @@ const _meta = {
       return { ok: true, project: projectName, saved: true };
     }
     if (name === "requestable-execute") {
-      var requestable = String(args.requestable || "").trim(), note = "";
-      // A bare Flow name is unique once the project is given: read it there and say so.
-      if (projectName && /^[A-Za-z_][A-Za-z0-9_]*$/.test(requestable)) {
-        note = "requestable \"" + requestable + "\" was read as \"" + projectName + "." + requestable + "\" (project " + projectName + ").";
-        requestable = "." + requestable;
-      }
+      var requestable = String(args.requestable || "").trim();
+      // A bare Flow name is unique once the project is given: read it there.
+      if (projectName && /^[A-Za-z_][A-Za-z0-9_]*$/.test(requestable)) requestable = "." + requestable;
       if (/^\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?$/.test(requestable)) { target(engine, projectName); requestable = projectName + requestable; }
       if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,2}$/.test(requestable)) {
         var bare = /^\.?([A-Za-z_][A-Za-z0-9_]*)$/.exec(requestable);
@@ -146,9 +143,7 @@ const _meta = {
           /^Unknown (?:Convertigo )?requestable: ([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){1,2})/.exec(String(error.message || ""));
         throw missing ? unknownRequestable(engine, missing[1], error) : error;
       }
-      var out = { ok: true, result: result };
-      if (note) out.note = note;
-      return out;
+      return { ok: true, result: result };
     }
     var manager = engine.theApp.schedulerManager;
     if (!manager) fail("SCHEDULER_UNAVAILABLE", "The server scheduler is unavailable.");

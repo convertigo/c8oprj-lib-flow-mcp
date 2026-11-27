@@ -4,7 +4,8 @@ Read before final verification and delivery.
 
 ## 4. Prove and deliver
 
-Test anonymous, two USER sessions and a manager in distinct cookie jars; check
+Test anonymous, two USER sessions and a manager, each signed in as
+`flow://guide/authoring/blocks` (Proving a Flow's result) tells; check
 own/foreign reads and writes, client role forgery, revoked roles, two overlapping
 bookings by different users, adjoining dates, partial updates, stale revision,
 CSV perimeter/formulas/dates/limits, job off/on/replay, journal contents and
@@ -18,7 +19,7 @@ page, new row appearing after add, changed value after edit, and changed
 aggregate after recalculation. Capture the failure message for an invalid
 login in a separate fresh session. At each transition wait for the expected
 element or response, using the browser tool's documented selector and arguments;
-avoid fixed pauses. Keep the distinct USER and manager cookie jars for policy
+avoid fixed pauses. Keep the USER and manager sessions distinct for policy
 checks, and report which visible assertion failed instead of treating an HTTP
 200 or a rendered anonymous page as proof of the authenticated path.
 

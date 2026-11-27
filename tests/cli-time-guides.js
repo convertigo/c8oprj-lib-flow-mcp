@@ -47,3 +47,20 @@ test("the room form and its button use the public component contracts", () => {
   }
   assert.match(pages, /contractBlocks:\s*\["EntityForm", "Button"\]/);
 });
+
+test("the entity proof and the sources loop rely on the execution tools, not on an HTTP client", () => {
+  const proof = guide("multipage-entities/proof.md");
+  assert.doesNotMatch(proof, /cookie jars?/);
+  assert.match(proof.split(/\n\s*\n/).find(text => text.startsWith("Test anonymous")) ?? "", /flow:\/\/guide\/authoring\/blocks/);
+  const sources = guide("sources.md");
+  assert.doesNotMatch(sources, /\bHTTP keeps\b/);
+  assert.match(sources, /refused: nothing was saved[\s\S]{0,80}keeps the\s+last synced version/);
+});
+
+test("the Studio version note on private Flows is written once", () => {
+  const { readdirSync } = require("node:fs");
+  const root = join(__dirname, "../_flow/resources");
+  const found = readdirSync(root, { recursive: true }).filter(name => name.endsWith(".md"))
+    .filter(name => /\bolder (?:Studio|one still ran)\b/i.test(readFileSync(join(root, name), "utf8")));
+  assert.deepEqual(found, ["guide/authoring/source.md"]);
+});

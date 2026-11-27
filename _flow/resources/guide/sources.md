@@ -62,9 +62,8 @@ managed by `flow-output-schema` and `flow-schema-reset`.
    implementations, data model, Flows, pages. `dryRun: true` checks without
    saving.
 4. Read each result:
-   - refused: nothing was saved. The file stays on disk: `code-run` reads it,
-     while HTTP keeps the last synced version. Fix it and sync again before
-     running. The diagnostics, hints and
+   - refused: nothing was saved and the engine keeps the last synced version.
+     Fix the file and sync again before running. The diagnostics, hints and
      guide links are those of `code-check`; apply a `proposedPatch` to the
      file. A data model that removes or retypes a field already stored in the
      database is refused.

@@ -94,6 +94,7 @@ function answer(name, args) {
   if (name === "flow-catalog") return ok(args.cursor ?
     { blocks: [{ block: "json.parse", desc: "Parse JSON." }] } :
     { blocks: [{ block: "json.object", desc: "Create an object." }], nextCursor: "next" }).result;
+  if (name === "flow-block-get" && args.name === "json.object") return ok({ block: { name: "json.object", properties: { value: { type: "object" } } } }).result;
   if (name === "flow-block-get") return { isError: true, content: [{ type: "text", text: "Error [UNKNOWN_BLOCK]: Unknown Flow block." }],
     structuredContent: { error: { code: "UNKNOWN_BLOCK", ...(args.name === "sql.query" ?
       { details: { workspaceProviders: [SQL_PROVIDER], workspaceGuides: [SQL_GUIDE] } } :
@@ -218,6 +219,9 @@ test("help returns JSON for a local command without an endpoint", async () => {
   assert.match(help.usage, /c8o call <flow>/);
   assert.match(help.usage, /--end/);
   assert.match(help.usage, /--json/);
+  const anonymous = help.usage.replace(/\s+/g, " ").split("--anonymous")[1].split("--json prints")[0];
+  assert.match(anonymous, /setCookie: \[\] proves that no session stayed/);
+  assert.match(anonymous, /nothing to set in the Flow/);
 });
 
 test("sync: refused, pending, normalized and warned files; file:line diagnostics; exit 1", async () => {
@@ -302,6 +306,9 @@ test("blocks reuses the catalog filters and displays unknown-block guidance", as
   const unknown = await c8o(["block", "json.value"]);
   assert.equal(unknown.code, 1);
   assert.match(unknown.err, /Inspect json\.object/);
+  const known = await c8o(["block", "json.object"]);
+  assert.equal(known.code, 0, known.err);
+  assert.ok(known.out.includes('{"block":{"name":"json.object","properties":{"value":{"type":"object"}}}}'), known.out);
   const reference = "c8o flow-project-reference project=NoSql reference=lib_flow_sql";
   for (const command of [["blocks", "--namespace", "sql"], ["block", "sql.query"]]) {
     const args = [...command, "--project", "NoSql"];

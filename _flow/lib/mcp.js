@@ -1537,7 +1537,7 @@
 
 	// The runs of the MCP (code-run, requestable-execute) execute a private Flow too. Agents proved their API that way
 	// and handed private Flows to an HTTP client, the note of code-promote read and ignored (it150 L2, it155 L5): the
-	// answer of the run itself says so, where the agent believes it tested the HTTP API.
+	// answer of the run itself says that the result is proved and that a client is refused.
 	// resolve(projectName, flowName): the Flow DBO, the engine's by default.
 	function runAccessibilityNote(request, resolve) {
 		var tool = toolName(request), args = toolArguments(request) || {};
@@ -1558,9 +1558,8 @@
 				return project ? projectSequenceByName(project, flowName) : null;
 			})(projectName, flowName);
 			if (!flow || typeof flow.isPrivateAccessibility !== "function" || flow.isPrivateAccessibility() !== true) return "";
-			return flowName + " is private: this run proves nothing over HTTP, where an anonymous or non-administrator call " +
-				"(POST /convertigo/projects/" + projectName + "/.json, __sequence=" + flowName + ") is refused (\"Unable to execute " +
-				"the requested requestable\"). If a frontend or an external client calls it, declare accessibility: \"public\" " +
+			return flowName + " is private: this run proves its result; an anonymous or non-administrator client is refused " +
+				"(\"Unable to execute the requested requestable\"). If a frontend or an external client calls it, declare accessibility: \"public\" " +
 				"(listed) or \"hidden\" (not listed) in its _flow header, then code-promote.";
 		} catch (_unresolvedFlow) {
 			return "";
@@ -3781,12 +3780,15 @@
 		value.unsavedSources = unsavedSources(args, ctx, value);
 		var runQname = value.qname || args.qname || "";
 		// a draft run already says to promote the Flow it ran: repeat the general advice only for other sources
-		var onlyThisRun = /^(?:flow-)?code-run$/.test(name) && runQname && value.unsavedSources.items.every(function (item) {
+		var isRun = /^(?:flow-)?code-run$/.test(name);
+		var onlyThisRun = isRun && runQname && value.unsavedSources.items.every(function (item) {
 			return item.kind === "flow" && item.qname === runQname;
 		});
-		if (onlyThisRun) value.unsavedSources = { count: value.unsavedSources.count }; // unsaved:true names it already
+		// a run is repeated many times: the count alone (unsaved:true names its own draft), and a short next
+		if (isRun) value.unsavedSources = { count: value.unsavedSources.count };
 		if (value.unsavedSources.count > 0 && !onlyThisRun) {
-			value.next = "UNSAVED SOURCES: code-promote each Flow; save Studio pages/blocks with Save project, or code-get then code-set to save Svelte sources directly. Use code-discard to abandon a draft." +
+			value.next = (isRun ? "UNSAVED SOURCES: save or code-discard each draft (code-promote a Flow)."
+				: "UNSAVED SOURCES: code-promote each Flow; save Studio pages/blocks with Save project, or code-get then code-set to save Svelte sources directly. Use code-discard to abandon a draft.") +
 				(value.next && name !== "flow-app-progress" ? " " + value.next : "");
 			if (name === "flow-app-progress") {
 				value.complete = false;

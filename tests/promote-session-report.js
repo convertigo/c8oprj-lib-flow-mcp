@@ -85,13 +85,14 @@ try {
 		{ ok: true, name: "book_create", promoted: true, registration: Object.assign({ requested: true, registered: true, qname: "Books.book_create" }, onServer) }, {}).result;
 	assert(promotedUndeclared.content[0].text.indexOf("No accessibility declared") !== -1, "The text of code-promote says it: " + promotedUndeclared.content[0].text);
 
-	// The runs of the MCP execute a private Flow anyway: their answer says that this proves nothing over HTTP, where
-	// the agent believes it tested its API (it155 L5: the note of code-promote read four times and ignored).
+	// The runs of the MCP execute a private Flow anyway: their answer says that the run proves the result of the Flow,
+	// and that a client is refused (it155 L5: the note of code-promote read four times and ignored). It does not send
+	// the agent to an HTTP client: no URL, no "proves nothing".
 	function run(name, args) { return { params: { name: name, arguments: args } }; }
 	function resolver(isPrivate) { return function () { return dbo(isPrivate); }; }
 	var codeRun = mcp._runAccessibilityNote(run("code-run", { project: "Books", name: "book_create" }), resolver(true));
-	assert(/^book_create is private: this run proves nothing over HTTP/.test(codeRun)
-		&& codeRun.indexOf("POST /convertigo/projects/Books/.json, __sequence=book_create") !== -1
+	assert(/^book_create is private: this run proves its result; an anonymous or non-administrator client is refused/.test(codeRun)
+		&& !/proves nothing|POST |\.json/.test(codeRun)
 		&& /accessibility: "public" \(listed\) or "hidden"/.test(codeRun), "code-run of a private Flow says it: " + codeRun);
 	var relative = mcp._runAccessibilityNote(run("requestable-execute", { project: "Books", requestable: ".book_create" }), resolver(true));
 	var qualified = mcp._runAccessibilityNote(run("requestable-execute", { requestable: "Books.book_create" }), resolver(true));

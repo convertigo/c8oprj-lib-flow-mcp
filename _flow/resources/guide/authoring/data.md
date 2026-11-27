@@ -4,8 +4,8 @@ Lists, maps and config in FlowScript, output schemas, native inputs and backend 
 
 Run a block as a statement, then test its result: `const m = text.match({ text: input.id, pattern: "^[0-9]+$" })`, then `if (m.matched) { ... }`.
 A list grows when it is typed: `const errors = json.array({ itemType: { type: "string" } })`, then `errors.push("Invalid ID")`.
-`JSON.parse(input.itemsJson)` raises an error on invalid text: catch it with `try { … } catch (e) { … }`, or use `json.safeParse({ text: input.itemsJson })` and check its `ok` and `value`; iterate with `for (const item of items) { … }`.
-List methods are blocks written as JavaScript: `input.items.filter(item => item.valid)`, `input.items.map(item => item.id)`; check `.matched` of `text.match({ text: input.code, pattern: "^[0-9]+$" })` instead of a regex literal.
+`JSON.parse(input.itemsJson)` raises an error on invalid text: catch it with `try`/`catch`, or use `json.safeParse({ text: input.itemsJson })` and check its `ok` and `value`; iterate with `for (const item of items) { … }`.
+List methods are blocks written as JavaScript (`filter`, `map` below); instead of a regex literal, use `text.match` as above.
 
 JSON and object functions are blocks written as JavaScript, in a declaration, an assignment or a `return`:
 
@@ -26,8 +26,8 @@ JSON and object functions are blocks written as JavaScript, in a declaration, an
   `Object.assign(o, …)` changes `o` (`FLOWSCRIPT_V3_GLOBAL_CALL`).
 <!-- /generated -->
 
-For an all-or-nothing batch, parse first, then validate every item in a `for…of`; push refusals and valid items to separate typed arrays. Do not write during validation.
-Only when the refusal array is empty, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call; `statement` names a configured write and `items` repeats it within the same transaction.
+For an all-or-nothing batch, parse first, then validate every item in a `for…of`, pushing refusals and valid items to separate typed arrays, without writing.
+Only when no item is refused, make one `sql.transaction({ steps: [{ statement: "namedWrite", items: valid }] })` call: `items` repeats the configured write `statement` in that transaction.
 
 ## Lists, maps and config
 
@@ -131,8 +131,9 @@ becomes empty and marks the project.
 
 ## Output schemas
 
-A `BigDecimal` output becomes a double precision JSON number, `null` on overflow
+A Java `BigDecimal` output becomes a double precision JSON number, `null` on overflow
 (`flow://guide/rhino-block-api`); check `result.amount === 1000000000000.25`.
+`lib_flow_sql` decimals stay exact text.
 
 - `flow-output-schema({ project, qname })` combines the explicit contract,
   static analysis of `result.*` writes and optional learned samples; add
@@ -167,6 +168,7 @@ On the requester (.json, SDK, frontbuilder), an application error answers with
 outside the SDK requires one (standard REST codes: URL mapper operations).
 When the public contract fixes the business error body, return exactly its keys
 instead, for example `return { error: { code: "BAD_INPUT", message: "Name is required" } }`.
+A `return` does not roll back a `sql.transaction` or stop a calling Flow: `throw` does.
 
 - `response.error({code,message,details})` writes that structure at
   `result.error` (or `path`) beside the rest of the result, without stopping

@@ -18,7 +18,8 @@ const COMMAND_USAGE = `  c8o check [path...]          validate the changed files
   c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
-                               --anonymous skips sending and saving cookies and defaults to __removeSession=true
+                               --anonymous skips sending and saving cookies and defaults to __removeSession=true:
+                               with --json, setCookie: [] proves that no session stayed; nothing to set in the Flow
                                --json prints status, received cookie names (setCookie), and body on stdout, including
                                HTTP and application errors
                                k:=<json> for a typed value, --input '<json>' for the whole input (k=v wins)
@@ -237,7 +238,7 @@ function show(v) {
   return typeof v === "string" ? v : JSON.stringify(v);
 }
 
-function structured(data, printed) {
+function structured(data, printed, indent = 2) {
   const sc = data?.result?.structuredContent;
   if (!sc || typeof sc !== "object") return "";
   const rest = {}, blocks = [];
@@ -254,12 +255,12 @@ function structured(data, printed) {
     if (typeof v === "string" && v.includes("\n") && v.length > 80) blocks.push(`--- ${k} ---\n${v.replace(/\n$/, "")}`);
     else rest[k] = v;
   }
-  return [Object.keys(rest).length ? JSON.stringify(rest, null, 2) : "", ...blocks].filter(Boolean).join("\n");
+  return [Object.keys(rest).length ? JSON.stringify(rest, null, indent) : "", ...blocks].filter(Boolean).join("\n");
 }
 
-function generic(data) {
+function generic(data, indent) {
   const t = texts(data);
-  return [...t, structured(data, t)].filter(Boolean).join("\n");
+  return [...t, structured(data, t, indent)].filter(Boolean).join("\n");
 }
 
 function referenceCommands(projectName, providers) {
@@ -639,7 +640,8 @@ async function main(argv) {
           emit(process.stderr, [...texts(data), ...workspaceBlockLines(providers, details.workspaceGuides || [], commands)].join("\n"));
         }
       } else if (flags.json) json(data);
-      else emit(failed(data) ? process.stderr : process.stdout, generic(data));
+      else if (failed(data)) emit(process.stderr, generic(data));
+      else emit(process.stdout, generic(data, 0));   // a contract is read whole: compact JSON
       return failed(data) ? 1 : 0;
     }
     case "blocks": {

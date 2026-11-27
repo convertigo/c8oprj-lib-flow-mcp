@@ -95,3 +95,15 @@ test("numeric output guidance checks a large decimal as a JSON number", () => {
   assert.match(outputs, /`null`/);
   assert.match(outputs, /\.\w+\s*===\s*\d{10,}\.\d+\b/);
 });
+
+test("an exact error body is a result: only a throw rolls back and stops the caller", () => {
+  const data = guide("authoring/data.md");
+  const after = data.split(/return \{ error: \{ code: "BAD_INPUT"[^`]*`\./)[1]?.split("`response.error(")[0] ?? "";
+  assert.match(after, /`return` does not roll back a `sql\.transaction` or stop a calling Flow: `throw` does/);
+});
+
+test("SQL decimals are exact text, a Java BigDecimal a JSON number", () => {
+  const outputs = guide("authoring/data.md").split("## Output schemas")[1]?.split(" ## ")[0] ?? "";
+  assert.match(outputs, /Java `BigDecimal`/);
+  assert.match(outputs, /`lib_flow_sql`[^.]*exact text/);
+});

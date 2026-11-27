@@ -24,8 +24,7 @@ Read for HTTP/CORS, secrets, configuration and application design.
   `const _flow = { accessibility: "private", ... }`. Private Flows run for
   Flow→Flow calls, the MCP and administrators only; `hidden` is callable but
   not listed, `public` is listed. A server, and a recent Studio, refuse a
-  private one over HTTP to anyone but an administrator (an older Studio still
-  ran it for an anonymous call). Exploration, authoring, test and
+  private one over HTTP to anyone but an administrator. Exploration, authoring, test and
   qualification Flows are always private.
 - `throw { code, message }` what must interrupt the caller: the
   answer is the error alone and a frontend call fails and stops its chain.

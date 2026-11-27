@@ -185,7 +185,7 @@ for Svelte actions. Business rules stay in Flows.
   frontend or external client calls (without it, a Flow is private), `private`
   for the others. Use `requestable-execute` or `code-run` to prove a private
   Flow's result. The requester restricts private Flows to administrators on a
-  server and in recent Studio versions. Older Studio versions allowed anonymous calls.
+  server and in recent Studio versions.
   Do not duplicate the requester's guard in the Flow. Keep business checks for roles and ownership.
 - `throw { code, message }` what must interrupt the caller; return
   a normal result (`ok: false` and a reason) for an outcome it handles. Catch

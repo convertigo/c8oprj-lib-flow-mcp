@@ -1123,7 +1123,12 @@
  },
  {
   "family": "start",
-  "old": "ran it for an anonymous call): prove access control with a session that is not an administrator.",
-  "new": "ran it for an anonymous call)."
+  "old": "to anyone but an administrator (an older Studio still ran it for an anonymous call): prove access control with a session that is not an administrator.",
+  "new": "to anyone but an administrator."
+ },
+ {
+  "family": "multipage-entities",
+  "old": "Test anonymous, two USER sessions and a manager in distinct cookie jars;",
+  "new": "Test anonymous, two USER sessions and a manager, each signed in as `flow://guide/authoring/blocks` (Proving a Flow's result) tells;"
  }
 ]
