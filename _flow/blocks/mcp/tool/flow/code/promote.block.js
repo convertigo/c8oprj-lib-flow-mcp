@@ -32,11 +32,6 @@ const _meta = {
 }
 
 (function () {
-	function withSource(ctx, args, write) {
-		var flow = ctx.flowGet(write.name, args);
-		return Object.assign({}, write, { source: flow.source, code: flow.code });
-	}
-
 	// Without a working copy, the Flow was promoted already, or a project-save wrote its draft to disk before any
 	// promotion (a Flow file that no Flow declares): its saved source is promoted as is. A Flow never written refuses,
 	// with the code-set call to make first.
@@ -55,7 +50,6 @@ const _meta = {
 		}
 		var write = ctx.flowCodePromote(Object.assign({}, args, { code: saved.code, revision: String(saved.revision) }));
 		if (write.ok === true) {
-			write.revision = ctx.flowGet(missing.name, args).revision;
 			write.note = "No working copy of " + missing.name + ": its saved source (revision " + String(saved.revision) +
 				") was promoted as is. Nothing else was changed.";
 		}
@@ -77,8 +71,9 @@ const _meta = {
 					write = promoteSaved(ctx, args, write);
 				}
 				if (write.ok === true) {
-					write.revision = ctx.flowGet(write.name || args.name, args).revision;
-					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }), withSource(ctx, args, write));
+					// Keep the revision and source from the same engine write. The file may already contain a newer edit.
+					write.registration = mcp.registerFlowDbo(Object.assign({}, args, { name: write.name }),
+						Object.assign({}, write, { source: write.saved.source, code: write.saved.code }));
 				}
 				return write;
 			});

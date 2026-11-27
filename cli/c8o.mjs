@@ -8,9 +8,9 @@ import { tmpdir, homedir, userInfo } from "node:os";
 import { join } from "node:path";
 
 const VERSION = "0.6.0";
-const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
-
-  c8o check [path...]          validate the changed files (or the given ones) without saving them
+const COMMON_OPTIONS = "Options: --json (the whole result as JSON), --project <name>, -- (end of options).";
+const COMMAND_USAGE = `  c8o check [path...]          validate the changed files (or the given ones) without saving them
+                               --gateway also checks the data model, if present
   c8o sync [path...]           validate and save them; --gateway also creates the EntityGateway of the data model
   c8o run <flow> [k=v...]      run a Flow in the engine, without a user session (a test run, private Flows too); k:=<json> for a typed value, --input '<json>' for the whole input
                                (k=v wins over --input); the whole result is printed as JSON on stdout (never shortened:
@@ -18,7 +18,9 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
   c8o call <flow> [k=v...]     call a Flow over HTTP as a browser does (POST .json), in a session kept between calls
                                (cookie jar): sign in with the app's own sign-in Flow first; --as <name> keeps several
                                sessions (a manager, a contributor); --end ends the session with this call
+                               k:=<json> for a typed value, --input '<json>' for the whole input (k=v wins)
   c8o session end|show         end the session (__removeSession, frees its licence session) or show its cookies' names
+                               (--as <name> selects the session)
   c8o session demo [<account>] list the demo accounts of this server, or open a session of one without its password
                                (--as <name>), when the server provides them; never guess a password
   c8o session cookie           the session's cookies for the browser, as JSON for Playwright's addCookies (--as <name>,
@@ -32,10 +34,14 @@ const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and
   c8o tools [word]             list the engine tools
   c8o skill [--install <dir>]  the skill of this command, as this engine serves it; --install writes
                                <dir>/convertigo-flow-cli/SKILL.md (a skills folder: ~/.codex/skills, ~/.claude/skills...)
-  c8o help <tool>              arguments of a tool
-  c8o <tool> [k=v | k:=json]   call any tool of c8o tools; the project is added when the tool takes one
+  c8o version                 print the CLI version (also available as --version)
+  c8o help <command or tool>   usage of a local command or arguments of an engine tool
+  c8o <tool> [k=v | k:=json]   call any tool of c8o tools; the project is added when the tool takes one`;
+const USAGE = `c8o ${VERSION}: edit the project files, then check, sync, run and view them.
 
-Options: --json (the whole result as JSON), --project <name>, -- (end of options).
+${COMMAND_USAGE}
+
+${COMMON_OPTIONS}
 Exit code: 0 ok, 1 refused, pending or failed, 2 usage, connection or protocol error.
 In a pipe the shell reports the last command: use set -o pipefail to keep c8o's status.
 Paths are project-relative: _flow/flows/<Flow>.flow.js, _flow/blocks/<ns>/<name>.block.js, _flow/data/model.yaml,
@@ -54,6 +60,7 @@ const COMMANDS = {
   guide: { pos: 1, flags: [], kv: false },
   tools: { pos: 1, flags: [], kv: false },
   skill: { pos: 0, flags: ["install"], kv: false },
+  version: { pos: 0, flags: [], kv: false },
   help: { pos: 1, flags: [], kv: false },
 };
 const GENERIC = { pos: 0, flags: ["args"], kv: true };
@@ -436,9 +443,16 @@ async function main(argv) {
   if (!cmd || cmd === "-h" || cmd === "--help" || (cmd === "help" && !rest.length)) { emit(process.stdout, USAGE); return 0; }
   if (cmd === "--version" || cmd === "version") { emit(process.stdout, VERSION); return 0; }
   const { pos, kv, flags } = parseArgs(rest, COMMANDS[cmd] || GENERIC);
+  const json = data => emit(process.stdout, JSON.stringify(data?.result ?? data, null, 2));
+  if (cmd === "help" && Object.hasOwn(COMMANDS, pos[0])) {
+    const lines = COMMAND_USAGE.split(/\n(?=  c8o )/).filter(usage => usage.startsWith(`  c8o ${pos[0]} `));
+    const usage = lines.join("\n") + "\n\n" + COMMON_OPTIONS;
+    if (flags.json) json({ name: pos[0], usage });
+    else emit(process.stdout, usage);
+    return 0;
+  }
   const cfg = config();
   secret = cfg.token;
-  const json = data => emit(process.stdout, JSON.stringify(data?.result ?? data, null, 2));
   switch (cmd) {
     case "check":
     case "sync": {
@@ -630,7 +644,7 @@ async function main(argv) {
     }
     case "help": {
       const t = await findTool(cfg, pos[0]);
-      if (!t) throw new Usage(`Unknown tool ${pos[0]}: see c8o tools.`);
+      if (!t) throw new Usage(`Unknown command or tool: ${pos[0]}. See c8o help and c8o tools.`);
       let schema = t.inputSchema;
       if (!schema && t.more) schema = findSchema((await call(cfg, "tools-more", { name: t.name })).result?.structuredContent);
       if (flags.json) json({ name: t.name, description: t.description, inputSchema: schema || null });

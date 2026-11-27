@@ -1,5 +1,5 @@
 // MCP-only filesystem adapter for the sources mode: the project files on disk are the truth. Each changed file is
-// checked by the validator of its kind, then saved as is through the existing writer, so no working copy remains.
+// checked by the validator of its kind, then saved through the existing writer, so no working copy remains.
 (function () {
 	var ACCEPTED = ["_flow/flows/<Flow>.flow.js", "_flow/blocks/<ns>/<name>.block.js", "_flow/blocks/<ns>/<name>.browser.js",
 		"_flow/frontbuilder/svelte/model/<App>/src/**/*.flow.svelte", "_flow/frontbuilder/svelte/model/<App>/src/**/*.flow.css",
@@ -102,9 +102,14 @@
 			if (args.gateway === true && disk["_flow/data/model.yaml"] !== undefined && paths.indexOf("_flow/data/model.yaml") < 0)
 				paths=paths.concat(["_flow/data/model.yaml"]);
 			var results=[], count={checked:0,applied:0,refused:0,rewritten:0}, dry=args.dryRun===true;
-			function inner(name, a, op) {
+			function innerRequest(name, a) {
 				var clean=Object.assign({},args); delete clean.paths; delete clean.dryRun; delete clean.gateway;
-				var req={jsonrpc:"2.0",id:request.id,method:"tools/call",__flowMcpTraceDeferred:true,params:{name:name,arguments:Object.assign(clean,a)}};
+				// Each inner tool gets its source from the file being synced.
+				delete clean.code; delete clean.flowScript; delete clean.flowSource; delete clean.definition;
+				return {jsonrpc:"2.0",id:request.id,method:"tools/call",__flowMcpTraceDeferred:true,params:{name:name,arguments:Object.assign(clean,a)}};
+			}
+			function inner(name, a, op) {
+				var req=innerRequest(name,a);
 				// Literal block names (relayed-call-names of the engine): code tools through their dispatcher, the two
 				// entity model tools by their own blocks.
 				var props={request:req,operation:op,out:"local.sourceSyncInner"};
@@ -113,14 +118,22 @@
 				if (name === "flow-entity-model-set") return ctx.callBlock("mcp.tool.flow.entity.model.set",props,{trace:false});
 				throw {code:"INTERNAL_ERROR",message:"source sync: no inner tool "+name};
 			}
-			// Check, then save as is: blocks (contract) first, then the data model, the Flows and the pages, so
+			function checkFlow(a, text) {
+				// Keep the code-check response, but supply the disk snapshot directly to the engine after MCP argument preparation.
+				return mcp.runToolBlock(ctx,innerRequest("flow-code-check",a),{},function(prepared) {
+					// The engine interprets empty inline code as a request to look up the Flow by name.
+					if (!text.trim()) return {ok:false,error:{code:"FLOWSCRIPT_VALIDATION_FAILED",message:"The FlowScript file is empty."}};
+					return ctx.flowCodeCheck(Object.assign(prepared,{code:text,draft:false}));
+				});
+			}
+			// Check, then save: blocks (contract) first, then the data model, the Flows and the pages, so
 			// that each file is checked against what it uses.
 			function apply(t, text, file) {
 				var a=t.args, response;
 				if (t.type === "model") return applyModel(file, text);
 				if (t.type === "flow") {
-					// A Flow is checked, then promoted from its code: saved as written, declared, and no working copy is kept.
-					response=inner("code-check",Object.assign({},a,{code:text}),"check");
+					// Promote the checked source, letting the engine format it where applicable.
+					response=checkFlow(a,text);
 					if (dry || failed(response)) return response;
 					return inner("code-promote",Object.assign({},a,{code:text,revision:sha256(text)}),"promote");
 				}
@@ -177,8 +190,9 @@
 					else if (!dry) {
 						var saved=read(file);
 						count.applied++;entry.applied=true;
-						if (t.type === "flow" && saved !== text) {
-							// A Flow is saved as written: other bytes now are an edit made meanwhile, left for the next sync.
+						if (t.type === "flow" && sha256(saved) !== structured(response).revision) {
+							// Keep the next sync pending even if the later edit restored the previous snapshot's text.
+							known[path]=null;
 							entry.note="Changed on disk during the sync: sync it again.";
 						} else {
 							known[path]=saved;

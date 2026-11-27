@@ -2,6 +2,7 @@
 test client's call(name, arguments, sources=True). No credential is accepted on the command line.
 The harness creates and trashes its disposable test project.
 """
+import json
 from pathlib import Path
 
 
@@ -31,19 +32,19 @@ def run(call, project_dir, project):
     response = sc(sync(dryRun=True))
     check(response.get('ok') and response['summary'] == {'checked': 1, 'applied': 0, 'refused': 0, 'rewritten': 0},
           'new valid Flow dryRun')
+    check('Ignored arguments' not in json.dumps(response), 'valid disk check has no ignored-argument warning')
     check(file.read_text() == good, 'dryRun preserves disk bytes')
     response = sc(sync())
     check(response.get('ok') and response['summary']['applied'] == 1, 'valid Flow applied')
     check(sc(sync())['summary']['checked'] == 0, 'unchanged applied source omitted')
-    # The actual compiler and the actual public dispatcher, on exactly the same bytes.
     file.write_text(bad)
-    direct = call('code-check', {'project': project, 'name': 'SourceSyncExample', 'code': bad})
     response = sc(sync(paths=[path], dryRun=True))
     inner = response['results'][0]['response']
-    check(inner['result'] == direct['result'], 'syntax response identical to code-check, including hints and guides')
     check(inner['result'].get('isError') and sc(inner).get('error', {}).get('code'), 'syntax refused with original code')
+    check('Ignored arguments' not in json.dumps(response), 'invalid disk check has no ignored-argument warning')
     response = sc(sync(paths=[path]))
-    check(not response['ok'] and not response['results'][0]['applied'], 'invalid source not applied')
+    check(not response['ok'] and not response['results'][0]['applied'] and response['results'][0]['response']['result'] == inner['result'],
+          'invalid source refused before promotion, with the same diagnostics as dryRun')
     check(file.read_text() == bad, 'refused disk content retained for repair')
     runtime = call('code-run', {'project': project, 'name': 'SourceSyncExample'})
     runtime_reads_invalid = bool(runtime.get('result', {}).get('isError'))

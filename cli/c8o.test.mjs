@@ -1,5 +1,5 @@
 // node --test cli/c8o.test.mjs : c8o against a fake Flow MCP endpoint (answers shaped like the real ones).
-import { test, before, after } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const C8O = join(dirname(fileURLToPath(import.meta.url)), "c8o.mjs");
 const calls = [], appCalls = [];
-let server, url, viewerRunning = false;
+let server, serverReady, url, viewerRunning = false;
 
 const TOOLS = [
   { name: "flow-source-sync", description: "Checks and saves changed source files. More.", inputSchema: { type: "object", required: ["project"],
@@ -97,7 +97,7 @@ function answer(name, args) {
   return { isError: true, content: [{ type: "text", text: "Unknown tool" }] };
 }
 
-before(async () => {
+async function startServer() {
   server = createServer((req, res) => {
     let body = "";
     req.on("data", d => body += d);
@@ -136,11 +136,12 @@ before(async () => {
     server.listen(0, "127.0.0.1", resolve);
   });
   url = `http://127.0.0.1:${server.address().port}/flow`;
-});
-after(() => server.close());
+}
+after(() => server?.close());
 
 const freshTmp = () => mkdtempSync(join(tmpdir(), "c8o-tmp-"));
-function c8o(args, env = {}) {
+async function c8o(args, env = {}) {
+  if (env.C8O_URL !== "") await (serverReady ??= startServer());
   return new Promise(resolve => {
     const p = spawn(process.execPath, [C8O, ...args], { env: { PATH: process.env.PATH, HOME: mkdtempSync(join(tmpdir(), "c8o-home-")),
       TMPDIR: freshTmp(), C8O_URL: url, C8O_PROJECT: "P", C8O_CONFIG: "/nonexistent", ...env } });
@@ -157,6 +158,33 @@ test("help needs no endpoint", async () => {
   assert.match(r.out, /c8o check \[path\.\.\.\]/);
   assert.match(r.out, /2 usage, connection or protocol error/);
   assert.equal((await c8o(["--version"], { C8O_URL: "" })).out.trim(), "0.6.0");
+});
+
+test("help lists each local command and its options without an endpoint", async () => {
+  const options = {
+    check: ["--gateway"], sync: ["--gateway"], run: ["--input"], call: ["--input", "--as", "--end"],
+    session: ["--as", "--url"], view: [], block: [], blocks: ["--namespace"], guide: [], tools: [],
+    skill: ["--install"], help: [], version: [],
+  };
+  for (const [command, flags] of Object.entries(options)) {
+    const r = await c8o(["help", command], { C8O_URL: "" });
+    assert.equal(r.code, 0, r.err);
+    const lines = r.out.trim().split("\n").map(line => line.trim());
+    const usages = lines.filter(line => line.startsWith("c8o "));
+    assert.equal(usages.length, command === "session" ? 3 : 1, r.out);
+    assert.ok(usages.every(line => line.startsWith(`c8o ${command} `)), r.out);
+    for (const flag of flags) assert.ok(r.out.includes(flag), r.out);
+  }
+});
+
+test("help returns JSON for a local command without an endpoint", async () => {
+  const r = await c8o(["help", "call", "--json"], { C8O_URL: "" });
+  assert.equal(r.code, 0, r.err);
+  const help = JSON.parse(r.out);
+  assert.equal(help.name, "call");
+  assert.match(help.usage, /c8o call <flow>/);
+  assert.match(help.usage, /--end/);
+  assert.match(help.usage, /--json/);
 });
 
 test("sync: refused, pending, normalized and warned files; file:line diagnostics; exit 1", async () => {
@@ -264,7 +292,14 @@ test("tools behind tools-more: listed, described and called through tools-more w
   r = await c8o(["tools", "jobs", "--json"]);
   assert.deepEqual(JSON.parse(r.out).map(t => t.name), ["scheduler-list"]);
   r = await c8o(["help", "scheduler-list"]);
+  assert.equal(r.code, 0);
   assert.match(r.out, /^ {2}project \(string\): Project\.$/m);
+  r = await c8o(["help", "flow-source-sync", "--json"]);
+  assert.equal(r.code, 0);
+  assert.equal(JSON.parse(r.out).name, "flow-source-sync");
+  r = await c8o(["help", "unknown-name"]);
+  assert.equal(r.code, 2);
+  assert.match(r.err, /Unknown command or tool: unknown-name/);
   r = await c8o(["scheduler-list"]);
   assert.equal(r.code, 0);
   assert.deepEqual(last().body.params, { name: "tools-more", arguments: { name: "scheduler-list", arguments: { project: "P" } } });
