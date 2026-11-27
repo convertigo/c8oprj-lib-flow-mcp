@@ -16,9 +16,9 @@ Read for preview, apply, proof, model evolution and limits.
    `_flow/data/model.yaml`, the Flows and pages, creates or migrates the
    database and seeds it. `FLOW_CRUD_PLAN_STALE`: preview again.
 4. `flow-crud-proof({project})`: every generated file matches the model and
-   nothing is left to apply. Then prove rights over HTTP: sign in with each
-   demo account in its own cookie jar (`<prefix>_demo_login` with `user`) and
-   call the Flows; an anonymous call is refused.
+   nothing is left to apply. Check the anonymous refusal first. For each demo account,
+   run `<prefix>_demo_login` with its `user` in `before` on each relayed `requestable-execute`.
+   In file mode, call that login Flow with `c8o call` and reuse its `--as <name>` for the operations.
 5. Build the pages with `frontend-svelte-action`.
 
 Without `spec`, both tools use the stored `_flow/data/model.yaml`.
@@ -36,7 +36,7 @@ stop using the old one. A new required field on a filled table needs a
 
 ## Before delivery
 
-- `flow-crud-proof` is ok, and each demo account was proven over HTTP.
+- `flow-crud-proof` is ok, and the Flow results match each demo account's permissions.
 - No generated screen offers an operation that a business rule forbids:
   sign in with each role and open every generated list, detail and form.
 

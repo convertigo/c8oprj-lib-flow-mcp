@@ -36,7 +36,7 @@ function ListDossiers({ input, config, result }) {
 ```
 
 `code-run` and `requestable-execute` also run `private` Flows: prove the call
-from the page, or over HTTP with a session that is not an administrator.
+from the page with the widget user's session.
 
 In the same change, close the gateway for these writes with
 `"gateway": {"writes": false}` on the entity; `code-check` says

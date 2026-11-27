@@ -131,8 +131,8 @@ becomes empty and marks the project.
 
 ## Output schemas
 
-For numeric outputs, `flow://guide/rhino-block-api` explains how Java `BigDecimal` values become double precision JSON numbers and why overflow yields `null`.
-For example, return the amount 1000000000000.25 and check the parsed JSON body with `body.amount === 1000000000000.25` to verify both value and type.
+A `BigDecimal` output becomes a double precision JSON number, `null` on overflow
+(`flow://guide/rhino-block-api`); check `result.amount === 1000000000000.25`.
 
 - `flow-output-schema({ project, qname })` combines the explicit contract,
   static analysis of `result.*` writes and optional learned samples; add
@@ -166,8 +166,7 @@ On the requester (.json, SDK, frontbuilder), an application error answers with
 200 and the `error` envelope; do not set `status` by habit, only when a client
 outside the SDK requires one (standard REST codes: URL mapper operations).
 When the public contract fixes the business error body, return exactly its keys
-instead, for example `return { error: { code: "BAD_INPUT", message: "Name is required" } }`;
-for another status, call `response.status({code})` before returning.
+instead, for example `return { error: { code: "BAD_INPUT", message: "Name is required" } }`.
 
 - `response.error({code,message,details})` writes that structure at
   `result.error` (or `path`) beside the rest of the result, without stopping

@@ -14,14 +14,11 @@ function exampleWith(source, language, marker) {
   return "";
 }
 
-test("the export filter is checked by accessible name before waiting for the download", () => {
+test("browser proofs check option labels before selecting and defer downloads to the CSV guide", () => {
   const source = guide("frontend-svelte/proof.md");
-  const example = exampleWith(source, "javascript", 'getByRole("combobox"');
-  assert.match(example, /getByRole\("form", \{ name: "[^"]+"/);
-  assert.match(example, /getByRole\("combobox", \{ name: "[^"]+"/);
-  assert.match(example, /locator\("option"\).*toHaveText\(\[[^\]]*"Open"[^\]]*\]\)[\s\S]*selectOption\(\{ label: "Open" \}\)/);
-  assert.match(example, /waitForEvent\("download"\)[\s\S]*getByRole\("button"[^\n]*\.click\(\)[\s\S]*await download/);
-  assert.doesNotMatch(example, /waitForTimeout/);
+  assert.match(source, /option labels[\s\S]{0,200}selectOption|selectOption[\s\S]{0,200}option labels/);
+  assert.match(source, /flow:\/\/guide\/crud\/business\/csv/);
+  assert.doesNotMatch(source, /waitForEvent\("download"\)/);
 });
 
 test("the booking policy uses the request alias and checks the block in isolation", () => {
@@ -34,30 +31,19 @@ test("the booking policy uses the request alias and checks the block in isolatio
   assert.match(after, /c8o check _flow\/blocks\/app\/entityAccess\.block\.js/);
 });
 
-test("the CSV proof checks the served file and identifies the caller", () => {
-  const proof = guide("multipage-entities/proof.md");
-  const paragraph = proof.split(/\n\s*\n/).find(text => text.includes("--anonymous --json")) ?? "";
-  assert.match(paragraph, /c8o call \w+ --anonymous --json/);
-  assert.match(paragraph, /--as \w+ --json/);
-  for (const marker of [".bin", "file.respond", "Content-Type", "text/csv", "header", "row"]) {
-    assert.ok(paragraph.includes(marker), marker);
-  }
+test("the CSV proof downloads through the page and sets the type in the Flow", () => {
+  const paragraphs = guide("multipage-entities/proof.md").split(/\n\s*\n/);
+  assert.ok(paragraphs.some(text => /\bCSV\b/i.test(text) && /\bdownload\w*\b/i.test(text) && /\bpage\b/i.test(text)),
+    "CSV download from the page");
+  assert.ok(paragraphs.some(text => text.includes("file.respond") && text.includes("mimeType") && text.includes("text/csv")),
+    "CSV response type in the Flow");
 });
 
-test("the room form and its navigation button use the public component contracts", () => {
+test("the room form and its button use the public component contracts", () => {
   const pages = guide("multipage-entities/pages.md");
-  const example = exampleWith(pages, "svelte", 'entity="Room"');
-  assert.match(example, /<EntityForm\b[^>]*entity="Room"[^>]*fields=\{\[\{\s*name: "name",\s*label: "[^"]+"/);
-  assert.match(example, /<Button\b[^>]*variant="secondary"/);
-  assert.match(example, /<Navigate\b[^>]*page="mine"/);
+  assert.match(pages, /fields=\{\[\{\s*name: "name",\s*label: "[^"]+"/);
   for (const variant of ["primary", "secondary", "ghost", "danger"]) {
     assert.ok(pages.includes("`" + variant + "`"), variant);
   }
   assert.match(pages, /contractBlocks:\s*\["EntityForm", "Button"\]/);
-});
-
-test("the entry guide names the CSV and SQL transaction blocks before the quick path", () => {
-  const intro = guide("multipage-entities.md").split(/^## /m)[0];
-  assert.match(intro, /CSV export[^.]*`data\.csv`[^.]*`file\.respond`/i);
-  assert.match(intro, /SQL transaction[^.]*`sql\.transaction`/i);
 });

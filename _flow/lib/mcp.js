@@ -1515,10 +1515,7 @@
 		}
 	}
 
-	// The Studio runs every requestable over HTTP, a private one included (Studio mode, for the tests of the developer),
-	// where a server refuses a private requestable to anyone but an administrator: an anonymous HTTP call to a private
-	// Flow answers in the Studio, which an agent read as a security defect of the Flow. The promotion of a private Flow
-	// in the Studio says so.
+	// Promotion in Studio points to the execution tools that can check a private Flow's result.
 	// A Flow whose source declares no accessibility takes its property, private by default since 8.5.0: a server refuses
 	// it over HTTP to anyone but an administrator, while code-run and requestable-execute run it. An agent proved its API
 	// through the MCP only and handed private Flows to an HTTP client (it150, L2). The promotion says so.
@@ -1536,8 +1533,7 @@
 		}
 	}
 
-	var STUDIO_PRIVATE_NOTE = "Private Flow: refused over HTTP to anyone but an administrator, as on a server; an older Studio still ran " +
-		"it over HTTP for an anonymous call (Studio mode), so prove the refusal with a session that is not an administrator.";
+	var STUDIO_PRIVATE_NOTE = "Check the private Flow's result with code-run or requestable-execute.";
 
 	// The runs of the MCP (code-run, requestable-execute) execute a private Flow too. Agents proved their API that way
 	// and handed private Flows to an HTTP client, the note of code-promote read and ignored (it150 L2, it155 L5): the
@@ -6718,8 +6714,8 @@
 			"(a Project Explorer reload, or a dialog waiting for an answer)." : "."));
 		error.code = "LEGACY_RELAY_TIMEOUT";
 		error.hint = (busyStudio ? "Look at the Studio window and answer any dialog. " : "") +
-			"Do not send the same call again at once: the relayed tools wait behind it. Prove a Flow with code-run, or with its HTTP " +
-			"URL (.json?__sequence=<name>), then retry " + name + " once" + (busyStudio ? " when the Studio answers again." : ".");
+			"Do not repeat the call immediately. Other relayed calls queue behind it. Check a Flow's result with code-run. " +
+			"Retry " + name + " once if needed" + (busyStudio ? " when the Studio answers again." : " after the call finishes.");
 		if (name === "subagent-run") {
 			var runId = String(request.params.arguments && request.params.arguments.runId || "");
 			if (runId) details.runId = runId;

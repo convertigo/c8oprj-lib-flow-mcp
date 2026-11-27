@@ -103,12 +103,14 @@ config, the caught error/stack, credentials or message bodies.
 Pure Node proof: `node tests/private-reminder-guide.cjs` compiles these exact
 fences with the production parser/contracts and executes them with transactional
 in-memory entity doubles. It checks replay, repair, partial failure and manual
-roles. This does not prove JDBC or HTTP authorization.
+roles.
 With an isolated Convertigo engine, verify actual SQL rollback, simultaneous
 unique/revision conflicts on HSQLDB/PostgreSQL, the real scheduler invocation
-without cookies, the disabled switch, and anonymous **and authenticated** HTTP
-refusal of both private Flows. Test the manual facade with each role and forged
-inputs; inspect persisted reminders and secret-free server logs. Run the targeted
+without a user session and the disabled switch. Keep both Flows private.
+Check the manual facade's anonymous refusal and each role's result, including forged inputs.
+For each signed-in call, run the app's login Flow in the relayed `requestable-execute` tool's
+`before`, or use the `c8o call --as <name>` session opened by that login Flow. Inspect persisted
+reminders and secret-free server logs. Run the targeted
 `tests/response-budget.js` and `tests/flow-scheduled-private.js` too. No benchmark
 is needed. Real email requires a separate outbox dispatcher with provider-side
 idempotency; this preparation makes no claim of exactly-once external delivery.

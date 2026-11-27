@@ -85,5 +85,7 @@ not angle-bracket wildcard slots. Preserve all other slots during an edit.
 
 With checkAccess:true, the server removes hidden fields and enforces scope, optional ACLs and
 revision checks. Hiding an action or a management link is only presentation.
-Test anonymous, ordinary-user and administrator sessions over HTTP, then test
-the pages. A page loading or a successful model write is not that proof.
+Check the Flow results for anonymous, ordinary-user and administrator access. For each signed-in
+call, run the app's login Flow in `before` on the relayed `requestable-execute`, or reuse the
+`c8o call --as <name>` session opened by that login Flow. Then test the pages in the browser.
+A page loading or a successful model write is not that proof.

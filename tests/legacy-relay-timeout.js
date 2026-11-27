@@ -17,7 +17,7 @@ if(!(seen[0].timeoutSeconds>0&&seen[0].timeoutSeconds<300))fail('The relay must 
 if(!error||error.code!=='LEGACY_RELAY_TIMEOUT')fail('A relay timeout must answer LEGACY_RELAY_TIMEOUT',answer);
 if(answer.result.isError!==true)fail('A relay timeout is a tool error',answer.result);
 if(error.message.indexOf('requestable-execute')<0||error.message.indexOf(String(seen[0].timeoutSeconds)+' s')<0)fail('The message names the tool and the wait',error.message);
-if(!/code-run/.test(error.hint)||!/__sequence=/.test(error.hint)||!/once/.test(error.hint))fail('The hint gives the other proofs and one retry',error.hint);
+if(!/code-run/.test(error.hint)||/__sequence=/.test(error.hint)||!/once/.test(error.hint))fail('The hint names the execution tool and one retry',error.hint);
 if(error.details.tool!=='requestable-execute'||error.details.waitedSeconds!==seen[0].timeoutSeconds)fail('details name the tool and the wait',error.details);
 if(error.details.studioMode!==false||error.details.projectFlagLock===undefined)fail('details read the project of the requestable without a Studio',error.details);
 if(!/Convertigo MCP did not answer/.test(answer.result.content[0].text))fail('The text content says why',answer.result.content);

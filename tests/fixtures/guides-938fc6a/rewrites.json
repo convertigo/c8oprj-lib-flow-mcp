@@ -17,7 +17,7 @@
  {
   "family": "authoring",
   "old": "It requires a target Flow, not just a project.",
-  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status` by habit, only when a client\noutside the SDK requires one (standard REST codes: URL mapper operations). When the public contract fixes the business error body, return exactly its keys instead, for example `return { error: { code: \"BAD_INPUT\", message: \"Name is required\" } }`; for another status, call `response.status({code})` before returning."
+  "new": "It requires a target Flow, not just a project. An input marked `required` is rejected by the engine with `FLOW_INPUT_REQUIRED` before the Flow runs. When the API needs its own error code, keep the input optional and validate it in the Flow with `throw { code, message }`. On the requester (.json, SDK, frontbuilder), an application error answers with 200 and the `error` envelope; do not set `status` by habit, only when a client\noutside the SDK requires one (standard REST codes: URL mapper operations). When the public contract fixes the business error body, return exactly its keys instead, for example `return { error: { code: \"BAD_INPUT\", message: \"Name is required\" } }`."
  },
  {
   "family": "entities",
@@ -1078,11 +1078,6 @@
   "new": "Without `accessibility`, the Flow property applies: private since 8.5.0."
  },
  {
-  "family": "authoring",
-  "old": "`requestable.call`, the scheduler and the MCP run `private` Flows by design.",
-  "new": "`requestable.call`, the scheduler and the MCP run `private` Flows by design: `code-run` and `requestable-execute` never prove that an HTTP client can call a Flow."
- },
- {
   "family": "entities",
   "old": "and return `local.page.nextOffset`",
   "new": "and return `page.nextOffset`"
@@ -1105,5 +1100,30 @@
  {"family": "frontend-svelte", "old": "- Create navigation target Pages first. For mutually linked pages, write their content without navigation, then add the links after all Page ids exist.", "new": "- A link may name a Page not written yet (a warning, `FLOW_PAGE_LINK_UNKNOWN` at the build): write mutually linked pages one after the other, links included."},
  {"family": "frontend-svelte", "old": "Create target Pages before writing a `Navigate` to their **Page id**.", "new": "A `Navigate` names its target by **Page id**, written before or after it (a warning until that Page exists)."},
  {"family": "frontend-svelte", "old": "- `@route.path`, `@route.params.id`, `@route.query.tab`: current route;", "new": "- `@route.path`, `@route.params.id`, `@route.query.tab`: current route. `@route.path` is the address in the browser: the base of the viewer (`/convertigo/gw/…/`) or of the build comes first, and it always ends with `/` (`…/deals/42/`). Never compare it with a route: in a Layout, tell the current Page by `@event.to.route` of `OnAfterNavigate` (`/login`, `/deals/[id]`), or give the Pages that need another frame their own `(group)` Layout;"},
- {"family": "entities", "old": "model and writes only with the revision just read. A stale revision is a", "new": "model and writes only with the revision just read; the first model needs none (`expectedRevision` omitted or `\"missing\"`). A stale revision is a"}
+ {"family": "entities", "old": "model and writes only with the revision just read. A stale revision is a", "new": "model and writes only with the revision just read; the first model needs none (`expectedRevision` omitted or `\"missing\"`). A stale revision is a"},
+ {
+  "family": "authoring",
+  "old": "Prove the refusal with a session that is not an administrator, and do not add guards to the Flow for it.",
+  "new": "The requester enforces this refusal before the Flow runs. Do not duplicate that guard in the Flow. Keep business checks for roles and ownership."
+ },
+ {
+  "family": "crud",
+  "old": "Then prove rights over HTTP: sign in with each demo account in its own cookie jar (`<prefix>_demo_login` with `user`) and call the Flows; an anonymous call is refused.",
+  "new": "Check the anonymous refusal first. For each demo account, run `<prefix>_demo_login` with its `user` in `before` on each relayed `requestable-execute`. In file mode, call that login Flow with `c8o call` and reuse its `--as <name>` for the operations."
+ },
+ {
+  "family": "crud",
+  "old": "each demo account was proven over HTTP",
+  "new": "the Flow results match each demo account's permissions"
+ },
+ {
+  "family": "entities",
+  "old": "Test anonymous, ordinary-user and administrator sessions over HTTP, then test the pages.",
+  "new": "Check the Flow results for anonymous, ordinary-user and administrator access. For each signed-in call, run the app's login Flow in `before` on the relayed `requestable-execute`, or reuse the `c8o call --as <name>` session opened by that login Flow. Then test the pages in the browser."
+ },
+ {
+  "family": "start",
+  "old": "ran it for an anonymous call): prove access control with a session that is not an administrator.",
+  "new": "ran it for an anonymous call)."
+ }
 ]

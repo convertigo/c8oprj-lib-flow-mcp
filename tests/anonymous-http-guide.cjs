@@ -3,16 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Whitespace-insensitive: the guide may rewrap its lines or rename the local variable.
-const guide = fs.readFileSync(path.join(__dirname, '../_flow/resources/guide/authoring/blocks.md'), 'utf8').replace(/\s+/g, ' ');
-
-test('the HTTP guide proves an anonymous form POST against the engine URL, never a guessed port', () => {
-  assert.match(guide, /const (\w+) = endpoint\.current\(\{\}\)/);
-  assert.match(guide, /\w+\.convertigoUrl \+ "\/projects\/<project>\/\.json"/);
-  assert.match(guide, /method: "POST"/);
-  assert.match(guide, /"Content-Type": "application\/x-www-form-urlencoded"/);
-  assert.match(guide, /__sequence: "<Flow>"/);
-  assert.match(guide, /cookies: "request"/);
-  assert.match(guide, /Never guess the host or port\./);
-  assert.match(guide, /convertigo\.flow\.http\.allowedHosts/);
+const source = fs.readFileSync(path.join(__dirname, '../_flow/resources/guide/authoring/blocks.md'), 'utf8');
+test('the guide distinguishes requester errors from MCP tool errors', () => {
+  const section = source.split(/^## /m).find(text => text.includes('c8o call') && text.includes('requestable-execute')) ?? '';
+  for (const marker of [/requester/i, /\b200\b/, /\berror\b/i, /tool error|isError/i, /--anonymous\b/, /--as\b/]) {
+    assert.match(section, marker);
+  }
 });

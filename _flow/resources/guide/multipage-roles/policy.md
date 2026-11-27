@@ -14,8 +14,7 @@ an application-specific code, the Flow must check
 the user itself and `throw { code, message }`. Write these names in lowercase in
 FlowScript. Keep the initializations and the scheduled job private. A server, and
 a recent Studio, refuse them over HTTP to anyone but an administrator (an
-older Studio still ran them for an anonymous call): prove a refusal with a
-session that is not an administrator.
+older Studio still ran them for an anonymous call).
 
 For each read or write, call `CurrentUser` again. The server chooses `ownerId`
 and the rights. When the called Flow throws (UNAUTHENTICATED for an anonymous

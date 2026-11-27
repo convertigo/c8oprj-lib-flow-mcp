@@ -55,12 +55,10 @@ Where it applies: on a server, `.json`, `.xml` and the other
 `/projects/<project>/.<ext>?__sequence=` URLs answer an anonymous or
 non-administrator call to a `private` Flow as an unknown requestable; a recent
 Studio does the same, an older one still ran it for an anonymous call (Studio
-mode). Prove the refusal with a session that is not an administrator, and do
-not add guards to the Flow for it. A URL Mapper
+mode). The requester enforces this refusal before the Flow runs. Do not duplicate
+that guard in the Flow. Keep business checks for roles and ownership. A URL Mapper
 operation (`/api/...`) publishes its target whatever its accessibility, and
-`requestable.call`, the scheduler and the MCP run `private` Flows by design:
-`code-run` and `requestable-execute` never prove that an HTTP client can call
-a Flow.
+`requestable.call`, the scheduler and the MCP run `private` Flows by design.
 
 For JSON HTTP APIs: `local.response = http.get({ url: config.api.url })`,
 then read `local.response.body`; parse `local.response.text` only when the

@@ -289,7 +289,8 @@ Project-local blocks are saved directly by `code-set`/`code-patch`; they have
 no promote step. Prefer standard blocks, then a project-local FlowScript block.
 Use Rhino only for Java integration or a genuinely low-level primitive.
 
-For an anonymous HTTP test without a browser or shell, see `flow://guide/authoring/blocks` under “Proving an HTTP contract”.
+Trust the Flow result from `requestable-execute` or `code-run` (in file mode, `c8o call`).
+The requester, including `c8o call`, can return HTTP 200 with an `error` envelope. MCP can report a tool error. Skip custom HTTP clients and self-calls over HTTP.
 
 ## Frontend Source Loop
 
@@ -346,8 +347,9 @@ one readiness check, report the limitation instead of bypassing Studio CDP.
   (`flow://lib/<library>/<guide>`) gives its configuration.
 - This endpoint also relays Convertigo MCP tools that apply to Flow projects:
   `scheduler-list`/`scheduler-apply` (schedule a Flow), `requestable-execute`
-  (run a Flow or transaction, `authenticatedUser` to run it as a signed-in
-  user), `log-view`, `project-list-symbols`, `project-save` (saves the frontend sources
+  (run a Flow or transaction with `authenticatedUser` for this call only, or sign in with
+  `before` for session data as in `flow://guide/authoring/blocks`), `log-view`,
+  `project-list-symbols`, `project-save` (saves the frontend sources
   and tags of a project), `marketplace-*`,
   `project-security-audit`, `image-describe`, `rag-query` and read-only
   `databaseobject-*`, `browser-verify` (a vision model checks a page of the

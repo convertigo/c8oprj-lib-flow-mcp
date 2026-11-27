@@ -73,18 +73,17 @@ conversion is distinct from native authoring property validation.
 `flow-project-metadata` edits only `version` (one line, at most 64 characters)
 and `description` (at most 4000). It does not edit timeouts or CORS.
 
-## Proving an HTTP contract
+## Proving a Flow's result
 
-To verify an anonymous HTTP contract without a browser or shell, use a private
-test Flow. First bind `const here = endpoint.current({})` on its own line, then
-call `http.request` with `url: here.convertigoUrl + "/projects/<project>/.json"`,
-`method: "POST"`, `headers: { "Content-Type": "application/x-www-form-urlencoded" }`,
-`body: { __sequence: "<Flow>", __removeSession: "true" }` plus any other form
-fields in that object, and `cookies: "request"` to start with an empty cookie
-store. Each anonymous call would otherwise open a server session that counts
-toward the licence until it expires, so use `__removeSession` for stateless
-execution. Omit the `Cookie` header and credentials. Check the returned
-`status` and `body`. Never guess the
-host or port. If that host resolves to a loopback or private address, the server
-must allow it explicitly in `convertigo.flow.http.allowedHosts`. Delete the test
-Flow afterward or keep it private.
+With MCP, `requestable-execute` and `code-run` can execute private Flows. The relayed
+`requestable-execute` passes `variables` as text, encoding objects and lists as JSON.
+It starts anonymous. Set `authenticatedUser` to the identity the app's login assigns for this
+call only. If login also stores session data such as a role, run the app's login Flow in
+`before` on each signed-in call. The server fallback passes `input` directly to
+`requestable.call` and has no identity selector. There, run login and the operation in one private test Flow.
+
+In file mode, use `c8o call <Flow> k=v`. For each role, call the app's login Flow with
+`--as <name>` and reuse that name for the operation. Use `--anonymous` for a public Flow
+without a session. Trust the displayed result. On the requester, including `c8o call`, an
+application error can arrive in an `error` envelope with HTTP 200. MCP can report a tool error (`isError: true`).
+Skip custom HTTP clients and test Flows that call the server over HTTP.

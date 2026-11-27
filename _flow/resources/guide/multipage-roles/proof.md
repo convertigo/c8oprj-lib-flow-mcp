@@ -26,9 +26,9 @@ steps may call the same requestable several times in order, which stays a
 warning for them (`FLOWSCRIPT_REPEATED_EXTERNAL_CALLS`). To run a step as a
 user, call `session.authenticate({ user })` then `requestable.call`; a project
 block taking the user, the requestable and its input keeps each step on one
-line, and `session.authenticate({ user: "" })` ends the scenario. For HTTP, open a
-session and keep its cookie in a separate jar for Alice, Bob and the manager; a
-sign-in through `code-run` does not prove the session of the next HTTP call.
+line, and `session.authenticate({ user: "" })` ends the scenario. In file mode, call the app's
+login Flow with `c8o call` and a separate `--as <name>` for each user and the manager.
+Run each scenario under its login name.
 Check: anonymous access refused, data partitioned, forged identity ignored,
 another user's mutation refused, revoked role read again, stale revision,
 invalid filter or sort, CSV identical to the filtered list, job replayed without

@@ -24,10 +24,9 @@ screen showed. A simple page without a specification keeps the single proof.
 Walk on the development database or the demo data, signed in with the test
 accounts of the project seed; a path that sends an email or calls an outside
 service uses the development settings; never walk against a production
-connection or with the account of a real person. To sign in from the browser
-without a page, call the sign-in Flow with form fields or query parameters
-(`fetch(url, { method: "POST", body: new URLSearchParams({ user }) })`): a
-requestable called by its URL reads them, not a JSON body.
+connection or with the account of a real person. Use the sign-in page when available. In file mode,
+if the application has no sign-in page, call its login Flow with `c8o call`
+and `--as <name>`, then open the page in that session as described in the CLI skill.
 
 ## POC Acceptance
 
@@ -45,22 +44,9 @@ images and documented `data-*` attributes; `$$id`s are not DOM ids. On failure, 
 container size: for maps, confirm one tile image has `naturalWidth > 0`, and
 apply the equivalent resource check to other visualizations.
 
-In a Playwright Test with the export page open, use the accessible names and
-option labels from that page. This example uses an English booking form.
-
-```javascript
-const form = page.getByRole("form", { name: "Export bookings", exact: true })
-const status = form.getByRole("combobox", { name: "Status", exact: true })
-await expect(status.locator("option")).toHaveText(["All statuses", "Open", "Cancelled"])
-await status.selectOption({ label: "Open" })
-const download = page.waitForEvent("download")
-await form.getByRole("button", { name: "Export CSV", exact: true }).click()
-const file = await download
-expect(await file.failure()).toBeNull()
-```
-
-The option assertion reports a missing or changed label before a 30-second
-selection timeout, and subscribing before the click catches a fast download.
+Before `selectOption`, check the option labels the page shows and select by
+`{ label }`: a missing or changed label otherwise waits for the 30-second
+timeout. For a downloaded file, follow `flow://guide/crud/business/csv`.
 
 Delegate a multi-step proof (sign-in, a path through several pages, a form
 submitted then the list that shows the result) to a verifier sub-agent: its

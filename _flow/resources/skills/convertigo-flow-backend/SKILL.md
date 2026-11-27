@@ -62,8 +62,8 @@ answers that error instead of a result. A calling Flow's `requestable.call`
 stopping that Flow unless a `try` catches it; a page action fails and stops
 its chain. Throw what must interrupt; return `ok: false` for what the caller
 handles. Otherwise the value of `requestable.call` is the result of the called
-Flow as it is, without envelope (`result.items` gives `{ items }`); only
-`requestable-execute` shows the HTTP answer under its own `payload`, beside `attr`.
+Flow as it is, without envelope (`result.items` gives `{ items }`). The relayed
+`requestable-execute` wraps the returned data in its own `payload`.
 
 **Source remains yours until promotion.** Write natural assignments, `if`,
 `return` and `throw { code, message }`; catalog blocks take one object
@@ -183,10 +183,10 @@ for Svelte actions. Business rules stay in Flows.
   default: `"${<project>.<usage>.<name>.secret=}"`, never literal values.
 - Declare `accessibility` in `_flow`: `public` or `hidden` for every Flow a
   frontend or external client calls (without it, a Flow is private), `private`
-  for the others; the MCP runs private Flows, so its runs prove nothing. A
-  server refuses a private Flow over HTTP to anyone but an administrator; the
-  Studio runs it anyway (Studio mode), so an anonymous call answering in the
-  Studio is not a defect to guard against in the Flow.
+  for the others. Use `requestable-execute` or `code-run` to prove a private
+  Flow's result. The requester restricts private Flows to administrators on a
+  server and in recent Studio versions. Older Studio versions allowed anonymous calls.
+  Do not duplicate the requester's guard in the Flow. Keep business checks for roles and ownership.
 - `throw { code, message }` what must interrupt the caller; return
   a normal result (`ok: false` and a reason) for an outcome it handles. Catch
   a block that may fail with `try { ... } catch (e) { ... }`, never

@@ -34,16 +34,16 @@ never edit them.
      before your next edit.
    - `REFUSED`, then `path:line: severity CODE (block.property): message` and
      `fix:`: nothing was saved. Fix the file and sync again before running it:
-     `c8o run` reads the file on disk, HTTP keeps the last synced version.
+     `c8o run` reads the file on disk. A `c8o call` session keeps the synced project version from its first call.
    - `PENDING`: the file changed during the sync; sync it again.
    A Flow that uses a new block: sync them together; `check` does not see a
    block it has not saved.
 4. `c8o run <Flow> key=value key:=<json>` tests in the engine without a session,
-   with the full result as JSON on stdout and notes on stderr. `c8o call <Flow>
-   key=value` makes an HTTP call with a reusable session. Sign in with the app's
+   with the full result as JSON on stdout and notes on stderr. `c8o call <Flow> k=v`
+   calls the Flow as an app client does. Trust its result. Sign in with the app's
    sign-in Flow, use `--as manager` / `--as contributor` for separate sessions,
    and free a licence session with `c8o session end --as <name>`.
-   `c8o call <Flow> k=v --anonymous --json` proves a POST without cookies and reports status, received cookie names and body.
+   Use `--anonymous` for a public Flow without a session. Skip custom HTTP clients.
    `c8o session demo` lists the demo accounts a server provides and
    `c8o session demo <account> --as <name>` opens one without its password.
    Never guess passwords, create unrequested accounts or bypass authentication.

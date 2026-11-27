@@ -16,10 +16,10 @@ function Ping({ input, config, result }) {
 ```
 
 ```sh
-c8o check && c8o sync && c8o call Ping --anonymous --json
+c8o check && c8o sync && c8o call Ping --anonymous
 ```
 
-The anonymous HTTP call should report `status: 200` and `body: { "ok": true }`.
+The expected Flow result is `{ "ok": true }`.
 
 ## Source validation
 
