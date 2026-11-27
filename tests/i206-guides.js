@@ -107,3 +107,9 @@ test("SQL decimals are exact text, a Java BigDecimal a JSON number", () => {
   assert.match(outputs, /Java `BigDecimal`/);
   assert.match(outputs, /`lib_flow_sql` int64 and decimals stay exact text/);
 });
+
+test("the complete Flow example of the authoring guide is public and says that the default is private", () => {
+  const section = guide("authoring.md").split("## A complete Flow")[1] ?? "";
+  assert.match(section, /const _flow = \{[^}\n]*accessibility: "public"/);
+  assert.match(section, /private/);
+});

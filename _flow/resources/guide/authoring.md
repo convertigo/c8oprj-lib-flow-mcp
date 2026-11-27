@@ -6,8 +6,11 @@ FlowScript v3 is JavaScript, lowered to Flow blocks: write `const`/`let`, `if`/`
 
 ## A complete Flow
 
+Without `accessibility: "public"` a Flow is private: the requester refuses it to anonymous and
+non-administrator clients.
+
 ```javascript
-const _flow = { sourceVersion: 3, inputs: { name: { type: "string", default: "Ada" }, items: { type: "array" } } }
+const _flow = { sourceVersion: 3, accessibility: "public", inputs: { name: { type: "string", default: "Ada" }, items: { type: "array" } } }
 
 function Greeting({ input, config, result }) {
   const name = input.name.trim()
